@@ -6,6 +6,8 @@ import numpy as np
 import copy
 from collections import OrderedDict
 
+#old lib
+from fileio.xyz import WriteXYZFile
 Angstrom2Bohr = 1.8897261247828971
 
 def write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom'):
@@ -50,7 +52,8 @@ def write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom'):
                 f.write(format%tuple([c for c in elems[elem]['c'][i]])) #cp2k format as in pythonbase
         f.write("&END\n")
 
-def cpmdWriter(fn, pos_au, symbols, vel_au=None,**kwargs):
+def cpmdWriter(fn, pos_au, symbols, vel_au,**kwargs):
+    bool_atoms = kwargs.get('write_atoms',True)
     pp = kwargs.get('pp','MT_BLYP')
     bs = kwargs.get('bs','')
     offset = kwargs.get('offset',0)
@@ -64,9 +67,11 @@ def cpmdWriter(fn, pos_au, symbols, vel_au=None,**kwargs):
         for fr in range(pos_au.shape[0]):
             for at in range(pos_au.shape[1]):
                 line = '%06d  '%(fr+offset) + format%tuple(pos_au[fr,at])
-                if any(vel_au.tolist()): #only for numpy arrays? 
-                    line += '  ' + format%tuple(vel_au[fr,at])
+                line += '  ' + format%tuple(vel_au[fr,at])
                 f.write(line+'\n')
 
-    write_atoms_section(fn+'_ATOMS', symbols, pos_au[0], pp=pp, bs=bs)
+    if bool_atoms: 
+        write_atoms_section(fn+'_ATOMS', symbols, pos_au[0], pp=pp, bs=bs)
+        WriteXYZFile(fn+'_ATOMS.xyz',[pos_au[0]/Angstrom2Bohr],symbols,[fn])
+
 

@@ -5,6 +5,7 @@ import sys
 import tempfile
 from classes.volume import ScalarField
 from scipy.interpolate import griddata
+from scipy.integrate import simps
 from reader.volume import cubeReader
 from fileio.cube import WriteCubeFile #Replace it ?
 
@@ -33,7 +34,11 @@ class Domain3D():
     #def integrate_vector_field():
         #if not np.allclose(v_field.shape[0],self.grid_shape):
         #    raise Exception('ERROR: Given vector field is not compatible with AIM topology')
-    #def integrate_scalar_field():
+    def integrate_volume(self,f):
+        #return simps(f(self.indices)*self.weights)
+        return np.sum(f(self.indices)*self.weights,axis=0)
+
+#    def integrate_boundary():
 
     def expand(self):
         data = np.zeros(self.grid_shape)

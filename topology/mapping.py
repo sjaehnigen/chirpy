@@ -21,6 +21,7 @@ def map_atoms_by_coordinates(mol1,mol2):
         if unit_cell:
             dist_array-= np.around(dist_array/unit_cell.abc)*unit_cell.abc
         return np.argmin(np.linalg.norm(dist_array,axis=-1),axis=2)
+        #insert routine to avoid double index
     
     assign=np.zeros((d1.n_frames,d1.n_atoms)).astype(int)
     for s in np.unique(d1.symbols):

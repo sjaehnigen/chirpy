@@ -63,5 +63,7 @@ def pdbReader(filename):
         print('WARNING: No cell specified in pdb file!')
 #    if box_aa_deg.all() == None:
 #        raise Exception('Cell has to be specified, only orthorhombic cells supported!')
-    return np.array(data), names, np.array(symbols), np.array([[resids[i],n] for i,n in enumerate(resns)]), cell_aa_deg, title
+    return np.array(data), names, np.array(symbols), np.array([[i,n] for i,n in zip(resids,resns)]), cell_aa_deg, title
 
+def xyzReader(fn):
+    pass

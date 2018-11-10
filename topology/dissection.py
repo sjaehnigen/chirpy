@@ -22,7 +22,7 @@ def define_molecules(mol):
     #replace by pos
     if hasattr(mol,'UnitCell'):
         abc = mol.UnitCell.abc
-        dist_array -= np.around(dist_array/abc)*abc
+        dist_array -= np.around(dist_array/abc[None,None])*abc[None,None]
 
     dist_array = np.linalg.norm(dist_array,axis=-1)
     dist_array[dist_array == 0.0] = 'Inf'

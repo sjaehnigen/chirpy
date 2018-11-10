@@ -17,29 +17,30 @@ fn3 = j_cube%3
 system = quantum.ElectronicSystem(fn,fn1,fn2,fn3)
 
 system.auto_crop(thresh=system.rho.threshold/2)
-system.calculate_velocity_field(lower_thresh=5.E-2) #default thresh=1.E-3
+#system.calculate_velocity_field(lower_thresh=5.E-2) #default thresh=1.E-3
 
-out = copy.deepcopy(system.v)
-fn_cube = 'VELOCITY-000001-%d-CROPPED.cube'
-fn1 = fn_cube%1
-fn2 = fn_cube%2
-fn3 = fn_cube%3
-out.write(fn1,fn2,fn3)
-del out
-
-out = copy.deepcopy(system.j)
-fn_cube = ''.join(j_cube.split('.')[:-1])+'-CROPPED.'+j_cube.split('.')[-1]
-fn1 = fn_cube%1
-fn2 = fn_cube%2
-fn3 = fn_cube%3
-out.write(fn1,fn2,fn3)
-del out
+#out = copy.deepcopy(system.v)
+#fn_cube = 'VELOCITY-000001-%d-CROPPED.cube'
+#fn1 = fn_cube%1
+#fn2 = fn_cube%2
+#fn3 = fn_cube%3
+#out.write(fn1,fn2,fn3)
+#del out
 
 out = copy.deepcopy(system.rho)
 fn_cube = ''.join(rho_cube.split('.')[:-1])+'-CROPPED.'+rho_cube.split('.')[-1]
 fn = fn_cube
 out.write(fn)
 del out
+
+#out = copy.deepcopy(system.j)
+#fn_cube = ''.join(j_cube.split('.')[:-1])+'-CROPPED.'+j_cube.split('.')[-1]
+#fn1 = fn_cube%1
+#fn2 = fn_cube%2
+#fn3 = fn_cube%3
+#out.write(fn1,fn2,fn3)
+#del out
+
 
 #system.rho.aim()
 #for i in range(system.rho.n_atoms):

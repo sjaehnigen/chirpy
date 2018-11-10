@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
+#Version important as <3.6 gives problems with OrderedDictionaries
 
 #import unittest
 #import logging
@@ -42,12 +43,26 @@ np.set_printoptions(precision=5,suppress=True)
 #        'b': 2
 #    }.get(x, 9)    # 9 is default if x not found
 
-
+#NEEDS
+# - CPMD format Reader
+# - Tidying up
 class Molecule():
     def __init__(self,fn,**kwargs):
+        if int(np.version.version.split('.')[1]) < 14:
+            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
+            sys.exit(1)
         global ignore_warnings
         ignore_warnings = kwargs.get('ignore_warnings',False)
         fmt = kwargs.get('fmt',fn.split('.')[-1])
+
+        ## This is a cheap workaround
+        #TOPOLOGY first, COORDINATES second: 
+        if kwargs.get('fn_topo') is not None:
+            print('Found topology file.')
+            self.install_molecular_origin_gauge(**kwargs) #Do it as default
+            #print('I wrap molecules')
+            #self.XYZData._wrap_molecules(self.mol_map,self.UnitCell.abc,albega=self.UnitCell.albega)
+
         if fmt=="xyz":
             self.XYZData = XYZData(fn,**kwargs)
         elif fmt=="xvibs":
@@ -66,13 +81,17 @@ class Molecule():
             data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
             n_atoms=symbols.shape[0]
             self.XYZData = XYZData(fn,data=data.reshape((1,n_atoms,3)),symbols=symbols,**kwargs)
-            if not 'cell_aa' in kwargs:
-                kwargs['cell_aa'] = box_aa_deg
+            setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
+            print('Found PDB: Automatic installation of molecular gauge.')
+            self.install_molecular_origin_gauge(fn_topo=fn) #re-reads pdb file
+
         else: raise Exception('Unknown format: %s.'%fmt)
 
-#        if 'cell_aa' in kwargs and kwargs['cell_aa'] is not None:
-        if kwargs.get('cell_aa') is not None:
-            self.UnitCell = UnitCell(kwargs.get('cell_aa'))
+        cell_aa_deg = kwargs.get('cell_aa',getattr(self,"cell_aa_deg",None)) 
+        if cell_aa_deg is not None:
+            if hasattr(self,'cell_aa_deg'):
+                if not np.allclose(cell_aa_deg,self.cell_aa_deg): print('WARNING: Given cell size differs from file parametres!')
+            self.UnitCell = UnitCell(cell_aa_deg)
             if kwargs.get('cell_multiply') is not None:
                 cell_multiply = kwargs.get('cell_multiply')
                 cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
@@ -83,19 +102,38 @@ class Molecule():
                     self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
             if kwargs.get('wrap_mols') is not None:
                 print('I wrap molecules')
-                self.install_molecular_origin_gauge()
-                self.XYZData._wrap_molecules(self.mol_map,self.UnitCell.abc) #albega=self.UnitCell.albega
+                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
+
+            #DEPENDING on cell_aa?
+            center_res = kwargs.get('center_residue',-1) #-1 means False, has to be integer ##==> ToDo if time: elaborate this method (maybe class independnet as symmetry tool)
+            if center_res != -1: #is not None
+                print('Centering residue %d in cell. Auto-wrapping of residues.'%center_res)
+                if not hasattr(self,'mol_map'): raise Exception('ERROR: System does not recognise any residues/molecules!')
+                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
+                self.XYZData._move_residue_to_centre(center_res,cell_aa_deg,**kwargs)
+                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
 
     def install_molecular_origin_gauge(self,**kwargs):
         '''Script mainly from Arne Scherrer'''
         fn = kwargs.get('fn_topo')
-        if fn: 
-            n_map, symbols, cell_au = list(), list(), None
-            for line in [l.split() for l in open(fn, 'r')]:
-                if 'ATOM' in line:
-                    n_map.append(int(line[4])-1), symbols.append(line[-1]) 
-                elif 'CRYST1' in line:
-                    cell_au = np.array([Angstrom2Bohr*e for e in map(float,line[1:4])])
+        if fn: #use pdbReader
+            data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
+            #convert to n_map
+            resi = ['-'.join(_r) for _r in residues]
+            _map_dict = dict(zip(list(dict.fromkeys(resi)),range(len(set(resi))))) #python>=3.6: keeps order
+            n_map = [_map_dict[_r] for _r in resi]
+            #n_map = residues[:,0].astype(int).tolist() #-1 as workaround
+
+
+            setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
+#            n_map, symbols, cell_au = list(), list(), None
+#            for line in [l.split() for l in open(fn, 'r')]:
+#                if 'ATOM' in line:
+#                    n_map.append(int(line[4])-1), symbols.append(line[-1]) 
+#                elif 'CRYST1' in line:
+#                    if not 'cell_aa' in kwargs:
+#                        kwargs['cell_aa'] = np.array([Angstrom2Bohr*e for e in map(float,line[1:4])])
+            cell_au = np.array([Angstrom2Bohr*e for e in box_aa_deg[:3]])
             if cell_au.any() == None:
                 raise Exception('Cell has to be specified, only orthorhombic cells supported!')
             if hasattr(self,'UnitCell'):
@@ -103,16 +141,29 @@ class Molecule():
                 if not np.allclose(cell_au,abc*Angstrom2Bohr):
                     raise Exception('Unit cell parametres of Molecule do not agree with topology file!')
             #n_atoms, n_mols, n_moms = len(symbols), max(n_map)+1, sum(ZV)//2
-            n_atoms, n_mols = len(symbols), max(n_map)+1
+            n_atoms, n_mols = symbols.shape[0], max(n_map)+1
             n_map,symbols = zip(*[(im,symbols[ia]) for ia,a in enumerate(n_map) for im,m in enumerate(kwargs.get('extract_mols',range(n_mols))) if a==m])
             #if np.array(symbols) != self.XYZData.symbols:
             #    raise Exception('Symbols of Molecule do not agree with topology file!')
         else:
             n_map = tuple(define_molecules(self)-1)
 
-        n_mols = max(n_map)+1
+        n_mols = max(n_map)+1 
         self.mol_map = n_map
         self.n_mols  = n_mols
+
+        #WE need a rotuine that updates XYZData independent of _wrap_mols, because we may not want the latter
+
+       #####THIS IS only TMP as long as XYZData has no method for this! #################
+       #                                                                                #
+       #                                                                                #
+       # setattr(self.XYZData,'mol_map',n_map)
+       #                                                                                #
+       #                                                                                #
+       #                                                                                #
+       ##################################################################################
+
+
        ### if hasattr(self,'UnitCell'):dd
        ###     if hasattr(self.UnitCell,'multiply'): #This function appears frequently --> change general structure of UnitCell object
        ###         abc = self.UnitCell.abc*self.UnitCell.multiply
@@ -138,6 +189,7 @@ class Molecule():
 
 class XYZData(): #later: merge it with itertools (do not load any traj data before the actual processing)        
     def __init__(self,fn,**kwargs): #**kwargs for named (dict), *args for unnamed
+        #insert request for fn in kwargs
         fmt = kwargs.get('fmt',fn.split('.')[-1])
         self.axis_pointer = kwargs.get('axis_pointer',0)
         align_coords = kwargs.get('align_atoms',False)
@@ -172,7 +224,7 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
             self.pos_aa = align_atoms(self.pos_aa,self.masses_amu,ref=self.pos_aa[0])
 
         if center_coords: #extra function?
-            print('Centering coordinates in cell.')
+            print('Centering coordinates in cell and wrap atoms.')
             cell_aa = kwargs.get('cell_aa',np.array([0.0,0.0,0.0,90.,90.,90.]))
             if not all([cl == 90. for cl in cell_aa[3:]]): 
                 print([cl for cl in cell_aa[3:]])
@@ -182,6 +234,9 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
             M = self.masses_amu
             com_aa = np.sum(P*M[None,:,None], axis=-2)/M.sum()
             self.pos_aa[:,:,:3] += cell_aa[None,None,:3]/2 - com_aa[:,None,:]
+            #wrap as option?
+            print('WARNING: Auto-wrap of atoms activated!')
+            if not any(_c==0.0 for _c in cell_aa[:3]): self.pos_aa = np.remainder(self.pos_aa,cell_aa[:3])
 
         self._sync_class()
 
@@ -229,6 +284,7 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
         elem = {s:np.where(self.symbols==s)[0] for s in np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
         self.pos_aa = self.pos_aa[:,ind,:]
+        self.vel_au = self.vel_au[:,ind,:]
         self.symbols = self.symbols[ind]
         self._sync_class()
     
@@ -242,10 +298,10 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
         if attr=='data': self.data = np.concatenate((self.pos_aa,self.vel_au),axis=-1) #TMP solution; NB: CPMD writes XYZ files with vel_aa 
         fmt  = kwargs.get('fmt',fn.split('.')[-1])
         if fmt=="xyz":
-            if separate_files: [xyz.WriteXYZFile(''.join(fn.split('.')[:-1])+'%03d'%fr+'.'+fn.split('.')[-1],
-                                                [getattr(self,attr)[fr]], 
-                                                self.symbols,
-                                                [self.comments[fr]]) for fr in range(self.n_frames)]
+            if separate_files: 
+                frame_list = kwargs.get('frames',range(self.n_frames))
+                [xyz.WriteXYZFile(''.join(fn.split('.')[:-1])+'%03d'%fr+'.'+fn.split('.')[-1],
+                                  [getattr(self,attr)[fr]],self.symbols,[self.comments[fr]]) for fr in frame_list]
           
             else: xyz.WriteXYZFile(fn,
                                    getattr(self,attr),
@@ -265,7 +321,7 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
             print('CPMD WARNING: Output with sorted atomlist!')
             loc_self = copy.deepcopy(self)
             loc_self._sort()
-            cpmdWriter(fn, loc_self.pos_aa*Angstrom2Bohr, loc_self.symbols, loc_self.vel_au*factor, offset=0,**kwargs) # DEFAULTS pp='MT_BLYP', bs=''
+            cpmdWriter(fn, loc_self.pos_aa*Angstrom2Bohr, loc_self.symbols, loc_self.vel_au*factor, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
 
         else: raise Exception('Unknown format: %s.'%fmt)
 
@@ -278,8 +334,21 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
         #if hasattr(data,'cell_aa')
         return np.prod(ie),ie
 
-    def _wrap_molecules(self,mol_map,abc,albega=np.ones((3))*np.pi/2,mode='cog'): #another routine would be complete_molecules for both-sided completion
-        if not np.allclose(albega,np.ones((3))*np.pi/2):
+    #### The next two methods should be externalised
+    def _move_residue_to_centre(self,ref,cell_aa_deg,**kwargs):
+       try: ref_pos_aa = getattr(self,'mol_cog_aa')[:,ref]
+       except: ref_pos_aa = getattr(self,'mol_com_aa')[:,ref]
+       if not all([cl == 90. for cl in cell_aa_deg[3:]]): 
+           print([cl for cl in cell_aa_deg[3:]])
+           print('ERROR: only orthorhombic/cubic cells can be used with center function!')
+           sys.exit(1)
+       P = self.pos_aa[:,:,:3]
+       self.pos_aa[:,:,:3] += cell_aa_deg[None,None,:3]/2 - ref_pos_aa[:,None,:]
+
+    def _wrap_molecules(self,mol_map,cell_aa_deg,**kwargs): #another routine would be complete_molecules for both-sided completion
+        mode = kwargs.get('mode','cog')
+        abc,albega = np.split(cell_aa_deg,2)
+        if not np.allclose(albega,np.ones((3))*90.0):
             raise Exception('ERROR: Only orthorhombic cells implemented for mol wrap!')
         pos_aa = np.array([dec(self.pos_aa[fr,:,:3], mol_map) for fr in range(self.n_frames)])
         w = np.ones((self.n_atoms))
@@ -290,11 +359,18 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
         for i_mol in range(max(mol_map)+1):
             ind = np.array(mol_map)==i_mol
             p = self.pos_aa[:,ind,:3]
-            p -= np.around((p-p[:,0,None,:])/abc[None,None,:])*abc[None,None,:] 
-            c_aa = cowt(p,w[i_mol])
-            mol_c_aa.append(np.remainder(c_aa,abc[None,:])) #only for orthorhombic cells
+            if not any([_a<=0.0 for _a in abc]):
+                p -= np.around((p-p[:,0,None,:])/abc[None,None,:])*abc[None,None,:] 
+                c_aa = cowt(p,w[i_mol])
+                mol_c_aa.append(np.remainder(c_aa,abc[None,:])) #only for orthorhombic cells
+            else: 
+                print('WARNING: Cell size zero!')
+                c_aa = cowt(p,w[i_mol])
+                mol_c_aa.append(c_aa)
+
             self.pos_aa[:,ind,:3] = p-(c_aa-mol_c_aa[-1])[:,None,:]
-        setattr(self,'mol_'+mode+'_aa',np.array(mol_c_aa))
+        print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
+        setattr(self,'mol_'+mode+'_aa',np.array(mol_c_aa).swapaxes(0,1))
         setattr(self,'mol_map',mol_map)
         setattr(self,'abc',abc)
         setattr(self,'albega',albega)
@@ -374,6 +450,29 @@ class VibrationalModes():
         self._check_orthonormality()
 
     def _check_orthonormality(self):
+        atol=5.E-5
+        com_motion = np.linalg.norm((self.modes*self.masses_amu[None,:,None]).sum(axis=1),axis=-1)/self.masses_amu.sum()
+        if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
+        test = self.modes.reshape(self.n_modes,self.n_atoms*3)
+        a=np.inner(test,test)
+        if np.allclose(a,np.identity(self.n_modes),atol=atol): 
+            print('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
+            if not ignore_warnings:
+                sys.exit(1)
+            else:
+                print('IGNORED')
+        test = self.eivec.reshape(self.n_modes,self.n_atoms*3)
+        a=np.inner(test,test)
+        if not np.allclose(a,np.identity(self.n_modes),atol=atol): 
+            print(a)
+            print('ERROR: The eigenvectors are not orthonormal!')
+            print(np.amax(np.abs(a-np.identity(self.n_modes))))
+            if not ignore_warnings:
+                sys.exit(1)
+            else:
+                print('IGNORED')
+
+    def _check_orthonormality_OLD_WITH_ROT_TRANS(self):
         atol=5.E-5
         com_motion = np.linalg.norm((self.modes*self.masses_amu[None,:,None]).sum(axis=1),axis=-1)/self.masses_amu.sum()
         if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
@@ -469,12 +568,20 @@ class VibrationalModes():
             ZV = dec(ZV, n_map)
 
             for i_mode, (pos, vel, wc, c, m) in enumerate(cpmd_n.get_frame_traj_and_mom(fn_traj,fn_moms,n_atoms,n_moms)):
+              if i_mode >= len(modelist): #NEW: if modelist has less entries than trajectory
+                print('WARNING: Trajectory file contains more entries than given modelist!')
+                break
+              else:
                 if not np.allclose(self.pos_au,pos): 
                     test=np.unique(np.around(pos-self.pos_au,6))
                     if test.shape==(3,):
-                        raise Exception('WARNING: fn_traj coordinates shifted by vector %s with respect to stored coordinates!'%test)
+                        print('WARNING: fn_traj coordinates shifted by vector %s with respect to stored coordinates!'%test)
                     else:
-                        raise Exception('ERROR: fn_traj not consistent with nuclear coordinates!',np.around(pos-self.pos_au,6))
+                        print('ERROR: fn_traj not consistent with nuclear coordinates!')#,np.around(pos-self.pos_au,6))
+                        if not ignore_warnings:
+                            sys.exit(1)
+                        else:
+                            print('IGNORED')
 
                 #raw data (for mtm)
                 self._sw_c_au[modelist[i_mode]] = c
