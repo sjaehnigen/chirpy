@@ -35,6 +35,7 @@ def calculate_spectral_density(val1,*args,**kwargs):
     ts = kwargs.get('ts',4) #time step in fs
     dt = ts*1E-15*1E9 #4.0 fs --> GHz
     flt_pow = kwargs.get('flt_pow',11)
+    _fac = kwargs.get('factor',1)
     filter = Filter(n_frames, filter_length=n_frames, filter_type='welch')**flt_pow
 
     auto=True
@@ -57,34 +58,26 @@ def calculate_spectral_density(val1,*args,**kwargs):
     final_cc = np.hstack((val_ac,val_ac[::-1]))
     n = final_cc.shape[0]
 
-    w1 = np.fft.rfft(final_cc,n=n-1).real*ts*fs2au 
+    w1 = np.fft.rfft(final_cc,n=n-1).real*ts*fs2au*_fac
     x_spec = np.fft.rfftfreq(n-1,d=dt)
 
-    return w1,x_spec
+    return x_spec,w1
 
 def get_power_spectrum(val,**kwargs):
     n_frames,n_atoms,three = val.shape
     wgh = kwargs.get('weights',np.ones(n_atoms))
-
-    w1,x_spec =  zip(*[calculate_spectral_density(_v,**kwargs) for _v in val.swapaxes(0,1)])
+    x_spec,w1 =  zip(*[calculate_spectral_density(_v,**kwargs) for _v in val.swapaxes(0,1)])
 
     return x_spec[0],(np.array(w1)*wgh[:,None]).sum(axis=0)
-
-def get_ira_spectrum(c,**kwargs):  
-    w1,x_spec = calculate_spectral_density(c,**kwargs)
-    _cc = CurrentCurrentPrefactor(300)
-    return x_spec,w1*_cc
-
-def get_vcd_spectrum(c,m,**kwargs):  
-    w1,x_spec = calculate_spectral_density(c,m,**kwargs)
-    _cm = CurrentMagneticPrefactor(x_spec,300)
-    return x_spec,w1*_cm
 
 def get_ira_and_vcd(c,m,pos_au,**kwargs):  
     origins_au = kwargs.get('origins_au',np.array([[0.0,0.0,0.0]]))
     cell_au = kwargs.get('cell_au')
     #cell_au = kwargs.get('cell_aa')*Angstrom2Bohr
     cutoff_aa = kwargs.get('cutoff_aa',0)
+    cut_type = kwargs.get('cut_type','soft')
+    subparticle = kwargs.get('subparticle') #beta: correlate moment of one part with total moments, expects one integer
+    subparticles = kwargs.get('subparticles') #beta: correlate moment of one part with another part, expects tuple of integers
 
     spectrum = list()
     for _i,_o in enumerate(origins_au):
@@ -95,25 +88,55 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
         _trans = pos_au-_o[:,None,:] 
         if cell_au is not None:
             _trans -= np.around(_trans/cell_au)*cell_au
+        #print(_trans[0])
 
         #R_I(t) - R_J(0) #gauge invariant according to Rodolphe/Arne
         #_trans = pos_au-_o[0,None,None,:] 
         #_trans -= np.around(_trans/cell_au)*cell_au        
         #_trans += _o[:,None,:] - _o[0,None,None,:]
-        m += edyn.magnetic_dipole_shift_origin(_c,_trans)
+        _m += edyn.magnetic_dipole_shift_origin(_c,_trans)
         #m += 0.5*np.sum(eijk[None,None,:,:,:]*trans[:,:,:,None,None]*c[:,:,None,:,None], axis=(2,3)) 
 
-        _scal = FermiCutoffFunction(np.linalg.norm(_trans,axis=2), cutoff_aa*Angstrom2Bohr)
-        _c *= _scal[:,:,None]
-        _m *= _scal[:,:,None]
+        if cut_type=='soft': #for larger cutoffs
+            _scal = FermiCutoffFunction(np.linalg.norm(_trans,axis=2), cutoff_aa*Angstrom2Bohr)
+            _c *= _scal[:,:,None]
+            _m *= _scal[:,:,None]
+        if cut_type=='hard': #cutoff <2 aa
+            _ind  = np.linalg.norm(_trans,axis=2)>cutoff_aa*Angstrom2Bohr
+            _c[_ind ,:] = np.array([0.0,0.0,0.0])
+            _m[_ind ,:] = np.array([0.0,0.0,0.0])
         
-        _c = _c.sum(axis=1) 
-        _m = _m.sum(axis=1) 
+        if all([subparticle is None,subparticles is None]):
+            _c = _c.sum(axis=1) 
+            _m = _m.sum(axis=1) 
+            x_spec,ira = calculate_spectral_density(_c,**kwargs)
+            x_spec,vcd = calculate_spectral_density(_c,_m,**kwargs)
 
-        x_spec,ira = get_ira_spectrum(_c,**kwargs)
-        x_spec,vcd = get_vcd_spectrum(_c,_m,**kwargs)
+        elif type(subparticle) is int:
+            _c1 = _c.sum(axis=1)
+            _c2 = _c[:,subparticle]
+            _m1 = _m.sum(axis=1)
+            _m2 = _m[:,subparticle]
+            x_spec,ira  = calculate_spectral_density(_c1,_c2,**kwargs)
+            x_spec,vcd1 = calculate_spectral_density(_c1,_m2,**kwargs)
+            x_spec,vcd2 = calculate_spectral_density(_c2,_m1,**kwargs)
+            vcd = (vcd1+vcd2)/2
 
-        spectrum.append([x_spec,ira,vcd])
+        elif type(subparticles) is tuple:
+            _c1 = _c[:,subparticles[0]]
+            _c2 = _c[:,subparticles[1]]
+            _m1 = _m[:,subparticles[0]]
+            _m2 = _m[:,subparticles[1]]
+            x_spec,ira  = calculate_spectral_density(_c1,_c2,**kwargs)
+            x_spec,vcd1 = calculate_spectral_density(_c1,_m2,**kwargs)
+            x_spec,vcd2 = calculate_spectral_density(_c2,_m1,**kwargs)
+            vcd = (vcd1+vcd2)/2
+
+        else: raise Exception('ERROR: subparticle(s) is (are) not an integer (a tuple of integers)!')
+
+        _cc = CurrentCurrentPrefactor(300)
+        _cm = CurrentMagneticPrefactor(x_spec,300)
+        spectrum.append([x_spec,ira*_cc,vcd*_cm])
     spectrum = np.array(spectrum).sum(axis=0)/origins_au.shape[0]
     
     return spectrum

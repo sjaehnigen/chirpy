@@ -23,9 +23,9 @@ def magnetic_dipole_shift_origin_OLD(pos_au,c_au,origin_au,**kwargs):
 
 def magnetic_dipole_shift_origin(c_au,trans_au,**kwargs):
     if len(c_au.shape)==2:
-        return 0.5*np.sum(eijk[None,:,:,:]*trans_au[:,:,None,None]*c_au[:,None,:,None], axis=(0,1,2))#axis 0?
+        return 0.5*np.sum(eijk[None,:,:,:]*trans_au[:,:,None,None]*c_au[:,None,:,None], axis=(1,2))#axis 0?
     if len(c_au.shape)==3:
-        return 0.5*np.sum(eijk[None,None,:,:,:]*trans_au[:,:,:,None,None]*c_au[:,:,None,:,None], axis=(2,3))
+        return 0.5*np.sum(eijk[None,None,:,:,:]*trans_au[:,:,:,None,None]*c_au[:,:,None,:,None], axis=(2,3))#sum over mols (axis 1) done later
 
 
 #def magnetic_dipole_moment_shift_origin_pbc(m_old_au,pos_au,origin_au=np.array([0.0,0.0,0.0])):

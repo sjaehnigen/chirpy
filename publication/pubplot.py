@@ -50,7 +50,7 @@ def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
     bool_g = kwargs.get('do_local',True)
     std_l = kwargs.get('std_l')
     std_g = kwargs.get('std_g')
-    _exp = kwargs.get('exp')
+    _exp = kwargs.get('exp',np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
     e,xe = _exp[:,1],_exp[:,0]
     xlim = kwargs.get('xlim',(1800,800))
     ylim = kwargs.get('ylim')
@@ -65,7 +65,7 @@ def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
     ############################# Calculate hspace per plot and ylim #################
     _slc1 = slice(*sorted(np.argmin(np.abs(x1-_x)) for _x in xlim))
     _slc2 = slice(*sorted(np.argmin(np.abs(x2-_x)) for _x in xlim))
-    _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
+    if _exp is not None: _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
     
     _shift=(1+sep/100)*max([np.amax(_s)-np.amin(_s) for _s in (l[_slc1],g[_slc2],e[_slce])])
     print(_shift)
