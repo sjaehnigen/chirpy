@@ -4,6 +4,7 @@ import os
 import sys
 import numpy as np
 import copy
+from itertools import cycle
 from collections import OrderedDict
 from matplotlib import pyplot as plt
 from matplotlib.patches import ArrowStyle
@@ -43,15 +44,14 @@ def make_nice_ax(p):
     p.spines['right'].set_linewidth(3.0)
 
 
-#TODO: GENERALISE THIS FUNCTION TO "PLOT_MULTIPLE"
 def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
     fill = kwargs.get('fill',False)
-    bool_l = kwargs.get('do_global',True) #These bools are nice for beamer, because spectra are included bit not shown
-    bool_g = kwargs.get('do_local',True)
+    bool_g = kwargs.get('do_global',True) #These bools are nice for beamer, because spectra are included bit not shown
+    bool_l = kwargs.get('do_local',True)
     std_l = kwargs.get('std_l')
     std_g = kwargs.get('std_g')
-    _exp = kwargs.get('exp',np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
-    e,xe = _exp[:,1],_exp[:,0]
+    _exp = kwargs.get('exp') #,np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
+    if _exp is not None: e,xe = _exp[:,1],_exp[:,0]
     xlim = kwargs.get('xlim',(1800,800))
     ylim = kwargs.get('ylim')
     sep = kwargs.get('sep',5) #separation between plots in percent
@@ -67,15 +67,17 @@ def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
     _slc2 = slice(*sorted(np.argmin(np.abs(x2-_x)) for _x in xlim))
     if _exp is not None: _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
     
-    _shift=(1+sep/100)*max([np.amax(_s)-np.amin(_s) for _s in (l[_slc1],g[_slc2],e[_slce])])
+    if _exp is not None: _shift=(1+sep/100)*max([np.amax(_s)-np.amin(_s) for _s in (l[_slc1],g[_slc2],e[_slce])])
+    else: _shift=(1+sep/100)*max([np.amax(_s)-np.amin(_s) for _s in (l[_slc1],g[_slc2])])
     print(_shift)
 
     _l = l
     _g = g-  _shift
-    _e = e-2*_shift
+    if _exp is not None: _e = e-2*_shift
 
     if ylim is None:
-        ylim = (np.amin(_e)-0.5*_shift,np.amax(_l)+0.5*_shift)
+        if _exp is not None: ylim = (np.amin(_e)-0.25*_shift,np.amax(_l)+0.25*_shift)
+        else: ylim = (np.amin(_g)-0.25*_shift,np.amax(_l)+0.25*_shift)
 
     ############################# plot reference (experiment) #################
     #x_exp   = exp[:,0]
@@ -83,7 +85,7 @@ def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
     #_e = -6+exp[:,1]*3
     #vcd_exp = -8+exp_vcd[:,1]#*2000
 
-    ax.plot(xe,_e,'-',lw=3,color='black',label='exp.')
+    if _exp is not None: ax.plot(xe,_e,'-',lw=3,color='black',label='exp.')
     
     
     ############################# plot local data #############################    
@@ -157,6 +159,63 @@ def plot_local_vs_global(ax,x1,x2,l,g,**kwargs):
         
             #ax[0].annotate("", xy=(tag[0], tag[1]), xytext=(tag[3], tag[4]),arrowprops=my_arrow_p)
             #ax[1].annotate("", xy=(tag[0], tag[2]), xytext=(tag[3], tag[5]),arrowprops=my_arrow_p)
+
+#TODO: GENERALISE THIS FUNCTION TO "PLOT_MULTIPLE"
+def multiplot(ax,x_a,y_a,**kwargs):
+    fill = kwargs.get('fill',False)
+    bool_a = kwargs.get('bool_a') #list of bools which spectra to unhide
+    std_a = kwargs.get('std_a')
+    sty_a = kwargs.get('style_a')
+    _exp = kwargs.get('exp') #,np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
+    if _exp is not None: e,xe = _exp[:,1],_exp[:,0]
+    xlim = kwargs.get('xlim',(1800,800))
+    ylim = kwargs.get('ylim')
+    sep = kwargs.get('sep',5) #separation between plots in percent
+    color_a = kwargs.get('color_a',cycle(['mediumblue','crimson','green','goldenrod'])) #list of colors
+    n_plots = len(x_a)
+    if bool_a is None: bool_a=n_plots*[True]
+    if sty_a is None: sty_a=n_plots*['-']
+    if any(len(_a) != n_plots for _a in [y_a,bool_a]): raise Exception('ERROR: Inconsistent no. of plots in lists!')
+    
+    if fill and any(_a is None for _a in [std_a]):
+        raise Exception('ERROR: Needs _std arrays for "fill" option!')
+    
+    ############################# Calculate hspace per plot and ylim #################
+    _slc = [slice(*sorted(np.argmin(np.abs(_x_a-_x)) for _x in xlim)) for _x_a in x_a]
+    if _exp is not None: _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
+    
+    _shift=max([np.amax(_y[_s])-np.amin(_y[_s]) for _y,_s in zip(y_a,_slc)])
+    if _exp is not None: _shift=max(np.amax(e[_slce])-np.amin(e[_slce]),_shift) 
+    _shift *= (1+sep/100)
+    print(_shift)
+
+    _y_a = [_y-_shift*_i for _i,_y in enumerate(y_a)]
+    if _exp is not None: _e = e-n_plots*_shift
+
+    if ylim is None:
+        if _exp is not None: ylim = (np.amin(_e)-0.25*_shift,np.amax(_y_a[0])+0.25*_shift)
+        else: ylim = (np.amin(_y_a[-1])-0.25*_shift,np.amax(_y_a[0])+0.25*_shift)
+
+    ############################# plot reference (experiment) #################
+    if _exp is not None: ax.plot(xe,_e,'-',lw=3,color='black',label='exp.')
+    
+    
+    ############################# plot data #############################    
+    if fill:
+        for _b,_x,_y,_st,_c,_s in zip(bool_a,x_a,_y_a,sty_a,color_a,std_a):
+            if _b: 
+                ax.fill_between(_x, _y+_s, _y-_s, color=_c, alpha=.25)
+                ax.plot(_x,_y,_st,lw=3,color=_c)
+    else:
+        for _b,_x,_y,_st,_c in zip(bool_a,x_a,_y_a,sty_a,color_a):
+            if _b: ax.plot(_x,_y,_st,lw=3,color=_c)
+    
+
+    ############################# layout ######################################
+    make_nice_ax(ax)
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
+
 
 def my_plot_radial(x,ira_rad,vcd_rad,ira_rad_std,vcd_rad_std,labels,**kwargs):    
     xlabel = kwargs.get('xlabel',r'wavenumber / cm$^{\mymathhyphen 1}$')

@@ -157,7 +157,7 @@ class Molecule():
        #####THIS IS only TMP as long as XYZData has no method for this! #################
        #                                                                                #
        #                                                                                #
-       # setattr(self.XYZData,'mol_map',n_map)
+        setattr(self.XYZData,'mol_map',n_map)
        #                                                                                #
        #                                                                                #
        #                                                                                #
@@ -309,11 +309,14 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
                                    self.comments)    #Writer is stupid
                                    #self.n_frames*self.comments)    #Writer is stupid
         elif fmt=="pdb":
+            for _attr in ['mol_map','abc','albega']: #try to conceive missing data from kwargs
+                try: getattr(self,_attr)
+                except AttributeError: setattr(self,_attr,kwargs.get(_attr))
             pdb.WritePDB(fn,
                          self.pos_aa[0], #only frame 0 vels are not written
                          types=self.symbols,#if there are types change script
                          symbols=self.symbols,
-                         residues=np.vstack((self.mol_map,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1),
+                         residues=np.vstack((self.mol_map+1,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1), #+1 because no 0 index
                          box=np.hstack((self.abc,self.albega)),
                          title='Generated from %s with Molecule Class'%self.fn)
 
