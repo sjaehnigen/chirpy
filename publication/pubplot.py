@@ -172,6 +172,7 @@ def multiplot(ax,x_a,y_a,**kwargs):
     ylim = kwargs.get('ylim')
     sep = kwargs.get('sep',5) #separation between plots in percent
     color_a = kwargs.get('color_a',cycle(['mediumblue','crimson','green','goldenrod'])) #list of colors
+    stack = kwargs.get('stack_plots',True)
     n_plots = len(x_a)
     if bool_a is None: bool_a=n_plots*[True]
     if sty_a is None: sty_a=n_plots*['-']
@@ -189,12 +190,17 @@ def multiplot(ax,x_a,y_a,**kwargs):
     _shift *= (1+sep/100)
     print(_shift)
 
-    _y_a = [_y-_shift*_i for _i,_y in enumerate(y_a)]
-    if _exp is not None: _e = e-n_plots*_shift
+    if stack:
+        _y_a = [_y-_shift*_i for _i,_y in enumerate(y_a)]
+        if _exp is not None: _e = e-n_plots*_shift
+    else:
+        _y_a = y_a
+        if _exp is not None: _e = e
 
     if ylim is None:
-        if _exp is not None: ylim = (np.amin(_e)-0.25*_shift,np.amax(_y_a[0])+0.25*_shift)
-        else: ylim = (np.amin(_y_a[-1])-0.25*_shift,np.amax(_y_a[0])+0.25*_shift)
+        ylim=(min([np.amin(_y[_s]) for _y,_s in zip(_y_a,_slc)]),max([np.amax(_y[_s]) for _y,_s in zip(_y_a,_slc)]))
+        if _exp is not None: ylim = (min(ylim[0],np.amin(_e[_slce])),max(ylim[1],np.amax(_e[_slce])))
+        ylim = (ylim[0]-0.25*_shift,ylim[1]+0.25*_shift)
 
     ############################# plot reference (experiment) #################
     if _exp is not None: ax.plot(xe,_e,'-',lw=3,color='black',label='exp.')

@@ -78,6 +78,8 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
     cut_type = kwargs.get('cut_type','soft')
     subparticle = kwargs.get('subparticle') #beta: correlate moment of one part with total moments, expects one integer
     subparticles = kwargs.get('subparticles') #beta: correlate moment of one part with another part, expects tuple of integers
+    subnotparticles = kwargs.get('subnotparticles') #beta: correlate moment of one part with another part, notparticles: exclude these indices; expects list of integers
+    cutoff_bg_aa = kwargs.get('background_correction_cutoff_aa') #beta: remove direct correlation between background 
 
     spectrum = list()
     for _i,_o in enumerate(origins_au):
@@ -97,20 +99,37 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
         _m += edyn.magnetic_dipole_shift_origin(_c,_trans)
         #m += 0.5*np.sum(eijk[None,None,:,:,:]*trans[:,:,:,None,None]*c[:,:,None,:,None], axis=(2,3)) 
 
+
         if cut_type=='soft': #for larger cutoffs
             _scal = FermiCutoffFunction(np.linalg.norm(_trans,axis=2), cutoff_aa*Angstrom2Bohr)
             _c *= _scal[:,:,None]
             _m *= _scal[:,:,None]
+
         if cut_type=='hard': #cutoff <2 aa
             _ind  = np.linalg.norm(_trans,axis=2)>cutoff_aa*Angstrom2Bohr
             _c[_ind ,:] = np.array([0.0,0.0,0.0])
             _m[_ind ,:] = np.array([0.0,0.0,0.0])
-        
-        if all([subparticle is None,subparticles is None]):
-            _c = _c.sum(axis=1) 
-            _m = _m.sum(axis=1) 
+            
+        if type(cutoff_bg_aa) is float:
+            _c_bg = copy.deepcopy(_c)
+            _m_bg = copy.deepcopy(m) #only direct correlation, no transport term!
+            #_m_bg = copy.deepcopy(_m) #complete background
+            if cut_type=='soft': _m_bg *= _scal[:,:,None] 
+            if cut_type=='hard': _m[_ind ,:] = np.array([0.0,0.0,0.0])
+            _ind_bg  = np.linalg.norm(_trans,axis=2)<=cutoff_bg_aa*Angstrom2Bohr #bg cut is always hard
+            _c_bg[_ind_bg ,:] = np.array([0.0,0.0,0.0])
+            _m_bg[_ind_bg ,:] = np.array([0.0,0.0,0.0])
+
+        if all([subparticle is None,subparticles is None,subnotparticles is None]):
+            _c = _c.sum(axis=1)
+            _m = _m.sum(axis=1)
             x_spec,ira = calculate_spectral_density(_c,**kwargs)
             x_spec,vcd = calculate_spectral_density(_c,_m,**kwargs)
+            if type(cutoff_bg_aa) is float:
+                _c_bg = _c_bg.sum(axis=1)
+                _m_bg = _m_bg.sum(axis=1)
+                ira -= calculate_spectral_density(_c_bg,**kwargs)[1]
+                vcd -= calculate_spectral_density(_c_bg,_m_bg,**kwargs)[1]
 
         elif type(subparticle) is int:
             _c1 = _c.sum(axis=1)
@@ -121,6 +140,40 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
             x_spec,vcd1 = calculate_spectral_density(_c1,_m2,**kwargs)
             x_spec,vcd2 = calculate_spectral_density(_c2,_m1,**kwargs)
             vcd = (vcd1+vcd2)/2
+            if type(cutoff_bg_aa) is float:
+                _c1_bg = _c_bg.sum(axis=1)
+                _c2_bg = _c_bg[:,subparticle]
+                _m1_bg = _m_bg.sum(axis=1)
+                _m2_bg = _m_bg[:,subparticle]
+                ira -= calculate_spectral_density(_c1_bg,_c2_bg,**kwargs)[1]
+                vcd -= 0.5*calculate_spectral_density(_c1_bg,_m2_bg,**kwargs)[1]
+                vcd -= 0.5*calculate_spectral_density(_c2_bg,_m1_bg,**kwargs)[1]
+
+        elif type(subnotparticles) is list:
+            _c1 = _c.sum(axis=1)
+            _c2 = copy.deepcopy(_c)
+            _c2[:,subnotparticles] = np.array([0.0,0.0,0.0])
+            _c2 = _c2.sum(axis=1)
+            _m1 = _m.sum(axis=1)
+            _m2 = copy.deepcopy(_m)
+            _m2[:,subnotparticles] = np.array([0.0,0.0,0.0])
+            _m2 = _m2.sum(axis=1)
+            x_spec,ira  = calculate_spectral_density(_c1,_c2,**kwargs)
+            x_spec,vcd1 = calculate_spectral_density(_c1,_m2,**kwargs)
+            x_spec,vcd2 = calculate_spectral_density(_c2,_m1,**kwargs)
+            vcd = (vcd1+vcd2)/2
+            if type(cutoff_bg_aa) is float:
+                _c1_bg = _c_bg.sum(axis=1)
+                _c2_bg = copy.deepcopy(_c_bg)
+                _c2_bg[:,subnotparticles] = np.array([0.0,0.0,0.0])
+                _c2_bg = _c2_bg.sum(axis=1)
+                _m1_bg = _m_bg.sum(axis=1)
+                _m2_bg = copy.deepcopy(_m_bg)
+                _m2_bg[:,subnotparticles] = np.array([0.0,0.0,0.0])
+                _m2_bg = _m2_bg.sum(axis=1)
+                ira -= calculate_spectral_density(_c1_bg,_c2_bg,**kwargs)[1]
+                vcd -= 0.5*calculate_spectral_density(_c1_bg,_m2_bg,**kwargs)[1]
+                vcd -= 0.5*calculate_spectral_density(_c2_bg,_m1_bg,**kwargs)[1]
 
         elif type(subparticles) is tuple:
             _c1 = _c[:,subparticles[0]]
@@ -131,6 +184,7 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
             x_spec,vcd1 = calculate_spectral_density(_c1,_m2,**kwargs)
             x_spec,vcd2 = calculate_spectral_density(_c2,_m1,**kwargs)
             vcd = (vcd1+vcd2)/2
+            if type(cutoff_bg_aa) is float: raise Exception('ERROR: Background correction not implemented for subparticles option!')
 
         else: raise Exception('ERROR: subparticle(s) is (are) not an integer (a tuple of integers)!')
 
