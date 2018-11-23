@@ -112,8 +112,8 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
             
         if type(cutoff_bg_aa) is float:
             _c_bg = copy.deepcopy(_c)
-            _m_bg = copy.deepcopy(m) #only direct correlation, no transport term!
-            #_m_bg = copy.deepcopy(_m) #complete background
+            #_m_bg = copy.deepcopy(m) #only direct correlation, no transport term!
+            _m_bg = copy.deepcopy(_m) #complete background
             if cut_type=='soft': _m_bg *= _scal[:,:,None] 
             if cut_type=='hard': _m[_ind ,:] = np.array([0.0,0.0,0.0])
             _ind_bg  = np.linalg.norm(_trans,axis=2)<=cutoff_bg_aa*Angstrom2Bohr #bg cut is always hard

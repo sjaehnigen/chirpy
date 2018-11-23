@@ -7,7 +7,7 @@ from scipy.integrate import simps
 
 #from classes.domain import Domain3D,Domain2D
 from reader.volume import cubeReader
-from fileio.cube import WriteCubeFile #Replace it ?
+from writer.volume import cubeWriter
 
 eijk = np.zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
@@ -124,7 +124,7 @@ class ScalarField():
             cell_au  = kwargs.get('cell_au',self.cell_au)
             origin_au= kwargs.get('origin_au',self.origin_au)
             data = getattr(self,attr)
-            WriteCubeFile(fn, comment1, comment2, numbers, pos_au, cell_au, data, origin=origin_au)
+            cubeWriter(fn, comment1, comment2, numbers, pos_au, cell_au, data, origin=origin_au)
         else:
             raise Exception('Unknown format (Not implemented).')
 
@@ -353,9 +353,9 @@ class VectorField(ScalarField): #inheritence for pos_grid
             cell_au  = kwargs.get('cell_au',self.cell_au)
             origin_au= kwargs.get('origin_au',self.origin_au)
             data = getattr(self,attr)
-            WriteCubeFile(fn1, comment1[0], comment2[0], numbers, pos_au, cell_au, data[0], origin=origin_au)
-            WriteCubeFile(fn2, comment1[1], comment2[1], numbers, pos_au, cell_au, data[1], origin=origin_au)
-            WriteCubeFile(fn3, comment1[2], comment2[2], numbers, pos_au, cell_au, data[2], origin=origin_au)
+            cubeWriter(fn1, comment1[0], comment2[0], numbers, pos_au, cell_au, data[0], origin=origin_au)
+            cubeWriter(fn2, comment1[1], comment2[1], numbers, pos_au, cell_au, data[1], origin=origin_au)
+            cubeWriter(fn3, comment1[2], comment2[2], numbers, pos_au, cell_au, data[2], origin=origin_au)
         else:
             raise Exception('Unknown format (Not implemented).')
 

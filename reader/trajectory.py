@@ -65,5 +65,36 @@ def pdbReader(filename):
 #        raise Exception('Cell has to be specified, only orthorhombic cells supported!')
     return np.array(data), names, np.array(symbols), np.array([[i,n] for i,n in zip(resids,resns)]), cell_aa_deg, title
 
+##DEBUG 
 def xyzReader(fn):
-    pass
+    """Adapted from Arne Scherrer's pythonbase ReadTrajectory_BruteForce(filename)
+Input:  
+        1. filename: File to read
+Output: 
+        1. np.array of shape (#frames, #atoms, #fields/atom)
+        2. list of atom symbols (contains strings)
+        3. list of comment lines (contains strings)"""
+    f = open(filename, 'r')
+    lines = f.readlines()
+    f.close()
+
+    n_atoms = int(lines[0].strip())
+    n_frames = len(lines)//(n_atoms+2)
+    data, symbols, comments = list(), list(), list()
+
+    for n_frame in range(n_frames):
+        offset = n_frame*(n_atoms + 2)
+
+        # get comments
+        comments.append(lines[offset+1].rstrip('\n'))
+
+        # get symbols
+        if n_frame == 0:
+            symbols = [s.strip().split()[0] for s in lines[offset+2:offset+n_atoms+2]]
+
+        # get data
+        tmp = [[float(d) for d in s.strip().split()[1:]] for s in lines[offset+2:offset+n_atoms+2]]
+        data.append(tmp)
+
+    return np.array(data), symbols, comments
+
