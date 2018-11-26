@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import numpy as np
@@ -22,6 +22,7 @@ for a in sorted(vars(args)):
 
 #only coloumns with header use zip_longest() to get all entries
 data = np.array([s[1-int(args.no_header):] for s in zip(*[l.strip().split() for l in open(args.file,'r').readlines()])])[[args.column0,args.column1]].astype(float)
+
 L = lambda x: sum([p[1] / ( 1 + ( ( p[0] -x ) / ( args.width / 2 ) )**2 ) for p  in data.swapaxes(0,1)])
 
 X = np.linspace(args.x_start,args.x_end,args.n_samples)

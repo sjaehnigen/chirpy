@@ -173,13 +173,14 @@ def multiplot(ax,x_a,y_a,**kwargs):
     sep = kwargs.get('sep',5) #separation between plots in percent
     color_a = kwargs.get('color_a',cycle(['mediumblue','crimson','green','goldenrod'])) #list of colors
     stack = kwargs.get('stack_plots',True)
+
     n_plots = len(x_a)
     if bool_a is None: bool_a=n_plots*[True]
     if sty_a is None: sty_a=n_plots*['-']
     if any(len(_a) != n_plots for _a in [y_a,bool_a]): raise Exception('ERROR: Inconsistent no. of plots in lists!')
     
     if fill and any(_a is None for _a in [std_a]):
-        raise Exception('ERROR: Needs _std arrays for "fill" option!')
+        raise Exception('ERROR: Need std_a argument for "fill" option!')
     
     ############################# Calculate hspace per plot and ylim #################
     _slc = [slice(*sorted(np.argmin(np.abs(_x_a-_x)) for _x in xlim)) for _x_a in x_a]
@@ -223,63 +224,26 @@ def multiplot(ax,x_a,y_a,**kwargs):
     ax.set_ylim(*ylim)
 
 
-def my_plot_radial(x,ira_rad,vcd_rad,ira_rad_std,vcd_rad_std,labels,**kwargs):    
-    xlabel = kwargs.get('xlabel',r'wavenumber / cm$^{\mymathhyphen 1}$')
-    ylabel = kwargs.get('ylabel',iter([r'$\upalpha$($\tilde{\nu}$)',r'$\Updelta\upalpha$($\tilde{\nu}$)$\cdot$10$^4$',]))
-    fn = kwargs.get('fn','')
+    ############################# export label object (beta) ###############
+    ### LB is simply returned can be retrieved (or not)
+    ### ToDO: Connect the tuple entries (so that e.g., X has only to be set once, but allow exceptional X values)
+    class pub_label():
+        def __init__(self,ax,**kwargs):
+            self.ax = ax
+            self.X = kwargs.get('X',1400)
+            self.Y = kwargs.get('Y',0.0)
+            self.color = kwargs.get('color','black')
+            self.size = kwargs.get('size',26)
+            self.stancil = kwargs.get('stancil',r'\textbf{%s}')
+            self.sep = kwargs.get('sep',0.2*_shift)  ##ATTENTION: using varibale from outer scope
+        def print(self,string,**kwargs):
+            X = kwargs.get('X',self.X)
+            Y = kwargs.get('Y',self.Y)
+            self.ax.text(X,Y+self.sep,self.stancil%string,color=self.color,size=self.size)
+            
 
-    fig,ax = plt.subplots(2,1, figsize=(10,12),sharex=True)
-    
-    x_ira_exp   = exp_ira[:,0]
-    x_vcd_exp   = exp_vcd[:,0]
-    ira_exp  = -2+exp_ira[:,1]*3
-    vcd_exp =  -4+exp_vcd[:,1]#*2000
+    if stack: LB = [pub_label(ax,color=_c,X=np.mean(xlim),Y=-_shift*_i) for _i,_c in enumerate(color_a)] + [pub_label(ax,color='black',X=np.mean(xlim),Y=-n_plots*_shift,stancil=r'\emph{%s}')]
+    else: LB = [pub_label(ax,color=_c,X=np.mean(xlim)) for _c in color_a] + [pub_label(ax,color='black',X=np.mean(xlim),stancil=r'\emph{%s}')]
 
-    ax[0].plot(x_ira_exp,ira_exp ,'-',lw=3,color='black')
-    ax[1].plot(x_vcd_exp,vcd_exp ,'-',lw=3,color='black',  label='exp.')
+    return LB
 
-    _labels = iter(labels[::-1])
-    n_spec = len(ira_rad)
-    for _R,(_ira,_vcd,_ira_std,_vcd_std) in enumerate(zip(ira_rad[::-1],vcd_rad[::-1],ira_rad_std[::-1],vcd_rad_std[::-1])):
-        color_rgb = (1.0*((_R+1)/n_spec),0.8*(1-(_R+1)/n_spec),0)
-        label=next(_labels)
-        ax[0].plot(x,_ira,'-',lw=3,color=color_rgb,label=label)
-        ax[1].plot(x,_vcd,'-',lw=3,color=color_rgb,label=label)
-        ax[0].fill_between(x, _ira+_ira_std, _ira-_ira_std, color=color_rgb, alpha=.125)
-        ax[1].fill_between(x, _vcd+_vcd_std, _vcd-_vcd_std, color=color_rgb, alpha=.125)
-
-    for p in ax:
-        p.set_xlim(1800,1000)
-        make_nice_ax(p)
-        p.set_ylabel(next(ylabel))
-        
-        #p.xaxis.set_major_locator(MultipleLocator(200))
-        #p.xaxis.set_major_formatter(FormatStrFormatter('%d'))
-        #p.xaxis.set_minor_locator(MultipleLocator(100))  # for the minor ticks, use no labels; default NullFormatter
-        #p.yaxis.set_major_locator(MultipleLocator(1))
-        #p.yaxis.set_major_formatter(FormatStrFormatter('%d'))
-        #p.yaxis.set_minor_locator(MultipleLocator(0.5))    
-       
-
-    ax[1].set_xlabel(xlabel)
-
-    ax[0].set_ylim(-2.7,3.9)
-    ax[1].set_ylim(-6.4,2.9)
-    
-    #ax[0].yaxis.set_major_locator(MultipleLocator(0.5))
-    #ax[0].yaxis.set_major_formatter(FormatStrFormatter(''))
-    #ax[0].yaxis.set_minor_locator(MultipleLocator(0.25))    
-
-    #ax[1].set_ylim(-0.01,0.01)
-    #ax[1].yaxis.set_major_locator(MultipleLocator(0.00625))
-    #ax[1].yaxis.set_major_formatter(FormatStrFormatter(''))
-    #ax[1].yaxis.set_minor_locator(MultipleLocator(0.003125))    
-
-    plt.subplots_adjust(hspace=0)
-    plt.rc('legend',**{'fontsize':20})
-
-    plt.legend(loc='upper right',bbox_to_anchor=(1, 2.02),title=r'\Huge Cutoff in \AA')
-
-    if fn != '': plt.savefig(fig_dir+ fn,dpi=300, bbox_inches = 'tight')
-
-    plt.show()
