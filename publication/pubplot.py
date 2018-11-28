@@ -165,18 +165,20 @@ def multiplot(ax,x_a,y_a,**kwargs):
     fill = kwargs.get('fill',False)
     bool_a = kwargs.get('bool_a') #list of bools which spectra to unhide
     std_a = kwargs.get('std_a')
-    sty_a = kwargs.get('style_a')
     _exp = kwargs.get('exp') #,np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
     if _exp is not None: e,xe = _exp[:,1],_exp[:,0]
     xlim = kwargs.get('xlim',(1800,800))
     ylim = kwargs.get('ylim')
     sep = kwargs.get('sep',5) #separation between plots in percent
     color_a = kwargs.get('color_a',cycle(['mediumblue','crimson','green','goldenrod'])) #list of colors
+    sty_a = kwargs.get('style_a')
+    alpha_a = kwargs.get('alpha_a')
     stack = kwargs.get('stack_plots',True)
 
     n_plots = len(x_a)
     if bool_a is None: bool_a=n_plots*[True]
     if sty_a is None: sty_a=n_plots*['-']
+    if alpha_a is None: alpha_a=n_plots*[1.0]
     if any(len(_a) != n_plots for _a in [y_a,bool_a]): raise Exception('ERROR: Inconsistent no. of plots in lists!')
     
     if fill and any(_a is None for _a in [std_a]):
@@ -209,13 +211,13 @@ def multiplot(ax,x_a,y_a,**kwargs):
     
     ############################# plot data #############################    
     if fill:
-        for _b,_x,_y,_st,_c,_s in zip(bool_a,x_a,_y_a,sty_a,color_a,std_a):
+        for _b,_x,_y,_st,_c,_al,_s in zip(bool_a,x_a,_y_a,sty_a,color_a,alpha_a,std_a):
             if _b: 
                 ax.fill_between(_x, _y+_s, _y-_s, color=_c, alpha=.25)
-                ax.plot(_x,_y,_st,lw=3,color=_c)
+                ax.plot(_x,_y,_st,lw=3,color=_c,alpha=_al)
     else:
-        for _b,_x,_y,_st,_c in zip(bool_a,x_a,_y_a,sty_a,color_a):
-            if _b: ax.plot(_x,_y,_st,lw=3,color=_c)
+        for _b,_x,_y,_st,_c,_al in zip(bool_a,x_a,_y_a,sty_a,color_a,alpha_a):
+            if _b: ax.plot(_x,_y,_st,lw=3,color=_c,alpha=_al)
     
 
     ############################# layout ######################################
@@ -236,14 +238,18 @@ def multiplot(ax,x_a,y_a,**kwargs):
             self.size = kwargs.get('size',26)
             self.stancil = kwargs.get('stancil',r'\textbf{%s}')
             self.sep = kwargs.get('sep',0.2*_shift)  ##ATTENTION: using varibale from outer scope
+            self.alpha = kwargs.get('alpha',1.0)
         def print(self,string,**kwargs):
             X = kwargs.get('X',self.X)
             Y = kwargs.get('Y',self.Y)
-            self.ax.text(X,Y+self.sep,self.stancil%string,color=self.color,size=self.size)
+            alpha=kwargs.get('alpha',self.alpha)
+            self.ax.text(X,Y+self.sep,self.stancil%string,color=self.color,size=self.size,alpha=alpha)
             
 
-    if stack: LB = [pub_label(ax,color=_c,X=np.mean(xlim),Y=-_shift*_i) for _i,_c in enumerate(color_a)] + [pub_label(ax,color='black',X=np.mean(xlim),Y=-n_plots*_shift,stancil=r'\emph{%s}')]
-    else: LB = [pub_label(ax,color=_c,X=np.mean(xlim)) for _c in color_a] + [pub_label(ax,color='black',X=np.mean(xlim),stancil=r'\emph{%s}')]
+    if stack: LB = [pub_label(ax,color=_c,X=np.mean(xlim),Y=-_shift*_i,alpha=_al) for _i,(_c,_al) in enumerate(zip(color_a,alpha_a))] \
+                 + [pub_label(ax,color='black',X=np.mean(xlim),Y=-n_plots*_shift,stancil=r'\emph{%s}')]*(_exp is not None)
+    else: LB = [pub_label(ax,color=_c,X=np.mean(xlim),alpha=_al) for _c,_al in zip(color_a,alpha_a)] \
+             + [pub_label(ax,color='black',X=np.mean(xlim),stancil=r'\emph{%s}')]*(_exp is not None)
 
     return LB
 

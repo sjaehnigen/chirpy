@@ -74,7 +74,7 @@ Output:
         1. np.array of shape (#frames, #atoms, #fields/atom)
         2. list of atom symbols (contains strings)
         3. list of comment lines (contains strings)"""
-    f = open(filename, 'r')
+    f = open(fn, 'r')
     lines = f.readlines()
     f.close()
 

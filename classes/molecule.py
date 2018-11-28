@@ -14,16 +14,14 @@ import sys
 import os
 import copy
 import numpy as np
-#old base
-from fileio import xyz,xvibs
-from mfileio import pdb #writer
-from lib import constants
 
-#new base
-from reader.trajectory import pdbReader
-from writer.trajectory import cpmdWriter
+from reader.trajectory import pdbReader,xyzReader
+from writer.trajectory import cpmdWriter,xyzWriter,pdbWriter
+from reader.modes import xvibsReader
+#from writer.modes import xvibsWriter
 from interfaces import cpmd as cpmd_n #new libraries
 from classes.crystal import UnitCell
+from physics import constants
 from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
 from physics.modern_theory_of_magnetisation import calculate_mic
 from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
@@ -67,7 +65,7 @@ class Molecule():
             self.XYZData = XYZData(fn,**kwargs)
         elif fmt=="xvibs":
             mw = kwargs.get('mw',False)
-            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibs.ReadXVIBFile(fn)
+            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibsReader(fn)
             symbols  = [constants.symbols[z-1] for z in numbers]
             masses   = [masses_amu[s] for s in symbols]
             if mw:
@@ -201,11 +199,11 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
             data     = kwargs.get('data')
         elif fmt=="xyz":        
             self.fn = fn #later: read multiple files
-            data, symbols, comments = xyz.ReadTrajectory_BruteForce(fn)
+            data, symbols, comments = xyzReader(fn)
         elif fmt=="xvibs":
             self.fn = fn 
             comments = ["xvibs"]
-            n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibs.ReadXVIBFile(fn)
+            n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader(fn)
             symbols  = [constants.symbols[z-1] for z in numbers]
             data     = coords_aa.reshape((1,n_atoms,3))
         else:
@@ -300,25 +298,25 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
         if fmt=="xyz":
             if separate_files: 
                 frame_list = kwargs.get('frames',range(self.n_frames))
-                [xyz.WriteXYZFile(''.join(fn.split('.')[:-1])+'%03d'%fr+'.'+fn.split('.')[-1],
-                                  [getattr(self,attr)[fr]],self.symbols,[self.comments[fr]]) for fr in frame_list]
+                [xyzWriter(''.join(fn.split('.')[:-1])+'%03d'%fr+'.'+fn.split('.')[-1],
+                             [getattr(self,attr)[fr]],self.symbols,[self.comments[fr]]) for fr in frame_list]
           
-            else: xyz.WriteXYZFile(fn,
-                                   getattr(self,attr),
-                                   self.symbols,
-                                   self.comments)    #Writer is stupid
-                                   #self.n_frames*self.comments)    #Writer is stupid
+            else: xyzWriter(fn,
+                            getattr(self,attr),
+                            self.symbols,
+                            self.comments)    #Writer is stupid
+                            #self.n_frames*self.comments)    #Writer is stupid
         elif fmt=="pdb":
             for _attr in ['mol_map','abc','albega']: #try to conceive missing data from kwargs
                 try: getattr(self,_attr)
                 except AttributeError: setattr(self,_attr,kwargs.get(_attr))
-            pdb.WritePDB(fn,
-                         self.pos_aa[0], #only frame 0 vels are not written
-                         types=self.symbols,#if there are types change script
-                         symbols=self.symbols,
-                         residues=np.vstack((self.mol_map+1,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1), #+1 because no 0 index
-                         box=np.hstack((self.abc,self.albega)),
-                         title='Generated from %s with Molecule Class'%self.fn)
+            pdbWriter(fn,
+                      self.pos_aa[0], #only frame 0 vels are not written
+                      types=self.symbols,#if there are types change script
+                      symbols=self.symbols,
+                      residues=np.vstack((self.mol_map+1,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1), #+1 because no 0 index
+                      box=np.hstack((self.abc,self.albega)),
+                      title='Generated from %s with Molecule Class'%self.fn)
 
         elif fmt == 'cpmd': #pos and vel, attr does not apply
             print('CPMD WARNING: Output with sorted atomlist!')
@@ -418,7 +416,7 @@ class VibrationalModes():
         elif fmt=="xvibs":
             self.fn = fn
             comments = ["xvibs"]
-            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibs.ReadXVIBFile(fn)
+            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibsReader(fn)
             symbols  = [constants.symbols[z-1] for z in numbers]
             pos_au   = coords_aa*constants.l_aa2au
             eival_cgs = omega_cgs
@@ -458,7 +456,7 @@ class VibrationalModes():
         if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
         test = self.modes.reshape(self.n_modes,self.n_atoms*3)
         a=np.inner(test,test)
-        if np.allclose(a,np.identity(self.n_modes),atol=atol): 
+        if any([np.allclose(a,np.identity(self.n_modes),atol=atol),np.allclose(a[6:,6:],np.identity(self.n_modes-6),atol=atol)]): 
             print('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
             if not ignore_warnings:
                 sys.exit(1)
@@ -466,7 +464,7 @@ class VibrationalModes():
                 print('IGNORED')
         test = self.eivec.reshape(self.n_modes,self.n_atoms*3)
         a=np.inner(test,test)
-        if not np.allclose(a,np.identity(self.n_modes),atol=atol): 
+        if not any([np.allclose(a,np.identity(self.n_modes),atol=atol),np.allclose(a[6:,6:],np.identity(self.n_modes-6),atol=atol)]): 
             print(a)
             print('ERROR: The eigenvectors are not orthonormal!')
             print(np.amax(np.abs(a-np.identity(self.n_modes))))
@@ -813,19 +811,15 @@ class VibrationalModes():
             self.vel_au = S
             e_kin_au = CalculateKineticEnergies(self.vel_au,self.masses_amu)
             scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
-        #    print(scale)
-            #xyz.WriteXYZFile(fn_out%i_mode, data, symbols, ['%03d'%i_mode])
         elif occupation=='average':
             self.vel_au = S.sum(axis=0)
             # atomic_ekin_au = traj_utils.CalculateKineticEnergies(avg, masses_amu)
             # scale = temperature/(np.sum(atomic_ekin_au)/constants.k_B_au/n_modes)/2
             # print(scale)
             # avg *= np.sqrt(scale)
-            #xyz.WriteXYZFile(fn_xyz_out.rstrip('.xyz')+'-average.xyz', avg, symbols, ['average'])
         elif occupation=='random': #NOT TESTED!
             phases = np.random.rand(self.n_modes)*np.pi
             self.vel_au = (S*np.cos(phases)[:,None,None]).sum(axis=0)
-#            xyz.WriteXYZFile(fn_xyz_out.rstrip('.xyz')+'-vel-rdmseed-%05d.xyz'%seed, avg, symbols, ['average-vel'])
 
             #random pos
 #            avg = np.zeros((1,n_atoms,3))
@@ -834,7 +828,6 @@ class VibrationalModes():
 #                avg += S[i_mode].reshape(1,self.n_atoms,3)*np.sin(phases[i_mode])/omega_au[i_mode]
 #            avg *= constants.l_au2aa
 #            avg += self.pos_au*constants.l_au2aa
-#            xyz.WriteXYZFile(fn_xyz_out.rstrip('.xyz')+'-pos-rdmseed-%05d.xyz'%seed, avg, symbols, ['average-disp'])
             print('Random seed not tested')
         else: print('Occupation mode %s not understood!'%occupation)
 
@@ -858,10 +851,10 @@ class VibrationalModes():
         elif fmt=="xyz": #posvel, only vel not implemented
             pos_aa = np.tile(self.pos_au/Angstrom2Bohr,(self.n_modes,1,1))
             try:
-                xyz.WriteXYZFile(fn,np.concatenate((pos_aa,factor*self.vel_au),axis=-1)[modelist],self.symbols,[str(m) for m in modelist])
+                xyzWriter(fn,np.concatenate((pos_aa,factor*self.vel_au),axis=-1)[modelist],self.symbols,[str(m) for m in modelist])
             except AttributeError:
                 self.calculate_nuclear_velocities()
-                xyz.WriteXYZFile(fn,np.concatenate((pos_aa,factor*self.vel_au),axis=-1)[modelist],self.symbols,[str(m) for m in modelist])
+                xyzWriter(fn,np.concatenate((pos_aa,factor*self.vel_au),axis=-1)[modelist],self.symbols,[str(m) for m in modelist])
 
         else: raise Exception('Unknown format: %s'%fmt)
             
@@ -878,7 +871,7 @@ class VibrationalModes():
             vel_aa = np.tile(self.vel_au[mode]*constants.t_fs2au*constants.l_au2aa,(n_images,1,1))*img[:,None,None]
             pos_aa += vel_aa*ts_fs
             if fmt=="xyz": 
-                xyz.WriteXYZFile('%03d'%mode+'-'+fn,pos_aa,self.symbols,[str(m) for m in img])
+                xyzWriter('%03d'%mode+'-'+fn,pos_aa,self.symbols,[str(m) for m in img])
 
 #        elif fmt == 'cpmd': #not finished
 #            cpmd.WriteTrajectoryFile(fn, pos_aa, self.vel_au[mode], offset=0)

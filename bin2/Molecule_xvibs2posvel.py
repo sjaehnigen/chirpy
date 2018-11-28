@@ -3,7 +3,6 @@
 import argparse
 import numpy as np 
 from classes import molecule
-from topology import mapping
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''
