@@ -1,11 +1,11 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python
 
 import sys 
 import os
 
-import MDAnalysis as mda
-import MDAnalysis.analysis.rms
-import MDAnalysis.analysis.align
+#import MDAnalysis as mda
+#import MDAnalysis.analysis.rms
+#import MDAnalysis.analysis.align
 
 import numpy as np
 from lib import constants
@@ -24,8 +24,12 @@ def dihedral(p1,p2,p3,p4):
     dr /= np.linalg.norm(dr)
     #dih = np.arccos(np.inner(n1,n2)/(np.linalg.norm(n1,axis=-1)*np.linalg.norm(n2,axis=-1)))[0]
     dih = np.arccos(np.inner(n1,n2)/(np.linalg.norm(n1,axis=-1)*np.linalg.norm(n2,axis=-1)))
-    dih*=dr #Dorection of rotation
+    dih*=dr #Direction of rotation
     return dih
+
+
+############################################################################
+#migrated from proteintools, completely untested with new MDA version
 
 def AlignFrame(trj,ref,selection,mass_weighted=False):
     '''Use first frame of trj'''

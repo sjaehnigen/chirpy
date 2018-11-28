@@ -100,6 +100,8 @@ class Molecule():
                     self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
             if kwargs.get('wrap_mols') is not None:
                 print('I wrap molecules')
+                #ADDED 2018-11-28
+                if not hasattr(self,'mol_map'): self.install_molecular_origin_gauge()
                 self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
 
             #DEPENDING on cell_aa?
@@ -314,7 +316,7 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
                       self.pos_aa[0], #only frame 0 vels are not written
                       types=self.symbols,#if there are types change script
                       symbols=self.symbols,
-                      residues=np.vstack((self.mol_map+1,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1), #+1 because no 0 index
+                      residues=np.vstack((np.array(self.mol_map)+1,np.array(['MOL']*self.symbols.shape[0]))).swapaxes(0,1), #+1 because no 0 index
                       box=np.hstack((self.abc,self.albega)),
                       title='Generated from %s with Molecule Class'%self.fn)
 

@@ -55,26 +55,26 @@ v_au2aaperfs = l_au2aa/t_au2fs
 #machine_precision = 1E-14
 #max_memory_usage = 0.8 # NB! not yet added to test!
 #
-## element species # NB! not yet added to test!
-#species = dict()
-#species['H']  = {'SYMBOL': 'H', 'MASS':  1.00797, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
-#species['D']  = {'SYMBOL': 'H', 'MASS':  2.01410, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
-#species['He'] = {'SYMBOL':'He', 'MASS':  4.00260, 'Z':  2, 'ZV':  2, 'RVDW' : 140.0 }
-#species['Li'] = {'SYMBOL':'Li', 'MASS':  6.93900, 'Z':  3, 'ZV':  3, 'RVDW' : 182.0 }
-#species['Be'] = {'SYMBOL':'Be', 'MASS':  9.01220, 'Z':  4, 'ZV':  4, 'RVDW' : 153.0 }
-#species['C']  = {'SYMBOL': 'C', 'MASS': 12.01115, 'Z':  6, 'ZV':  4, 'RVDW' : 170.0 }
-#species['N']  = {'SYMBOL': 'N', 'MASS': 14.00670, 'Z':  7, 'ZV':  5, 'RVDW' : 155.0 }
-#species['O']  = {'SYMBOL': 'O', 'MASS': 15.99940, 'Z':  8, 'ZV':  6, 'RVDW' : 152.0 }
-#species['F']  = {'SYMBOL': 'F', 'MASS': 18.99840, 'Z':  9, 'ZV':  7, 'RVDW' : 147.0 }
-#species['Ne'] = {'SYMBOL':'Ne', 'MASS': 20.18300, 'Z': 10, 'ZV':  0, 'RVDW' : 154.0 }
-#species['Na'] = {'SYMBOL':'Na', 'MASS': 22.98980, 'Z': 11, 'ZV':  0, 'RVDW' : 227.0 }
-#species['Si'] = {'SYMBOL':'Si', 'MASS': 28.085  , 'Z': 14, 'ZV':  4, 'RVDW' : 210.0 }
-#species['P']  = {'SYMBOL':'P',  'MASS': 30.97376, 'Z': 15, 'ZV':  5, 'RVDW' : 180.0 }
-#species['S']  = {'SYMBOL':'S',  'MASS': 32.06400, 'Z': 16, 'ZV':  6, 'RVDW' : 180.0 }
-#species['Cl'] = {'SYMBOL':'Cl', 'MASS': 35.45300, 'Z': 17, 'ZV':  0, 'RVDW' : 175.0 }
-#species['Ca'] = {'SYMBOL':'Ca', 'MASS': 39.96259, 'Z': 20, 'ZV':  0, 'RVDW' : 231.0 }
-#species['X']  = {'SYMBOL': 'X', 'MASS':  0.00000, 'Z':  0, 'ZV':  0, 'RVDW' :   0.0 }
-#
+# element species # NB! not yet added to test!
+species = dict()
+species['H']  = {'SYMBOL': 'H', 'MASS':  1.00797, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
+species['D']  = {'SYMBOL': 'H', 'MASS':  2.01410, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
+species['He'] = {'SYMBOL':'He', 'MASS':  4.00260, 'Z':  2, 'ZV':  2, 'RVDW' : 140.0 }
+species['Li'] = {'SYMBOL':'Li', 'MASS':  6.93900, 'Z':  3, 'ZV':  3, 'RVDW' : 182.0 }
+species['Be'] = {'SYMBOL':'Be', 'MASS':  9.01220, 'Z':  4, 'ZV':  4, 'RVDW' : 153.0 }
+species['C']  = {'SYMBOL': 'C', 'MASS': 12.01115, 'Z':  6, 'ZV':  4, 'RVDW' : 170.0 }
+species['N']  = {'SYMBOL': 'N', 'MASS': 14.00670, 'Z':  7, 'ZV':  5, 'RVDW' : 155.0 }
+species['O']  = {'SYMBOL': 'O', 'MASS': 15.99940, 'Z':  8, 'ZV':  6, 'RVDW' : 152.0 }
+species['F']  = {'SYMBOL': 'F', 'MASS': 18.99840, 'Z':  9, 'ZV':  7, 'RVDW' : 147.0 }
+species['Ne'] = {'SYMBOL':'Ne', 'MASS': 20.18300, 'Z': 10, 'ZV':  0, 'RVDW' : 154.0 }
+species['Na'] = {'SYMBOL':'Na', 'MASS': 22.98980, 'Z': 11, 'ZV':  0, 'RVDW' : 227.0 }
+species['Si'] = {'SYMBOL':'Si', 'MASS': 28.085  , 'Z': 14, 'ZV':  4, 'RVDW' : 210.0 }
+species['P']  = {'SYMBOL':'P',  'MASS': 30.97376, 'Z': 15, 'ZV':  5, 'RVDW' : 180.0 }
+species['S']  = {'SYMBOL':'S',  'MASS': 32.06400, 'Z': 16, 'ZV':  6, 'RVDW' : 180.0 }
+species['Cl'] = {'SYMBOL':'Cl', 'MASS': 35.45300, 'Z': 17, 'ZV':  0, 'RVDW' : 175.0 }
+species['Ca'] = {'SYMBOL':'Ca', 'MASS': 39.96259, 'Z': 20, 'ZV':  0, 'RVDW' : 231.0 }
+species['X']  = {'SYMBOL': 'X', 'MASS':  0.00000, 'Z':  0, 'ZV':  0, 'RVDW' :   0.0 }
+
 # element symbols
 # symbols = ['H', 'D', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'X'] 
 # don't add Deuterium to this list since cubefiletools identifies species by atomic number
