@@ -4,8 +4,6 @@ import numpy as np
 import tempfile
 import copy 
 
-#old base
-from lib import constants
 
 def get_frame_traj_and_mom(TRAJECTORY, MOMENTS, n_atoms, n_moms): #by Arne Scherrer
     """iterates over TRAJECTORY and MOMENTS files and yields generator of positions, velocities and moments (in a.u.)"""

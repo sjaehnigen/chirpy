@@ -10,8 +10,7 @@
 
 import sys, os, copy
 import numpy as np
-from fileio import cpmd,xyz
-from lib import constants
+from physics import constants
 
 
 class UnitCell(): #maybe all-in-one class
