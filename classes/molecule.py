@@ -80,8 +80,9 @@ class Molecule():
             n_atoms=symbols.shape[0]
             self.XYZData = XYZData(fn,data=data.reshape((1,n_atoms,3)),symbols=symbols,**kwargs)
             setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
-            print('Found PDB: Automatic installation of molecular gauge.')
-            self.install_molecular_origin_gauge(fn_topo=fn) #re-reads pdb file
+            #Disabled 2018-12-04
+            #print('Found PDB: Automatic installation of molecular gauge.')
+            #self.install_molecular_origin_gauge(fn_topo=fn) #re-reads pdb file
 
         else: raise Exception('Unknown format: %s.'%fmt)
 
@@ -242,7 +243,10 @@ class XYZData(): #later: merge it with itertools (do not load any traj data befo
 
             
     def _sync_class(self):
-        self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
+        try:
+            self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
+        except  KeyError:
+            print('WARNING: Could not find all element masses!')
         if self.vel_au.size == 0: self.vel_au = np.zeros(self.pos_aa.shape)
         self.n_frames,self.n_atoms,self.n_fields = self.pos_aa.shape
                    

@@ -22,7 +22,7 @@ eijk[0,1,2] = eijk[1,2,0] = eijk[2,0,1] = +1
 eijk[0,2,1] = eijk[2,1,0] = eijk[1,0,2] = -1
 
 #### MOVE TO UTILS ###################################################################################################
-
+   # change tp name standard: fermi_cutoff_function
 def FermiCutoffFunction(distance_au, R_cutoff_au, D_au=0.25*constants.l_aa2au):
     return 1/(1+np.exp((distance_au - R_cutoff_au)/D_au))
 
@@ -101,7 +101,7 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
 
 
         if cut_type=='soft': #for larger cutoffs
-            _scal = FermiCutoffFunction(np.linalg.norm(_trans,axis=2), cutoff_aa*Angstrom2Bohr)
+            _scal = FermiCutoffFunction(np.linalg.norm(_trans,axis=2), cutoff_aa*Angstrom2Bohr,D_au=0.125*constants.l_aa2au)
             _c *= _scal[:,:,None]
             _m *= _scal[:,:,None]
 
