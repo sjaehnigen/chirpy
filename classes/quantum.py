@@ -10,7 +10,7 @@ from scipy.ndimage.filters import maximum_filter, minimum_filter,gaussian_filter
 from classes.volume import ScalarField,VectorField
 from classes.domain import Domain3D,Domain2D
 from physics import constants
-from reader.trajectory import XYZReader
+from reader.trajectory import xyzReader
 
 #class WaveFunction(ScalarField):        
 class WannierFunction(ScalarField):        
@@ -225,7 +225,7 @@ class ElectronicSystem():
 
     def read_nuclear_velocities(self,fn):
         '''Has to be in shape n_frames,n_atoms, 3'''
-        self.nuc_vel_au,self.nuc_symbols,self.nuc_vel_comments = XYZReader(fn)
+        self.nuc_vel_au,self.nuc_symbols,self.nuc_vel_comments = xyzReader(fn)
 #        self.nuc_vel_au = self.nuc_vel_au[0] #only first frame?
         if self.nuc_symbols != [constants.symbols[z-1] for z in self.rho.numbers]:
             raise Exception('ERROR: Nuclear velocity file does not match Electronic System!')
