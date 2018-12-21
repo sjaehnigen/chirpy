@@ -19,7 +19,7 @@ class pub_label():
         self.color = kwargs.get('color','black')
         self.size = kwargs.get('size',26)
         self.stancil = kwargs.get('stancil',r'\textbf{%s}')
-        self.sep = kwargs.get('sep',0.2*_shift)  ##ATTENTION: using varibale from outer scope
+        self.sep = kwargs.get('sep', 0.0 ) #,0.2*_shift)  ##ATTENTION: using varibale from outer scope
         self.alpha = kwargs.get('alpha',1.0)
     def print(self,string,**kwargs):
         X = kwargs.get('X',self.X)
@@ -64,23 +64,30 @@ def make_nice_ax(p):
 def multiplot(ax,x_a,y_a,**kwargs):
     global _shift #unique variable used by pub_label class
     n_plots = len(x_a)
-    fill = kwargs.get('fill',False)
-    bool_a = kwargs.get('bool_a',n_plots*[True]) #list of bools which spectra to unhide
-    std_a = kwargs.get('std_a')
-    _exp = kwargs.get('exp') #,np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
-    if _exp is not None: e,xe = _exp[:,1],_exp[:,0]
-    xlim = kwargs.get('xlim',( np.amin( np.array( x_a ) ), np.amax( np.array( x_a ) ) ) )
-    ylim = kwargs.get('ylim')
-    sep = kwargs.get('sep',5) #separation between plots in percent
-    color_a = kwargs.get('color_a',['mediumblue','crimson','green','goldenrod']) #list of colors
-    sty_a = kwargs.get('style_a',n_plots*['-'])
-    alpha_a = kwargs.get('alpha_a',n_plots*[1.0])
-    f_alpha_a = kwargs.get('fill_alpha_a',n_plots*[0.25])
-    stack = kwargs.get('stack_plots',True)
+    fill = kwargs.get( 'fill', False ) # ToDo: Rename argument since it refers to std error ( new name sth like "fill_std" )
+    bool_a = kwargs.get( 'bool_a' , n_plots * [ True ] ) #list of bools which spectra to unhide
+    std_a = kwargs.get( 'std_a' )
+    _exp = kwargs.get( 'exp' ) #,np.array([np.linspace(0,4000,100),np.zeros((100))]).T) #cheap workaround
+    if _exp is not None: e, xe = _exp[ :, 1 ], _exp[ : , 0 ]
+    xlim = kwargs.get( 'xlim', ( np.amin( np.array( np.hstack( x_a ) ) ), np.amax( np.array( np.hstack( x_a ) ) ) ) )
+    ylim = kwargs.get( 'ylim' )
+    sep = kwargs.get( 'sep', 5 ) #separation between plots in percent
+    color_a = kwargs.get( 'color_a', [ 'mediumblue', 'crimson', 'green', 'goldenrod' ] ) #list of colors
+    sty_a = kwargs.get( 'style_a', n_plots * [ '-' ] )
+    alpha_a = kwargs.get( 'alpha_a', n_plots * [ 1.0 ] )
+    f_alpha_a = kwargs.get( 'fill_alpha_a', n_plots * [ 0.25 ] )
+    stack = kwargs.get( 'stack_plots', True )
+    pile_up = kwargs.get( 'pile_up', False ) # fill space between plots. requires (and automatically sets for now) stack = False, fill = False
+    hatch_a = kwargs.get( 'hatch_a', n_plots * [ None ] )
+   
+    if pile_up and any(  [ stack, fill ] ): #this is not so elegant
+        print( 'WARNING: pile_up set: automatically setting stack_plots and fill argument to False, respectively!' )
+        stack = False
+        fill = False
 
-    if any(len(_a) != n_plots for _a in [y_a,bool_a]): raise Exception('ERROR: Inconsistent no. of plots in lists!')
+    if any( len( _a ) != n_plots for _a in [ y_a, bool_a ] ): raise Exception('ERROR: Inconsistent no. of plots in lists!')
     
-    if fill and any(_a is None for _a in [std_a]):
+    if fill and any( _a is None for _a in [ std_a ] ):
         raise Exception('ERROR: Need std_a argument for "fill" option!')
     
     ############################# Calculate hspace per plot and ylim #################
@@ -99,7 +106,7 @@ def multiplot(ax,x_a,y_a,**kwargs):
         _y_a = y_a
         if _exp is not None: _e = e
 
-    if ylim is None:
+    if ylim is None: #add routine for pile_up option
         ylim=(min([np.amin(_y[_s]) for _y,_s in zip(_y_a,_slc)]),max([np.amax(_y[_s]) for _y,_s in zip(_y_a,_slc)]))
         if _exp is not None: ylim = (min(ylim[0],np.amin(_e[_slce])),max(ylim[1],np.amax(_e[_slce])))
         ylim = (ylim[0]-0.25*_shift,ylim[1]+0.25*_shift)
@@ -114,6 +121,14 @@ def multiplot(ax,x_a,y_a,**kwargs):
             if _b: 
                 ax.fill_between(_x, _y+_s, _y-_s, color=_c, alpha=_fal)
                 ax.plot(_x,_y,_st,lw=3,color=_c,alpha=_al)
+    if pile_up:
+        if not np.allclose( np.unique( x_a ), x_a[ 0 ] ): raise Exception('ERROR: pile_up argument requires identical x_a content!')
+        _last = np.zeros_like( _y_a[ 0 ]  )
+        for _b, _x, _y, _st, _ha, _c, _al, _fal in zip( bool_a, x_a, _y_a, sty_a, hatch_a, color_a, alpha_a, f_alpha_a ):
+            if _b: 
+                ax.fill_between(_x,_last,_last + _y,lw=0,color=_c,alpha=_fal, hatch = _ha )
+                _last += _y
+                ax.plot(_x, _last, _st, lw = 3, color = _c, alpha = _al )
     else:
         for _b,_x,_y,_st,_c,_al in zip(bool_a,x_a,_y_a,sty_a,color_a,alpha_a):
             if _b: ax.plot(_x,_y,_st,lw=3,color=_c,alpha=_al)
@@ -129,12 +144,28 @@ def multiplot(ax,x_a,y_a,**kwargs):
     ### LB is simply returned can be retrieved (or not)
     ### ToDO: Connect the tuple entries (so that e.g., X has only to be set once, but allow exceptional X values)
 
-    if stack: LB = [pub_label(ax,color=_c,X=np.mean(xlim),Y=-_shift*_i,alpha=_al) for _i,(_c,_al) in enumerate(zip(color_a,alpha_a))] \
-                 + [pub_label(ax,color='black',X=np.mean(xlim),Y=-n_plots*_shift,stancil=r'\emph{%s}')]*(_exp is not None)
+    if stack: LB = [ pub_label( 
+                        ax,
+                        color = _c, 
+                        X = np.mean( xlim ),
+                        Y = -_shift * _i, 
+                        alpha = _al,
+                        sep = 0.2 * _shift
+                     ) for _i , ( _c, _al ) in enumerate( zip( color_a, alpha_a ) ) ] \
+                 + [ pub_label( 
+                        ax,
+                        color = 'black',
+                        X = np.mean( xlim ), 
+                        Y = -n_plots * _shift,
+                        sep = 0.2 * _shift,
+                        stancil = r'\emph{%s}'
+                     ) ] * ( _exp is not None )
+
     else: LB = [pub_label(ax,color=_c,X=np.mean(xlim),alpha=_al) for _c,_al in zip(color_a,alpha_a)] \
              + [pub_label(ax,color='black',X=np.mean(xlim),stancil=r'\emph{%s}')]*(_exp is not None)
 
     return LB
+
 
 def histogram(ax_a,data_a,**kwargs): #i.c.to multiplot, this routine needs a list of ax
     '''very preliminary version of a nice histogram routine'''

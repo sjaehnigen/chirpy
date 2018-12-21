@@ -10,11 +10,9 @@ def main():
     parser=argparse.ArgumentParser(description="Wrap atoms from XYZ file into PBC box", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("fn1", help="file 1 (xy,pdb,xvibs,...)")
     parser.add_argument("fn2", help="file 2 (xy,pdb,xvibs,...)")
-    parser.add_argument("-f", help="Output file name (standard: 'out.xyz')", default='out.xyz')
     args = parser.parse_args()
     fn1 = args.fn1
     fn2 = args.fn2
-    fn_out = args.f
     mol1 = molecule.Molecule(fn1)
     mol2 = molecule.Molecule(fn2)
     assign = mapping.map_atoms_by_coordinates(mol1,mol2)

@@ -27,7 +27,7 @@ def map_atoms_by_coordinates(mol1,mol2):
     for s in np.unique(d1.symbols):
         i1 = d1.symbols==s
         i2 = d2.symbols==s
-        ass = get_assign(d1.data[:,i1,:3],d2.data[:,i2,:3],unit_cell=getattr(mol1,'UnitCell'))
+        ass = get_assign(d1.data[:,i1,:3],d2.data[:,i2,:3],unit_cell=getattr(mol1,'UnitCell',None))
         assign[:,i1]=np.array([np.arange(d2.n_atoms)[i2][ass[fr]] for fr in range(d1.n_frames)]) #maybe unfortunate to long trajectories
     return assign
 
