@@ -138,6 +138,10 @@ class CPMDjob( ):
     #        return cls( *_C )
             return cls( kinds = kinds, channels = channels, n_kinds = n_kinds, data = data )
 
+        def get_positions( self ):
+            ''' in a. u. '''
+            return np.vstack( self.data )
+
         def print_section( self ):
             format = '%20.10f'*3
             print( "&ATOMS" )

@@ -44,6 +44,7 @@ np.set_printoptions(precision=5,suppress=True)
 #NEEDS
 # - CPMD format Reader
 # - Tidying up
+# - USE XYZData for file reading and extract further data for Molecule from it ( ? )
 class Molecule():
     def __init__(self,fn,**kwargs):
         if int(np.version.version.split('.')[1]) < 14:
@@ -73,13 +74,13 @@ class Molecule():
                 modes /= np.sqrt(masses)[None,:,None]*np.sqrt(constants.m_amu_au)
             else:
                 print('Not assuming mass-weighted coordinates in XVIBS (use mw=True otherwise).')
-            self.XYZData = XYZData(fn,data=coords_aa.reshape((1,n_atoms,3)),symbols=symbols,**kwargs)
+            self.XYZData = XYZData(data = coords_aa.reshape( (1, n_atoms, 3 ) ),symbols = symbols, **kwargs )
             self.Modes = VibrationalModes(fn,modes=modes,numbers=numbers,omega_cgs=omega_cgs,coords_aa=coords_aa,**kwargs)
         elif fmt=="pdb":
             data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
             n_atoms=symbols.shape[0]
-            self.XYZData = XYZData(fn,data=data.reshape((1,n_atoms,3)),symbols=symbols,**kwargs)
-            setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
+            self.XYZData = XYZData(data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
+            setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
             #Disabled 2018-12-04
             #print('Found PDB: Automatic installation of molecular gauge.')
             #self.install_molecular_origin_gauge(fn_topo=fn) #re-reads pdb file
@@ -189,28 +190,40 @@ class Molecule():
             self.Modes.n_mols  = n_mols
 
 class XYZData(): #later: merge it with itertools (do not load any traj data before the actual processing)        
-    def __init__(self,fn,**kwargs): #**kwargs for named (dict), *args for unnamed
-        #insert request for fn in kwargs
-        fmt = kwargs.get('fmt',fn.split('.')[-1])
-        self.axis_pointer = kwargs.get('axis_pointer',0)
-        align_coords = kwargs.get('align_atoms',False)
-        center_coords = kwargs.get('center_coords',False)
-        if 'data' in kwargs and 'symbols' in kwargs:
-            self.fn = fn 
-            comments = kwargs.get('comments',['passed'])
-            symbols  = kwargs.get('symbols')
-            data     = kwargs.get('data')
-        elif fmt=="xyz":        
-            self.fn = fn #later: read multiple files
-            data, symbols, comments = xyzReader(fn)
-        elif fmt=="xvibs":
-            self.fn = fn 
-            comments = ["xvibs"]
-            n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader(fn)
-            symbols  = [constants.symbols[z-1] for z in numbers]
-            data     = coords_aa.reshape((1,n_atoms,3))
-        else:
-            raise Exception('Unknown format: %s.'%fmt)
+    def __init__(self, *args, **kwargs): #**kwargs for named (dict), *args for unnamed
+        self.axis_pointer = kwargs.get( 'axis_pointer', 0 )
+        align_coords = kwargs.get( 'align_atoms', False )
+        center_coords = kwargs.get( 'center_coords', False )
+        if len( args ) > 1: raise TypeError( "%s takes at most 1 argument!" % self.__class__.__name__ )
+        elif len( args ) == 1: 
+            fn = args[ 0 ]
+            fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
+            if fmt == "xyz":        
+                self.fn = fn #later: read multiple files
+                data, symbols, comments = xyzReader( fn )
+            elif fmt=="xvibs":
+                self.fn = fn 
+                comments = [ "xvibs" ]
+                n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader( fn )
+                symbols  = [ constants.symbols[ z - 1 ] for z in numbers ]
+                data     = coords_aa.reshape( ( 1, n_atoms, 3 ) )
+            else:
+                raise Exception( 'Unknown format: %s.' % fmt )
+
+        elif len( args ) == 0:
+            #if all( _a in kwargs for _a in [ 'data', 'symbols' ] ): 
+            if 'data' in kwargs and ( 'symbols' in kwargs or 'numbers' in kwargs ):
+                self.fn = '' 
+                comments = kwargs.get( 'comments', [ 'passed' ] )
+                numbers = kwargs.get( 'numbers' )
+                symbols  = kwargs.get( 'symbols' )
+                if symbols is None: symbols = [ constants.symbols[ z - 1 ] for z in numbers ]
+                data     = kwargs.get( 'data' )
+                _sh = data.shape
+                if len( _sh ) == 2: 
+                    data = data.reshape( ( 1, ) + _sh )
+                
+            else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
 
         self.comments = np.array(comments)            
