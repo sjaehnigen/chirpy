@@ -6,9 +6,13 @@ import numpy as np
 import copy
 from collections import OrderedDict
 
+#not yet in use
+from interfaces import cpmd
+
 Angstrom2Bohr = 1.8897261247828971
 
-def write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom'):
+#this is a method for the CPMD class in interfaces
+def _write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom'):
     '''Only sorted data is comaptible with CPMD, nevertheless auto-sort is disabled.'''
     elems=OrderedDict()
     if pos_au.shape[0] != len(symbols):
@@ -50,6 +54,7 @@ def write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom'):
                 f.write(format%tuple([c for c in elems[elem]['c'][i]])) #cp2k format as in pythonbase
         f.write("&END\n")
 
+#This metthod needs to be linked to CPMD class (here only trajectory output, use CPMD class for section output)
 def cpmdWriter(fn, pos_au, symbols, vel_au,**kwargs):
     bool_atoms = kwargs.get('write_atoms',True)
     pp = kwargs.get('pp','MT_BLYP')
@@ -69,7 +74,7 @@ def cpmdWriter(fn, pos_au, symbols, vel_au,**kwargs):
                 f.write(line+'\n')
 
     if bool_atoms: 
-        write_atoms_section(fn+'_ATOMS', symbols, pos_au[0], pp=pp, bs=bs)
+        _write_atoms_section(fn+'_ATOMS', symbols, pos_au[0], pp=pp, bs=bs)
         xyzWriter(fn+'_ATOMS.xyz',[pos_au[0]/Angstrom2Bohr],symbols,[fn])
 
 #OLD section to be integrated with xyzWriter
