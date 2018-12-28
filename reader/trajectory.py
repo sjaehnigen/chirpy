@@ -98,3 +98,19 @@ Output:
 
     return np.array(data), symbols, comments
 
+#not the final version: remove n_kinds dependency and generalise it
+# by Arne Scherrer
+def cpmdReader( FN, n_kinds, type = 'TRAJECTORY' ):
+    """iterates over FN and yields generator of positions, velocities and moments (in a.u.)"""
+    if type == 'TRAJECTORY':
+        with open( FN, 'r' ) as _f:
+            _it = ( list( map( float, line.strip( ).split( )[ 1: ] ) ) for line in _f if 'NEW DATA' not in line )
+            try:
+                while _it:
+                    pos, vel = tuple( np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 2, 3 ) ).swapaxes( 0, 1 ) )
+                    #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
+                    yield pos, vel
+            except StopIteration:
+                pass
+
+
