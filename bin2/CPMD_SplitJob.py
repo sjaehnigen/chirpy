@@ -43,7 +43,7 @@ def main():
     for _i, _FRAG in enumerate( _JOB.split_atoms( _ASS ) ):
         _FRAG.write_input_file( fn_inp[ : -4 ] + '_fragment_%03d' % _i + '.inp' )
         if fn_trj is not None:
-            _FRAG.TRAJECTORY.write( fn_trj + '_fragment_%03d' % _i, fmt = 'cpmd' )
+            _FRAG.TRAJECTORY.write( fn_trj + '_fragment_%03d' % _i, fmt = 'cpmd', sort = False )
     
 if(__name__ == "__main__"):
     main()

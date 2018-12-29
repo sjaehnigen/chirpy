@@ -115,9 +115,10 @@ class TRAJECTORY(): #later: merge it with itertools (do not load any traj data b
 
         # CPMD Writer does nor need symbols if only traj written
         elif fmt == 'cpmd': #pos and vel, attr does not apply
-            print( 'CPMD WARNING: Output with sorted atomlist!' )
             loc_self = copy.deepcopy( self )
-            loc_self._sort( )
+            if kwargs.get( 'sort_atoms', True ):
+                print( 'CPMD WARNING: Output with sorted atomlist!' )
+                loc_self._sort( )
             cpmdWriter( fn, loc_self.pos_aa * Angstrom2Bohr, loc_self.symbols, loc_self.vel_au * factor, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
 
         else: raise Exception( 'Unknown format: %s.' % fmt )
