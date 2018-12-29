@@ -24,8 +24,8 @@ def _write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom')
 
     for i,sym in enumerate(symbols):
         if sym != sorted(symbols)[i]: 
-            print('ERROR: Atom list not sorted!')
-            sys.exit(1)
+            print('WARNING: Atom list not sorted!')
+            #sys.exit(1)
         try:
             elems[sym]['n'] +=1
             elems[sym]['c'][elems[sym]['n']] = pos[i]

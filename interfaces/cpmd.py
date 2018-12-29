@@ -341,11 +341,16 @@ class CPMDjob( ):
             _C[ 'channels' ] = []
             _C[ 'n_kinds' ] = []
             _C[ 'data' ] = []
-            for _I, _isk in enumerate( sorted( set( _frag[ 1 ] ) ) ):
-                _C[ 'kinds' ].append( _isk )
-                _C[ 'channels' ].append( [ _frag[ 2 ][ _j ] for _j, _jsk in enumerate( _frag[ 1 ] ) if _jsk == _isk ] [ 0 ] )# a little awkward
-                _C[ 'n_kinds' ].append( _frag[ 1 ].count( _isk ) )
-                _C[ 'data' ].append( np.array( [ _frag[ 0 ][ _j ] for _j, _jsk in enumerate( _frag[ 1 ] ) if _jsk == _isk ] ) )
+            #complicated to keep order
+            _isk_old = None
+            #for _I, _isk in enumerate( sorted( set( _frag[ 1 ] ) ) ):
+            for _isk in  _frag[ 1 ]:
+                if _isk != _isk_old:
+                    _C[ 'kinds' ].append( _isk )
+                    _C[ 'channels' ].append( [ _frag[ 2 ][ _j ] for _j, _jsk in enumerate( _frag[ 1 ] ) if _jsk == _isk ] [ 0 ] )# a little awkward
+                    _C[ 'n_kinds' ].append( _frag[ 1 ].count( _isk ) )
+                    _C[ 'data' ].append( np.array( [ _frag[ 0 ][ _j ] for _j, _jsk in enumerate( _frag[ 1 ] ) if _jsk == _isk ] ) )
+                _isk_old = copy.deepcopy( _isk ) #necessary?
 
             out = copy.deepcopy( self )
             out.ATOMS = SECTION( 'ATOMS' , **_C )
