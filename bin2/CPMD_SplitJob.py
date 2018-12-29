@@ -30,6 +30,7 @@ def main():
     # Read CPMD input an adapt options
     _JOB = cpmd.CPMDjob.read_input_file( fn_inp )
     _JOB.CPMD.options[ "CENTER MOLECULE" ] = ( [ 'OFF' ], None )
+    _JOB.CPMD.options.pop( "RESTART COORDINATES WAVEFUNCTION" )  #keyword logic not yet in cpmd class
     
     if fn_trj is not None:
         _JOB.TRAJECTORY = cpmd.TRAJECTORY.read( fn_trj, sum( _JOB.ATOMS.n_kinds ), symbols = _JOB.get_symbols( ) )
