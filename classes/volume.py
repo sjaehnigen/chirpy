@@ -88,25 +88,27 @@ class ScalarField():
         #Can function be overwritten?
         return np.array(np.meshgrid(xaxis,yaxis,zaxis,indexing='ij')) ##Order?
 
-    def crop(self,r,**kwargs):
-        dims = kwargs.get('dims','xyz')
+    def crop( self, r , **kwargs ): #only symmetric crop; ToDo: routine for centering + crop (i.e. asymmetric crop)
+        dims = kwargs.get( 'dims', 'xyz' )
         if 'x' in dims:
-            self.data=self.data[r:-r,:   ,:]
-        self.origin_au[0] += self.cell_au[0,0]*r
+            self.data = self.data[ r : -r, :   , : ]
+            self.origin_au[ 0 ] += self.cell_au[ 0, 0 ] * r
         if 'y' in dims:
-            self.data=self.data[:   ,r:-r,:]
-        self.origin_au[1] += self.cell_au[1,1]*r
+            self.data = self.data[ :   , r : -r, : ]
+            self.origin_au[ 1 ] += self.cell_au[ 1, 1 ] * r
         if 'z' in dims:
-            self.data=self.data[:   ,:   ,r:-r]
-        self.origin_au[2] += self.cell_au[2,2]*r
+            self.data = self.data[ :   , :   , r : -r ]
+            self.origin_au[ 2 ] += self.cell_au[ 2, 2 ] * r
 
 
-    def auto_crop(self,**kwargs):
+    def auto_crop( self, **kwargs ): #can only xyz
         '''crop after threshold (default: ...)'''
-        thresh=kwargs.get('thresh',1.E-3)
-        a=np.amin(np.array(self.data.shape)-np.argwhere(np.abs(self.data) > thresh))
-        b=np.amin(np.argwhere(np.abs(self.data) > thresh))
-        self.crop(min(a,b))
+        thresh = kwargs.get( 'thresh', 1.E-3 )
+        a = np.amin( np.array( self.data.shape ) - np.argwhere( np.abs( self.data ) > thresh ) )
+        b = np.amin( np.argwhere( np.abs( self.data ) > thresh ) )
+        self.crop( min( a, b ) )
+
+        return min( a, b )
 
     def write(self,fn,**kwargs): #Replace by new write routine?
         '''Generalise this routine with autodetection for scalar and velfield, since div j is a scalar field, but attr of vec field class.'''
