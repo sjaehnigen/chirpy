@@ -26,10 +26,17 @@ def _get_states( _dir = '' ):
             yield os.path.join( _dir, _str ), volume.ScalarField( os.path.join( _dir, _str ) )
         _n += 1
 
+def _get_all( _dir = '' ):
+    _n = 1
+    while os.path.isfile( os.path.join( _dir, state0 % _n ) ):
+        for _str in ( density, current % 1, current % 2, current % 3, state0 % _n, state1 % _n, current_state % ( _n, 1 ), current_state % ( _n, 2 ), current_state % ( _n, 3 ) ):
+            yield os.path.join( _dir, _str ), volume.ScalarField( os.path.join( _dir, _str ) )
+        _n += 1
+
 def _get_fragments( ):
     _n = 0
     while os.path.isdir( 'fragment_%03d' % _n ): 
-        for _st in _get_states( _dir = 'fragment_%03d' % _n ):
+        for _st in _get_all( _dir = 'fragment_%03d' % _n ):
             yield _st
         _n += 1
 
