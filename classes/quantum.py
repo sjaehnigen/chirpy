@@ -201,8 +201,9 @@ class ElectronicSystem():
         scale = self.rho.data
         a=np.amin(np.array(self.rho.data.shape)-np.argwhere(scale > thresh))
         b=np.amin(np.argwhere(scale > thresh))
-        self.crop(min(a,b))
+        self.crop( min( a, b ) )
 
+        return min( a, b )
 
     def calculate_velocity_field(self,**kwargs): #check convetnion for states, use j so far
         lower_thresh=kwargs.get('lower_thresh',self.rho.threshold)

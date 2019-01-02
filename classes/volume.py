@@ -14,12 +14,12 @@ eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 class ScalarField():
-    def __init__(self,**kwargs): #**kwargs for named (dict), *args for unnamed
-        fn = kwargs.get('fn')
-        self.fmt = kwargs.get('fmt')
-        if self.fmt is None and not fn is None: self.fmt = kwargs.get('fmt',fn.split('.')[-1])
+    def __init__(self, **kwargs): #**kwargs for named (dict), *args for unnamed
+        self.fn = kwargs.get( 'fn' )
+        self.fmt = kwargs.get( 'fmt' )
+        if self.fmt is None and not self.fn is None: self.fmt = kwargs.get('fmt',self.fn.split('.')[-1])
         if self.fmt=="cube":
-            buf = cubeReader(fn)
+            buf = cubeReader(self.fn)
             self.comments  = buf['comments'].strip()
             self.origin_au = np.array(buf['origin_au'])
             self.cell_au   = np.array(buf['cell_au'])

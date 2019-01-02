@@ -19,18 +19,21 @@ current_state = 'CURRENT-000001-S%02d-%d.cube'
 def _new_fn( _fn ): 
     return ''.join( _fn.split( '.' )[ :-1 ] ) + '-CROPPED.' + _fn.split( '.' )[ -1 ]
 
+def _np_fn( _fn ): 
+    return ''.join( _fn.split( '.' )[ :-1 ] ) + '-CROPPED'
+
 def _get_states( _dir = '' ):
     _n = 1
     while os.path.isfile( os.path.join( _dir, state0 % _n ) ):
         for _str in ( state0 % _n, state1 % _n, current_state % ( _n, 1 ), current_state % ( _n, 2 ), current_state % ( _n, 3 ) ):
-            yield os.path.join( _dir, _str ), volume.ScalarField( os.path.join( _dir, _str ) )
+            yield volume.ScalarField( fn = os.path.join( _dir, _str ) )
         _n += 1
 
 def _get_all( _dir = '' ):
     _n = 1
     while os.path.isfile( os.path.join( _dir, state0 % _n ) ):
         for _str in ( density, current % 1, current % 2, current % 3, state0 % _n, state1 % _n, current_state % ( _n, 1 ), current_state % ( _n, 2 ), current_state % ( _n, 3 ) ):
-            yield os.path.join( _dir, _str ), volume.ScalarField( os.path.join( _dir, _str ) )
+            yield volume.ScalarField( fn = os.path.join( _dir, _str ) )
         _n += 1
 
 def _get_fragments( ):
@@ -48,7 +51,7 @@ _fn2 = current % 2
 _fn3 = current % 3
 _sys = quantum.ElectronicSystem( _fn, _fn1, _fn2, _fn3 )
 
-_V = _sys.auto_crop( thresh = sys.rho.threshold / 2 )
+_V = _sys.auto_crop( thresh = _sys.rho.threshold / 2 )
 
 ######### Save ########################################
 print( 'Save cropped Electronic System ...' )
@@ -64,22 +67,21 @@ out.write( _new_fn( _fn1 ), _new_fn( _fn2), _new_fn( _fn3 ) )
 
 ### LOOP States
 print( 'Loop States ...' )
-for _name, _sys in _get_states( ):
-    print( _name )
+for _sys in _get_states( ):
+    print( _sys.fn )
     sys.stdout.flush( )
     _sys.crop( _V )
-    _sys.write( _new_fn( _name ) )
+    _sys.write( _new_fn( _sys.fn ) )
+    np.save( _new_fn( _sys.fn ), _sys.data )
 
 ### LOOP FRAGMENTS
 print( 'Loop Fragments ...' )
-for _name, _sys in _get_fragments( ):
-    print( _name )
+for _sys in _get_fragments( ):
+    print( _sys.fn )
     sys.stdout.flush( )
     _sys.crop( _V )
-    _sys.write( _new_fn( _name ) )
-
-
-######## Save as numpy array? ######################## 
+    _sys.write( _new_fn( _sys.fn ) )
+    np.save( _new_fn( _sys.fn ), _sys.data )
 
 
 ######## AIM ######################################### 
