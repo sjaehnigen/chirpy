@@ -17,7 +17,7 @@ class pub_label():
         self.X = kwargs.get('X',1400)
         self.Y = kwargs.get('Y',0.0)
         self.color = kwargs.get('color','black')
-        self.size = kwargs.get('size',26)
+        self.size = kwargs.get('size',24)
         self.stancil = kwargs.get('stancil',r'\textbf{%s}')
         self.sep = kwargs.get('sep', 0.0 ) #,0.2*_shift)  ##ATTENTION: using varibale from outer scope
         self.alpha = kwargs.get('alpha',1.0)
@@ -29,18 +29,34 @@ class pub_label():
 
             
 def source_params(matplotlib):
-    matplotlib.rc('xtick', labelsize=30)
-    matplotlib.rc('ytick', labelsize=30)
-    matplotlib.rc('font',  size=30)
+    #mpl.rcParams.update({
+    #'font.size':16,
+    #'axes.linewidth':6,
+    #'xtick.major.width':4,
+    #'ytick.major.width':4,
+    #'xtick.major.size':13,
+    #'ytick.major.size':13,
+    #'grid.linewidth':4,
+    #'grid.color':'0.8',
+    #})
+    matplotlib.rc('xtick', labelsize=22)
+    matplotlib.rc('ytick', labelsize=22)
+    matplotlib.rc('font',  size=22)
     
     #matplotlib.rcParams['pdf.fonttype'] = 42
     #matplotlib.rcParams['ps.fonttype' ] = 42 
     #matplotlib.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']}) #gives warning
     matplotlib.rcParams['mathtext.fontset'] = 'stixsans' 
     matplotlib.rc('text', usetex=True)
-    matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{upgreek}',
+    matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}',
+                                                  #r'\usepackage[T1]{fontenc}',
+                                                  r'\usepackage{upgreek}',
+                                                  r'\usepackage{bm}',
+                                                  #r'\usepackage[warn]{textcomp}', #arrows, warn: do not break
                                                   #r'\usepackage{siunitx}',   # i need upright \micro symbols, but you need...
                                                   #r'\sisetup{detect-all}',   # ...this to force siunitx to actually use your fonts 
+                                                  r'\usepackage{xcolor}',
+                                                  r'\usepackage{amsmath}',
                                                   r'\usepackage{helvet}',    # set the normal font here
                                                   r'\usepackage{sansmath}',  # load up the sansmath so that math -> helvet
                                                   r'\sansmath',               # <- tricky! -- gotta actually tell tex to use!]#,r'\usepackage[cm]{sfmath}']
@@ -49,10 +65,10 @@ def source_params(matplotlib):
 
 def make_nice_ax(p): 
     '''p object ... AxesSubplot'''
-    p.tick_params('both', length=5, width=3, which='minor')
-    p.tick_params('both', length=10, width=3, which='major')
-    p.tick_params(axis='both',which='both',pad=10,direction='in',top=False,right=False)
-    p.yaxis.set_ticks_position('left')
+    p.tick_params( 'both', length = 5,  width = 3, which = 'minor' )
+    p.tick_params( 'both', length = 10, width = 3, which = 'major' )
+    p.tick_params( axis = 'both', which = 'both', pad = 10, direction = 'out' ) #,top=False,right=False)
+    #p.yaxis.set_ticks_position('left')
       
     #p.spines['top'].set_visible(False)
     p.spines['top'].set_linewidth(3.0)    
@@ -63,7 +79,8 @@ def make_nice_ax(p):
 #later merge plot type methods (one parser of arguments)
 def multiplot(ax,x_a,y_a,**kwargs):
     global _shift #unique variable used by pub_label class
-    n_plots = len(x_a)
+    try: n_plots = len( y_a )
+    except TypeError: n_plots = y_a.shape[ 0 ]
     fill = kwargs.get( 'fill', False ) # ToDo: Rename argument since it refers to std error ( new name sth like "fill_std" )
     bool_a = kwargs.get( 'bool_a' , n_plots * [ True ] ) #list of bools which spectra to unhide
     std_a = kwargs.get( 'std_a' )
@@ -72,13 +89,21 @@ def multiplot(ax,x_a,y_a,**kwargs):
     xlim = kwargs.get( 'xlim', ( np.amin( np.array( np.hstack( x_a ) ) ), np.amax( np.array( np.hstack( x_a ) ) ) ) )
     ylim = kwargs.get( 'ylim' )
     sep = kwargs.get( 'sep', 5 ) #separation between plots in percent
-    color_a = kwargs.get( 'color_a', [ 'mediumblue', 'crimson', 'green', 'goldenrod' ] ) #list of colors
+    color_a = kwargs.get( 'color_a', [ 'mediumblue', 'crimson', 'green', 'goldenrod', 'pink' ] ) #list of colors
     sty_a = kwargs.get( 'style_a', n_plots * [ '-' ] )
     alpha_a = kwargs.get( 'alpha_a', n_plots * [ 1.0 ] )
     f_alpha_a = kwargs.get( 'fill_alpha_a', n_plots * [ 0.25 ] )
     stack = kwargs.get( 'stack_plots', True )
     pile_up = kwargs.get( 'pile_up', False ) # fill space between plots. requires (and automatically sets for now) stack = False, fill = False
     hatch_a = kwargs.get( 'hatch_a', n_plots * [ None ] )
+    pass_through = kwargs.get( 'pass_through', {} ) #arguments as dict that are passed through untouched and unchecked to plt.plot
+
+    #TMP: make it nice soon
+    if x_a.__class__ is not list: x_a = [ np.array( [ _x for _x in x_a ] ) ] * n_plots
+    if color_a.__class__ is not list: color_a = [ color_a ] * n_plots
+    if sty_a.__class__ is not list: sty_a = [ sty_a ] * n_plots
+    if alpha_a.__class__ is not list: alpha_a = [ alpha_a ] * n_plots
+    if f_alpha_a.__class__ is not list: f_alpha_a = [ f_alpha_a ] * n_plots
    
     if pile_up and any(  [ stack, fill ] ): #this is not so elegant
         print( 'WARNING: pile_up set: automatically setting stack_plots and fill argument to False, respectively!' )
@@ -94,12 +119,15 @@ def multiplot(ax,x_a,y_a,**kwargs):
     _slc = [slice(*sorted(np.argmin(np.abs(_x_a-_x)) for _x in xlim)) for _x_a in x_a]
     if _exp is not None: _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
     
-    _shift=max([np.amax(_y[_s])-np.amin(_y[_s]) for _y,_s in zip(y_a,_slc)])
-    if _exp is not None: _shift=max(np.amax(e[_slce])-np.amin(e[_slce]),_shift) 
-    _shift *= (1+sep/100)
-    print(_shift)
+    try:
+        _shift=max([np.amax(_y[_s])-np.amin(_y[_s]) for _y,_s in zip(y_a,_slc)])
+        if _exp is not None: _shift=max(np.amax(e[_slce])-np.amin(e[_slce]),_shift) 
+        _shift *= (1+sep/100)
+    except ValueError:
+        print( 'CRITICAL WARNING: Could not calculate plot shift. Good luck!' ) #Under construction
 
     if stack:
+        print(_shift)
         _y_a = [_y-_shift*_i for _i,_y in enumerate(y_a)]
         if _exp is not None: _e = e-n_plots*_shift
     else:
@@ -131,7 +159,7 @@ def multiplot(ax,x_a,y_a,**kwargs):
                 ax.plot(_x, _last, _st, lw = 3, color = _c, alpha = _al )
     else:
         for _b,_x,_y,_st,_c,_al in zip(bool_a,x_a,_y_a,sty_a,color_a,alpha_a):
-            if _b: ax.plot(_x,_y,_st,lw=3,color=_c,alpha=_al)
+            if _b: ax.plot( _x, _y, _st, lw = 3, color = _c, alpha = _al, **pass_through )
     
 
     ############################# layout ######################################
@@ -161,8 +189,8 @@ def multiplot(ax,x_a,y_a,**kwargs):
                         stancil = r'\emph{%s}'
                      ) ] * ( _exp is not None )
 
-    else: LB = [pub_label(ax,color=_c,X=np.mean(xlim),alpha=_al) for _c,_al in zip(color_a,alpha_a)] \
-             + [pub_label(ax,color='black',X=np.mean(xlim),stancil=r'\emph{%s}')]*(_exp is not None)
+    else: LB = [pub_label(ax,color=_c, X = np.mean( xlim ), Y = np.mean( ylim ), alpha = _al) for _c,_al in zip(color_a,alpha_a)] \
+             + [pub_label(ax,color='black',X = np.mean( xlim ), Y = np.mean( ylim ), stancil = r'\emph{%s}')]*(_exp is not None)
 
     return LB
 
@@ -182,6 +210,9 @@ def histogram(ax_a,data_a,**kwargs): #i.c.to multiplot, this routine needs a lis
     #ToDo: routine for automatic (and equal!) range for all data_a
     bins = kwargs.get('bins') #Quick workaround
     sep = kwargs.get('sep',0.0)
+
+    if color_a.__class__ is not list: color_a = [ color_a ] * n_plots
+    if alpha_a.__class__ is not list: alpha_a = [ alpha_a ] * n_plots
 
     if sum_one: weights_a=[np.ones_like(_d)/_d.shape[0] for _d in data_a]
     else: weights_a = kwargs.get('weights_a',[np.ones_like(_d) for _d in data_a])

@@ -25,7 +25,7 @@ _e = 1.6021766208E-19 # unit charge [C]
 
 #to J
 _eV2J = lambda x: _e * x
-_nm2J = lambda x: _h * _c / x * 1.E-9 #different sparsity of poits => could be interpolated (or ignored)
+_nm2J = lambda x: _h * _c / x * 1.E-9 #inhomogeneous sparsity of points => could be interpolated (or ignored)
 
 #from J
 _J2eV = lambda x: 1 / _e * x
