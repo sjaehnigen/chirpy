@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''
@@ -20,11 +20,11 @@ def main():
     args.cell_aa = np.array(args.cell_aa).astype(float)
     args.factor = float(args.factor)
     if not any(args.modelist):
-        molecule.Molecule(fmt='xvibs',
+        system.Molecule(fmt='xvibs',
                           **vars(args)
                           ).Modes.write_nuclear_velocities(args.f,fmt='xyz',factor=args.factor)
     else:
-        molecule.Molecule(fmt='xvibs',
+        system.Molecule(fmt='xvibs',
                           **vars(args)
                           ).Modes.write_nuclear_velocities(args.f,fmt='xyz',modelist=[int(m) for m in args.modelist],factor=args.factor)
 

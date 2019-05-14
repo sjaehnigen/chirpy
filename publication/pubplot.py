@@ -12,20 +12,30 @@ from matplotlib.patches import ArrowStyle
 #Angstrom2Bohr = 1.8897261247828971
 
 class pub_label():
-    def __init__(self,ax,**kwargs):
+    def __init__( self, ax, **kwargs ):
         self.ax = ax
-        self.X = kwargs.get('X',1400)
-        self.Y = kwargs.get('Y',0.0)
-        self.color = kwargs.get('color','black')
-        self.size = kwargs.get('size',24)
-        self.stancil = kwargs.get('stancil',r'\textbf{%s}')
-        self.sep = kwargs.get('sep', 0.0 ) #,0.2*_shift)  ##ATTENTION: using varibale from outer scope
-        self.alpha = kwargs.get('alpha',1.0)
-    def print(self,string,**kwargs):
-        X = kwargs.get('X',self.X)
-        Y = kwargs.get('Y',self.Y)
-        alpha=kwargs.get('alpha',self.alpha)
-        self.ax.text(X,Y+self.sep,self.stancil%string,color=self.color,size=self.size,alpha=alpha)
+        self.X = kwargs.get( 'X', 1400 )
+        self.Y = kwargs.get( 'Y', 0.0 )
+        self.color = kwargs.get( 'color', 'black' )
+        self.size = kwargs.get( 'size', 24 )
+        self.stancil = kwargs.get( 'stancil', r'\textbf{%s}' )
+        self.sep = kwargs.get( 'sep', 0.0 ) #,0.2*_shift)  ##ATTENTION: using varibale from outer scope
+        self.alpha = kwargs.get( 'alpha', 1.0 )
+
+    def print( self, string, **kwargs ):
+        for _key in self.__dict__.keys():
+            setattr( self, _key, kwargs.get( _key, getattr( self, _key ) ) )
+            try: del kwargs[ _key ] 
+            except: pass
+#        X = kwargs.get( 'X', self.X )
+#        Y = kwargs.get( 'Y', self.Y )
+#        c = kwargs.get( 'color', self.color )
+#        a = kwargs.get( 'alpha', self.alpha )
+#        s = kwargs.get( 'size', self.size )
+#        for key in [ 'X', 'Y', 'color', 'alpha', 'size' ]: # this is unsatisfactorily clumsy; get routine that read AND deletes argument
+#            try: del kwargs[ key ] #otherwise hist may complain (this is because we pass through kwargs)
+#            except: pass
+        self.ax.text( self.X, self.Y + self.sep, self.stancil % string, color = self.color, alpha = self.alpha, size = self.size, **kwargs ) #remove kwargs soon?
 
             
 def source_params(matplotlib):

@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -14,7 +14,7 @@ def main():
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
     args.cell_aa = np.array(args.cell_aa).astype(float)
-    molecule.Molecule(**vars(args),wrap_mols=True).XYZData.write(args.f,fmt='pdb')
+    system.Molecule(**vars(args),wrap_mols=True).XYZData.write(args.f,fmt='pdb')
 
 
 if(__name__ == "__main__"):

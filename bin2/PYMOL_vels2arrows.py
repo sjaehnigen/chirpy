@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 import sys
 import os
-from classes import molecule,pymol
+from classes import system,pymol
 
 Angstrom2Bohr = 1.8897261247828971
 #from fileio import xyz
@@ -30,7 +30,7 @@ def main():
     args = parser.parse_args()
     rgb = tuple([float(i) for i in args.color_rgb])
 
-    mol = molecule.Molecule(args.fn_xyz)
+    mol = system.Molecule(args.fn_xyz)
 
     p0 = mol.XYZData.pos_aa
     p1 = mol.XYZData.pos_aa + mol.XYZData.vel_au*args.scale

@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -25,7 +25,7 @@ def main():
         print('Override internal cell specifications by input.')
         args.cell_aa = np.array(args.cell_aa).astype(float)
 
-    molecule.Molecule(**vars(args)).XYZData.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
+    system.Molecule(**vars(args)).XYZData.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
 
 
 if(__name__ == "__main__"):

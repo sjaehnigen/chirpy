@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -21,11 +21,11 @@ def main():
     args = parser.parse_args()
     args.cell_aa = np.array(args.cell_aa).astype(float)
     if not any(args.modelist):
-        molecule.Molecule(fmt='xvibs',
+        system.Molecule(fmt='xvibs',
                           **vars(args)
                           ).Modes.print_modes(args.f,fmt='xyz',n_images=int(args.n_images),ts_fs=float(args.ts))
     else:
-        molecule.Molecule(fmt='xvibs',
+        system.Molecule(fmt='xvibs',
                           **vars(args)
                           ).Modes.print_modes(args.f,fmt='xyz',modelist=[int(m) for m in args.modelist],n_images=int(args.n_images),ts_fs=float(args.ts))
 

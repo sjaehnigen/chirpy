@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -20,7 +20,7 @@ def main():
     parser.add_argument("-ts", type=float, help="Time step between frames in fn.", default=0.5)
     args = parser.parse_args()
     args.cell_aa = np.array(args.cell_aa).astype(float)
-    system = molecule.Molecule(**vars(args))
+    system = system.Molecule(**vars(args))
     system.XYZData.calculate_nuclear_velocities(**vars(args)) # this actions could be send as var to class
     #system.XYZData.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
     system.XYZData.write(args.f,fmt='xyz',attr='data',factor=args.factor,separate_files=args.separate_files)

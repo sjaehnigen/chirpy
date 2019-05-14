@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -13,8 +13,8 @@ def main():
     args = parser.parse_args()
     fn1 = args.fn1
     fn2 = args.fn2
-    mol1 = molecule.Molecule(fn1)
-    mol2 = molecule.Molecule(fn2)
+    mol1 = system.Molecule(fn1)
+    mol2 = system.Molecule(fn2)
     assign = mapping.map_atoms_by_coordinates(mol1,mol2)
     outbuf = ['%35d -------> %3d'%(i+1,j+1) for i,j in enumerate(assign[0])] # this module uses only frames 0
     print(    '%35s          %s'%(fn1,fn2))

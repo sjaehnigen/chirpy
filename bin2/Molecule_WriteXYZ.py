@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -14,7 +14,7 @@ def main():
     parser.add_argument("-f", help="Output file name (standard: 'out.xyz')", default='out.xyz')
     args = parser.parse_args()
     args.cell_aa = np.array(args.cell_aa).astype(float)
-    molecule.Molecule(**vars(args)).XYZData.write(args.f,fmt='xyz')
+    system.Molecule(**vars(args)).XYZData.write(args.f,fmt='xyz')
 
 
 #def map_atoms_to_crystal(pos_aa,sym,box_aa,replica,vec_trans,pos_cryst,sym_cr):

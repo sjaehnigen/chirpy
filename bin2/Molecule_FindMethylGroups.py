@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from classes import molecule
+from classes import system
 from topology import symmetry
 
 def main():
@@ -10,7 +10,7 @@ def main():
     parser.add_argument("fn", help="file (xy,pdb,xvibs,...)")
     parser.add_argument("-hetatm", action='store_true', help="Also include heteroatoms into search (e.g. finding NH3+ groups; default: False)", default=False)
     args = parser.parse_args()
-    symmetry.find_methyl_groups(molecule.Molecule(args.fn),hetatm=bool(args.hetatm))
+    symmetry.find_methyl_groups(system.Molecule(args.fn),hetatm=bool(args.hetatm))
 
 if(__name__ == "__main__"):
     main()

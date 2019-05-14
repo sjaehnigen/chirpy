@@ -7,6 +7,9 @@ import matplotlib.cm as cm
 from vcdtools import vcd_utils
 from fileio.cpmd import WriteTrajectoryFile,WriteMomentsFile
 
+#class SPECTRUM():
+#
+#this should be a trajectory object
 class VCDSampling(): #later: merge it with itertools (do not load any traj data before the actual processing)
     def __init__(self,path,**kwargs): #**kwargs for named (dict), *args for unnamed
         fn_m = os.path.join(path,'MOMENTS')

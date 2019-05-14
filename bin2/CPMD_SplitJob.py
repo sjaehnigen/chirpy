@@ -8,7 +8,7 @@ import imp
 from physics import constants
 from interfaces import cpmd
 from topology import dissection
-from classes import molecule
+from classes import system
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
         _JOB.TRAJECTORY = cpmd.TRAJECTORY.read( fn_trj, sum( _JOB.ATOMS.n_kinds ), symbols = _JOB.get_symbols( ) )
     
     # Get Fragments
-    _XYZ = molecule.XYZData( data = _JOB.get_positions(), symbols = _JOB.get_symbols() )
+    _XYZ = system.XYZData( data = _JOB.get_positions(), symbols = _JOB.get_symbols() )
     _ASS = dissection.define_molecules_XYZclass( _XYZ )
     print ( _ASS )
     

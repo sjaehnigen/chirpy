@@ -1,8 +1,8 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import argparse
 import numpy as np 
-from classes import molecule
+from classes import system
 from topology import mapping
 
 def main():
@@ -22,9 +22,9 @@ def main():
         else:
             cell_aa = np.concatenate((np.array(args.abc).astype(float),np.ones((3))*90.))
         print(cell_aa)
-        molecule.Molecule(args.fn,cell_aa=cell_aa,cell_multiply=np.array(args.multiply).astype(int),wrap_mols=True).XYZData.write(args.f)
+        system.Molecule(args.fn,cell_aa=cell_aa,cell_multiply=np.array(args.multiply).astype(int),wrap_mols=True).XYZData.write(args.f)
     else:
-        molecule.Molecule(args.fn,cell_multiply=np.array(args.multiply).astype(int),wrap_mols=True).XYZData.write(args.f,attr='data')
+        system.Molecule(args.fn,cell_multiply=np.array(args.multiply).astype(int),wrap_mols=True).XYZData.write(args.f,attr='data')
 #    system = Molecule(fn_modes,fmt='xvibs',cell_aa=cell_aa,mw=True,ignore_warnings=True)
 
 
