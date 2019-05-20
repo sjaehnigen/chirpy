@@ -16,6 +16,7 @@ from physics import constants
 class UnitCell(): #maybe all-in-one class
     def __init__(self,cell_aa_deg,**kwargs): #**kwargs for named (dict), *args for unnamed
         '''Angle Convention: alpha=from c to b, beta=from a to c, gamma=from b to a'''
+        if cell_aa_deg[ :3 ].sum() == 0.0: raise TypeError( 'ERROR: Zero Cell Size!' )
         self.abc,self.albega = cell_aa_deg[:3],cell_aa_deg[3:]*np.pi/180.
         self.abc_unitcell = copy.deepcopy(self.abc)
     #ABC AND ALBEGA COULD ALSO BE TIME_DEPENDENT!

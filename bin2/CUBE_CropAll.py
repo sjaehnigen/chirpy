@@ -52,6 +52,7 @@ _fn3 = current % 3
 _sys = quantum.ElectronicSystem( _fn, _fn1, _fn2, _fn3 )
 
 _V = _sys.auto_crop( thresh = _sys.rho.threshold / 2 )
+print( ' --> Crop %s' % _V )
 
 ######### Save ########################################
 print( 'Save cropped Electronic System ...' )

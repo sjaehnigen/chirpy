@@ -21,7 +21,7 @@ from reader.modes import xvibsReader
 #from writer.modes import xvibsWriter
 from interfaces import cpmd as cpmd_n #new libraries
 from classes.crystal import UnitCell
-from classes.trajectory import XYZData, VibrationalModes
+from classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
 from physics import constants
 from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
 from physics.modern_theory_of_magnetisation import calculate_mic
@@ -47,7 +47,7 @@ np.set_printoptions(precision=5,suppress=True)
 # - Tidying up
 # - USE XYZData for file reading and extract further data for Molecule from it ( ? )
 
-class SYSTEM( ):
+class _SYSTEM( ):
     def __init__(self,fn,**kwargs):
         if int(np.version.version.split('.')[1]) < 14:
             print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
@@ -65,7 +65,7 @@ class SYSTEM( ):
             #self.XYZData._wrap_molecules(self.mol_map,self.UnitCell.abc,albega=self.UnitCell.albega)
 
         if fmt=="xyz":
-            self.XYZData = XYZData(fn,**kwargs)
+            self.XYZData = self._XYZ( fn, **kwargs )
         elif fmt=="xvibs":
             mw = kwargs.get('mw',False)
             n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibsReader(fn)
@@ -76,12 +76,12 @@ class SYSTEM( ):
                 modes /= np.sqrt(masses)[None,:,None]*np.sqrt(constants.m_amu_au)
             else:
                 print('Not assuming mass-weighted coordinates in XVIBS (use mw=True otherwise).')
-            self.XYZData = XYZData(data = coords_aa.reshape( (1, n_atoms, 3 ) ),symbols = symbols, **kwargs )
+            self.XYZData = self._XYZ( data = coords_aa.reshape( (1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             self.Modes = VibrationalModes(fn,modes=modes,numbers=numbers,omega_cgs=omega_cgs,coords_aa=coords_aa,**kwargs)
         elif fmt=="pdb":
             data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
             n_atoms=symbols.shape[0]
-            self.XYZData = XYZData(data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
+            self.XYZData = self._XYZ( data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
             #Disabled 2018-12-04
             #print('Found PDB: Automatic installation of molecular gauge.')
@@ -93,15 +93,20 @@ class SYSTEM( ):
         if cell_aa_deg is not None:
             if hasattr(self,'cell_aa_deg'):
                 if not np.allclose(cell_aa_deg,self.cell_aa_deg): print('WARNING: Given cell size differs from file parametres!')
-            self.UnitCell = UnitCell(cell_aa_deg)
-            if kwargs.get('cell_multiply') is not None:
-                cell_multiply = kwargs.get('cell_multiply')
-                cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
-                self.XYZDataUnitCell = copy.deepcopy(self.XYZData)
-                self.XYZData = self.UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
-                if hasattr(self,'Modes'): 
-                    self.ModesUnitCell = copy.deepcopy(self.Modes)
-                    self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
+            try: 
+                self.UnitCell = UnitCell(cell_aa_deg)
+                if kwargs.get('cell_multiply') is not None:
+                    cell_multiply = kwargs.get('cell_multiply')
+                    cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
+                    self.XYZDataUnitCell = copy.deepcopy(self.XYZData)
+                    self.XYZData = self.UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
+                    if hasattr(self,'Modes'): 
+                        self.ModesUnitCell = copy.deepcopy(self.Modes)
+                        self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
+
+            except TypeError: #is this the correct Exception?
+                pass
+            #Shifted here 2019-05-17
             if kwargs.get('wrap_mols') is not None:
                 print('I wrap molecules')
                 #ADDED 2018-11-28
@@ -116,6 +121,7 @@ class SYSTEM( ):
                 self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
                 self.XYZData._move_residue_to_centre(center_res,cell_aa_deg,**kwargs)
                 self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
+
 
     def install_molecular_origin_gauge(self,**kwargs):
         '''Script mainly from Arne Scherrer'''
@@ -192,10 +198,10 @@ class SYSTEM( ):
             self.Modes.n_mols  = n_mols
 
 
-#class Molecule():
+class Supercell( _SYSTEM ):
+    def _XYZ( self, *args, **kwargs ):
+        return XYZTrajectory( *args, **kwargs )
 
-class Supercell( SYSTEM ):
-    pass
-
-class Molecule( SYSTEM ):
-    pass
+class Molecule( _SYSTEM ):
+    def _XYZ( self, *args, **kwargs ):
+        return XYZFrame( *args, **kwargs )

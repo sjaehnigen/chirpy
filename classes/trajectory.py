@@ -6,20 +6,25 @@ import os
 import copy
 import numpy as np
 
+from reader.trajectory import pdbReader,xyzReader
+from reader.modes import xvibsReader
 from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from interfaces import cpmd as cpmd_n #new libraries
+
+from topology.dissection import dec
+from topology.mapping import align_atoms
+from topology.symmetry import wrap_molecules
+
 from physics import constants
+from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
+from physics.modern_theory_of_magnetisation import calculate_mic
+from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
 masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400}
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
-
-#not so clear how to sort all this out
-#distant goal: python-based setup for any MD simulation
-
-#!/usr/bin/env python3.6
-#Version important as <3.6 gives problems with OrderedDictionaries
 
 #import unittest
 #import logging
@@ -30,59 +35,44 @@ np.set_printoptions(precision=5,suppress=True)
 #from lib import debug
 #from collections import OrderedDict
 
-#all neded?
-from reader.trajectory import pdbReader,xyzReader
-from reader.modes import xvibsReader
-#from writer.modes import xvibsWriter
-from interfaces import cpmd as cpmd_n #new libraries
-from classes.crystal import UnitCell
-from physics import constants
-from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
-from physics.modern_theory_of_magnetisation import calculate_mic
-from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
-from topology.dissection import define_molecules,dec
-from topology.mapping import align_atoms
 
-
+#ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
 #new class: Moments()
 
+class _FRAME():
+    def _labels( self ):
+        self._type = 'frame'
+        self._labels = ( 'symbols',  '' )  #still testing this feature ( see tail() and _sync() )
 
-class TRAJECTORY(): #later: merge it with itertools (do not load any traj data before the actual processing)        
-    def __init__( self, **kwargs ): #**kwargs for named (dict), *args for unnamed
-        self.axis_pointer = kwargs.get( 'axis_pointer', 0 )
-
-        self.comments = kwargs.get( 'comments', )
-        self.symbols  = kwargs.get( 'symbols', )
-        self.data     = kwargs.get( 'data', )
-        self.pos_aa   = kwargs.get( 'pos_aa', )
-        self.vel_au   = kwargs.get( 'vel_au', )
+    def __init__( self, *args, **kwargs ): #**kwargs for named (dict), *args for unnamed
+        self._labels()
+        self._read_input( *args, **kwargs )
         self._sync_class()
+
+    def _read_input( self,  *args, **kwargs ):
+        self.axis_pointer = kwargs.get( 'axis_pointer', 0 )
+        self.comments = kwargs.get( 'comments', np.array( [] ) ) #not in use but 
+        self.symbols  = kwargs.get( 'symbols', np.array( [] ) )
+        self.data     = kwargs.get( 'data', np.zeros( ( 0, 0 ) ) )
 
     def _sync_class( self ):
-        try:
-            self.masses_amu = np.array( [ masses_amu[ s ] for s in self.symbols ] )
-        except  KeyError:
-            print('WARNING: Could not find all element masses!')
-        if self.vel_au.size == 0: self.vel_au = np.zeros( self.pos_aa.shape )
-        self.n_frames, self.n_atoms, self.n_fields = self.pos_aa.shape
-                   
+        self.n_atoms, self.n_fields = self.data.shape
+        #ToDo: more general routine looping _labels of object
+        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!' )
+
     def __add__( self, other ):
         new = copy.deepcopy( self )
-        new.pos_aa = np.concatenate( ( self.pos_aa, other.pos_aa ), axis = self.axis_pointer )
+        new.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
+        _l = new._labels[ self.axis_pointer ]
+        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) ) 
         new._sync_class()
-        if self.axis_pointer == 0:
-            self.comments = np.concatenate((self.comments,other.comments))        
-        if new.axis_pointer == 1:
-            new.symbols = np.concatenate((self.symbols,other.symbols)) #not so beautiful
         return new
     
-    def __iadd__( self,other ):
-        self.pos_aa = np.concatenate((self.pos_aa,other.pos_aa),axis=self.axis_pointer)
+    def __iadd__( self, other ):
+        self.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
+        _l = new._labels[ self.axis_pointer ]
+        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) ) 
         self._sync_class()
-        if self.axis_pointer == 0:
-            self.comments = np.concatenate((self.comments,other.comments))
-        if self.axis_pointer == 1:
-            self.symbols = np.concatenate((self.symbols,other.symbols))            
         return self
 
 #    def __prod__(self,other):
@@ -93,68 +83,26 @@ class TRAJECTORY(): #later: merge it with itertools (do not load any traj data b
 #    def __iprod__(self,other):
 #        self.data *= other
 #        return self
-    
-    def tail(self,n):
-        new = copy.deepcopy(self)        
-        new.pos_aa = self.pos_aa[-n:]
-        new.n_frames = n
+
+    def tail( self, n, **kwargs ):
+        axis = kwargs.get( "axis", self.axis_pointer )
+        new = copy.deepcopy( self ) 
+        new.data = self.data.swapaxes( axis, 0 )[ -n: ].swapaxes( 0, axis )
+        try:
+            _l = new._labels[ axis ]
+            setattr( new, _l, getattr( self, _l )[ -n: ] )
+        except ( KeyError, AttributeError ):
+            pass
+        new._sync_class()
         return new
-    
+
     def _sort( self ): #use set?
         elem = { s : np.where( self.symbols == s)[ 0 ] for s in np.unique( self.symbols ) }
         ind = [ i for k in sorted( elem ) for i in elem[ k ] ]
-        self.pos_aa = self.pos_aa[ :, ind, : ]
-        self.vel_au = self.vel_au[ :, ind, : ]
+        self.data = self.data[ :, ind, : ]
         self.symbols = self.symbols[ ind ]
         self._sync_class( )
     
-    def write( self, fn, **kwargs ):
-     #   if fn == self.fn:
-     #       raise Exception('ERROR: write file equals source file. File would be overwritten!')
-        attr = kwargs.get( 'attr', 'pos_aa' )
-        factor = kwargs.get( 'factor', 1.0 ) #for velocities
-        separate_files = kwargs.get( 'separate_files', False ) #only for XYZ
-
-        if attr == 'data': self.data = np.concatenate( ( self.pos_aa, self.vel_au ), axis = -1 ) #TMP solution; NB: CPMD writes XYZ files with vel_aa 
-        fmt  = kwargs.get( 'fmt', fn.split( '.' )[ -1 ] )
-        if fmt == "xyz" :
-            if separate_files: 
-                frame_list = kwargs.get( 'frames', range( self.n_frames ) )
-                [ xyzWriter( ''.join( fn.split( '. ')[ :-1 ] ) + '%03d' % fr + '.' + fn.split( '.' )[ -1 ],
-                             [ getattr( self, attr )[ fr ] ], 
-                             self.symbols, 
-                             [ self.comments[ fr ] ] 
-                           ) for fr in frame_list 
-                ]
-          
-            else: xyzWriter( fn,
-                             getattr( self, attr ),
-                             self.symbols,
-                             getattr( self, 'comments', self.n_frames * [ 'passed' ] ), #Writer is stupid
-                           )    
-        elif fmt == "pdb":
-            for _attr in [ 'mol_map', 'abc', 'albega' ]: #try to conceive missing data from kwargs
-                try: getattr( self,_attr )
-                except AttributeError: setattr( self, _attr, kwargs.get( _attr ) )
-            pdbWriter( fn,
-                       self.pos_aa[ 0 ], #only frame 0 vels are not written
-                       types = self.symbols,#if there are types change script
-                       symbols = self.symbols,
-                       residues = np.vstack( ( np.array( self.mol_map ) + 1, np.array( [ 'MOL' ] * self.symbols.shape[ 0 ] ) ) ).swapaxes( 0, 1 ), #+1 because no 0 index
-                       box = np.hstack( ( self.abc, self.albega ) ),
-                       title = 'Generated from %s with Molecule Class' % self.fn 
-                     )
-
-        # CPMD Writer does nor need symbols if only traj written
-        elif fmt == 'cpmd': #pos and vel, attr does not apply
-            loc_self = copy.deepcopy( self )
-            if kwargs.get( 'sort_atoms', True ):
-                print( 'CPMD WARNING: Output with sorted atomlist!' )
-                loc_self._sort( )
-            cpmdWriter( fn, loc_self.pos_aa * Angstrom2Bohr, loc_self.symbols, loc_self.vel_au * factor, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
-
-        else: raise Exception( 'Unknown format: %s.' % fmt )
-
     def _is_similar( self, other ): #add more tests later
         #used by methods:
         #topology.map_atoms_by_coordinates
@@ -164,13 +112,39 @@ class TRAJECTORY(): #later: merge it with itertools (do not load any traj data b
         #if hasattr(data,'cell_aa')
         return np.prod( ie ), ie
 
+    def _is_equal( self, other ): #add more tests later
+        _p, ie = self._is_similar( other )
+        f = lambda a: np.allclose( getattr( self, a ), getattr( other, a ) )
+        if _p == 1:
+            ie.append( list( map( f, [ 'data' ] ) ) )
+        return np.prod( ie ), ie
 
-class XYZData( TRAJECTORY ): #later: merge it with itertools (do not load any traj data before the actual processing)        
-    def __init__(self, *args, **kwargs): #**kwargs for named (dict), *args for unnamed
+class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any traj data before the actual processing)        
+    def _labels( self ):
+        self._type = 'trajectory'
+        self._labels = ( 'comments', 'symbols' )  #still testing this feature ( see tail() and _sync() )
+
+    def _read_input( self,  *args, **kwargs ):
         self.axis_pointer = kwargs.get( 'axis_pointer', 0 )
+        self.comments = kwargs.get( 'comments', np.array( [] ) )
+        self.symbols  = kwargs.get( 'symbols', np.array( [] ) )
+        self.data     = kwargs.get( 'data', np.zeros( ( 0, 0, 0 ) ) )
+
+    def _sync_class( self ):
+        self.n_frames, self.n_atoms, self.n_fields = self.data.shape
+        #ToDo: more general routine looping _labels of object
+        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!' )
+        if self.n_frames != self.comments.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with comments attribute!' )
+    
+
+class _XYZ():
+    '''Convention (at the moment) of data attribute: col 1-3: pos in aa; col 4-6: vel in au'''
+    #NB: CPMD writes XYZ files with vel_aa 
+    #def __init__(self, *args, **kwargs): #**kwargs for named (dict), *args for unnamed
+    def _read_input( self, *args, **kwargs ): #**kwargs for named (dict), *args for unnamed
         align_coords = kwargs.get( 'align_atoms', False )
         center_coords = kwargs.get( 'center_coords', False )
-        if len( args ) > 1: raise TypeError( "%s takes at most 1 argument!" % self.__class__.__name__ )
+        if len( args ) > 1: raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
         elif len( args ) == 1: 
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
@@ -197,38 +171,132 @@ class XYZData( TRAJECTORY ): #later: merge it with itertools (do not load any tr
                 data     = kwargs.get( 'data' )
                 _sh = data.shape
                 if len( _sh ) == 2: 
-                    data = data.reshape( ( 1, ) + _sh )
-                
+                    data = data.reshape( ( 1, ) + _sh )                
             else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
-
-        self.comments = np.array(comments)            
+        # traj or frame (ugly solution with _labels) based on assumption that above input gives always 3-column data
+        if self._type == 'frame': #is it a frame?
+            _f = kwargs.get( "frame", 0 )
+            data = data[ _f ]
+            comments = comments[ _f ]
         self.symbols  = np.array(symbols)
-        self.data     = data #should be replaced by pos_aa
-        self.pos_aa   = data[:,:,:3]
-        self.vel_au   = data[:,:,3:]
+        self.comments = np.array(comments)            
+        self.data     = data 
         self._sync_class()
 
-        if align_coords: #extra function?
-            print('Aligning atoms.')
-            self.pos_aa = align_atoms(self.pos_aa,self.masses_amu,ref=self.pos_aa[0])
+        if align_coords and self._type == "trajectory": #is it a trajectory?
+            print( 'Aligning atoms.' )
+            self.pos_aa = align_atoms( self.pos_aa, self.masses_amu, ref = self.pos_aa[ 0 ] )
 
-        if center_coords: #extra function?
-            print('Centering coordinates in cell and wrap atoms.')
-            cell_aa = kwargs.get('cell_aa',np.array([0.0,0.0,0.0,90.,90.,90.]))
-            if not all([cl == 90. for cl in cell_aa[3:]]): 
-                print([cl for cl in cell_aa[3:]])
-                print('ERROR: only orthorhombic/cubic cells can be used with center function!')
-                sys.exit(1)
-            P = self.pos_aa[:,:,:3]
+        #--------has to be an external function
+        if center_coords:
+            print( 'Centering coordinates in cell and wrap atoms.' )
+            cell_aa = kwargs.get( 'cell_aa', np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) )
+            if not all( [ cl == 90. for cl in cell_aa[ 3: ] ] ): 
+                print( [ cl for cl in cell_aa[ 3: ] ] )
+                print( 'ERROR: only orthorhombic/cubic cells can be used with center function!' )
+                sys.exit( 1 )
+            P = self.pos_aa
             M = self.masses_amu
-            com_aa = np.sum(P*M[None,:,None], axis=-2)/M.sum()
-            self.pos_aa[:,:,:3] += cell_aa[None,None,:3]/2 - com_aa[:,None,:]
-            #wrap as option?
-            print('WARNING: Auto-wrap of atoms activated!')
+            #----------- works for both traj and frame, as last two axes agree (smart numpy magic recognises frame axis)
+            com_aa = np.sum( P * M [ : , None ], axis = -2) / M.sum()
+            self.pos_aa += cell_aa[ None, :3 ] / 2 - com_aa[ None, : ]
+            print( 'WARNING: Auto-wrap of atoms (not mols) activated!' )
             if not any(_c==0.0 for _c in cell_aa[:3]): self.pos_aa = np.remainder(self.pos_aa,cell_aa[:3])
 
-        self._sync_class()
+    def _sync_class( self ):
+        try:
+            self.masses_amu = np.array( [ masses_amu[ s ] for s in self.symbols ] )
+        except  KeyError:
+            print('WARNING: Could not find all element masses!')
+        self.pos_aa   = self.data.swapaxes( 0, -1)[ :3 ].swapaxes( 0, -1)
+        self.vel_au   = self.data.swapaxes( 0, -1)[ 3: ].swapaxes( 0, -1)
+        if self.vel_au.size == 0: self.vel_au = np.zeros_like( self.pos_aa )
+
+
+    def _wrap_molecules( self, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
+        mode = kwargs.get( 'mode', 'cog' )
+        w = np.ones( ( self.n_atoms ) )
+        if mode=='com': w = self.masses_amu
+        
+        if self._type == 'frame': #quick an dirty
+            _p, mol_c_aa = wrap_molecules( self.pos_aa.reshape( 1, self.n_atoms, 3 ), mol_map, cell_aa_deg, weights = w )
+            self.pos_aa = _p[ 0 ]
+            del _p
+        else: #frame
+            self.pos_aa, mol_c_aa = wrap_molecules( self.pos_aa, mol_map, cell_aa_deg, weights = w )
+ 
+        #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
+        setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
+        setattr( self, 'mol_map', mol_map )
+
+        #PDB needs it
+        abc, albega = np.split( cell_aa_deg, 2 )
+        setattr( self, 'abc', abc )
+        setattr( self, 'albega', albega )
+
+    def write( self, fn, **kwargs ):
+        attr = kwargs.get( 'attr', 'data' ) #only for xyz format
+        factor = kwargs.get( 'factor', 1.0 ) #for velocities
+        separate_files = kwargs.get( 'separate_files', False ) #only for xyz format
+
+
+        #not so nice but it works
+        loc_self = copy.deepcopy( self )
+        if self._type == "frame":
+            loc_self.data = loc_self.data.reshape( ( 1, self.n_atoms, self.n_fields ) )
+            loc_self.n_frames = 1 
+            _XYZ._sync_class( loc_self )
+
+        fmt  = kwargs.get( 'fmt', fn.split( '.' )[ -1 ] )
+        if fmt == "xyz" :
+            if separate_files: 
+                frame_list = kwargs.get( 'frames', range( loc_self.n_frames ) )
+                [ xyzWriter( ''.join( fn.split( '. ')[ :-1 ] ) + '%03d' % fr + '.' + fn.split( '.' )[ -1 ],
+                             [ getattr( loc_self, attr )[ fr ] ], 
+                             loc_self.symbols, 
+                             [ loc_self.comments[ fr ] ] 
+                           ) for fr in frame_list 
+                ]
+          
+            else: xyzWriter( fn,
+                             getattr( loc_self, attr ),
+                             loc_self.symbols,
+                             getattr( loc_self, 'comments', loc_self.n_frames * [ 'passed' ] ), #Writer is stupid
+                           )    
+        elif fmt == "pdb":
+            for _attr in [ 'mol_map', 'abc', 'albega' ]: #try to conceive missing data from kwargs
+                try: getattr( loc_self,_attr )
+                except AttributeError: setattr( loc_self, _attr, kwargs.get( _attr ) ) #, np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) ) )
+            pdbWriter( fn,
+                       loc_self.pos_aa[ 0 ], #only frame 0 vels are not written
+                       types = loc_self.symbols,#if there are types change script
+                       symbols = loc_self.symbols,
+                       residues = np.vstack( ( np.array( loc_self.mol_map ) + 1, np.array( [ 'MOL' ] * loc_self.symbols.shape[ 0 ] ) ) ).swapaxes( 0, 1 ), #+1 because no 0 index
+                       box = np.hstack( ( loc_self.abc, loc_self.albega ) ),
+                       title = 'Generated from %s with Molecule Class' % self.fn 
+                     )
+
+        # CPMD Writer does nor need symbols if only traj written
+        elif fmt == 'cpmd': #pos and vel, attr does not apply
+            if kwargs.get( 'sort_atoms', True ):
+                print( 'CPMD WARNING: Output with sorted atomlist!' )
+                loc_self._sort( )
+            cpmdWriter( fn, loc_self.pos_aa * Angstrom2Bohr, loc_self.symbols, loc_self.vel_au * factor, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
+
+        else: raise Exception( 'Unknown format: %s.' % fmt )
+
+
+class XYZFrame( _XYZ, _FRAME ):
+    def _sync_class( self ):
+        _FRAME._sync_class( self )
+        _XYZ._sync_class( self )
+
+
+class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do not load any traj data before the actual processing)        
+    def _sync_class( self ):
+        _TRAJECTORY._sync_class( self )
+        _XYZ._sync_class( self )
 
     #### The next two methods should be externalised
     def _move_residue_to_centre(self,ref,cell_aa_deg,**kwargs):
@@ -241,35 +309,36 @@ class XYZData( TRAJECTORY ): #later: merge it with itertools (do not load any tr
        P = self.pos_aa[:,:,:3]
        self.pos_aa[:,:,:3] += cell_aa_deg[None,None,:3]/2 - ref_pos_aa[:,None,:]
 
-    def _wrap_molecules(self,mol_map,cell_aa_deg,**kwargs): #another routine would be complete_molecules for both-sided completion
-        mode = kwargs.get('mode','cog')
-        abc,albega = np.split(cell_aa_deg,2)
-        if not np.allclose(albega,np.ones((3))*90.0):
-            raise Exception('ERROR: Only orthorhombic cells implemented for mol wrap!')
-        pos_aa = np.array([dec(self.pos_aa[fr,:,:3], mol_map) for fr in range(self.n_frames)])
-        w = np.ones((self.n_atoms))
-        if mode=='com': w = self.masses_amu
-        w = dec(w, mol_map)
-        mol_c_aa = []
-        cowt = lambda x,wt: np.sum(p*wt[None,:,None], axis=1)/wt.sum()
-        for i_mol in range(max(mol_map)+1):
-            ind = np.array(mol_map)==i_mol
-            p = self.pos_aa[:,ind,:3]
-            if not any([_a<=0.0 for _a in abc]):
-                p -= np.around((p-p[:,0,None,:])/abc[None,None,:])*abc[None,None,:] 
-                c_aa = cowt(p,w[i_mol])
-                mol_c_aa.append(np.remainder(c_aa,abc[None,:])) #only for orthorhombic cells
-            else: 
-                print('WARNING: Cell size zero!')
-                c_aa = cowt(p,w[i_mol])
-                mol_c_aa.append(c_aa)
-
-            self.pos_aa[:,ind,:3] = p-(c_aa-mol_c_aa[-1])[:,None,:]
-        print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
-        setattr(self,'mol_'+mode+'_aa',np.array(mol_c_aa).swapaxes(0,1))
-        setattr(self,'mol_map',mol_map)
-        setattr(self,'abc',abc)
-        setattr(self,'albega',albega)
+#To be del
+#    def _wrap_molecules(self,mol_map,cell_aa_deg,**kwargs): #another routine would be complete_molecules for both-sided completion
+#        mode = kwargs.get('mode','cog')
+#        abc,albega = np.split(cell_aa_deg,2)
+#        if not np.allclose(albega,np.ones((3))*90.0):
+#            raise Exception('ERROR: Only orthorhombic cells implemented for mol wrap!')
+#        pos_aa = np.array([dec(self.pos_aa[fr,:,:3], mol_map) for fr in range(self.n_frames)])
+#        w = np.ones((self.n_atoms))
+#        if mode=='com': w = self.masses_amu
+#        w = dec(w, mol_map)
+#        mol_c_aa = []
+#        cowt = lambda x,wt: np.sum(p*wt[None,:,None], axis=1)/wt.sum()
+#        for i_mol in range(max(mol_map)+1):
+#            ind = np.array(mol_map)==i_mol
+#            p = self.pos_aa[:,ind,:3]
+#            if not any([_a<=0.0 for _a in abc]):
+#                p -= np.around((p-p[:,0,None,:])/abc[None,None,:])*abc[None,None,:] 
+#                c_aa = cowt(p,w[i_mol])
+#                mol_c_aa.append(np.remainder(c_aa,abc[None,:])) #only for orthorhombic cells
+#            else: 
+#                print('WARNING: Cell size zero!')
+#                c_aa = cowt(p,w[i_mol])
+#                mol_c_aa.append(c_aa)
+#
+#            self.pos_aa[:,ind,:3] = p-(c_aa-mol_c_aa[-1])[:,None,:]
+#        print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
+#        setattr(self,'mol_'+mode+'_aa',np.array(mol_c_aa).swapaxes(0,1))
+#        setattr(self,'mol_map',mol_map)
+#        setattr(self,'abc',abc)
+#        setattr(self,'albega',albega)
 
 
 
@@ -289,6 +358,11 @@ class XYZData( TRAJECTORY ): #later: merge it with itertools (do not load any tr
 #        self.vel_au[:-1] = S #last frame remains unchanged
 #        e_kin_au = CalculateKineticEnergies(self.vel_au,self.masses_amu)
 #        scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_frames-1)/2
+
+#-----DEPRECATED---------------------
+class XYZData( XYZTrajectory ):
+    pass
+#------------------------------------
 
 
 
