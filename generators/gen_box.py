@@ -65,6 +65,10 @@ class _BoxObject():
         if self.symmetry == 'orthorhombic': #should be cubic
             return np.diag( kwargs.get( 'cell_aa', np.zeros( ( 3 ) ).astype( float ) )[ :3 ] )
 
+    def _cell_aa_deg( self ):
+        if self.symmetry == 'orthorhombic':
+            return np.concatenate( ( np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), np.ones( ( 3 ) ) * 90. ) )
+
     def _volume_aa3( self ):
         return np.dot( self.cell_vec_aa[ 0 ], np.cross( self.cell_vec_aa[ 1 ], self.cell_vec_aa[ 2 ] ) )
 
@@ -77,6 +81,7 @@ class _BoxObject():
     def _clean_members( self ):
         if self.n_members == 0: return None
         _eq = np.zeros( ( self.n_members, ) * 2 )
+        #calculate only half the matrix
         for _ii, ( _i, _m ) in enumerate( self.members ):
             _eq[ _ii, _ii: ] = np.array( [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] )
         #_eq = np.array( [ [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] for _ii, ( _i, _m ) in enumerate( self.members ) ] ).astype( bool )
@@ -148,6 +153,15 @@ class _BoxObject():
         self = self.__pow__( other )
         return self
 
+    def _mol_map( self ):
+        _imol = 0
+        mol_map = []
+        for _m in self.members:
+            for _i in range( _m[ 0 ] ): 
+                mol_map += _m[ 1 ].n_atoms * [ _imol ]
+                _imol += 1
+        return mol_map
+
     def print_info( self ):
         #Work in progress...
         print( '%12s' % self.__class__.__name__ )
@@ -175,6 +189,8 @@ class Solution( _BoxObject ):
         self.rho_g_cm3 = kwargs.get ( "rho_g_cm3", 1.0 )
         self.solutes = kwargs.get( "solutes", [ ] )
         self.c_mol_L = kwargs.get( "c_mol_L", [ 1.0 ] )
+
+        #ToDo: ask for max atoms, max volume or max counts of members etc. to get simulation cell ready
 
         if self.solvent is None:
             print( '\nERROR: You have to specify a solvent as coordinate file or select one from the library!' )
@@ -260,11 +276,17 @@ class Solution( _BoxObject ):
                 f.write( 'end structure' + '\n' )
 
         #call packmol (external)
-        os.system( "packmol < .tmp_packmol.inp" )
-        
-        #read packmol output
+        print( "Calling packmol ... (see packmol.log)" )
+        os.system( "packmol < .tmp_packmol.inp > packmol.log" )
+        print( "Done." )
+        ## this is a little awkward (quick and dirty) 
+        #read packmol output and centre residue
+        _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map(), center_residue = 0 )
+        #write topology
+        _sys.XYZData.write( "topology.pdb" ) #, abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. )
 
-        #clean file
+        #######################################
+        #clean files
         os.remove( ".tmp_packmol.inp" )
         for _im, _m in enumerate( self.members ):
             os.remove( ".member-%03d.xyz" % _im )

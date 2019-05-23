@@ -64,11 +64,17 @@ class _SYSTEM( ):
         _fn = {} 
         ## This is a cheap workaround
         #TOPOLOGY first, COORDINATES second: 
+
+        self.mol_map = kwargs.get( "mol_map" )
+
+        #ToDO: shift check for mol_map into self.install_molecular_origin_gauge method
+
         if kwargs.get('fn_topo') is not None:
-            print('Found topology file.')
-            self.install_molecular_origin_gauge(**kwargs) #Do it as default
-            #print('I wrap molecules')
-            #self.XYZData._wrap_molecules(self.mol_map,self.UnitCell.abc,albega=self.UnitCell.albega)
+            if self.mol_map is None:
+                print('Found topology file.')
+                self.install_molecular_origin_gauge( **kwargs ) #Do it as default
+            else: 
+                print( 'Found topology file, but will not use it (mol_map given).' )
 
         if fmt=="xyz":
             self.XYZData = self._XYZ( fn, **kwargs )
@@ -91,11 +97,13 @@ class _SYSTEM( ):
             n_atoms = symbols.shape[ 0 ]
             self.XYZData = self._XYZ( data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
-            #Disabled 2018-12-04/Enabled 2019-05-23
+            #Disabled 2018-12-04/Enabled 2019-05-23 w/ condition
             #print('Found PDB: Automatic installation of molecular gauge.')
-            self.install_molecular_origin_gauge( fn_topo = fn ) #re-reads pdb file
+            if self.mol_map is None: 
+                self.install_molecular_origin_gauge( fn_topo = fn ) #re-reads pdb file
 
         else: raise Exception('Unknown format: %s.'%fmt)
+
 
         cell_aa_deg = kwargs.get( 'cell_aa' ) #, getattr( self, "cell_aa_deg", None ) )  )
         if cell_aa_deg is not None:
@@ -104,8 +112,10 @@ class _SYSTEM( ):
                 if not np.allclose( cell_aa_deg, self.cell_aa_deg ): 
                     print( 'WARNING: Given cell size differs from file parametres!' )
             self.cell_aa_deg = cell_aa_deg
+
+        if hasattr( self, 'cell_aa_deg' ):
             try: 
-                self.UnitCell = UnitCell( cell_aa_deg )
+                self.UnitCell = UnitCell( self.cell_aa_deg )
                 if kwargs.get('cell_multiply') is not None:
                     cell_multiply = kwargs.get('cell_multiply')
                     cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
@@ -114,24 +124,27 @@ class _SYSTEM( ):
                     if hasattr(self,'Modes'): 
                         self.ModesUnitCell = copy.deepcopy(self.Modes)
                         self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
-
             except TypeError: #is this the correct Exception?
                 pass
+
+            #ToDo: Do not simply pass through kwargs!! Reassemble them as nargs
             #Shifted here 2019-05-17
             if kwargs.get('wrap_mols') is not None:
                 print('I wrap molecules')
                 #ADDED 2018-11-28
-                if not hasattr(self,'mol_map'): self.install_molecular_origin_gauge()
-                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
+                if self.mol_map is None: 
+                    self.install_molecular_origin_gauge()
+                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
 
             #DEPENDING on cell_aa?
             center_res = kwargs.get('center_residue',-1) #-1 means False, has to be integer ##==> ToDo if time: elaborate this method (maybe class independnet as symmetry tool)
             if center_res != -1: #is not None
                 print('Centering residue %d in cell. Auto-wrapping of residues.'%center_res)
-                if not hasattr(self,'mol_map'): raise Exception('ERROR: System does not recognise any residues/molecules!')
-                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
-                self.XYZData._move_residue_to_centre(center_res,cell_aa_deg,**kwargs)
-                self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
+                if self.mol_map is None: 
+                    raise Exception('ERROR: System does not recognise any residues/molecules!')
+                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
+                self.XYZData._move_residue_to_centre( center_res, self.cell_aa_deg, **kwargs )
+                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
 
 
     def install_molecular_origin_gauge( self, **kwargs ):
