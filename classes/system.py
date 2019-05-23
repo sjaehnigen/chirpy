@@ -31,7 +31,7 @@ from topology.mapping import align_atoms
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400}
+masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
 
@@ -89,7 +89,7 @@ class _SYSTEM( ):
 
         else: raise Exception('Unknown format: %s.'%fmt)
 
-        cell_aa_deg = kwargs.get('cell_aa',getattr(self,"cell_aa_deg",None)) 
+        cell_aa_deg = np.array( kwargs.get('cell_aa',getattr(self,"cell_aa_deg",None))  )
         if cell_aa_deg is not None:
             if hasattr(self,'cell_aa_deg'):
                 if not np.allclose(cell_aa_deg,self.cell_aa_deg): print('WARNING: Given cell size differs from file parametres!')
@@ -166,8 +166,9 @@ class _SYSTEM( ):
 
        #####THIS IS only TMP as long as XYZData has no method for this! #################
        #                                                                                #
-       #                                                                                #
-        setattr(self.XYZData,'mol_map',n_map)
+       #
+       #disabled 2019-05-22                                                                                #
+       # setattr(self.XYZData,'mol_map',n_map)
        #                                                                                #
        #                                                                                #
        #                                                                                #

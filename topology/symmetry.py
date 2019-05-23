@@ -42,7 +42,7 @@ def wrap_molecules( pos_aa, mol_map, cell_aa_deg, **kwargs ): #another routine w
     mol_c_aa = []
     cowt = lambda x,wt: np.sum( p * wt[ None, :, None ], axis = 1 ) / wt.sum()
 
-    for i_mol in range( max( mol_map ) + 1 ):
+    for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
         ind = np.array( mol_map ) == i_mol
         p = pos_aa[ :, ind ]
         if not any( [ _a <= 0.0 for _a in abc ] ):

@@ -22,7 +22,7 @@ from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxono
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400}
+masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
 
@@ -117,8 +117,20 @@ class _FRAME():
         f = lambda a: np.allclose( getattr( self, a ), getattr( other, a ) )
         if _p == 1:
             ie.append( list( map( f, [ 'data' ] ) ) )
+
+        ##-insert kabsch (align atoms)
+
         return np.prod( ie ), ie
 
+    def _split( self, mask ): #topology must not change (only one mask)
+        _data = [ np.moveaxis( _d, 0, -2 ) for _d in dec( np.moveaxis( self.data, -2, 0 ), mask ) ]
+        _symbols = dec( self.symbols, mask )
+        return [ self._from_data( data = _d, symbols = _s, comment = self.comments ) for _d, _s in zip( _data, _symbols ) ]
+         
+    @classmethod 
+    def _from_data( cls, **kwargs ):
+        return cls( **kwargs )
+        
 class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any traj data before the actual processing)        
     def _labels( self ):
         self._type = 'trajectory'
@@ -160,7 +172,7 @@ class _XYZ():
             else:
                 raise Exception( 'Unknown format: %s.' % fmt )
 
-        elif len( args ) == 0:
+        elif len( args ) == 0: #shift it to classmethod _from_data() (see above)
             #if all( _a in kwargs for _a in [ 'data', 'symbols' ] ): 
             if 'data' in kwargs and ( 'symbols' in kwargs or 'numbers' in kwargs ):
                 self.fn = '' 
@@ -178,7 +190,7 @@ class _XYZ():
         if self._type == 'frame': #is it a frame?
             _f = kwargs.get( "frame", 0 )
             data = data[ _f ]
-            comments = comments[ _f ]
+            comments = np.array( [ comments[ _f ] ] )
         self.symbols  = np.array(symbols)
         self.comments = np.array(comments)            
         self.data     = data 
@@ -234,6 +246,7 @@ class _XYZ():
         abc, albega = np.split( cell_aa_deg, 2 )
         setattr( self, 'abc', abc )
         setattr( self, 'albega', albega )
+
 
     def write( self, fn, **kwargs ):
         attr = kwargs.get( 'attr', 'data' ) #only for xyz format
@@ -308,6 +321,9 @@ class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do no
            sys.exit(1)
        P = self.pos_aa[:,:,:3]
        self.pos_aa[:,:,:3] += cell_aa_deg[None,None,:3]/2 - ref_pos_aa[:,None,:]
+
+    def _to_frame( self, fr = 0 ):
+        return XYZFrame( data = self.data[ fr ], symbols = self.symbols, comments = [ self.comments[ fr ] ] )
 
 #To be del
 #    def _wrap_molecules(self,mol_map,cell_aa_deg,**kwargs): #another routine would be complete_molecules for both-sided completion
