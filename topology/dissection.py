@@ -53,6 +53,8 @@ def define_molecules( mol ):
     '''expects one System( Molecule, Supercell, ...) object. I use frame 0 of mol as reference.'''
     d = mol.XYZData
     crit_aa = dist_crit_aa( d.symbols )    
+
+    #ToDo: the following lines explode memory ==> do coarse mapping beforehand (overlapping batches)
     if d._type == "trajectory": dist_array = d.pos_aa[ 0, :, None, : ] - d.pos_aa[ 0, None, :, : ] #frame 0
     elif d._type == "frame": dist_array = d.pos_aa[ :, None, : ] - d.pos_aa[ None, :, : ] #frame 0
 
@@ -60,10 +62,12 @@ def define_molecules( mol ):
         abc = mol.UnitCell.abc
         dist_array -= np.around( dist_array / abc[ None, None ] ) * abc[ None, None ]
 
+    #ToDo speed this up for large boxes
     dist_array = np.linalg.norm( dist_array, axis = -1 )
     dist_array[ dist_array == 0.0 ] = 'Inf'
 
-    neigh_map  = np.array( [ ( dist_array <= crit_aa ) ] )[ 0 ].astype( bool ) 
+    #replace neighbour map (which is very sparse) with neighbour lists per atom (or so)
+    neigh_map  = dist_array <= crit_aa
     h,noh    = np.array( [ d.symbols == 'H' ] )[ 0 ], np.array( [ d.symbols != 'H' ] )[ 0 ]
     n_noh  = noh.sum()
 

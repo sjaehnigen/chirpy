@@ -58,7 +58,7 @@ class _FRAME():
     def _sync_class( self ):
         self.n_atoms, self.n_fields = self.data.shape
         #ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!' )
+        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
 
     def __add__( self, other ):
         new = copy.deepcopy( self )
@@ -112,16 +112,6 @@ class _FRAME():
         #if hasattr(data,'cell_aa')
         return np.prod( ie ), ie
 
-    def _is_equal( self, other ): #add more tests later
-        _p, ie = self._is_similar( other )
-        f = lambda a: np.allclose( getattr( self, a ), getattr( other, a ) )
-        if _p == 1:
-            ie.append( list( map( f, [ 'data' ] ) ) )
-
-        ##-insert kabsch (align atoms)
-
-        return np.prod( ie ), ie
-
     def _split( self, mask ): #topology must not change (only one mask)
         _data = [ np.moveaxis( _d, 0, -2 ) for _d in dec( np.moveaxis( self.data, -2, 0 ), mask ) ]
         _symbols = dec( self.symbols, mask )
@@ -145,8 +135,8 @@ class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any tr
     def _sync_class( self ):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         #ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!' )
-        if self.n_frames != self.comments.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with comments attribute!' )
+        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
+        if self.n_frames != self.comments.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with comments attribute!\n' )
     
 
 class _XYZ():
@@ -156,7 +146,9 @@ class _XYZ():
     def _read_input( self, *args, **kwargs ): #**kwargs for named (dict), *args for unnamed
         align_coords = kwargs.get( 'align_atoms', False )
         center_coords = kwargs.get( 'center_coords', False )
+
         if len( args ) > 1: raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
+
         elif len( args ) == 1: 
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
@@ -176,7 +168,6 @@ class _XYZ():
             #if all( _a in kwargs for _a in [ 'data', 'symbols' ] ): 
             if 'data' in kwargs and ( 'symbols' in kwargs or 'numbers' in kwargs ):
                 self.fn = '' 
-                comments = kwargs.get( 'comments', [ 'passed' ] )
                 numbers = kwargs.get( 'numbers' )
                 symbols  = kwargs.get( 'symbols' )
                 if symbols is None: symbols = [ constants.symbols[ z - 1 ] for z in numbers ]
@@ -184,6 +175,7 @@ class _XYZ():
                 _sh = data.shape
                 if len( _sh ) == 2: 
                     data = data.reshape( ( 1, ) + _sh )                
+                comments = kwargs.get( 'comments', data.shape[ 0 ] * [ 'passed' ] )
             else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
         # traj or frame (ugly solution with _labels) based on assumption that above input gives always 3-column data
@@ -191,6 +183,7 @@ class _XYZ():
             _f = kwargs.get( "frame", 0 )
             data = data[ _f ]
             comments = np.array( [ comments[ _f ] ] )
+
         self.symbols  = np.array(symbols)
         self.comments = np.array(comments)            
         self.data     = data 
@@ -224,6 +217,22 @@ class _XYZ():
         self.pos_aa   = self.data.swapaxes( 0, -1)[ :3 ].swapaxes( 0, -1)
         self.vel_au   = self.data.swapaxes( 0, -1)[ 3: ].swapaxes( 0, -1)
         if self.vel_au.size == 0: self.vel_au = np.zeros_like( self.pos_aa )
+
+    def _is_equal( self, other, atol = 1e-08 ): #add more tests later, atol in units of self.data
+        _p, ie = self._is_similar( other )
+        def f( a ):
+            if self._type == 'trajectory': 
+                raise TypeError( 'Trajectories cannot be tested for equality (only similarity)!' )
+            _o_pos = getattr( other, a ).reshape( ( 1, ) + other.data.shape )
+            _s_pos = getattr( self, a )
+
+            _o_pos = align_atoms( _o_pos, self.masses_amu, ref = _s_pos )[ 0 ]
+            return np.allclose( _s_pos, np.mod( _o_pos, _s_pos ), atol = atol ) #np.mod is fast
+
+        if _p == 1:
+            ie += list( map( f, [ 'data' ] ) ) 
+
+        return np.prod( ie ), ie
 
 
     def _wrap_molecules( self, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion

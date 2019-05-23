@@ -46,16 +46,16 @@ def kabsch_algorithm(P,ref):
     # Create Rotation matrix U
     return np.dot(V, W) 
 
-def align_atoms(pos_mobile,w,**kwargs): #demands a reference for each frame, respectively 
+def align_atoms( pos_mobile, w , **kwargs ): #demands a reference for each frame, respectively 
     pos_mob = copy.deepcopy(pos_mobile)
     pos_ref = kwargs.get('ref',pos_mobile[0])
     pos_ref -= (np.sum(pos_ref*w[:,None], axis=-2)/w.sum())[None,:]
     com = np.sum(pos_mob*w[None,:,None], axis=-2)/w.sum()
     pos_mob -= com[:,None,:]
-
     for frame,P in enumerate(pos_mob):
         U = kabsch_algorithm(P*w[:,None],pos_ref*w[:,None])
         pos_mob[frame] = np.tensordot(U,P,axes=([1],[1])).swapaxes(0,1)
             #V = np.tensordot(U,P,axes=([1],[1])).swapaxes(0,1) #velocities (not debugged)
     pos_mob += com[:,None,:]
     return pos_mob
+

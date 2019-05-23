@@ -54,6 +54,7 @@ class _BoxObject():
         try:
             nargs[ 'cell_aa' ] = _sys.cell_aa_deg 
         except AttributeError:
+            #NB: if kwargs has cell_aa attribute, _sys has to have it as well ==> no 2nd check for 'cell_aa' necessary
             print( 'WARNING: Could not find cell parametres; uses guess from atom spread!' )
             nargs[ 'cell_aa' ] = np.array( get_atom_spread( _sys.XYZData.data ) )
 
@@ -75,7 +76,10 @@ class _BoxObject():
         
     def _clean_members( self ):
         if self.n_members == 0: return None
-        _eq = np.array( [ [ bool( _m._is_equal( _n )[ 0 ] ) for _j, _n in self.members ] for _i, _m in self.members ] ).astype( bool )
+        _eq = np.zeros( ( self.n_members, ) * 2 )
+        for _ii, ( _i, _m ) in enumerate( self.members ):
+            _eq[ _ii, _ii: ] = np.array( [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] )
+        #_eq = np.array( [ [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] for _ii, ( _i, _m ) in enumerate( self.members ) ] ).astype( bool )
         _N = self.n_members
         _M = self.n_members
         _ass = np.zeros( ( _N ) ).astype( int )

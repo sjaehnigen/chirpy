@@ -101,7 +101,9 @@ class _SYSTEM( ):
         if cell_aa_deg is not None:
             cell_aa_deg = np.array( cell_aa_deg )
             if hasattr(self,'cell_aa_deg'):
-                if not np.allclose( cell_aa_deg, self.cell_aa_deg ): print('WARNING: Given cell size differs from file parametres!')
+                if not np.allclose( cell_aa_deg, self.cell_aa_deg ): 
+                    print( 'WARNING: Given cell size differs from file parametres!' )
+            self.cell_aa_deg = cell_aa_deg
             try: 
                 self.UnitCell = UnitCell( cell_aa_deg )
                 if kwargs.get('cell_multiply') is not None:
