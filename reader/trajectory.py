@@ -5,12 +5,17 @@ import sys
 import numpy as np
 
 #PDB Version 3.30 according to Protein Data Bank Contents Guide
+#ToDo: file check routines for all Readers (e.g., "file is not a PDB file" )
+#ToDo: integrity check for resulting data
 
 def pdbReader(filename):
-    print('WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)')
+    '''WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)'''
     names, resns,resids,data,symbols,cell_aa_deg,title = list(),list(),list(),list(), list(), None, None
     cell=0
     mk_int = lambda s: int(s) if s.strip() else 0
+
+    #define error logs
+    _e0 = 0 #file integrity
 
     for line in open(filename, 'r'):
         record = line[:6]
@@ -27,7 +32,7 @@ def pdbReader(filename):
 
         elif record == 'ATOM  ' or record == 'HETATM':
             #atom_ser_nr.append(int(line[6:11]))
-            names.append(line[12:16].strip())
+            names.append( line[ 12 : 16 ].strip() )
             #alt_loc_ind.append(line[16])
             resns.append(line[17:20].strip())
             #Note: line[20] seems to be blank
@@ -38,7 +43,12 @@ def pdbReader(filename):
             #occupancy.append(float(line[54:60]))
             #temp_fact.append(float(line[60:66]))
             #seg_id.append(line[72:76])
-            symbols.append(line[76:78].strip())
+            _s = line[ 76 : 78 ].strip()
+            if _s == '':
+                _e0 += 1
+                symbols.append( names[ -1 ][ :2 ] )
+            else:
+                symbols.append( line[ 76 : 78 ].strip() )
             #charges.append(line[78:80])
 
        # elif record == 'MASTER':
@@ -58,6 +68,9 @@ def pdbReader(filename):
        #     n_atoms = len(atom_ser_nr)
 
        #More records to come
+    #evaluate error logs
+    if _e0 != 0:
+        print( '\nWARNING: Incomplete or corrupt PDB file. Proceed with care!\n' )
 
     if cell==0:
         print('WARNING: No cell specified in pdb file!')

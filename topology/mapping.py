@@ -4,6 +4,10 @@ import numpy as np
 import sys
 import copy
 
+
+def get_atom_spread( pos ):
+    return np.array( [ np.amax( _p ) - np.amin( _p ) for _p in np.moveaxis( pos, -1, 0 ) ] )
+
 def map_atoms_by_coordinates(mol1,mol2):
     '''expects two Molecule objects of the same shape. I use frame 0 of mol2 as reference. Not tested for long trajectories of mol1.'''
 #pos_aa,sym,box_aa,replica,vec_trans,pos_cryst,sym_cr):

@@ -47,6 +47,9 @@ np.set_printoptions(precision=5,suppress=True)
 # - Tidying up
 # - USE XYZData for file reading and extract further data for Molecule from it ( ? )
 
+# ToDo: A lot!
+# ToDo: PDB input does not save file as potential fn_topo (problem since disabling automatic mol gauge installation )
+
 class _SYSTEM( ):
     def __init__(self,fn,**kwargs):
         if int(np.version.version.split('.')[1]) < 14:
@@ -56,6 +59,9 @@ class _SYSTEM( ):
         ignore_warnings = kwargs.get('ignore_warnings',False)
         fmt = kwargs.get('fmt',fn.split('.')[-1])
 
+        #Beta: store FileReader data in dict, try if sth is there before starting reader. Problem: memory?
+        global _fn 
+        _fn = {} 
         ## This is a cheap workaround
         #TOPOLOGY first, COORDINATES second: 
         if kwargs.get('fn_topo') is not None:
@@ -68,7 +74,8 @@ class _SYSTEM( ):
             self.XYZData = self._XYZ( fn, **kwargs )
         elif fmt=="xvibs":
             mw = kwargs.get('mw',False)
-            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibsReader(fn)
+            _fn[ fn ] = xvibsReader( fn )
+            n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = _fn[ fn ]
             symbols  = [constants.symbols[z-1] for z in numbers]
             masses   = [masses_amu[s] for s in symbols]
             if mw:
@@ -79,22 +86,24 @@ class _SYSTEM( ):
             self.XYZData = self._XYZ( data = coords_aa.reshape( (1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             self.Modes = VibrationalModes(fn,modes=modes,numbers=numbers,omega_cgs=omega_cgs,coords_aa=coords_aa,**kwargs)
         elif fmt=="pdb":
-            data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
-            n_atoms=symbols.shape[0]
+            _fn[ fn ] = pdbReader( fn )
+            data, types, symbols, residues, box_aa_deg, title = _fn[ fn ]
+            n_atoms = symbols.shape[ 0 ]
             self.XYZData = self._XYZ( data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
-            #Disabled 2018-12-04
+            #Disabled 2018-12-04/Enabled 2019-05-23
             #print('Found PDB: Automatic installation of molecular gauge.')
-            #self.install_molecular_origin_gauge(fn_topo=fn) #re-reads pdb file
+            self.install_molecular_origin_gauge( fn_topo = fn ) #re-reads pdb file
 
         else: raise Exception('Unknown format: %s.'%fmt)
 
-        cell_aa_deg = np.array( kwargs.get('cell_aa',getattr(self,"cell_aa_deg",None))  )
+        cell_aa_deg = kwargs.get( 'cell_aa' ) #, getattr( self, "cell_aa_deg", None ) )  )
         if cell_aa_deg is not None:
+            cell_aa_deg = np.array( cell_aa_deg )
             if hasattr(self,'cell_aa_deg'):
-                if not np.allclose(cell_aa_deg,self.cell_aa_deg): print('WARNING: Given cell size differs from file parametres!')
+                if not np.allclose( cell_aa_deg, self.cell_aa_deg ): print('WARNING: Given cell size differs from file parametres!')
             try: 
-                self.UnitCell = UnitCell(cell_aa_deg)
+                self.UnitCell = UnitCell( cell_aa_deg )
                 if kwargs.get('cell_multiply') is not None:
                     cell_multiply = kwargs.get('cell_multiply')
                     cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
@@ -123,26 +132,22 @@ class _SYSTEM( ):
                 self.XYZData._wrap_molecules(self.mol_map,cell_aa_deg,**kwargs)
 
 
-    def install_molecular_origin_gauge(self,**kwargs):
+    def install_molecular_origin_gauge( self, **kwargs ):
         '''Script mainly from Arne Scherrer'''
         fn = kwargs.get('fn_topo')
         if fn: #use pdbReader
-            data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
-            #convert to n_map
+            try: _fn[ fn ]
+            except KeyError: _fn[ fn ] = pdbReader( fn )
+            data, types, symbols, residues, box_aa_deg, title = _fn[ fn ]
             resi = ['-'.join(_r) for _r in residues]
-            _map_dict = dict(zip(list(dict.fromkeys(resi)),range(len(set(resi))))) #python>=3.6: keeps order
-            n_map = [_map_dict[_r] for _r in resi]
+            _map_dict = dict( zip( list( dict.fromkeys( resi ) ), range( len( set( resi ) ) ) ) ) #python>=3.6: keeps order
+            n_map = [ _map_dict[ _r ] for _r in resi ]
             #n_map = residues[:,0].astype(int).tolist() #-1 as workaround
 
+            #changed 2019-05-23
+            #setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
+            setattr( self, 'cell_aa_deg', box_aa_deg )
 
-            setattr(self,'cell_aa_deg',kwargs.get('cell_aa',box_aa_deg))
-#            n_map, symbols, cell_au = list(), list(), None
-#            for line in [l.split() for l in open(fn, 'r')]:
-#                if 'ATOM' in line:
-#                    n_map.append(int(line[4])-1), symbols.append(line[-1]) 
-#                elif 'CRYST1' in line:
-#                    if not 'cell_aa' in kwargs:
-#                        kwargs['cell_aa'] = np.array([Angstrom2Bohr*e for e in map(float,line[1:4])])
             cell_au = np.array([Angstrom2Bohr*e for e in box_aa_deg[:3]])
             if cell_au.any() == None:
                 raise Exception('Cell has to be specified, only orthorhombic cells supported!')

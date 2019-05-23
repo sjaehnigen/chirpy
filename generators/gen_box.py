@@ -7,6 +7,7 @@ import copy
 import numpy as np
 
 from topology.dissection import assign_molecule
+from topology.mapping import get_atom_spread
 
 from classes.trajectory import XYZFrame
 from classes.system import Supercell
@@ -23,10 +24,8 @@ class _BoxObject():
 #volume is determined by _cell_vec_aa() / cell_vec_aa()
 #methods that are allowed to manipulate _cell_vec_aa and/or volume_aa3: __init__, __pow__ (via __mul__)
 #plan: check routine compares _method() to method and complains if it deviates
-#ToDo: Reading routine for completed Boxes (inverse)
-#-------> single frame only (no trajectory)
-#-------> get mol list from Supercell object
-#-------> clean_members would then need a superposition routine (+tol threshold) to identify equal molecules even if they are bend (write it into _XYZ class (is_equal)
+#Symmetry should be determined from cell_aa
+
     def __init__( self, **kwargs ): #empty-box init allowed (bare)
         self.members = kwargs.get( "members", [ ] ) # list of ( n, XYZFrame object ) tuples with n being the no. of molecules within the box
         self.symmetry = kwargs.get( 'symmetry', 'orthorhombic' )
@@ -51,9 +50,15 @@ class _BoxObject():
             _sys.mol_map 
         except AttributeError:
             _sys.install_molecular_origin_gauge( )
+        nargs = {}
+        try:
+            nargs[ 'cell_aa' ] = _sys.cell_aa_deg 
+        except AttributeError:
+            print( 'WARNING: Could not find cell parametres; uses guess from atom spread!' )
+            nargs[ 'cell_aa' ] = np.array( get_atom_spread( _sys.XYZData.data ) )
 
         #pass pbc? cell? WARNING: do not just pass kwargs! reassemble it!!
-        return cls( members = [ ( 1, _s._to_frame() ) for _s in _sys.XYZData._split( _sys.mol_map ) ], **kwargs )
+        return cls( members = [ ( 1, _s._to_frame() ) for _s in _sys.XYZData._split( _sys.mol_map ) ], **nargs )
 
     def _cell_vec_aa( self, **kwargs ):
         if self.symmetry == 'orthorhombic': #should be cubic
@@ -142,13 +147,13 @@ class _BoxObject():
     def print_info( self ):
         #Work in progress...
         print( '%12s' % self.__class__.__name__ )
-        print( '%12d Members\n%12d Atoms\n%12.2f amu\n%12.2f aa3' %  ( self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3 ) )
+        print( '%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %  ( self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3 ) )
         print( 67 * '–' )
         print( ' x '.join( map( '{:.5f} aa'.format, np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ) ) ) ) #simple, only for orthorhombic
         print( 67 * '–' )
         print( '%45s %8s %12s' % ( 'File', 'No.', 'Molar Mass' ) )
         print( 67 * '–' )
-        print( '\n'.join( [ '%45s %8d %12.2f' % ( _m[ 1 ].fn, _m[ 0 ], _m[ 1 ].masses_amu.sum() ) for _m in self.members ] ) )
+        print( '\n'.join( [ '%45s %8d %12.4f' % ( _m[ 1 ].fn, _m[ 0 ], _m[ 1 ].masses_amu.sum() ) for _m in self.members ] ) )
         print( 67 * '–' )
 
     def create_system( self, **kwargs ): #most important class (must not be adapted within derived classes)
@@ -226,8 +231,8 @@ class Solution( _BoxObject ):
 
     def print_info( self ):
         _BoxObject.print_info( self )
-        print( '%12.2f g / cm³' %  self.rho_g_cm3 )
-        print( '\n'.join( map( '{:12.2f} mol / L'.format, self.c_mol_L ) ))
+        print( '%12.4f g / cm³' %  self.rho_g_cm3 )
+        print( '\n'.join( map( '{:12.4f} mol / L'.format, self.c_mol_L ) ))
 
     def _fill_box( self ): #calls packmol
         #calculate packmol box
