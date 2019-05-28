@@ -19,6 +19,7 @@ from physics import constants
 #Angstrom2Bohr = 1.8897261247828971
 #np.set_printoptions(precision=5,suppress=True)
 
+#ToDo: exploit more packmol functions
 class _BoxObject():
 
 #volume is determined by _cell_vec_aa() / cell_vec_aa()
@@ -165,6 +166,7 @@ class _BoxObject():
     def print_info( self ):
         #Work in progress...
         print( '%12s' % self.__class__.__name__ )
+        print( 'Periodic boundaries: %s' % self.pbc )
         print( '%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %  ( self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3 ) )
         print( 67 * '–' )
         print( ' x '.join( map( '{:.5f} aa'.format, np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ) ) ) ) #simple, only for orthorhombic
@@ -218,8 +220,8 @@ class Solution( _BoxObject ):
             if _d > 0.01: print( '\nWARNING: Member counts differ from input value by more than 1%%:\n  - %s\n' % _id )
         [ _dev_warning( abs( round( _in ) - _in ) / _in, ( [ self.solvent ] + self.solutes )[ _ii ] ) for _ii, _in in enumerate( _n ) ] 
 
-
-        _BoxObject.__init__( self, members = [ ( int( round( _in ) ), _is ) for _in, _is in zip( _n, _slt + [ _slv ] ) ] ) #by definition solvent is the last member
+        nargs = { _k : kwargs.get( _k ) for _k in kwargs.keys() if _k not in [ "solvent", "rho_g_cm3", "solutes", "c_mol_L", "member"  ] }
+        _BoxObject.__init__( self, members = [ ( int( round( _in ) ), _is ) for _in, _is in zip( _n, _slt + [ _slv ] ) ], **nargs ) #by definition solvent is the last member
 
         del _slt, _slv, _c_slv_mol_L, _n, _c_min_mol_L, _dev_warning
 
@@ -258,9 +260,9 @@ class Solution( _BoxObject ):
         #calculate packmol box
         _box_aa = np.concatenate( ( self.origin_aa, np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ) ) )
         #if periodic: add vacuum edges
-        if self.pbc: _box_aa += np.array( [ 2., 2., 2., -2., -2., -2. ] )
+        if self.pbc: _box_aa += np.array( [ 1., 1., 1., -1., -1., -1. ] )
 
-        with open( '.tmp_packmol.inp', 'w' ) as f:
+        with open( 'packmol.inp', 'w' ) as f:
 
             f.write( 'tolerance 2.000' + 2*'\n' )
             f.write( 'filetype xyz' + 2*'\n' )
@@ -277,17 +279,20 @@ class Solution( _BoxObject ):
 
         #call packmol (external)
         print( "Calling packmol ... (see packmol.log)" )
-        os.system( "packmol < .tmp_packmol.inp > packmol.log" )
+        os.system( "packmol < packmol.inp > packmol.log" )
         print( "Done." )
         ## this is a little awkward (quick and dirty) 
         #read packmol output and centre residue
-        _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map(), center_residue = 0 )
-        #write topology
-        _sys.XYZData.write( "topology.pdb" ) #, abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. )
+        if self.pbc:
+            _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map(), center_residue = 0 )
+        else:
+            _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map() )
+        #write topology (repeat args because Supercell object is shitty )
+        _sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. ) 
 
         #######################################
         #clean files
-        os.remove( ".tmp_packmol.inp" )
+        #os.remove( ".tmp_packmol.inp" )
         for _im, _m in enumerate( self.members ):
             os.remove( ".member-%03d.xyz" % _im )
         #os.remove( ".simbox.xyz" )

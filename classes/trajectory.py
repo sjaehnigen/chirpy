@@ -64,14 +64,14 @@ class _FRAME():
         new = copy.deepcopy( self )
         new.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
         _l = new._labels[ self.axis_pointer ]
-        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) ) 
+        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) )
         new._sync_class()
         return new
-    
+
     def __iadd__( self, other ):
         self.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
         _l = new._labels[ self.axis_pointer ]
-        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) ) 
+        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) )
         self._sync_class()
         return self
 
@@ -288,8 +288,10 @@ class _XYZ():
                            )    
         elif fmt == "pdb":
             for _attr in [ 'mol_map', 'abc', 'albega' ]: #try to conceive missing data from kwargs
-                try: getattr( loc_self,_attr )
-                except AttributeError: setattr( loc_self, _attr, kwargs.get( _attr ) ) #, np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) ) )
+                try: 
+                    getattr( loc_self,_attr )
+                except AttributeError: 
+                    setattr( loc_self, _attr, kwargs.get( _attr ) ) #, np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) ) )
             pdbWriter( fn,
                        loc_self.pos_aa[ 0 ], #only frame 0 vels are not written
                        types = loc_self.symbols,#if there are types change script
