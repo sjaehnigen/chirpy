@@ -9,7 +9,6 @@
 #
 #from lib import debug
 #from collections import OrderedDict
-
 import sys
 import os
 import copy
@@ -50,6 +49,8 @@ np.set_printoptions(precision=5,suppress=True)
 # ToDo: A lot!
 # ToDo: PDB input does not save file as potential fn_topo (problem since disabling automatic mol gauge installation )
 
+#ToDo: Write should also be called here (e.g. problem of mol_map )
+
 class _SYSTEM( ):
     def __init__(self,fn,**kwargs):
         if int(np.version.version.split('.')[1]) < 14:
@@ -60,8 +61,8 @@ class _SYSTEM( ):
         fmt = kwargs.get('fmt',fn.split('.')[-1])
 
         #Beta: store FileReader data in dict, try if sth is there before starting reader. Problem: memory?
-        global _fn 
-        _fn = {} 
+        global _fn
+        _fn = {}
         ## This is a cheap workaround
         #TOPOLOGY first, COORDINATES second: 
 
@@ -73,8 +74,8 @@ class _SYSTEM( ):
             if self.mol_map is None:
                 print('Found topology file.')
                 self.install_molecular_origin_gauge( **kwargs ) #Do it as default
-            else: 
-                print( 'Found topology file, but will not use it (mol_map given).' )
+            else:
+                print('Found topology file, but will not use it (mol_map given).')
 
         if fmt=="xyz":
             self.XYZData = self._XYZ( fn, **kwargs )
@@ -99,7 +100,7 @@ class _SYSTEM( ):
             setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
             #Disabled 2018-12-04/Enabled 2019-05-23 w/ condition
             #print('Found PDB: Automatic installation of molecular gauge.')
-            if self.mol_map is None: 
+            if self.mol_map is None:
                 self.install_molecular_origin_gauge( fn_topo = fn ) #re-reads pdb file
 
         else: raise Exception('Unknown format: %s.'%fmt)
@@ -146,6 +147,9 @@ class _SYSTEM( ):
                 self.XYZData._move_residue_to_centre( center_res, self.cell_aa_deg, **kwargs )
                 self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
 
+        #ToDo: awkward workaround (needed if XYZData._wrap_molecules() has never been called)
+        if self.mol_map is not None:
+            self.XYZData.mol_map = self.mol_map
 
     def install_molecular_origin_gauge( self, **kwargs ):
         '''Script mainly from Arne Scherrer'''
