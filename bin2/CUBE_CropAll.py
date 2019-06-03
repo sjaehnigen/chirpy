@@ -30,9 +30,12 @@ def _get_states( _dir = '' ):
         _n += 1
 
 def _get_all( _dir = '' ):
+    if os.path.isfile( os.path.join( _dir, density ) ):
+        for _str in ( density, current % 1, current % 2, current % 3 ):
+            yield volume.ScalarField( fn = os.path.join( _dir, _str ) )
     _n = 1
     while os.path.isfile( os.path.join( _dir, state0 % _n ) ):
-        for _str in ( density, current % 1, current % 2, current % 3, state0 % _n, state1 % _n, current_state % ( _n, 1 ), current_state % ( _n, 2 ), current_state % ( _n, 3 ) ):
+        for _str in ( state0 % _n, state1 % _n, current_state % ( _n, 1 ), current_state % ( _n, 2 ), current_state % ( _n, 3 ) ):
             yield volume.ScalarField( fn = os.path.join( _dir, _str ) )
         _n += 1
 
@@ -45,6 +48,7 @@ def _get_fragments( ):
 
 ######### Initial auto_crop to obtain crop value ######
 print( 'Load Electronic System ...' )
+sys.stdout.flush()
 _fn = density
 _fn1 = current % 1
 _fn2 = current % 2
@@ -53,6 +57,7 @@ _sys = quantum.ElectronicSystem( _fn, _fn1, _fn2, _fn3 )
 
 _V = _sys.auto_crop( thresh = _sys.rho.threshold / 2 )
 print( ' --> Crop %s' % _V )
+sys.stdout.flush()
 
 ######### Save ########################################
 print( 'Save cropped Electronic System ...' )
