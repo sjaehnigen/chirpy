@@ -37,9 +37,9 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
     z axis is the odd one (i.e. not aligned), and cell vectors are calculated accordingly (e.g. in \
     VMD); here, this corresponds to priority (0,1,2). 
     Any deviation (e.g. z-axis IS aligned, alpha > 90°, ...) can be taken account for by adjusting \
-    priority, and the correct cell vectors are calculated. However, VMD or other programmes may not \
-    still calculate the wrong cell vectors. Hence, ...
-    priority should always be (0,1,2) and symmetry conventions be used (e.g. for monoclinic cells: \
+    priority, and the correct cell vectors are calculated. However, VMD or other programmes may \
+    still calculate wrong cell vectors. Hence, ...
+    Priority should always be (0,1,2) and symmetry conventions be used (e.g. for monoclinic cells: \
     beta is the angle > 90°; CPMD wants alpha to be >90° but this is wrong and CELL VECTORS should \
     be used instead)'''
 
@@ -55,10 +55,21 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
 
     return cell_vec_aa
 
+# work in progress
+#def _change_euclidean_basis(pos_aa, cell_vec_aa):
+#    '''Transform coordinates to cell vector basis with the help of dual basis'''
+#    M = np.zeros_like(cell_vec_aa)
+#    M[0] = np.cross(cell_vec_aa[1], cell_vec_aa[2])
+#    M[1] = np.cross(cell_vec_aa[2], cell_vec_aa[0])
+#    M[2] = np.cross(cell_vec_aa[0], cell_vec_aa[1])
+#    V = np.dot(cell_vec_aa[0], np.cross(cell_vec_aa[1], cell_vec_aa[2]))
+#
+#    return 1 / V * np.tensordot( pos_aa, M, axes =(-1, 1))
 
 def wrap(pos_aa, cell_aa_deg, **kwargs):
     '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
        cell: [ a b c al be ga ] (distances same dim as pos_aa; angles in degree)'''
+    #cell_vec_aa = get_cell_vec(cell_aa_deg)
     #--todo:
     # extend general wrap function to all symmetries
     abc, albega = np.split(cell_aa_deg, 2)
@@ -97,40 +108,13 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs): #another routine wou
     w = kwargs.get('weights', np.ones((n_atoms)))
     w = dec(w, mol_map)
 
-    #abc, albega = np.split(cell_aa_deg, 2)
-
     mol_c_aa = []
-    #cowt = lambda x,wt: np.sum(p * wt[None, :, None], axis=1) / wt.sum()
 
     for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
         ind = np.array(mol_map) == i_mol
         p = pos_aa[:, ind]
-    #    if not any([_a <= 0.0 for _a in abc]):
-            #p -= np.around( (p - p[:, 0, None, :]) / abc[None, None, :]) * abc[None, None, :]
         c_aa = _cowt(p, w[i_mol], cell_aa_deg=cell_aa_deg)
         mol_c_aa.append(wrap(c_aa, cell_aa_deg))
-            #mol_c_aa.append( np.remainder( c_aa, abc[ None, : ] ) ) #only for orthorhombic cells
-    #    else:
-    #        print( 'WARNING: Cell size zero!' )
-    #        c_aa = _cowt(p, w[i_mol], cell_aa_deg=cell_aa_deg)
-    #        mol_c_aa.append(c_aa)
-
         pos_aa[:, ind] = p - (c_aa - mol_c_aa[-1])[:, None, :]
-        #p -= ( c_aa - mol_c_aa[ -1 ] )[ :, None, : ]
 
     return pos_aa, mol_c_aa
-    #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
-
- #   def get_assign(pos1,pos2,unit_cell=None):
- #       dist_array = pos1[:,:,None,:]-pos2[0,None,None,:,:]
- #       if unit_cell:
- #           dist_array-= np.around(dist_array/unit_cell.abc)*unit_cell.abc
- #       return np.argmin(np.linalg.norm(dist_array,axis=-1),axis=2)
- #   
- #   assign=np.zeros((d1.n_frames,d1.n_atoms)).astype(int)
- #   for s in np.unique(d1.symbols):
- #       i1 = d1.symbols==s
- #       i2 = d2.symbols==s
- #       ass = get_assign(d1.data[:,i1,:3],d2.data[:,i2,:3],unit_cell=getattr(mol1,'UnitCell',None))
- #       assign[:,i1]=np.array([np.arange(d2.n_atoms)[i2][ass[fr]] for fr in range(d1.n_frames)]) #maybe unfortunate to long trajectories
- #   return assign
