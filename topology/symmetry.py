@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import numpy as np
 import sys
@@ -29,10 +29,38 @@ def find_methyl_groups(mol,hetatm=False):
     print(out)
 
 
+def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
+    '''cell_aa_deg as np.array/list of: a b c al be ga
+    n_fields usually 3
+    Priority defines the alignment of non-rectangular objects in cartesian space; by convention the \
+    z axis is the odd one (i.e. not aligned), and cell vectors are calculated accordingly (e.g. in \
+    VMD); here, this corresponds to priority (0,1,2). 
+    Any deviation (e.g. z-axis IS aligned, alpha > 90°, ...) can be taken account for by adjusting \
+    priority, and the correct cell vectors are calculated. However, VMD or other programmes may not \
+    still calculate the wrong cell vectors. Hence, ...
+    priority should always be (0,1,2) and symmetry conventions be used (e.g. for monoclinic cells: \
+    beta is the angle > 90°; CPMD wants alpha to be >90° but this is wrong and CELL VECTORS should \
+    be used instead)'''
+
+    abc, albega = cell_aa_deg[:3], cell_aa_deg[3:] * np.pi / 180.
+    cell_vec_aa = np.zeros((3, n_fields))
+    v0, v1, v2 = priority
+    cell_vec_aa[v0, v0] = abc[v0]
+    cell_vec_aa[v1, v1] = abc[v1] * np.sin(albega[(3 - v0 - v1)])
+    cell_vec_aa[v1, v0] = abc[v1] * np.cos(albega[(3 - v0 - v1)])
+    cell_vec_aa[v2, v2] = abc[v2] * np.sin(albega[(3 - v0 - v2)]) * np.sin(albega[(3 - v1 - v2)])
+    cell_vec_aa[v2, v0] = abc[v2] * np.cos(albega[(3 - v0 - v2)])
+    cell_vec_aa[v2, v1] = abc[v2] * np.cos(albega[(3 - v1 - v2)])
+
+    return cell_vec_aa
+
+
 #--todo:
 # extend general wrap function to all symmetries
-def _wrap( p, cell ):
-    abc, albega = np.split( cell, 2 )
+def _wrap(p, cell):
+    '''p: shape (n_frames, n_atoms, three) or (n_atoms, three)
+       cell: [ a b c al be ga ] (distances same dim as p; angles in degree)'''
+    abc, albega = np.split(cell, 2)
     if not np.allclose( albega, np.ones( ( 3 ) ) * 90.0 ):
         raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
     return np.remainder( p, abc[ None, : ] )

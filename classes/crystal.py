@@ -11,7 +11,7 @@
 import copy
 import numpy as np
 from physics import constants
-from symmetry import get_cell_vec
+from topology.symmetry import get_cell_vec
 
 class UnitCell(): #maybe all-in-one class
     def __init__(self,cell_aa_deg,**kwargs): #**kwargs for named (dict), *args for unnamed
