@@ -2,6 +2,7 @@
 
 import numpy as np
 import sys
+import copy 
 
 from topology.dissection import dec
 
@@ -55,71 +56,66 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
     return cell_vec_aa
 
 
-#--todo:
-# extend general wrap function to all symmetries
-def _wrap(p, cell):
-    '''p: shape (n_frames, n_atoms, three) or (n_atoms, three)
-       cell: [ a b c al be ga ] (distances same dim as p; angles in degree)'''
-    abc, albega = np.split(cell, 2)
-    if not np.allclose( albega, np.ones( ( 3 ) ) * 90.0 ):
-        raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
-    return np.remainder( p, abc[ None, : ] )
+def wrap(pos_aa, cell_aa_deg, **kwargs):
+    '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
+       cell: [ a b c al be ga ] (distances same dim as pos_aa; angles in degree)'''
+    #--todo:
+    # extend general wrap function to all symmetries
+    abc, albega = np.split(cell_aa_deg, 2)
 
-def wrap_atoms( pos_aa, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
+    if not np.allclose(albega, np.ones((3)) * 90.0):
+        raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
+
+    if not any([_a <= 0.0 for _a in abc]):
+        return np.remainder(pos_aa, abc[None, :])
+    else:
+        print( 'WARNING: Cell size zero!' )
+        return pos_aa
+
+def _cowt(pos_aa, wt, **kwargs):
+    '''Calculate centre of weight, optionally within periodic boundaries.'''
+    p = copy.deepcopy(pos_aa) #really necessary?
+    cell_aa_deg = kwargs.get("cell_aa_deg")
+
+    if cell_aa_deg is not None:
+        abc, albega = np.split(cell_aa_deg, 2)
+        if not np.allclose(albega, np.ones((3)) * 90.0):
+            raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for cowt calculation!' )
+        p -= np.around( (p - p[:, 0, None, :]) / abc[None, None, :]) * abc[None, None, :]
+    
+    return np.sum(p * wt[None, :, None], axis=1) / wt.sum()
+
+
+
+def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
+    '''DEPRECATED'''
+    join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)
+
+def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs): #another routine would be complete_molecules for both-sided completion
     '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )'''
     n_frames, n_atoms, three = pos_aa.shape
+    w = kwargs.get('weights', np.ones((n_atoms)))
+    w = dec(w, mol_map)
 
-    abc, albega = np.split( cell_aa_deg, 2 )
-    if not np.allclose( albega, np.ones( ( 3 ) ) * 90.0 ):
-        raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
-
-    mol_c_aa = []
-    cowt = lambda x,wt: np.sum( p * wt[ None, :, None ], axis = 1 ) / wt.sum()
-
-    for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
-        ind = np.array( mol_map ) == i_mol
-        p = pos_aa[ :, ind ]
-        if not any( [ _a <= 0.0 for _a in abc ] ):
-            p -= np.around( ( p - p[ :, 0, None, : ] ) / abc[ None, None, : ] ) * abc[ None, None, : ]
-            c_aa = cowt( p, w[ i_mol ] )
-            mol_c_aa.append( np.remainder( c_aa, abc[ None, : ] ) ) #only for orthorhombic cells
-        else:
-            print( 'WARNING: Cell size zero!' )
-            c_aa = cowt( p, w[ i_mol ] )
-            mol_c_aa.append( c_aa )
-
-        pos_aa[ :,ind ] = p - ( c_aa - mol_c_aa[ -1 ] )[ :, None, : ]
-        #p -= ( c_aa - mol_c_aa[ -1 ] )[ :, None, : ]
-
-    return pos_aa, mol_c_aa
-
-#should be called join molecules
-def wrap_molecules( pos_aa, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
-    '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )'''
-    n_frames, n_atoms, three = pos_aa.shape
-    w = kwargs.get( 'weights', np.ones( ( n_atoms ) ) )
-    w = dec( w, mol_map )
-
-    abc, albega = np.split( cell_aa_deg, 2 )
-    if not np.allclose( albega, np.ones( ( 3 ) ) * 90.0 ):
-        raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
+    #abc, albega = np.split(cell_aa_deg, 2)
 
     mol_c_aa = []
-    cowt = lambda x,wt: np.sum( p * wt[ None, :, None ], axis = 1 ) / wt.sum()
+    #cowt = lambda x,wt: np.sum(p * wt[None, :, None], axis=1) / wt.sum()
 
     for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
-        ind = np.array( mol_map ) == i_mol
-        p = pos_aa[ :, ind ]
-        if not any( [ _a <= 0.0 for _a in abc ] ):
-            p -= np.around( ( p - p[ :, 0, None, : ] ) / abc[ None, None, : ] ) * abc[ None, None, : ]
-            c_aa = cowt( p, w[ i_mol ] )
-            mol_c_aa.append( np.remainder( c_aa, abc[ None, : ] ) ) #only for orthorhombic cells
-        else:
-            print( 'WARNING: Cell size zero!' )
-            c_aa = cowt( p, w[ i_mol ] )
-            mol_c_aa.append( c_aa )
+        ind = np.array(mol_map) == i_mol
+        p = pos_aa[:, ind]
+    #    if not any([_a <= 0.0 for _a in abc]):
+            #p -= np.around( (p - p[:, 0, None, :]) / abc[None, None, :]) * abc[None, None, :]
+        c_aa = _cowt(p, w[i_mol], cell_aa_deg=cell_aa_deg)
+        mol_c_aa.append(wrap(c_aa, cell_aa_deg))
+            #mol_c_aa.append( np.remainder( c_aa, abc[ None, : ] ) ) #only for orthorhombic cells
+    #    else:
+    #        print( 'WARNING: Cell size zero!' )
+    #        c_aa = _cowt(p, w[i_mol], cell_aa_deg=cell_aa_deg)
+    #        mol_c_aa.append(c_aa)
 
-        pos_aa[ :,ind ] = p - ( c_aa - mol_c_aa[ -1 ] )[ :, None, : ]
+        pos_aa[:, ind] = p - (c_aa - mol_c_aa[-1])[:, None, :]
         #p -= ( c_aa - mol_c_aa[ -1 ] )[ :, None, : ]
 
     return pos_aa, mol_c_aa

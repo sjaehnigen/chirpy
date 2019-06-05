@@ -6,12 +6,13 @@ import copy
 import numpy as np
 
 from reader.modes import xvibsReader
+from reader.trajectory import cpmdReader, xyzReader, pdbReader
 from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from interfaces import cpmd as cpmd_n #new libraries
 
 from topology.dissection import dec
 from topology.mapping import align_atoms
-from topology.symmetry import wrap_molecules
+from topology.symmetry import wrap, join_molecules
 
 from physics import constants
 from physics.constants import masses_amu
@@ -134,8 +135,10 @@ class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any tr
     def _sync_class( self ):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         #ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
-        if self.n_frames != self.comments.shape[ 0 ]: raise Exception( 'ERROR: Data shape inconsistent with comments attribute!\n' )
+        if self.n_atoms != self.symbols.shape[ 0 ]: 
+            raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
+        if self.n_frames != self.comments.shape[ 0 ]: 
+            raise Exception( 'ERROR: Data shape inconsistent with comments attribute!\n' )
     
 
 class _XYZ():
@@ -174,7 +177,7 @@ class _XYZ():
                 _sh = data.shape
                 if len( _sh ) == 2: 
                     data = data.reshape( ( 1, ) + _sh )                
-                comments = kwargs.get( 'comments', data.shape[ 0 ] * [ 'passed' ] )
+                comments = np.array( kwargs.get( 'comments', data.shape[ 0 ] * [ 'passed' ] ) )
             else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
         # traj or frame (ugly solution with _labels) based on assumption that above input gives always 3-column data
@@ -208,13 +211,37 @@ class _XYZ():
             print( 'WARNING: Auto-wrap of atoms (not mols) activated!' )
             if not any(_c==0.0 for _c in cell_aa[:3]): self.pos_aa = np.remainder(self.pos_aa,cell_aa[:3])
 
+    def _pos_aa(self, *args):
+        if len(args) == 0:
+            self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+        elif len(args) == 1:
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[:3] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._pos_aa()
+        else:
+            raise TypeError('Too many arguments for %s!' % self._pos_aa.__name__)
+
+    def _vel_au(self, *args):
+        if len(args) == 0:
+            self.vel_au = self.data.swapaxes(0, -1)[3:].swapaxes(0, -1)
+        elif len(args) == 1:
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[3:] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._vel_au()
+        else:
+            raise TypeError('Too many arguments for %s!' % self._vel_au.__name__)
+
     def _sync_class( self ):
         try:
             self.masses_amu = np.array( [ masses_amu[ s ] for s in self.symbols ] )
-        except  KeyError:
+        except KeyError:
             print('WARNING: Could not find all element masses!')
-        self.pos_aa   = self.data.swapaxes( 0, -1)[ :3 ].swapaxes( 0, -1)
-        self.vel_au   = self.data.swapaxes( 0, -1)[ 3: ].swapaxes( 0, -1)
+        # These are NOT pointers and any changes to pos/vel will be overwritten by data! You have to change data instead or use _pos/_vel
+        self._pos_aa()
+        self._vel_au()
+        # Why using pos_aa/vel_au arguments AT ALL?
         if self.vel_au.size == 0: self.vel_au = np.zeros_like( self.pos_aa )
 
     def _is_equal( self, other, atol = 1e-08 ): #add more tests later, atol in units of self.data
@@ -233,39 +260,30 @@ class _XYZ():
 
         return np.prod( ie ), ie
 
-
+    #join the next two methods?
     def _wrap_atoms(self, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
-        w = np.ones( ( self.n_atoms ) )
-        if mode=='com': w = self.masses_amu
-        
         if self._type == 'frame': #quick an dirty
-            _p, mol_c_aa = wrap_molecules( self.pos_aa.reshape( 1, self.n_atoms, 3 ), mol_map, cell_aa_deg, weights = w )
-            self.pos_aa = _p[ 0 ]
-            del _p
+            self._pos_aa(wrap(self.pos_aa.reshape(1, self.n_atoms, 3), cell_aa_deg)[0])
         else: #frame
-            self.pos_aa, mol_c_aa = wrap_molecules( self.pos_aa, mol_map, cell_aa_deg, weights = w )
+            self._pos_aa(wrap(self.pos_aa, cell_aa_deg))
  
-        #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
-        setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
-        setattr( self, 'mol_map', mol_map )
-
         #PDB needs it
         abc, albega = np.split( cell_aa_deg, 2 )
         setattr( self, 'abc', abc )
         setattr( self, 'albega', albega )
 
-    #should be named "join molecules"
     def _wrap_molecules( self, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
         mode = kwargs.get( 'mode', 'cog' )
         w = np.ones( ( self.n_atoms ) )
         if mode=='com': w = self.masses_amu
         
         if self._type == 'frame': #quick an dirty
-            _p, mol_c_aa = wrap_molecules( self.pos_aa.reshape( 1, self.n_atoms, 3 ), mol_map, cell_aa_deg, weights = w )
-            self.pos_aa = _p[ 0 ]
+            _p, mol_c_aa = join_molecules(self.pos_aa.reshape(1, self.n_atoms, 3), mol_map, cell_aa_deg, weights=w)
+            self._pos_aa(_p[0])
             del _p
         else: #frame
-            self.pos_aa, mol_c_aa = wrap_molecules( self.pos_aa, mol_map, cell_aa_deg, weights = w )
+            _p, mol_c_aa = join_molecules(self.pos_aa, mol_map, cell_aa_deg, weights=w)
+            self._pos_aa(_p)
  
         #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
         setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
@@ -341,8 +359,8 @@ class XYZFrame( _XYZ, _FRAME ):
         _XYZ._sync_class( self )
 
     #work in progress
-    def _make_trajectory(self, fn, **kwargs):
-        fmt =  kwargs.get('fmt','xyz') #fn.split('.')[-1])
+    def _make_trajectory(self, **kwargs):
+        #fmt =  kwargs.get('fmt','xyz') #fn.split('.')[-1])
         n_images = kwargs.get('n_images', 3)#only odd numbers
         ts_fs = kwargs.get('ts_fs', 1)
         _img = np.arange( -(n_images // 2), n_images // 2 + 1)
@@ -350,7 +368,7 @@ class XYZFrame( _XYZ, _FRAME ):
         _vel_aa = np.tile(self.vel_au * constants.t_fs2au * constants.l_au2aa, (n_images, 1, 1))
         _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
 
-        return XYZTrajectory(data=np.vstack((_pos_aa,_vel_aa)),
+        return XYZTrajectory(data=np.dstack((_pos_aa,_vel_aa)),
                              symbols=self.symbols,
                              comments=[self.comments[0] + ' im ' + str(m) for m in _img]
                             )
