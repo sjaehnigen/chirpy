@@ -75,6 +75,28 @@ species['Cl'] = {'SYMBOL':'Cl', 'MASS': 35.45300, 'Z': 17, 'ZV':  0, 'RVDW' : 17
 species['Ca'] = {'SYMBOL':'Ca', 'MASS': 39.96259, 'Z': 20, 'ZV':  0, 'RVDW' : 231.0 }
 species['X']  = {'SYMBOL': 'X', 'MASS':  0.00000, 'Z':  0, 'ZV':  0, 'RVDW' :   0.0 }
 
+
+#NEW FORMAT using numpy recarray
+elements = np.array([
+    (  'H',  1.00797, 1 ),
+    (  'D',  2.01410, 1 ),
+    (  'C', 12.01115, 4 ),
+    (  'N', 14.00670, 5 ),
+    (  'O', 15.99940, 6 ),
+    (  'P', 30.97376, 5 ),
+    (  'S', 32.06400, 6 ),
+    ( 'Cl', 35.45300, 7 ),
+       ], dtype=[
+           ('symbol', '<U2'),
+           ('mass_amu', '<f8'),
+           ('valence_charge', '<i8')
+           ]
+       ).view( np.recarray )
+
+#I do not like this line
+masses_amu = { _s : _m for _s, _m in zip( elements.symbol, elements.mass_amu )  }
+
+
 # element symbols
 # symbols = ['H', 'D', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'X'] 
 # don't add Deuterium to this list since cubefiletools identifies species by atomic number

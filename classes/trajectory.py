@@ -2,11 +2,9 @@
 #Version important as <3.6 gives problems with OrderedDictionaries
 
 import sys
-import os
 import copy
 import numpy as np
 
-from reader.trajectory import pdbReader,xyzReader
 from reader.modes import xvibsReader
 from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from interfaces import cpmd as cpmd_n #new libraries
@@ -16,13 +14,14 @@ from topology.mapping import align_atoms
 from topology.symmetry import wrap_molecules
 
 from physics import constants
+from physics.constants import masses_amu
 from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
 from physics.modern_theory_of_magnetisation import calculate_mic
 from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
+#masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
 
@@ -64,13 +63,13 @@ class _FRAME():
         new = copy.deepcopy( self )
         new.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
         _l = new._labels[ self.axis_pointer ]
-        setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) )
+        setattr( new, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) )
         new._sync_class()
         return new
 
     def __iadd__( self, other ):
         self.data = np.concatenate( ( self.data, other.data ), axis = self.axis_pointer )
-        _l = new._labels[ self.axis_pointer ]
+        _l = self._labels[ self.axis_pointer ]
         setattr( self, _l, np.concatenate( ( getattr( self, _l), getattr( other, _l ) ) ) )
         self._sync_class()
         return self
@@ -307,12 +306,16 @@ class _XYZ():
                              loc_self.symbols,
                              getattr( loc_self, 'comments', loc_self.n_frames * [ 'passed' ] ), #Writer is stupid
                            )    
-        elif fmt == "pdb":
+        elif fmt == "pdb": 
+            #Does not yet support cell_multiply (needs update of mol_map and symbols)
             for _attr in [ 'mol_map', 'abc', 'albega' ]: #try to conceive missing data from kwargs
                 try: 
                     getattr( loc_self,_attr )
                 except AttributeError: 
                     setattr( loc_self, _attr, kwargs.get( _attr ) ) #, np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) ) )
+            #FIX THIS
+            if any([ _l is None for _l in (loc_self.abc, loc_self.albega)]):
+                raise Exception( "ERROR: Missing cell parametres for PDB output!" )
             pdbWriter( fn,
                        loc_self.pos_aa[ 0 ], #only frame 0 vels are not written
                        types = loc_self.symbols,#if there are types change script
