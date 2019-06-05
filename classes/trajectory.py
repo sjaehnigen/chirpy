@@ -235,6 +235,27 @@ class _XYZ():
         return np.prod( ie ), ie
 
 
+    def _wrap_atoms(self, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
+        w = np.ones( ( self.n_atoms ) )
+        if mode=='com': w = self.masses_amu
+        
+        if self._type == 'frame': #quick an dirty
+            _p, mol_c_aa = wrap_molecules( self.pos_aa.reshape( 1, self.n_atoms, 3 ), mol_map, cell_aa_deg, weights = w )
+            self.pos_aa = _p[ 0 ]
+            del _p
+        else: #frame
+            self.pos_aa, mol_c_aa = wrap_molecules( self.pos_aa, mol_map, cell_aa_deg, weights = w )
+ 
+        #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
+        setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
+        setattr( self, 'mol_map', mol_map )
+
+        #PDB needs it
+        abc, albega = np.split( cell_aa_deg, 2 )
+        setattr( self, 'abc', abc )
+        setattr( self, 'albega', albega )
+
+    #should be named "join molecules"
     def _wrap_molecules( self, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
         mode = kwargs.get( 'mode', 'cog' )
         w = np.ones( ( self.n_atoms ) )
@@ -316,6 +337,20 @@ class XYZFrame( _XYZ, _FRAME ):
         _FRAME._sync_class( self )
         _XYZ._sync_class( self )
 
+    #work in progress
+    def _make_trajectory(self, fn, **kwargs):
+        fmt =  kwargs.get('fmt','xyz') #fn.split('.')[-1])
+        n_images = kwargs.get('n_images', 3)#only odd numbers
+        ts_fs = kwargs.get('ts_fs', 1)
+        _img = np.arange( -(n_images // 2), n_images // 2 + 1)
+        _pos_aa = np.tile(self.pos_aa, (n_images, 1, 1))
+        _vel_aa = np.tile(self.vel_au * constants.t_fs2au * constants.l_au2aa, (n_images, 1, 1))
+        _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
+
+        return XYZTrajectory(data=np.vstack((_pos_aa,_vel_aa)),
+                             symbols=self.symbols,
+                             comments=[self.comments[0] + ' im ' + str(m) for m in _img]
+                            )
 
 class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do not load any traj data before the actual processing)        
     def _sync_class( self ):
@@ -333,8 +368,8 @@ class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do no
        P = self.pos_aa[:,:,:3]
        self.pos_aa[:,:,:3] += cell_aa_deg[None,None,:3]/2 - ref_pos_aa[:,None,:]
 
-    def _to_frame( self, fr = 0 ):
-        return XYZFrame( data = self.data[ fr ], symbols = self.symbols, comments = [ self.comments[ fr ] ] )
+    def _to_frame( self, fr=0 ):
+        return XYZFrame(data=self.data[fr], symbols=self.symbols, comments=[self.comments[fr]])
 
 #To be del
 #    def _wrap_molecules(self,mol_map,cell_aa_deg,**kwargs): #another routine would be complete_molecules for both-sided completion
