@@ -10,27 +10,27 @@
 #from lib import debug
 #from collections import OrderedDict
 import sys
-import os
+#import os
 import copy
 import numpy as np
 
-from reader.trajectory import pdbReader,xyzReader
-from writer.trajectory import cpmdWriter,xyzWriter,pdbWriter
+from reader.trajectory import pdbReader
 from reader.modes import xvibsReader
 #from writer.modes import xvibsWriter
-from interfaces import cpmd as cpmd_n #new libraries
+#from interfaces import cpmd as cpmd_n #new libraries
 from classes.crystal import UnitCell
 from classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
 from physics import constants
-from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
-from physics.modern_theory_of_magnetisation import calculate_mic
-from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
+from physics.constants import masses_amu
+#from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
+#from physics.modern_theory_of_magnetisation import calculate_mic
+#from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
 from topology.dissection import define_molecules,dec
-from topology.mapping import align_atoms
+#from topology.mapping import align_atoms
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
+#masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
 
@@ -115,14 +115,25 @@ class _SYSTEM( ):
             self.cell_aa_deg = cell_aa_deg
 
         if hasattr( self, 'cell_aa_deg' ):
-            try: 
+            try:
                 self.UnitCell = UnitCell( self.cell_aa_deg )
                 if kwargs.get('cell_multiply') is not None:
                     cell_multiply = kwargs.get('cell_multiply')
                     cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
                     self.XYZDataUnitCell = copy.deepcopy(self.XYZData)
                     self.XYZData = self.UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
-                    if hasattr(self,'Modes'): 
+
+                    #---------------------------------------
+                    #TMP cell and mol_map is not replicated
+                    self.mol_map *= int(np.prod(cell_multiply))
+                    self.cell_aa_deg[ :3 ] *= np.array(cell_multiply)
+                    #TMP reorder: fix it nicely
+                    #_cp = list(cell_priority)
+                    #self.cell_aa_deg[:3] = self.cell_aa_deg[:3][_cp] 
+                    #self.cell_aa_deg[3:] = self.cell_aa_deg[3:][_cp] 
+                    #---------------------------------------
+
+                    if hasattr(self,'Modes'):
                         self.ModesUnitCell = copy.deepcopy(self.Modes)
                         self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
             except TypeError: #is this the correct Exception?
@@ -130,7 +141,7 @@ class _SYSTEM( ):
 
             #ToDo: Do not simply pass through kwargs!! Reassemble them as nargs
             #Shifted here 2019-05-17
-            if kwargs.get('wrap_mols') is not None:
+            if kwargs.get( 'wrap_mols', False ):
                 print('I wrap molecules')
                 #ADDED 2018-11-28
                 if self.mol_map is None: 
@@ -221,6 +232,19 @@ class _SYSTEM( ):
             self.Modes.mol_com_au = np.remainder(self.Modes.mol_com_au,self.Modes.cell_au)
             self.Modes.mol_map = n_map
             self.Modes.n_mols  = n_mols
+
+    def write( self, fn, **kwargs ):
+        '''Work in progress...'''
+        fmt  = kwargs.get( 'fmt', fn.split( '.' )[ -1 ] )
+        nargs = {}
+        if fmt == 'pdb':
+            #albega here in degree, however UnitCell object uses rad...
+            # ==> change it
+            self.abc, self.albega = np.split(self.cell_aa_deg, 2)
+            nargs = { _s : getattr(self, _s) for _s in ('mol_map', 'abc', 'albega') }
+        else:
+            raise NotImplementedError( "System object supports only PDB output for now (use _XYZ attribute instead)" )
+        self.XYZData.write( fn, fmt=fmt, **nargs )
 
 
 class Supercell( _SYSTEM ):
