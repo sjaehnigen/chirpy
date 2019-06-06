@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import numpy as np 
 from classes.system import Supercell
-from classes.trajectory import XYZFrame
-from generators.gen_box import Solution
-from topology import symmetry
 
 parser = argparse.ArgumentParser( description = "Read a supercell (xyz, pdb, ...) and print box information", formatter_class = argparse.ArgumentDefaultsHelpFormatter )
 parser.add_argument( "fn", help = "supercell (xyz, pdb, xvibs, ...)" )
@@ -20,7 +16,8 @@ nargs[ 'cell_aa' ] = args.cell_aa
 nargs[ 'fn_topo' ] = args.fn_topo
 
 b = Supercell( args.fn, **nargs )
-print( b.XYZData.pos_aa[0] )
-print( b.cell_aa_deg )
-symmetry._change_to_cell_basis( b.XYZData.pos_aa, b.cell_aa_deg )
+b.install_molecular_origin_gauge()
+b.XYZData._wrap_molecules(b.mol_map, b.cell_aa_deg)
+#b.XYZData._wrap_atoms(b.cell_aa_deg)
 
+b.write( "test.pdb" )

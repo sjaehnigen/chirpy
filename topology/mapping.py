@@ -1,9 +1,18 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import numpy as np
 import sys
 import copy
 
+#NB: the molecules have to be sequentially numbered starting with 0
+#the script will transform them starting with 0
+def dec(prop, indices):
+    """decompose prop according to indices"""
+    return [
+        np.array([
+            prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
+            ]) for i_mol in range(max(indices)+1)
+        ]
 
 def get_atom_spread( pos ):
     return np.array( [ np.amax( _p ) - np.amin( _p ) for _p in np.moveaxis( pos, -1, 0 ) ] )

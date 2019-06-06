@@ -10,8 +10,7 @@ from reader.trajectory import cpmdReader, xyzReader, pdbReader
 from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from interfaces import cpmd as cpmd_n #new libraries
 
-from topology.dissection import dec
-from topology.mapping import align_atoms
+from topology.mapping import align_atoms, dec
 from topology.symmetry import wrap, join_molecules
 
 from physics import constants
@@ -266,17 +265,17 @@ class _XYZ():
             self._pos_aa(wrap(self.pos_aa.reshape(1, self.n_atoms, 3), cell_aa_deg)[0])
         else: #frame
             self._pos_aa(wrap(self.pos_aa, cell_aa_deg))
- 
+
         #PDB needs it
-        abc, albega = np.split( cell_aa_deg, 2 )
-        setattr( self, 'abc', abc )
-        setattr( self, 'albega', albega )
+        #abc, albega = np.split( cell_aa_deg, 2 )
+        #setattr( self, 'abc', abc )
+        #setattr( self, 'albega', albega )
 
     def _wrap_molecules( self, mol_map, cell_aa_deg, **kwargs ): #another routine would be complete_molecules for both-sided completion
         mode = kwargs.get( 'mode', 'cog' )
         w = np.ones( ( self.n_atoms ) )
         if mode=='com': w = self.masses_amu
-        
+
         if self._type == 'frame': #quick an dirty
             _p, mol_c_aa = join_molecules(self.pos_aa.reshape(1, self.n_atoms, 3), mol_map, cell_aa_deg, weights=w)
             self._pos_aa(_p[0])
@@ -284,15 +283,15 @@ class _XYZ():
         else: #frame
             _p, mol_c_aa = join_molecules(self.pos_aa, mol_map, cell_aa_deg, weights=w)
             self._pos_aa(_p)
- 
-        #print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
-        setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
-        setattr( self, 'mol_map', mol_map )
 
-        #PDB needs it
-        abc, albega = np.split( cell_aa_deg, 2 )
-        setattr( self, 'abc', abc )
-        setattr( self, 'albega', albega )
+        ##print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
+        #setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
+        #setattr( self, 'mol_map', mol_map )
+
+        #PDB needs it ToDo
+        #abc, albega = np.split( cell_aa_deg, 2 )
+        #setattr( self, 'abc', abc )
+        #setattr( self, 'albega', albega )
 
 
     def write( self, fn, **kwargs ):
@@ -302,7 +301,7 @@ class _XYZ():
 
 
         #not so nice but it works
-        loc_self = copy.deepcopy( self )
+        loc_self = copy.deepcopy(self)
         if self._type == "frame":
             loc_self.data = loc_self.data.reshape( ( 1, self.n_atoms, self.n_fields ) )
             loc_self.n_frames = 1 
@@ -318,28 +317,25 @@ class _XYZ():
                              [ loc_self.comments[ fr ] ] 
                            ) for fr in frame_list 
                 ]
-          
             else: xyzWriter( fn,
                              getattr( loc_self, attr ),
                              loc_self.symbols,
                              getattr( loc_self, 'comments', loc_self.n_frames * [ 'passed' ] ), #Writer is stupid
-                           )    
-        elif fmt == "pdb": 
-            #Does not yet support cell_multiply (needs update of mol_map and symbols)
-            for _attr in [ 'mol_map', 'abc', 'albega' ]: #try to conceive missing data from kwargs
-                try: 
-                    getattr( loc_self,_attr )
-                except AttributeError: 
-                    setattr( loc_self, _attr, kwargs.get( _attr ) ) #, np.array( [ 0.0, 0.0, 0.0, 90., 90., 90. ] ) ) )
-            #FIX THIS
-            if any([ _l is None for _l in (loc_self.abc, loc_self.albega)]):
-                raise Exception( "ERROR: Missing cell parametres for PDB output!" )
+                           )
+        elif fmt == "pdb":
+            mol_map = kwargs.get('mol_map')
+            cell_aa_deg = kwargs.get('cell_aa_deg')
+            if cell_aa_deg is None:
+                print("WARNING: Missing cell parametres for PDB output!")
+                cell_aa_deg = np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter( fn,
-                       loc_self.pos_aa[ 0 ], #only frame 0 vels are not written
+                       loc_self.pos_aa[0], #only frame 0 vels are not written
                        types = loc_self.symbols,#if there are types change script
                        symbols = loc_self.symbols,
-                       residues = np.vstack( ( np.array( loc_self.mol_map ) + 1, np.array( [ 'MOL' ] * loc_self.symbols.shape[ 0 ] ) ) ).swapaxes( 0, 1 ), #+1 because no 0 index
-                       box = np.hstack( ( loc_self.abc, loc_self.albega ) ),
+                       residues = np.vstack(
+                           (np.array(mol_map) + 1, np.array(['MOL'] * loc_self.n_atoms))
+                           ).swapaxes(0, 1),
+                       box = cell_aa_deg,
                        title = 'Generated from %s with Molecule Class' % self.fn 
                      )
 
@@ -581,9 +577,9 @@ class VibrationalModes():
         self._sync_class()
 
     def get_transition_moments(self,source,**kwargs): # adapted from Arne Scherrer 
-        def dec(prop, indices):
-            """decompose prop according to indices"""
-            return [np.array([prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol]) for i_mol in range(max(indices)+1)]
+#        def dec(prop, indices):
+#            """decompose prop according to indices"""
+#            return [np.array([prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol]) for i_mol in range(max(indices)+1)]
 
         if source=='cpmd_nvpt_md': #all data in a.u.
             '''adapted from Arne Scherrer'''

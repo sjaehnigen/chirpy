@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-import numpy as np 
-from classes.system import Supercell
-from classes.trajectory import XYZFrame
+import numpy as np
 from generators.gen_box import Solution
-from topology.mapping import get_atom_spread
 
 parser = argparse.ArgumentParser( description = "Read a supercell (xyz, pdb, ...) and print box information", formatter_class = argparse.ArgumentDefaultsHelpFormatter )
 parser.add_argument( "fn", help = "supercell (xyz, pdb, xvibs, ...)" )
@@ -17,7 +14,7 @@ if args.cell_aa is not None and not np.allclose( np.array( args.cell_aa )[ 3: ],
     raise NotImplementedError( 'Only orthorhombic cells are supported!\n' )
 
 nargs = {}
-nargs[ 'cell_aa' ] = args.cell_aa
+nargs[ 'cell_aa_deg' ] = args.cell_aa
 nargs[ 'fn_topo' ] = args.fn_topo
 
 b = Solution.read( args.fn, **nargs )

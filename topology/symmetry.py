@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import numpy as np
-import sys
-import copy 
+import copy
 
-from topology.dissection import dec
+from topology.mapping import dec
+
+from mathematics.algebra import change_euclidean_basis as ceb
 
 #old pythonbase
 from mgeometry.transformations import dist_crit_aa #migrate it soon
@@ -55,66 +56,85 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
 
     return cell_vec_aa
 
-# work in progress
-#def _change_euclidean_basis(pos_aa, cell_vec_aa):
-#    '''Transform coordinates to cell vector basis with the help of dual basis'''
-#    M = np.zeros_like(cell_vec_aa)
-#    M[0] = np.cross(cell_vec_aa[1], cell_vec_aa[2])
-#    M[1] = np.cross(cell_vec_aa[2], cell_vec_aa[0])
-#    M[2] = np.cross(cell_vec_aa[0], cell_vec_aa[1])
-#    V = np.dot(cell_vec_aa[0], np.cross(cell_vec_aa[1], cell_vec_aa[2]))
-#
-#    return 1 / V * np.tensordot( pos_aa, M, axes =(-1, 1))
-
 def wrap(pos_aa, cell_aa_deg, **kwargs):
     '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
        cell: [ a b c al be ga ] (distances same dim as pos_aa; angles in degree)'''
-    #cell_vec_aa = get_cell_vec(cell_aa_deg)
-    #--todo:
-    # extend general wrap function to all symmetries
-    abc, albega = np.split(cell_aa_deg, 2)
+    cell_vec_aa = get_cell_vec(cell_aa_deg)
 
-    if not np.allclose(albega, np.ones((3)) * 90.0):
-        raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for mol wrap!' )
-
-    if not any([_a <= 0.0 for _a in abc]):
-        return np.remainder(pos_aa, abc[None, :])
+    if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
+        return pos_aa - np.tensordot(ceb(pos_aa, cell_vec_aa).astype(int),
+                                     cell_vec_aa,
+                                     axes=1
+                                     )
     else:
         print( 'WARNING: Cell size zero!' )
         return pos_aa
 
-def _cowt(pos_aa, wt, **kwargs):
-    '''Calculate centre of weight, optionally within periodic boundaries.'''
-    p = copy.deepcopy(pos_aa) #really necessary?
+def _pbc_shift(_d, cell_aa_deg):
+    '''_d of shape ...'''
+    if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
+        cell_vec_aa = get_cell_vec(cell_aa_deg)
+        _c = ceb(_d, cell_vec_aa)
+        return np.tensordot(np.around(_c), cell_vec_aa, axes=1)
+    else:
+        return _d
+
+def get_distance_matrix( pos_aa, **kwargs):
+    '''pos_aa of shape (n_atoms, three) ... (FRAME)'''
+    # ToDo: the following lines explode memory for many atoms ==> do coarse mapping beforehand
+    # (overlapping batches) or set a max limit for n_atoms
+    if pos_aa.shape[0] > 1000:
+        raise MemoryError(
+        'Too many atoms for molecular recognition (>1000 atom support in a future version)!'
+        )
+    dist_array = pos_aa[:, None, :] - pos_aa[None, :, :]
     cell_aa_deg = kwargs.get("cell_aa_deg")
-
     if cell_aa_deg is not None:
-        abc, albega = np.split(cell_aa_deg, 2)
-        if not np.allclose(albega, np.ones((3)) * 90.0):
-            raise NotImplementedError( 'ERROR: Only orthorhombic cells implemented for cowt calculation!' )
-        p -= np.around( (p - p[:, 0, None, :]) / abc[None, None, :]) * abc[None, None, :]
-    
-    return np.sum(p * wt[None, :, None], axis=1) / wt.sum()
+        dist_array -= _pbc_shift(dist_array, cell_aa_deg)
 
+    if kwargs.get("cartesian") is not None:
+        return dist_array
+    else:
+        return np.linalg.norm(dist_array, axis=-1)
 
+def cowt(pos_aa, wt, **kwargs):
+    '''Calculate centre of weight, consider periodic boundaries before calling this method.'''
+    _p = copy.deepcopy(pos_aa) #really necessary?
+    #cell_aa_deg = kwargs.get("cell_aa_deg")
+    return np.sum(_p * wt[None, :, None], axis=1) / wt.sum()
 
 def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
-    '''DEPRECATED'''
+    '''DEPRECATED, use join_molecules()'''
     join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)
 
 def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs): #another routine would be complete_molecules for both-sided completion
-    '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )'''
+    '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )
+    Has still problems with cell-spanning molecules'''
     n_frames, n_atoms, three = pos_aa.shape
     w = kwargs.get('weights', np.ones((n_atoms)))
     w = dec(w, mol_map)
 
     mol_c_aa = []
-
-    for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
+    #for i_mol in range( max( mol_map ) + 1 ): #ugly ==> change it
+#    def _get_nearest_neighbours(p):
+#        np.argmin(get_distance_matrix(p, cell_aa_deg), axis=1)
+    #------------------
+    for i_mol in set(mol_map):
         ind = np.array(mol_map) == i_mol
-        p = pos_aa[:, ind]
-        c_aa = _cowt(p, w[i_mol], cell_aa_deg=cell_aa_deg)
+        _p = pos_aa[:, ind]
+        # reference atom: 0 (this may lead to problems, say, for large, cell-spanning molecules)
+        _r = [0]*sum(ind)
+        # choose as reference atom the one with smallest distances to all atoms (works better but
+        # still not perfect
+        _r = np.argmin(np.linalg.norm(get_distance_matrix(_p[0], cell_aa_deg=cell_aa_deg), axis=1))
+        _r = [_r]*sum(ind)
+        #needs an adaptive scheme (different reference points for different atoms)
+        #_r = 
+        _p -= _pbc_shift(_p - _p[:, _r, :], cell_aa_deg)
+        # actually needs connectivity pattern to wrap everything correctly
+        c_aa = cowt(_p, w[i_mol])
         mol_c_aa.append(wrap(c_aa, cell_aa_deg))
-        pos_aa[:, ind] = p - (c_aa - mol_c_aa[-1])[:, None, :]
+        pos_aa[:, ind] = _p - (c_aa - mol_c_aa[-1])[:, None, :]
 
     return pos_aa, mol_c_aa
+

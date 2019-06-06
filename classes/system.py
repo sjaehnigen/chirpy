@@ -25,8 +25,8 @@ from physics.constants import masses_amu
 #from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
 #from physics.modern_theory_of_magnetisation import calculate_mic
 #from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
-from topology.dissection import define_molecules,dec
-#from topology.mapping import align_atoms
+from topology.dissection import define_molecules
+from topology.mapping import dec
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
@@ -193,7 +193,7 @@ class _SYSTEM( ):
         else:
             n_map = tuple(define_molecules(self)-1)
 
-        n_mols = max(n_map)+1 
+        n_mols = max(n_map)+1
         self.mol_map = n_map
         self.n_mols  = n_mols
 
@@ -238,10 +238,7 @@ class _SYSTEM( ):
         fmt  = kwargs.get( 'fmt', fn.split( '.' )[ -1 ] )
         nargs = {}
         if fmt == 'pdb':
-            #albega here in degree, however UnitCell object uses rad...
-            # ==> change it
-            self.abc, self.albega = np.split(self.cell_aa_deg, 2)
-            nargs = { _s : getattr(self, _s) for _s in ('mol_map', 'abc', 'albega') }
+            nargs = { _s : getattr(self, _s) for _s in ('mol_map', 'cell_aa_deg') }
         else:
             raise NotImplementedError( "System object supports only PDB output for now (use _XYZ attribute instead)" )
         self.XYZData.write( fn, fmt=fmt, **nargs )

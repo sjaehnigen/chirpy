@@ -8,6 +8,7 @@ import numpy as np
 
 from topology.dissection import assign_molecule
 from topology.mapping import get_atom_spread
+from topology.symmetry import get_cell_vec
 
 from classes.trajectory import XYZFrame
 from classes.system import Supercell
@@ -29,9 +30,11 @@ class _BoxObject():
 
     def __init__( self, **kwargs ): #empty-box init allowed (bare)
         self.members = kwargs.get( "members", [ ] ) # list of ( n, XYZFrame object ) tuples with n being the no. of molecules within the box
-        self.symmetry = kwargs.get( 'symmetry', 'orthorhombic' )
+        self.symmetry = kwargs.get( 'symmetry')#, 'orthorhombic' )
         self.origin_aa = kwargs.get( 'origin_aa', np.zeros( ( 3 ) ).astype( float ) )
-        if self.symmetry != 'orthorhombic': raise NotImplementedError( 'ERROR: Only supports orthorhombic cells' )
+        self.cell_aa_deg = kwargs.get('cell_aa_deg' )
+        #if self.symmetry != 'orthorhombic': raise NotImplementedError( 'ERROR: Only supports orthorhombic cells' )
+        if any(self.cell_aa_deg[:3] != 90.): print( 'WARNING: Non-orthorhombic cells barely tested!' )
         self.pbc = kwargs.get( 'pbc', True )
         _BoxObject._sync_class( self ) #important: carry out here only native sync
         self.cell_vec_aa = self._cell_vec_aa( **kwargs )
@@ -47,24 +50,25 @@ class _BoxObject():
         _sys = Supercell( fn, **kwargs )
 
         #some corrections due to deprecated Supercell structure
-        try:
-            _sys.mol_map 
-        except AttributeError:
-            _sys.install_molecular_origin_gauge( )
+        #try:
+        #    _sys.mol_map
+        #except AttributeError:
+        _sys.install_molecular_origin_gauge( )
         nargs = {}
         try:
-            nargs[ 'cell_aa' ] = _sys.cell_aa_deg 
+            nargs[ 'cell_aa_deg' ] = _sys.cell_aa_deg
         except AttributeError:
             #NB: if kwargs has cell_aa attribute, _sys has to have it as well ==> no 2nd check for 'cell_aa' necessary
             print( 'WARNING: Could not find cell parametres; uses guess from atom spread!' )
-            nargs[ 'cell_aa' ] = np.array( get_atom_spread( _sys.XYZData.data ) )
+            nargs[ 'cell_aa_deg' ] = np.array( get_atom_spread( _sys.XYZData.data ) )
 
         #pass pbc? cell? WARNING: do not just pass kwargs! reassemble it!!
         return cls( members = [ ( 1, _s._to_frame() ) for _s in _sys.XYZData._split( _sys.mol_map ) ], **nargs )
 
     def _cell_vec_aa( self, **kwargs ):
-        if self.symmetry == 'orthorhombic': #should be cubic
-            return np.diag( kwargs.get( 'cell_aa', np.zeros( ( 3 ) ).astype( float ) )[ :3 ] )
+        return get_cell_vec( kwargs.get( 'cell_aa_deg' ) )
+        #if self.symmetry == 'orthorhombic': #should be cubic
+        #    return np.diag( kwargs.get( 'cell_aa', np.zeros( ( 3 ) ).astype( float ) )[ :3 ] )
 
     def _cell_aa_deg( self ):
         if self.symmetry == 'orthorhombic':
@@ -169,7 +173,10 @@ class _BoxObject():
         print( 'Periodic boundaries: %s' % self.pbc )
         print( '%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %  ( self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3 ) )
         print( 67 * '–' )
-        print( ' x '.join( map( '{:.5f} aa'.format, np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ) ) ) ) #simple, only for orthorhombic
+        print( 'CELL ' + ' '.join( map( '{:10.5f}'.format, self.cell_aa_deg ) ) ) #simple, only for orthorhombic
+        print( 'A ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[0] ) ) ) #simple, only for orthorhombic
+        print( 'B ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[1] ) ) ) #simple, only for orthorhombic
+        print( 'C ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[2] ) ) ) #simple, only for orthorhombic
         print( 67 * '–' )
         print( '%45s %8s %12s' % ( 'File', 'No.', 'Molar Mass' ) )
         print( 67 * '–' )
