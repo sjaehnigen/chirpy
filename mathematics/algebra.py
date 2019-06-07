@@ -23,5 +23,6 @@ def change_euclidean_basis(v, basis):
     M[2] = np.cross(basis[0], basis[1])
     V = np.dot(basis[0], np.cross(basis[1], basis[2]))
 
+    #print(np.dot(np.cross(basis[0], basis[1]),basis[2]))
     return 1 / V * np.tensordot( v, M, axes =(-1, 1))
 

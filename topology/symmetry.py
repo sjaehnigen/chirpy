@@ -62,13 +62,21 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
     cell_vec_aa = get_cell_vec(cell_aa_deg)
 
     if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
-        return pos_aa - np.tensordot(ceb(pos_aa, cell_vec_aa).astype(int),
+        return pos_aa - np.tensordot(np.floor(ceb(pos_aa, cell_vec_aa)),
                                      cell_vec_aa,
                                      axes=1
                                      )
     else:
         print( 'WARNING: Cell size zero!' )
         return pos_aa
+
+def distance_pbc(p1, p0, **kwargs):
+    _d = p1 - p0
+    try:
+        return _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
+    except TypeError:
+        print('i am here')
+        return _d
 
 def _pbc_shift(_d, cell_aa_deg):
     '''_d of shape ...'''

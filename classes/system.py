@@ -106,7 +106,8 @@ class _SYSTEM( ):
         else: raise Exception('Unknown format: %s.'%fmt)
 
 
-        cell_aa_deg = kwargs.get( 'cell_aa' ) #, getattr( self, "cell_aa_deg", None ) )  )
+        cell_aa_deg = kwargs.get( 'cell_aa' ) #DEPRECATED
+        cell_aa_deg = kwargs.get( 'cell_aa_deg' ) #, getattr( self, "cell_aa_deg", None ) )  )
         if cell_aa_deg is not None:
             cell_aa_deg = np.array( cell_aa_deg )
             if hasattr(self,'cell_aa_deg'):

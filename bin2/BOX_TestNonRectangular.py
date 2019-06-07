@@ -17,7 +17,7 @@ nargs[ 'fn_topo' ] = args.fn_topo
 
 b = Supercell( args.fn, **nargs )
 b.install_molecular_origin_gauge()
-b.XYZData._wrap_molecules(b.mol_map, b.cell_aa_deg)
-#b.XYZData._wrap_atoms(b.cell_aa_deg)
+#b.XYZData._wrap_molecules(b.mol_map, b.cell_aa_deg)
+b.XYZData._wrap_atoms(b.cell_aa_deg)
 
 b.write( "test.pdb" )
