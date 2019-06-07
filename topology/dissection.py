@@ -59,7 +59,7 @@ def dist_crit_aa(symbols):
 #    ass[h] = ass[np.argmin(dist_array[h], axis=1)]
 #    return ass
 
-def _make_batches(p, nb, cell_aa_deg=None, ov=0.0):
+def _make_batches(p, nb, cell_aa_deg=None, ov=None):
     '''nb .. number of batches: tuple (nx, ny. nz)'''
     if cell_aa_deg is not None:
         MAX = cell_aa_deg[:3]
@@ -68,9 +68,13 @@ def _make_batches(p, nb, cell_aa_deg=None, ov=0.0):
         MIN = tuple([ np.amin(_ip) for _ip in np.moveaxis(p, -1, 0) ])
         MAX = tuple([ np.amax(_ip) for _ip in np.moveaxis(p, -1, 0) ])
     X = np.array([np.linspace(_min, _max, _n + 1) for _min, _max, _n in zip(MIN,MAX,nb)])
+    if ov == None:
+        ov = [(_x[1] - _x[0]) / 4. for _x in X]
+        print(X)
+        print(ov)
     Y = np.array([
-        [(_x0-ov, _x1+ov) for _x0, _x1 in zip(_x, np.roll(_x, -1))][:-1] for _x in X
-                ])
+        [(_x0-_ov, _x1+_ov) for _x0, _x1 in zip(_x, np.roll(_x, -1))][:-1] for _x, _ov in \
+        zip(X, ov) ])
     Y0 = np.array(np.meshgrid(*[np.array(_y)[:,0] for _y in Y])).reshape((3,-1)).T
     Y1 = np.array(np.meshgrid(*[np.array(_y)[:,1] for _y in Y])).reshape((3,-1)).T
     Z = np.array([(_y0, _y1) for _y0, _y1 in zip(Y0, Y1)])
@@ -97,9 +101,6 @@ def define_molecules(mol):
     # have a starting point (minimum) and interval size (however it does not allow for more
     # sophisticated adaptive batch generation (e.g. using different sizes).
 
-    # However, it does not work yet for _n_b != (1,1,1) because too many molecules are found in each
-    # batch (NB: molecular fragments will also get a mol number). For old code see below.
-
     # change basis
     if cell_aa_deg is not None:
         cell_vec_aa = get_cell_vec(cell_aa_deg)
@@ -111,12 +112,18 @@ def define_molecules(mol):
         except TypeError:
             return p
 
+    # However, it does not work yet for _n_b != (1,1,1) because too many molecules are found in each
+    # batch (NB: molecular fragments will also get a mol number). For old code see below.
     _n_b = (1,1,1)
+
     # NB: do not wrap batch positions!
-    _batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=2.0/np.linalg.norm(cell_aa_deg[:3]))
+    # What is the influence of ov?
+    #_batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=2.0/np.linalg.norm(cell_aa_deg[:3]))
+    #_batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=None) #2.0/np.linalg.norm(cell_aa_deg[:3]))
+    _batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=[0.0, 0.0, 0.0]) #2.0/np.linalg.norm(cell_aa_deg[:3]))
     for _ib, _b in enumerate(_batch):
         _ind = np.prod(
-                _w(_p - _b[0, None]) < _b[1, None] - _b[0, None], axis=-1
+                _w(_p - _b[0, None]) <= _b[1, None] - _b[0, None], axis=-1
                 ).astype(bool)
         _pp = _p[_ind,:]
 
@@ -146,36 +153,41 @@ def define_molecules(mol):
                 break
         # This is critical: somehow the connection between batches has to be found. At the moment
         # molecular fragments are not joined
+
         # Basic idea ----------------------------
-        #def _store_mol(f,m):
-            #new_f = []
-            #for _f, _m in zip(f,m):
-            #    if _f != 0:
-            #        m[m==_m] = _f #does not work(m is not updated)?
-            #    else:
-            #        _f = _m
-            #    new_f.append(_f)
-            #return np.array(new_f)
-        # OR
-        #    for _if, _f in enumerate(f):
+        def _store_mol(f,m):
+        #    new_f = []
+        #    for _f, _m in zip(f,m):
         #        if _f != 0:
-        #            if m[_if] != 0:
-        #                m[m == m[_if]] = _f
-        #            else:
-        #                m[_if] = _f
-        #    return m
-        #fragment[_ind2] = _store_mol(fragment[_ind2], _mol[np.argsort(_sort)])
-        #n_mol = np.amax(fragment)
+        #            m[m==_m] = _f #does not work(m is not updated)?
+        #        else:
+        #            _f = _m
+        #        new_f.append(_f)
+        #    return np.array(new_f)
+        # OR
+            for _if, _f in enumerate(f):
+                if _f != 0:
+                    if m[_if] != 0:
+                        m[m == m[_if]] = _f
+                    else:
+                        m[_if] = _f
+            return m
         # BOTH DO NOT WORK....
         # How to treat cross-batch connections correctly?
         # ---------------------------------------
-        # Revert sorting
-        fragment[_ind2] = _mol[np.argsort(_sort)]
+        if sum(_n_b) != 3:
+            fragment[_ind2] = _store_mol(fragment[_ind2], _mol[np.argsort(_sort)])
+            n_mol = np.amax(fragment)
+        else:
+            # Revert sorting
+            fragment[_ind2] = _mol[np.argsort(_sort)]
+
+
         # This should be done at the end (outside the loop), but needs recalculation of dist_array
         ass[noh] = fragment
         ass[(_ind*h).astype(bool)] = ass[np.argmin(dist_array[h[_ind]], axis=1)]
-        if sum(_n_b) != 3:
-            print(ass)
+        #if sum(_n_b) != 3:
+        #    print(ass)
     return ass
 
 # OLD WORKING CODE backup

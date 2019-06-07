@@ -92,6 +92,7 @@ def get_distance_matrix( pos_aa, **kwargs):
     # ToDo: the following lines explode memory for many atoms ==> do coarse mapping beforehand
     # (overlapping batches) or set a max limit for n_atoms
     if pos_aa.shape[0] > 1000:
+        print(pos_aa.shape[0])
         raise MemoryError(
         'Too many atoms for molecular recognition (>1000 atom support in a future version)!'
         )
