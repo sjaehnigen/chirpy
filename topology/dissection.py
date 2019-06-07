@@ -93,6 +93,7 @@ def define_molecules(mol):
     elif d._type == "frame":
         _p = d.pos_aa
     h, noh = np.array([d.symbols == 'H'])[0], np.array([d.symbols != 'H'])[0]
+    n_noh = noh.sum()
     n_mol = 0
     fragment = np.zeros((noh.sum()))
     ass = np.zeros((d.n_atoms)).astype(int)
@@ -112,119 +113,116 @@ def define_molecules(mol):
         except TypeError:
             return p
 
-    # However, it does not work yet for _n_b != (1,1,1) because too many molecules are found in each
-    # batch (NB: molecular fragments will also get a mol number). For old code see below.
-    _n_b = (1,1,1)
+    # However, it does not work yet for large systems (deadlock?) 
+    # ToDo: automatic batch definition
+    _n_b = (3,3,3)
 
     # NB: do not wrap batch positions!
-    # What is the influence of ov?
-    #_batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=2.0/np.linalg.norm(cell_aa_deg[:3]))
-    #_batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=None) #2.0/np.linalg.norm(cell_aa_deg[:3]))
-    _batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=[0.0, 0.0, 0.0]) #2.0/np.linalg.norm(cell_aa_deg[:3]))
+    _batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=3*[2.0/np.linalg.norm(cell_aa_deg[:3])])
+    neigh_list = []
     for _ib, _b in enumerate(_batch):
         _ind = np.prod(
                 _w(_p - _b[0, None]) <= _b[1, None] - _b[0, None], axis=-1
                 ).astype(bool)
+        _ind2 = np.argwhere(_ind[noh]).T[0]
         _pp = _p[_ind,:]
 
         #return to basis
         if cell_aa_deg is not None:
             _pp = np.tensordot(_pp, cell_vec_aa, axes=1)
+
         dist_array = get_distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
         dist_array[dist_array == 0.0] = 'Inf'
         crit_aa = dist_crit_aa(d.symbols[_ind])
 
         neigh_map = dist_array <= crit_aa
+        neigh_list += [tuple(_ind2[_l]) for _l in np.argwhere(neigh_map[noh[_ind]][:, noh[_ind]]==1)]
 
-        _ind2 = _ind[noh]
-        n_noh = _ind2.sum()
+    neigh_list = [tuple(_i) for _i in np.unique(np.sort(neigh_list, axis=-1), axis=0)]
+    if cell_aa_deg is not None:
+        _p = np.tensordot(_p, cell_vec_aa, axes=1)
 
-        atom_count = n_noh
-        # sort zeros to back of the array
-        _sort = np.roll(np.argsort(fragment[_ind2]),-(fragment[_ind2]==0).sum())
-        _mol = fragment[_ind2][_sort]
-        _neigh = neigh_map[noh[_ind]][:,noh[_ind]]
-        _neigh = _neigh[_sort][:,_sort]
-        for atom in range(n_noh):
-            if _mol[atom] == 0:
-                n_mol += 1
-                _mol, atom_count = assign_molecule(_mol, n_mol, n_noh, _neigh, atom, atom_count)
-            if atom_count == 0:
-                break
-        # This is critical: somehow the connection between batches has to be found. At the moment
-        # molecular fragments are not joined
+    #OLD (unbatched)
+    #dist_array = get_distance_matrix(_p, cell_aa_deg=cell_aa_deg)
+    #dist_array[dist_array == 0.0] = 'Inf'
+    #crit_aa = dist_crit_aa(d.symbols)
 
-        # Basic idea ----------------------------
-        def _store_mol(f,m):
-        #    new_f = []
-        #    for _f, _m in zip(f,m):
-        #        if _f != 0:
-        #            m[m==_m] = _f #does not work(m is not updated)?
-        #        else:
-        #            _f = _m
-        #        new_f.append(_f)
-        #    return np.array(new_f)
-        # OR
-            for _if, _f in enumerate(f):
-                if _f != 0:
-                    if m[_if] != 0:
-                        m[m == m[_if]] = _f
-                    else:
-                        m[_if] = _f
-            return m
-        # BOTH DO NOT WORK....
-        # How to treat cross-batch connections correctly?
-        # ---------------------------------------
-        if sum(_n_b) != 3:
-            fragment[_ind2] = _store_mol(fragment[_ind2], _mol[np.argsort(_sort)])
-            n_mol = np.amax(fragment)
+    #neigh_map = dist_array <= crit_aa
+    #neigh_list = [tuple(_l) for _l in np.argwhere(neigh_map[noh][:, noh]==1)]
+    def neigh_function(a,i):
+        if (a, i) in neigh_list or (i, a) in neigh_list:
+            return True
         else:
-            # Revert sorting
-            fragment[_ind2] = _mol[np.argsort(_sort)]
+            return False
 
+    n_mol = 0
+    fragment = np.zeros((n_noh))
+    atom_count = n_noh
 
-        # This should be done at the end (outside the loop), but needs recalculation of dist_array
-        ass[noh] = fragment
-        ass[(_ind*h).astype(bool)] = ass[np.argmin(dist_array[h[_ind]], axis=1)]
-        #if sum(_n_b) != 3:
-        #    print(ass)
+    #for atom in range(n_noh):
+    #    if fragment[atom] == 0:
+    #        n_mol += 1
+    #        fragment, atom_count = assign_molecule(
+    #            fragment,
+    #            n_mol,
+    #            n_noh,
+    #            neigh_map[noh][:, noh],
+    #            atom,
+    #            atom_count
+    #            )
+    #    if atom_count == 0:
+    #        break
+    for atom in range(n_noh):
+        if fragment[atom] == 0:
+            n_mol += 1
+            fragment, atom_count = assign_molecule_NEW(
+                fragment,
+                n_mol,
+                n_noh,
+                neigh_function,
+                atom,
+                atom_count
+                )
+        if atom_count == 0:
+            break
+
+    ass = np.zeros((d.n_atoms)).astype(int)
+    ass[noh] = fragment
+    # This is more complicated (and expensive), but is batch-compatible as it avoids dist_array
+    for _h in np.argwhere(h):
+        _d = np.linalg.norm(distance_pbc(_p, _p[_h], cell_aa_deg=cell_aa_deg), axis=-1)
+        _d[_d == 0.0] = 'Inf'
+        _i = np.argmin(_d)
+        ass[_h] = ass[_i]
+
+    # Old
+    #ass[h] = ass[np.argmin(dist_array[h], axis=1)]
     return ass
 
-# OLD WORKING CODE backup
-#    if cell_aa_deg is not None:
-#        _p = np.tensordot(_p, cell_vec_aa, axes=1)
-#    print( np.allclose(_p,_p0 ))
-#    dist_array = get_distance_matrix(_p, cell_aa_deg=cell_aa_deg)
-#    dist_array[dist_array == 0.0] = 'Inf'
-#
-#    neigh_map = dist_array <= crit_aa
-#    h, noh = np.array([d.symbols == 'H'])[0], np.array([d.symbols != 'H'])[0]
-#    n_noh = noh.sum()
-#
-#    n_mol = 0
-#    fragment = np.zeros((n_noh))
-#    atom_count = n_noh
-#
-#    for atom in range(n_noh):
-#        if fragment[atom] == 0:
-#            n_mol += 1
-#            fragment, atom_count = assign_molecule(
-#                fragment,
-#                n_mol,
-#                n_noh,
-#                neigh_map[noh][:, noh],
-#                atom,
-#                atom_count
-#                )
-#        if atom_count == 0:
-#            break
-#
-#    ass = np.zeros((d.n_atoms)).astype(int)
-#    ass[noh] = fragment
-#    ass[h] = ass[np.argmin(dist_array[h], axis=1)]
-##    print(np.array([np.argwhere(_n).ravel().tolist() for _n in neigh_map]))
-##    conn = [np.argwhere(_n).ravel().tolist() for _n in neigh_map]
-#    return ass
+def assign_molecule_NEW(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
+    '''This method can do more than molecules! See BoxObject
+    molecule … assignment
+    n_mol … species counter
+    n_atoms … total number of entries
+    neigh_map … partner matrix
+    atom … current line in partner matrix
+    atom_count … starts with n_atoms until zero
+    '''
+    molecule[atom] = n_mol
+    atom_count -= 1
+    for i in range(n_atoms):
+        if neigh_map(atom, i) and molecule[i] == 0:
+            molecule, atom_count = assign_molecule_NEW(
+                molecule,
+                n_mol,
+                n_atoms,
+                neigh_map,
+                i,
+                atom_count
+                )
+        if atom_count == 0:
+            break
+    return molecule, atom_count
 
 def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     '''This method can do more than molecules! See BoxObject
