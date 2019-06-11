@@ -169,19 +169,22 @@ class _BoxObject():
 
     def print_info( self ):
         #Work in progress...
-        print( '%12s' % self.__class__.__name__ )
-        print( 'Periodic boundaries: %s' % self.pbc )
+        print( 77 * '–' )
+        print( '%-12s' % self.__class__.__name__.upper() )
+        print( 77 * '–' )
+        print( '%-12s %s' % ('Periodic', self.pbc) )
         print( '%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %  ( self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3 ) )
-        print( 67 * '–' )
+        print( 77 * '–' )
         print( 'CELL ' + ' '.join( map( '{:10.5f}'.format, self.cell_aa_deg ) ) ) #simple, only for orthorhombic
-        print( 'A ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[0] ) ) ) #simple, only for orthorhombic
-        print( 'B ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[1] ) ) ) #simple, only for orthorhombic
-        print( 'C ' + ' x '.join( map( '{:10.5f} aa'.format, self.cell_vec_aa[2] ) ) ) #simple, only for orthorhombic
-        print( 67 * '–' )
+        print( 77 * '-' )
+        print( ' A   ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_aa[0] ) ) ) #simple, only for orthorhombic
+        print( ' B   ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_aa[1] ) ) ) #simple, only for orthorhombic
+        print( ' C   ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_aa[2] ) ) ) #simple, only for orthorhombic
+        print( 77 * '–' )
         print( '%45s %8s %12s' % ( 'File', 'No.', 'Molar Mass' ) )
-        print( 67 * '–' )
+        print( 77 * '-' )
         print( '\n'.join( [ '%45s %8d %12.4f' % ( _m[ 1 ].fn, _m[ 0 ], _m[ 1 ].masses_amu.sum() ) for _m in self.members ] ) )
-        print( 67 * '–' )
+        print( 77 * '–' )
 
     def create_system( self, **kwargs ): #most important class (must not be adapted within derived classes)
         #work in progress... #creates a system object (Supercell)

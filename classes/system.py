@@ -143,7 +143,7 @@ class _SYSTEM( ):
             #ToDo: Do not simply pass through kwargs!! Reassemble them as nargs
             #Shifted here 2019-05-17
             if kwargs.get( 'wrap_mols', False ):
-                print('I wrap molecules')
+                #print('I wrap molecules')
                 #ADDED 2018-11-28
                 if self.mol_map is None: 
                     self.install_molecular_origin_gauge()
