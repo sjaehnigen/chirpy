@@ -176,7 +176,7 @@ class _BoxObject():
             for _i in range( _m[ 0 ] ): 
                 mol_map += _m[ 1 ].n_atoms * [ _imol ]
                 _imol += 1
-        return mol_map
+        return np.array(mol_map)
 
     def print_info( self ):
         #Work in progress...
@@ -277,7 +277,7 @@ class Solution( _BoxObject ):
         print( '%12.4f g / cm³' %  self.rho_g_cm3 )
         print( '\n'.join( map( '{:12.4f} mol / L'.format, self.c_mol_L ) ))
 
-    def _fill_box( self ): #calls packmol
+    def _fill_box(self, **kwargs): #calls packmol
         #calculate packmol box
         _box_aa = np.concatenate( ( self.origin_aa, np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ) ) )
         #if periodic: add vacuum edges
@@ -305,18 +305,22 @@ class Solution( _BoxObject ):
         ## this is a little awkward (quick and dirty) 
         #read packmol output and centre residue
         if self.pbc:
-            _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map(), center_residue = 0 )
+            _sys = Supercell( ".simbox.xyz", cell_aa_deg=self._cell_aa_deg() , mol_map = self._mol_map(), center_residue=0 )
         else:
-            _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map() )
-        #write topology (repeat args because Supercell object is shitty )
-        #_sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. ) 
-        _sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), cell_aa_deg = self.cell_aa_deg ) 
+            _sys = Supercell( ".simbox.xyz", cell_aa_deg=self._cell_aa_deg() , mol_map = self._mol_map() )
+
+        # write topology
+        self.mol_map = self._mol_map()
+        if kwargs.get('sort') is not None:
+            _sys.sort_atoms()
+        if kwargs.get('write_PDB', True):
+            _sys.write("topology.pdb") 
 
         #######################################
         #clean files
         #os.remove( ".tmp_packmol.inp" )
         for _im, _m in enumerate( self.members ):
             os.remove( ".member-%03d.xyz" % _im )
-        #os.remove( ".simbox.xyz" )
+        os.remove( ".simbox.xyz" )
 
 #class Mixture, MolecularCrystal, IonicCrystal, GasPhase( Mixture )

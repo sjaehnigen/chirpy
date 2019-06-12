@@ -284,7 +284,7 @@ class _XYZ():
         else: #frame
             _p, mol_c_aa = join_molecules(self.pos_aa, mol_map, cell_aa_deg, weights=w)
             self._pos_aa(_p)
-
+        return mol_c_aa
         ##print('UPDATE WARNING: inserted "swapaxes(0,1)" for mol_cog_aa attribute (new shape: (n_frames,n_mols,3))!')
         #setattr( self, 'mol_' + mode + '_aa', np.array( mol_c_aa ).swapaxes( 0,1 ) )
         #setattr( self, 'mol_map', mol_map )

@@ -108,6 +108,7 @@ class _SYSTEM( ):
 
         cell_aa_deg = kwargs.get( 'cell_aa' ) #DEPRECATED
         cell_aa_deg = kwargs.get( 'cell_aa_deg' ) #, getattr( self, "cell_aa_deg", None ) )  )
+        # ToDo: Fix this unlogical
         if cell_aa_deg is not None:
             cell_aa_deg = np.array( cell_aa_deg )
             if hasattr(self,'cell_aa_deg'):
@@ -115,7 +116,7 @@ class _SYSTEM( ):
                     print( 'WARNING: Given cell size differs from file parametres!' )
             self.cell_aa_deg = cell_aa_deg
 
-        if hasattr( self, 'cell_aa_deg' ):
+        if hasattr(self, 'cell_aa_deg'):
             try:
                 self.UnitCell = UnitCell( self.cell_aa_deg )
                 if kwargs.get('cell_multiply') is not None:
@@ -140,28 +141,23 @@ class _SYSTEM( ):
             except TypeError: #is this the correct Exception?
                 pass
 
-            #ToDo: Do not simply pass through kwargs!! Reassemble them as nargs
-            #Shifted here 2019-05-17
             if kwargs.get( 'wrap_mols', False ):
-                #print('I wrap molecules')
-                #ADDED 2018-11-28
                 if self.mol_map is None: 
                     self.install_molecular_origin_gauge()
-                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
+                self.wrap_molecules() 
 
-            #DEPENDING on cell_aa?
             center_res = kwargs.get('center_residue',-1) #-1 means False, has to be integer ##==> ToDo if time: elaborate this method (maybe class independnet as symmetry tool)
             if center_res != -1: #is not None
-                print('Centering residue %d in cell. Auto-wrapping of residues.'%center_res)
-                if self.mol_map is None: 
-                    raise Exception('ERROR: System does not recognise any residues/molecules!')
-                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
-                self.XYZData._move_residue_to_centre( center_res, self.cell_aa_deg, **kwargs )
-                self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg ) #, **kwargs )
+                self.wrap_molecules() 
+                self.XYZData._center_position(self.mol_c_aa[center_res], self.cell_aa_deg)#, **kwargs )
+                self.wrap_molecules() 
 
-        #ToDo: awkward workaround (needed if XYZData._wrap_molecules() has never been called)
+        # ToDo: awkward workaround (needed if XYZData._wrap_molecules() has never been called)
         if self.mol_map is not None:
             self.XYZData.mol_map = self.mol_map
+
+    def wrap_molecules(self):
+        self.mol_c_aa = self.XYZData._wrap_molecules( self.mol_map, self.cell_aa_deg )
 
     def install_molecular_origin_gauge( self, **kwargs ):
         '''Script mainly from Arne Scherrer'''
