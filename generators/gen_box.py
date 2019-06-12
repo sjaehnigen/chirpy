@@ -30,11 +30,15 @@ class _BoxObject():
 
     def __init__( self, **kwargs ): #empty-box init allowed (bare)
         self.members = kwargs.get( "members", [ ] ) # list of ( n, XYZFrame object ) tuples with n being the no. of molecules within the box
-        self.symmetry = kwargs.get( 'symmetry')#, 'orthorhombic' )
+        # ToDo: auto-determine symmetry
+        self.symmetry = kwargs.get( 'symmetry', 'orthorhombic' )
         self.origin_aa = kwargs.get( 'origin_aa', np.zeros( ( 3 ) ).astype( float ) )
         self.cell_aa_deg = kwargs.get('cell_aa_deg' )
         #if self.symmetry != 'orthorhombic': raise NotImplementedError( 'ERROR: Only supports orthorhombic cells' )
-        if any(self.cell_aa_deg[:3] != 90.): print( 'WARNING: Non-orthorhombic cells barely tested!' )
+        try: # ToDo: fix None case
+            if any(self.cell_aa_deg[3:] != 90.): print( 'WARNING: Non-orthorhombic cells barely tested!' )
+        except:
+            pass
         self.pbc = kwargs.get( 'pbc', True )
         _BoxObject._sync_class( self ) #important: carry out here only native sync
         self.cell_vec_aa = self._cell_vec_aa( **kwargs )
@@ -82,6 +86,11 @@ class _BoxObject():
         self.n_members = len( self.members )
         self.mass_amu = sum( [ _n * _m.masses_amu.sum() for _n, _m in self.members ] )
         self.n_atoms = sum( [ _n * _m.n_atoms for _n, _m in self.members ] )
+        #!
+        try:
+            self.cell_aa_deg = self._cell_aa_deg()
+        except:
+            pass
     #def routine: check all xx attributes against _xx() methods
         
     def _clean_members( self ):
@@ -89,8 +98,9 @@ class _BoxObject():
         _eq = np.zeros( ( self.n_members, ) * 2 )
         #calculate only half the matrix
         for _ii, ( _i, _m ) in enumerate( self.members ):
-            _eq[ _ii, _ii: ] = np.array( [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] )
+            _eq[ _ii, _ii: ] = np.array( [ bool( _m._is_equal( _n, atol = 2.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] )
         #_eq = np.array( [ [ bool( _m._is_equal( _n, atol = 1.0 )[ 0 ] ) for _j, _n in self.members[ _ii: ] ] for _ii, ( _i, _m ) in enumerate( self.members ) ] ).astype( bool )
+        print( _eq.sum() )
         _N = self.n_members
         _M = self.n_members
         _ass = np.zeros( ( _N ) ).astype( int )
@@ -299,7 +309,8 @@ class Solution( _BoxObject ):
         else:
             _sys = Supercell( ".simbox.xyz", cell_aa = self._cell_aa_deg() , mol_map = self._mol_map() )
         #write topology (repeat args because Supercell object is shitty )
-        _sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. ) 
+        #_sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), abc = np.dot( np.ones( ( 3 ) ), self.cell_vec_aa ), albega = np.ones( ( 3 ) ) * 90. ) 
+        _sys.XYZData.write( "topology.pdb", mol_map = self._mol_map(), cell_aa_deg = self.cell_aa_deg ) 
 
         #######################################
         #clean files
