@@ -294,6 +294,13 @@ class _XYZ():
         #setattr( self, 'abc', abc )
         #setattr( self, 'albega', albega )
 
+    def _center_position(self, pos, cell_aa_deg, **kwargs):
+        '''pos reference in shape (n_frames, three)'''
+        if self._type == 'frame':
+            self._pos_aa(self.pos_aa + cell_aa_deg[None, :3] / 2 - pos[None,:])
+        else:
+            self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2 - pos[:, None,:])
+
 
     def write( self, fn, **kwargs ):
         attr = kwargs.get( 'attr', 'data' ) #only for xyz format
@@ -376,6 +383,7 @@ class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do no
         _XYZ._sync_class( self )
 
     #### The next two methods should be externalised
+    #DEPRECATED
     def _move_residue_to_centre(self,ref,cell_aa_deg,**kwargs):
        try: ref_pos_aa = getattr(self,'mol_cog_aa')[:,ref]
        except: ref_pos_aa = getattr(self,'mol_com_aa')[:,ref]
@@ -383,7 +391,6 @@ class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do no
            print([cl for cl in cell_aa_deg[3:]])
            print('ERROR: only orthorhombic/cubic cells can be used with center function!')
            sys.exit(1)
-       P = self.pos_aa[:,:,:3]
        self.pos_aa[:,:,:3] += cell_aa_deg[None,None,:3]/2 - ref_pos_aa[:,None,:]
 
     def _to_frame( self, fr=0 ):
