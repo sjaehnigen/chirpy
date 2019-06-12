@@ -234,6 +234,12 @@ class _SYSTEM( ):
             self.Modes.mol_map = n_map
             self.Modes.n_mols  = n_mols
 
+    def sort_atoms(self, **kwargs):
+        '''Sort atoms alphabetically (default)'''
+        ind = self.XYZData._sort()
+        self.mol_map = self.mol_map[ind]
+        #what else?
+
     def write( self, fn, **kwargs ):
         '''Work in progress...'''
         fmt  = kwargs.get( 'fmt', fn.split( '.' )[ -1 ] )
