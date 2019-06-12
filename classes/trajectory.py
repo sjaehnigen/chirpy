@@ -101,7 +101,8 @@ class _FRAME():
         self.data = self.data[ :, ind, : ]
         self.symbols = self.symbols[ ind ]
         self._sync_class( )
-    
+        return ind
+
     def _is_similar( self, other ): #add more tests later
         #used by methods:
         #topology.map_atoms_by_coordinates
