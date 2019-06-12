@@ -53,7 +53,8 @@ class _BoxObject():
         #try:
         #    _sys.mol_map
         #except AttributeError:
-        _sys.install_molecular_origin_gauge( )
+        if kwargs.get('install_mol_gauge') is not None:
+            _sys.install_molecular_origin_gauge( )
         nargs = {}
         try:
             nargs[ 'cell_aa_deg' ] = _sys.cell_aa_deg

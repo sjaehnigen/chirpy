@@ -70,8 +70,6 @@ def _make_batches(p, nb, cell_aa_deg=None, ov=None):
     X = np.array([np.linspace(_min, _max, _n + 1) for _min, _max, _n in zip(MIN,MAX,nb)])
     if ov == None:
         ov = [(_x[1] - _x[0]) / 4. for _x in X]
-        print(X)
-        print(ov)
     Y = np.array([
         [(_x0-_ov, _x1+_ov) for _x0, _x1 in zip(_x, np.roll(_x, -1))][:-1] for _x, _ov in \
         zip(X, ov) ])
@@ -115,10 +113,12 @@ def define_molecules(mol):
 
     # However, it does not work yet for large systems (deadlock?) 
     # ToDo: automatic batch definition
-    _n_b = (3,3,3)
+    _n_b = (4, 4, 4)
 
     # NB: do not wrap batch positions!
     _batch = _make_batches(_p, _n_b, cell_aa_deg=_cell, ov=3*[2.0/np.linalg.norm(cell_aa_deg[:3])])
+    #_batch = _make_batches(_p, _n_b, cell_aa_deg=_cell) #dynamic ov may lead to problems for small
+    #batches
     neigh_list = []
     for _ib, _b in enumerate(_batch):
         _ind = np.prod(
@@ -138,7 +138,10 @@ def define_molecules(mol):
         neigh_map = dist_array <= crit_aa
         neigh_list += [tuple(_ind2[_l]) for _l in np.argwhere(neigh_map[noh[_ind]][:, noh[_ind]]==1)]
 
+    #---> until here it is fast
+    #neigh_list = [tuple(_i) for _i in np.sort(np.unique(np.sort(neigh_list, axis=-1), axis=0), axis=0)]
     neigh_list = [tuple(_i) for _i in np.unique(np.sort(neigh_list, axis=-1), axis=0)]
+    #print(neigh_list[:10])
     if cell_aa_deg is not None:
         _p = np.tensordot(_p, cell_vec_aa, axes=1)
 
@@ -150,7 +153,9 @@ def define_molecules(mol):
     #neigh_map = dist_array <= crit_aa
     #neigh_list = [tuple(_l) for _l in np.argwhere(neigh_map[noh][:, noh]==1)]
     def neigh_function(a,i):
-        if (a, i) in neigh_list or (i, a) in neigh_list:
+        #faster?
+        if tuple(sorted((a, i))) in neigh_list:# or (i, a) in neigh_list:
+        #if (a, i) in neigh_list or (i, a) in neigh_list:
             return True
         else:
             return False
@@ -172,9 +177,14 @@ def define_molecules(mol):
     #            )
     #    if atom_count == 0:
     #        break
+
+    # ---> the nesting is slow and ineffcient
+    # Reason: Checking neigh_list expensive?
+    # It also gives wrong results sometimes
     for atom in range(n_noh):
         if fragment[atom] == 0:
             n_mol += 1
+            #print(n_mol)
             fragment, atom_count = assign_molecule_NEW(
                 fragment,
                 n_mol,
@@ -188,7 +198,8 @@ def define_molecules(mol):
 
     ass = np.zeros((d.n_atoms)).astype(int)
     ass[noh] = fragment
-    # This is more complicated (and expensive), but is batch-compatible as it avoids dist_array
+    # This is more complicated (and expensive), but is batch-compatible as it avoids accessing
+    # dist_array
     for _h in np.argwhere(h):
         _d = np.linalg.norm(distance_pbc(_p, _p[_h], cell_aa_deg=cell_aa_deg), axis=-1)
         _d[_d == 0.0] = 'Inf'
