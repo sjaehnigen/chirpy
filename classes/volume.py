@@ -8,10 +8,16 @@ from scipy.integrate import simps
 #from classes.domain import Domain3D,Domain2D
 from reader.volume import cubeReader
 from writer.volume import cubeWriter
+from physics.kspace import k_potential
+from physics.classical_electrodynamics import _get_divrot
 
 eijk = np.zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+
+#Convention Warning:
+# cell_au is cell_vec_au
+
 
 class ScalarField():
     def __init__(self, **kwargs): #**kwargs for named (dict), *args for unnamed
@@ -35,7 +41,8 @@ class ScalarField():
             if any([cell_au.size==0,data.size==0]): raise Exception('ERROR: Please give cell_au and data for "manual" initialisation!')
             origin_au = kwargs.get('origin_au',np.zeros((3)))
             self.origin_au = np.array(origin_au)
-            self.cell_au   = np.array(cell_au)
+            self.cell_au   = np.array(cell_au) #deprecated
+            self.cell_vec_au   = np.array(cell_au)
             self.data      = data
             #Check for optional data 
             for key,value in kwargs.items():
@@ -43,7 +50,27 @@ class ScalarField():
 #            [setattr(self,key,value) for key,value in kwargs.iteritems() if not hasattr(self,key)]
         else:
             raise Exception('Unknown format.')
-        self.voxel     = np.dot(self.cell_au[0],np.cross(self.cell_au[1],self.cell_au[2]))
+
+        self.voxel = np.dot(self.cell_vec_au[0],np.cross(self.cell_vec_au[1],self.cell_vec_au[2]))
+
+    def print_info(self):
+        #Work in progress...
+        print( '' )
+        print( 77 * '–' )
+        print( '%-12s' % self.__class__.__name__ ) #.upper() )
+        print( 77 * '–' )
+        print(' x '.join(map('{:d}'.format, self.data.shape[-3:])))
+        print( '%d Atoms' %  self.n_atoms )
+        #print( '\n'.join(self.comments))
+        print( '\n' )
+        print( 77 * '–' )
+        print( 'Origin (a.u.)' + ' '.join( map( '{:10.5f}'.format, self.origin_au ) ) ) #simple, only for orthorhombic
+        print( 77 * '-' )
+        print( ' cell(A) (a.u.) ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_au[0] ) ) ) #simple, only for orthorhombic
+        print( ' cell(B) (a.u.) ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_au[1] ) ) ) #simple, only for orthorhombic
+        print( ' cell(C) (a.u.) ' + ' '.join( map( '{:10.5f}'.format, self.cell_vec_au[2] ) ) ) #simple, only for orthorhombic
+        print( 77 * '–' )
+        print( '' )
 
     @classmethod
     def from_domain(cls,domain,**kwargs):
@@ -88,17 +115,45 @@ class ScalarField():
         #Can function be overwritten?
         return np.array(np.meshgrid(xaxis,yaxis,zaxis,indexing='ij')) ##Order?
 
+    #copy to new object?
+    def sparsity(self, sp, **kwargs):
+        '''sp int'''
+        dims = kwargs.get( 'dims', 'xyz' )
+        def _apply(_i):
+            self.data = np.moveaxis(np.moveaxis(self.data, _i, 0)[::sp], 0, _i)
+            self.cell_au[_i] *= sp
+            self.cell_vec_au[_i] *= sp
+
+        if 'x' in dims:
+            _apply(-3)
+        if 'y' in dims:
+            _apply(-2)
+        if 'z' in dims:
+            _apply(-1)
+        self.voxel = np.dot(self.cell_vec_au[0],np.cross(self.cell_vec_au[1],self.cell_vec_au[2]))
+
     def crop( self, r , **kwargs ): #only symmetric crop; ToDo: routine for centering + crop (i.e. asymmetric crop)
         dims = kwargs.get( 'dims', 'xyz' )
+        def _apply(_i):
+            self.data = np.moveaxis(np.moveaxis(self.data, _i, 0)[r:-r], 0, _i)
+            self.origin_au[_i] += self.cell_au[_i,_i] * r
+
         if 'x' in dims:
-            self.data = self.data[ r : -r, :   , : ]
-            self.origin_au[ 0 ] += self.cell_au[ 0, 0 ] * r
+            _apply(-3)
         if 'y' in dims:
-            self.data = self.data[ :   , r : -r, : ]
-            self.origin_au[ 1 ] += self.cell_au[ 1, 1 ] * r
+            _apply(-2)
         if 'z' in dims:
-            self.data = self.data[ :   , :   , r : -r ]
-            self.origin_au[ 2 ] += self.cell_au[ 2, 2 ] * r
+            _apply(-1)
+
+#        if 'x' in dims:
+#            self.data = self.data[ r : -r, :   , : ]
+#            self.origin_au[ 0 ] += self.cell_au[ 0, 0 ] * r
+#        if 'y' in dims:
+#            self.data = self.data[ :   , r : -r, : ]
+#            self.origin_au[ 1 ] += self.cell_au[ 1, 1 ] * r
+#        if 'z' in dims:
+#            self.data = self.data[ :   , :   , r : -r ]
+#            self.origin_au[ 2 ] += self.cell_au[ 2, 2 ] * r
 
 
     def auto_crop( self, **kwargs ): #can only xyz
@@ -141,6 +196,7 @@ class VectorField(ScalarField): #inheritence for pos_grid
             self.comments  = np.array([buf_x['comments'].strip(), buf_y['comments'].strip(), buf_z['comments'].strip()])
             self.origin_au = np.array(buf_x['origin_au'])
             self.cell_au   = np.array(buf_x['cell_au'])
+            self.cell_vec_au = np.array(buf_x['cell_au'])
             self.pos_au    = np.array(buf_x['coords_au'])
             self.n_atoms   = self.pos_au.shape[0]
             self.numbers   = np.array(buf_x['numbers'])
@@ -152,17 +208,34 @@ class VectorField(ScalarField): #inheritence for pos_grid
         else:
             raise Exception('Unknown format.')
 
-    def crop(self,r,**kwargs):
-        dims = kwargs.get('dims','xyz')
-        if 'x' in dims:
-            self.data=self.data[:,r:-r,:   ,:]
-        self.origin_au[0] += self.cell_au[0,0]*r
-        if 'y' in dims:
-            self.data=self.data[:,:   ,r:-r,:]
-        self.origin_au[1] += self.cell_au[1,1]*r
-        if 'z' in dims:
-            self.data=self.data[:,:   ,:   ,r:-r]
-        self.origin_au[2] += self.cell_au[2,2]*r
+    ##ToDo: sparsity and crop could be generalised to fit to both, scalar and vector field (see also gen_box)
+
+    #copy to new object?
+#    def sparsity(self, sp, **kwargs):
+#        '''sp int'''
+#        dims = kwargs.get( 'dims', 'xyz' )
+#        if 'x' in dims:
+#            self.data = self.data[::sp, :, :]
+#            self.cell_au[0] *= sp 
+#        if 'y' in dims:
+#            self.data = self.data[:, ::sp, :]
+#            self.cell_au[1] *= sp 
+#        if 'z' in dims:
+#            self.data = self.data[:, :, ::sp]
+#            self.cell_au[2] *= sp 
+#        self.voxel = np.dot(self.cell_au[0],np.cross(self.cell_au[1],self.cell_au[2]))
+#
+#    def crop(self,r,**kwargs):
+#        dims = kwargs.get('dims','xyz')
+#        if 'x' in dims:
+#            self.data=self.data[:,r:-r,:   ,:]
+#        self.origin_au[0] += self.cell_au[0,0]*r
+#        if 'y' in dims:
+#            self.data=self.data[:,:   ,r:-r,:]
+#        self.origin_au[1] += self.cell_au[1,1]*r
+#        if 'z' in dims:
+#            self.data=self.data[:,:   ,:   ,r:-r]
+#        self.origin_au[2] += self.cell_au[2,2]*r
 
     def streamlines(self,p0,**kwargs):
         '''pn...starting points of shape (n_points,3)'''
@@ -240,58 +313,59 @@ class VectorField(ScalarField): #inheritence for pos_grid
         '''See notebook 24b'''
         pass 
 
-    @staticmethod
-    def _get_divrot(data,cell_au):
-        """data of shape n_frames, 3, x, y, z"""
-        gradients = np.array(np.gradient(data,1,cell_au[0][0],cell_au[1][1],cell_au[2][2])[1:])
-        div = gradients.trace(axis1=0,axis2=1)
-        rot = np.einsum('ijk,jklmn->ilmn',eijk,gradients)
-        return div, rot
+#    @staticmethod
+#    def _get_divrot(data,cell_au):
+#        """data of shape n_frames, 3, x, y, z"""
+#        gradients = np.array(np.gradient(data,1,cell_au[0][0],cell_au[1][1],cell_au[2][2])[1:])
+#        div = gradients.trace(axis1=0,axis2=1)
+#        rot = np.einsum('ijk,jklmn->ilmn',eijk,gradients)
+#        return div, rot
 
     @staticmethod
     def _get_helmholtz_components(data,cell_au):
-        def GetCell(n1, n2, n3, a1, a2, a3):
-            from numpy.fft import fftfreq
-            r1 = np.arange(n1)*(a1/n1)-a1/2
-            r2 = np.arange(n2)*(a2/n2)-a2/2
-            r3 = np.arange(n3)*(a3/n3)-a3/2
-            k1 = 2*np.pi*fftfreq(n1,a1/n1)
-            k2 = 2*np.pi*fftfreq(n2,a2/n2)
-            k3 = 2*np.pi*fftfreq(n3,a3/n3)
-            ix, iy, iz = (slice(None), None, None), (None, slice(None), None), (None, None, slice(None))
-            (X, Kx) = (r1[ix], k1[ix])
-            (Y, Ky) = (r2[iy], k2[iy])
-            (Z, Kz) = (r3[iz], k3[iz])
-            R = np.sqrt(X**2 + Y**2 + Z**2)
-            K = np.sqrt(Kx**2 + Ky**2 + Kz**2)
-            return R,K
+#        def GetCell(n1, n2, n3, a1, a2, a3):
+#            from numpy.fft import fftfreq
+#            r1 = np.arange(n1)*(a1/n1)-a1/2
+#            r2 = np.arange(n2)*(a2/n2)-a2/2
+#            r3 = np.arange(n3)*(a3/n3)-a3/2
+#            k1 = 2*np.pi*fftfreq(n1,a1/n1)
+#            k2 = 2*np.pi*fftfreq(n2,a2/n2)
+#            k3 = 2*np.pi*fftfreq(n3,a3/n3)
+#            ix, iy, iz = (slice(None), None, None), (None, slice(None), None), (None, None, slice(None))
+#            (X, Kx) = (r1[ix], k1[ix])
+#            (Y, Ky) = (r2[iy], k2[iy])
+#            (Z, Kz) = (r3[iz], k3[iz])
+#            R = np.sqrt(X**2 + Y**2 + Z**2)
+#            K = np.sqrt(Kx**2 + Ky**2 + Kz**2)
+#            return R,K
+#
+#        def Vk(k):
+#            """Fourier transform of Coulomb potential $1/r$"""
+#            with np.errstate(divide='ignore'):
+#                return np.where(k==0.0, 0.0, np.divide(4.0*np.pi, k**2))
+#
+#        def Potential(data, cell_au):
+#            from numpy.fft import ifftn,fftn
+#            n1, n2, n3 = data.shape
+#            a1, a2, a3 = tuple(cell_au.diagonal())
+#            R,K        = GetCell(n1, n2, n3, a1*n1, a2*n2, a3*n3)
+#            V_R        = ifftn(Vk(K)*fftn(data)).real
+#            return R, V_R
 
-        def Vk(k):
-            """Fourier transform of Coulomb potential $1/r$"""
-            with np.errstate(divide='ignore'):
-                return np.where(k==0.0, 0.0, np.divide(4.0*np.pi, k**2))
-
-        def Potential(data, cell_au):
-            from numpy.fft import ifftn,fftn
-            n1, n2, n3 = data.shape
-            a1, a2, a3 = tuple(cell_au.diagonal())
-            R,K        = GetCell(n1, n2, n3, a1*n1, a2*n2, a3*n3)
-            V_R        = ifftn(Vk(K)*fftn(data)).real
-            return R, V_R
-
-        div,rot = VectorField._get_divrot(data,cell_au)
-        V = Potential(div, np.array(cell_au))[1]/(4*np.pi)
-        A1 = Potential(rot[0], np.array(cell_au))[1]
-        A2 = Potential(rot[1], np.array(cell_au))[1]
-        A3 = Potential(rot[2], np.array(cell_au))[1]
+        div,rot = _get_divrot(data,cell_au)
+        V = k_potential(div, np.array(cell_au))[1]/(4*np.pi)
+        A1 = k_potential(rot[0], np.array(cell_au))[1]
+        A2 = k_potential(rot[1], np.array(cell_au))[1]
+        A3 = k_potential(rot[2], np.array(cell_au))[1]
         A = np.array([A1,A2,A3])/(4*np.pi)
         irrotational_field = -np.array(np.gradient(V,cell_au[0][0],cell_au[1][1],cell_au[2][2]))
-        solenoidal_field = VectorField._get_divrot(A, cell_au)[1]
+        solenoidal_field = _get_divrot(A, cell_au)[1]
+
         return irrotational_field, solenoidal_field, div, rot
 
 ###These are scripts adapted from Arne Scherrer
     def divergence_and_rotation(self):
-        self.div,self.rot = self._get_divrot(self.data,self.cell_au)
+        self.div,self.rot = _get_divrot(self.data,self.cell_au)
 
     def helmholtz_decomposition(self):
          self.irrotational_field, self.solenoidal_field, self.div,self.rot = self._get_helmholtz_components(self.data,self.cell_au)

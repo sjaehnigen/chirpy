@@ -183,10 +183,10 @@ class ElectronicSystem():
             raise Exception('ERROR: Density and Current Data is not consistent!')
 
     def grid(self):
-        self.rho.grid()
+        return self.rho.grid()
 
     def pos_grid(self):
-        self.rho.pos_grid()
+        return self.rho.pos_grid()
 
     def crop(self,r,**kwargs):
         self.rho.crop(r)
