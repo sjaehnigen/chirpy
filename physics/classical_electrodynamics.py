@@ -36,21 +36,21 @@ def magnetic_dipole_shift_origin(c_au,trans_au,**kwargs):
 
 #def magnetic_dipole_moment_shift_origin_pbc(m_old_au,pos_au,origin_au=np.array([0.0,0.0,0.0])):
 
-def biot_savart(r0, r, j):
+def biot_savart(r0, r, j, thresh=1.E-8):
     #in atomic units using cgs convention for B field (µ0 = 1/c)
     d = r0 - r
     d2 = np.linalg.norm(d, axis=-1)**2
     with np.errstate(divide='ignore'):
-        d2_inv = np.where(d2<1.E-8, 0.0, np.divide(1.0, d2))
+        d2_inv = np.where(d2<thresh, 0.0, np.divide(1.0, d2))
     B = np.cross(j,d,axisa=-1,axisb=-1,axisc=-1) * d2_inv[:,None]
     return B / constants.c_au
 
-def biot_savart_grid(r, j, pos_grid, voxel):
+def biot_savart_grid(r, j, pos_grid, voxel, thresh=1.E-8):
     #in atomic units using cgs convention for B field (µ0 = 1/c)
     d = r[:, None, None, None]-pos_grid
     d3 = np.linalg.norm(d, axis=0)**3
     with np.errstate(divide='ignore'):
-        d3_inv = np.where(d3<1.E-8, 0.0, np.divide(1.0, d3))
+        d3_inv = np.where(d3<thresh, 0.0, np.divide(1.0, d3))
     B = np.cross(j,d,axisa=0,axisb=0,axisc=0) * d3_inv[None] * voxel
     B = B.sum(axis=(1, 2, 3))
     return B / constants.c_au

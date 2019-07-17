@@ -28,7 +28,8 @@ class ScalarField():
             buf = cubeReader(self.fn)
             self.comments  = buf['comments'].strip()
             self.origin_au = np.array(buf['origin_au'])
-            self.cell_au   = np.array(buf['cell_au'])
+            self.cell_au   = np.array(buf['cell_au']) #deprecated
+            self.cell_vec_au = np.array(buf['cell_au'])
             self.pos_au    = np.array(buf['coords_au'])
             self.n_atoms   = self.pos_au.shape[0]
             self.numbers   = np.array(buf['numbers'])

@@ -239,7 +239,8 @@ else:
             R = np.array([_read_vec(R, _ip) for _ip in range(_npoints)]).T
         _tmp_B = np.zeros_like(R.T)
         for _p,_v,_q in zip(j.pos_au, vel_au, Q):
-            _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q)
+            #change thresh because closest points will explode expression
+            _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q, thresh=j.voxel**(1/3))
         B2 = _tmp_B.T.reshape(B2.shape)
         del _tmp_B
         print( "Done." )
