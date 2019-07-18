@@ -1,19 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import numpy as np
-import sys
 import copy
-from scipy.integrate import simps
-from scipy.signal import medfilt
-from scipy.ndimage.morphology import generate_binary_structure, binary_erosion, binary_dilation
+from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.ndimage.filters import maximum_filter, minimum_filter,gaussian_filter
+from scipy import signal
 
 from classes.volume import ScalarField,VectorField
-from classes.domain import Domain3D,Domain2D
 from physics import constants
 from reader.trajectory import xyzReader
+from classes.domain import Domain3D
 
 #class WaveFunction(ScalarField):        
-class WannierFunction(ScalarField):        
+class WannierFunction(ScalarField):
     def auto_crop(self,**kwargs): #all the same as ScalarField object. Only different default thresh
         '''crop after threshold (default: ...)'''
         thresh=kwargs.get('thresh',1.0)
@@ -43,7 +41,7 @@ class WannierFunction(ScalarField):
 #        return ....#enter math here
 
 
-class ElectronDensity(ScalarField):        
+class ElectronDensity(ScalarField):
     def integral(self):
         #self.n_electrons = self.voxel*simps(simps(simps(self.data)))
         self.n_electrons = self.voxel*self.data.sum()
@@ -55,12 +53,9 @@ class ElectronDensity(ScalarField):
             return np.remainder(a,self.data.shape[dim])
         def env_basin(f,x,y,z):
             return np.array([f[x,y,z],f[pbc(x+1,0),y,z],f[x-1,y,z],f[x,pbc(y+1,1),z],f[x,y-1,z],f[x,y,pbc(z+1,2)],f[x,y,z-1]])
-        
-       # self.n_x       = self.data.shape[0]
-       # self.n_y       = self.data.shape[1]
-       # self.n_z       = self.data.shape[2]
+
         self.aim_threshold = self.threshold
-        boundary_max = 0 
+        boundary_max = 0
         boundary_max = max(boundary_max,np.amax(self.data[ 0,:,:]))
         boundary_max = max(boundary_max,np.amax(self.data[-1,:,:]))
         boundary_max = max(boundary_max,np.amax(self.data[:, 0,:]))
@@ -73,9 +68,7 @@ class ElectronDensity(ScalarField):
 
         #neighborhood = generate_binary_structure(3,1)
         test = np.unravel_index(np.argsort(self.data.ravel())[::-1], self.data.shape)
-        mask0 = np.zeros(self.data.shape,dtype=bool)
-        
-        #atoms = range(0,rho.n_atoms*2)
+
         atoms = range(self.n_atoms)
 
         basin = np.zeros([j for i in (self.data.shape,len(atoms)) for j in (i if isinstance(i,tuple) else (i,))])
@@ -146,41 +139,22 @@ class AIMAtom(Domain3D):
         func = lambda inds: rho.data[inds]*rho.voxel
         return self.numbers.sum()-self.integrate_volume(func)
 
-    def current_dipole(self,j):
-        func = lambda inds: rho.data[inds]
-        return self.numbers.sum()-ElectronDensity.integrate_volume(rho,func,self.indices,self.weights)
+#    def current_dipole(self,j):
+#        func = lambda inds: rho.data[inds]
+#        return self.numbers.sum()-ElectronDensity.integrate_volume(rho,func,self.indices,self.weights)
 
-#        tmp = np.zeros(rho.data.shape)       
-#        for iatom in self.aim_atoms:
-#            tmp[iatom.indices] += iatom.weights
-#        summand = simps(self.data.ravel())-simps((self.data*tmp).ravel())
-#        summand /= (tmp!=0).sum()
-#        del tmp
-#        #summand = 0
-        
-#        c = list()
-#        for i,iatom in enumerate(self.aim_atoms):
-#            nu=self.numbers[i]
-#            func = lambda inds: self.voxel*(self.data[inds]+summand)
-#            c.append(nu-self.integrate_volume(func,iatom.indices,iatom.weights))
-#
-#        return np.array(c)
 
-class ElectronCurrent(VectorField):        
-#    def __init__(self,fn,**kwargs):
-#        self = VectorField.__init__(self,fn)  
+class ElectronCurrent(VectorField):
     pass
 
 
 class ElectronicSystem():
     def __init__(self,fn,fn1,fn2,fn3,**kwargs):
-        self.rho = ElectronDensity(fn=fn)
-        self.j   = ElectronCurrent(fn1,fn2,fn3)
+        self.rho = ElectronDensity(fn, **kwargs)
+        self.j   = ElectronCurrent(fn1, fn2, fn3, **kwargs)
         self.rho.integral()
-        if all([np.allclose(self.rho.origin_au,self.j.origin_au),np.allclose(self.rho.cell_au,self.j.cell_au),np.allclose(self.rho.pos_au,self.j.pos_au),np.allclose(self.rho.numbers,self.j.numbers),np.allclose(self.rho.voxel,self.j.voxel)]):
-            pass
-        else:
-            raise Exception('ERROR: Density and Current Data is not consistent!')
+        if not self.rho._is_similar(self.j, strict=2, return_false=True):
+            raise ValueError('ERROR: Density and Current Data is not consistent!')
 
     def grid(self):
         return self.rho.grid()
@@ -208,12 +182,11 @@ class ElectronicSystem():
     def calculate_velocity_field(self,**kwargs): #check convetnion for states, use j so far
         lower_thresh=kwargs.get('lower_thresh',self.rho.threshold)
         upper_thresh=kwargs.get('upper_thresh',100000) #is this high enough?
-#        isstate=kwargs.get('state',False)
-        self.v = copy.deepcopy(self.j)
-#        if isstate: scale = 2*self.rho.data**2 #restricted bot debugged
+        self.v = VectorField.from_object(self.j)
         scale = self.rho.data
         self.v.data = self.v.data/scale[None]*(scale>lower_thresh)[None]*(scale<upper_thresh)[None]
 
+        self.v.__class__.__name__ = "VelocityField"
 
     def propagate_density(self,dt=8.0):
         '''dt in atomic units'''
@@ -247,11 +220,10 @@ class ElectronicSystem():
             r_grid = np.zeros(grid.shape)
             r_grid[grid!=0] = np.reciprocal(grid[grid!=0])
             return r_grid
-     
         j_norm = np.linalg.norm(self.j.data,axis=0)
         r_j_norm = rec_grid(j_norm)
         j_dir = self.j.data*r_j_norm[None,:,:,:]*sign_dt #direction of time
-        
+
         j_gain = np.zeros(self.j.data.shape)
         j_loss = np.zeros(self.j.data.shape)
 
@@ -267,7 +239,7 @@ class ElectronicSystem():
             dw.append(np.roll(tmp2,-1,axis=2))
             dw.append(np.roll(tmp2,+1,axis=2))
             dw = np.array(dw)-tmp1
-        
+
             #gain
             gn=np.zeros(self.j.data.shape)
             gn[0] += j_dir[0]*(j_dir[0,:,:,:]>0)*dw[0,:,:,:]*(dw[0,:,:,:]>0)
@@ -276,7 +248,7 @@ class ElectronicSystem():
             gn[1] += j_dir[1]*(j_dir[1,:,:,:]<0)*dw[3,:,:,:]*(dw[3,:,:,:]>0)
             gn[2] += j_dir[2]*(j_dir[2,:,:,:]>0)*dw[4,:,:,:]*(dw[4,:,:,:]>0)
             gn[2] += j_dir[2]*(j_dir[2,:,:,:]<0)*dw[5,:,:,:]*(dw[5,:,:,:]>0)   
-        
+
             #loss
             ls=np.zeros(self.j.data.shape)
             ls[0] += j_dir[0]*(j_dir[0,:,:,:]>0)*dw[0,:,:,:]*(dw[0,:,:,:]<0)
@@ -285,7 +257,7 @@ class ElectronicSystem():
             ls[1] += j_dir[1]*(j_dir[1,:,:,:]<0)*dw[3,:,:,:]*(dw[3,:,:,:]<0)
             ls[2] += j_dir[2]*(j_dir[2,:,:,:]>0)*dw[4,:,:,:]*(dw[4,:,:,:]<0)
             ls[2] += j_dir[2]*(j_dir[2,:,:,:]<0)*dw[5,:,:,:]*(dw[5,:,:,:]<0)    
-            
+
             gn *= j_norm[None]
             ls *= j_norm[None]   
             j_gain += gn
@@ -296,11 +268,11 @@ class ElectronicSystem():
 
         if not np.allclose(j_gain,-j_loss,atol=1.E-4): print('WARNING: AIM gain/loss unbalanced!')
         print('AIM gain/loss calculation done.')
-        
+
         #method could be split here
         r_j_gain = rec_grid(j_gain)
         r_j_loss = rec_grid(j_loss)
-        
+
         ia_gain=np.zeros((self.j.n_atoms,self.j.n_atoms))
         ia_loss=np.zeros((self.j.n_atoms,self.j.n_atoms))
 

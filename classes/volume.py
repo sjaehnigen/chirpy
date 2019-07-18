@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 import copy
-import sys
 from scipy.interpolate import griddata
 from scipy.integrate import simps
 
@@ -20,39 +19,51 @@ eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 
 class ScalarField():
-    def __init__(self, **kwargs): #**kwargs for named (dict), *args for unnamed
-        self.fn = kwargs.get( 'fn' )
-        self.fmt = kwargs.get( 'fmt' )
-        if self.fmt is None and not self.fn is None: self.fmt = kwargs.get('fmt',self.fn.split('.')[-1])
-        if self.fmt=="cube":
-            buf = cubeReader(self.fn)
-            self.comments  = buf['comments'].strip()
-            self.origin_au = np.array(buf['origin_au'])
-            self.cell_au   = np.array(buf['cell_au']) #deprecated
-            self.cell_vec_au = np.array(buf['cell_au'])
-            self.pos_au    = np.array(buf['coords_au'])
-            self.n_atoms   = self.pos_au.shape[0]
-            self.numbers   = np.array(buf['numbers'])
-            self.data      = buf['volume_data']
-        elif self.fmt=='wfn':
-            raise Exception('Not implemented.')
-        elif self.fmt=='manual':
-            cell_au  = kwargs.get('cell_au',np.empty((0)))
-            data     = kwargs.get('data',np.empty((0)))
-            if any([cell_au.size==0,data.size==0]): raise Exception('ERROR: Please give cell_au and data for "manual" initialisation!')
-            origin_au = kwargs.get('origin_au',np.zeros((3)))
-            self.origin_au = np.array(origin_au)
-            self.cell_au   = np.array(cell_au) #deprecated
-            self.cell_vec_au   = np.array(cell_au)
-            self.data      = data
-            #Check for optional data 
-            for key,value in kwargs.items():
-                if not hasattr(self,key): setattr(self,key,value)
-#            [setattr(self,key,value) for key,value in kwargs.iteritems() if not hasattr(self,key)]
-        else:
-            raise Exception('Unknown format.')
+    def __init__(self, *args, **kwargs): #**kwargs for named (dict), *args for unnamed
+        if len(args) > 1:
+            raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
+        elif len(args) == 1:
+            self.fn = args[0]
+            self.fmt = kwargs.get('fmt', self.fn.split('.')[-1])
+            if self.fmt == "cube":
+                buf = cubeReader(self.fn)
+                self.comments  = buf['comments'].strip()
+                self.origin_au = np.array(buf['origin_au'])
+                self.cell_au   = np.array(buf['cell_au']) #deprecated
+                self.cell_vec_au = np.array(buf['cell_au'])
+                self.pos_au    = np.array(buf['coords_au'])
+                self.numbers   = np.array(buf['numbers'])
+                self.data      = buf['volume_data']
+            elif self.fmt == 'npy':
+                test = ScalarField.from_data(data=np.load(self.fn), **kwargs)
+                #I do not know why, but this has to be explicit, otherwise self remains empty
+                self.comments = test.comments
+                self.origin_au = test.origin_au
+                self.cell_au = test.cell_vec_au #deprecated
+                self.cell_vec_au = test.cell_vec_au
+                self.pos_au = test.pos_au
+                self.numbers = test.numbers
+                self.data = test.data
+            elif self.fmt == 'wfn':
+                raise NotImplementedError('Format wfn not supported.')
+            else:
+                raise AttributeError('Unknown format.')
 
-        self.voxel = np.dot(self.cell_vec_au[0],np.cross(self.cell_vec_au[1],self.cell_vec_au[2]))
+        elif len(args) == 0:
+            if kwargs.get("fmt") is not None: #deprecated but still in heavy use
+                #self = self.from_data( **kwargs) #does not work because circular init call
+                raise NotImplementedError("Use %s.from_data()!" % self.__class__.__name__ )
+
+        self._sync_class()
+
+    def _sync_class(self):
+        try:
+            self.n_atoms = self.pos_au.shape[0]
+            if self.n_atoms != self.numbers.shape[0]:
+                raise ValueError('ERROR: List of atom numbers and atom positions do not match!')
+            self.voxel = np.dot(self.cell_vec_au[0], np.cross(self.cell_vec_au[1], self.cell_vec_au[2]))
+        except AttributeError:
+            pass
 
     def print_info(self):
         #Work in progress...
@@ -74,9 +85,33 @@ class ScalarField():
         print( '' )
 
     @classmethod
-    def from_domain(cls,domain,**kwargs):
-        return cls(fmt='manual',data=domain.expand(),**kwargs)
-        
+    def from_object(cls, obj):
+        return cls.from_data(**vars(copy.deepcopy(obj)))
+
+    @classmethod
+    def from_domain(cls, domain, **kwargs):
+        return cls.from_data(data=domain.expand(), **kwargs)
+
+    @classmethod
+    def from_data(cls, **kwargs):
+        cell_vec_au = kwargs.get('cell_vec_au', np.empty((0)))
+        data = kwargs.get('data', np.empty((0)))
+        if any([cell_vec_au.size == 0, data.size == 0]):
+            raise AttributeError('ERROR: Please give both, cell_vec_au and data!')
+        obj = cls()
+        obj.comments = 'no_comment\nno_comment'
+        obj.origin_au = kwargs.get('origin_au', np.zeros((3)))
+        obj.pos_au = kwargs.get('pos_au', np.zeros((0, 3)))
+        obj.numbers = kwargs.get('numbers', np.zeros((0, )))
+        obj.cell_au = cell_vec_au #deprecated
+        obj.cell_vec_au = cell_vec_au
+        obj.data = data
+        #Check for optional data 
+        #for key,value in kwargs.items():
+        #    if not hasattr(obj,key): setattr(obj,key,value)
+        obj._sync_class()
+        return obj
+
     def __add__(self,other): #beta version
         self._is_similar(other)
         new = copy.deepcopy(self)
@@ -88,14 +123,57 @@ class ScalarField():
         self.data += other.data
         return self
 
-    def _is_similar(self,other): #add more tests later
-        f = lambda a: [_BOOL for _BOOL in ((getattr(self,a)!=getattr(other,a),) if isinstance(getattr(self,a),int) else (not np.allclose(getattr(self,a),getattr(other,a)),) )][0]#if isinstance(getattr(self,a),np.ndarray))]
-        err_keys=['origin_au','cell_au']
-        wrn_keys=['n_atoms','numbers']
-        _ERR = list(map(f,err_keys))
-        _WRN = map(f,wrn_keys)
-        if any(_ERR): raise Exception('\n'.join('ERROR: objects dissimilar in %s!'%_e for (_e,_B) in zip(err_keys,_ERR) if _B))
-        if any(_WRN): print('\n'.join('WARNING: objects dissimilar in %s!'%_e for (_e,_B) in zip(wrn_keys,_WRN) if _B))
+
+    def _is_similar(self, other, strict=1, return_false=False): #add more tests later
+        '''level of strictness: 1...similar, 2...very similar, 3...equal'''
+        def _f_check(a):
+            return [_BOOL for _BOOL in (
+                        (getattr(self, a) != getattr(other, a), ) if isinstance(getattr(self, a), int) \
+                                else (not np.allclose(getattr(self, a), getattr(other, a)), ) 
+                                )][0]
+        err_keys = [
+                'origin_au',
+                'cell_au',
+                'voxel',
+                ]
+        wrn_keys = [
+                'n_atoms',
+                'numbers',
+                ]
+        equ_keys = [
+                'data',
+                ]
+        _ERR = list(map(_f_check, err_keys))
+        _WRN = list(map(_f_check, wrn_keys))
+        _EQU = list(map(_f_check, equ_keys))
+
+        if any(_ERR):
+            if return_false:
+                return False
+            raise ValueError('\n'.join(
+                'ERROR: objects dissimilar in %s!'%_e for (_e, _B) in zip(err_keys, _ERR) if _B)
+                )
+
+        if any(_WRN):
+            if strict==1:
+                print('\n'.join(
+                    'WARNING: objects dissimilar in %s!'%_e for (_e, _B) in zip(wrn_keys,_WRN) if _B)
+                    )
+            else:
+                if return_false:
+                    return False
+                raise ValueError('\n'.join(
+                    'ERROR: objects dissimilar in %s!'%_e for (_e, _B) in zip(wrn_keys,_WRN) if _B)
+                    )
+
+        if any(_EQU) and strict==3:
+            if return_false:
+                return False
+            raise ValueError('\n'.join(
+                'ERROR: objects differing in %s!'%_e for (_e, _B) in zip(equ_keys, _EQU) if _B)
+                )
+
+        return True
 
     def integral(self):
         return self.voxel*simps(simps(simps(self.data)))
@@ -105,7 +183,7 @@ class ScalarField():
         return np.zeros(self.data.shape)
 
     def pos_grid(self):
-        #Generate grid point coordinates (only for tetragonal cells)
+        '''Generate grid point coordinates (only for tetragonal cells)'''
         self.n_x       = self.data.shape[-3]
         self.n_y       = self.data.shape[-2]
         self.n_z       = self.data.shape[-1]
@@ -146,17 +224,6 @@ class ScalarField():
         if 'z' in dims:
             _apply(-1)
 
-#        if 'x' in dims:
-#            self.data = self.data[ r : -r, :   , : ]
-#            self.origin_au[ 0 ] += self.cell_au[ 0, 0 ] * r
-#        if 'y' in dims:
-#            self.data = self.data[ :   , r : -r, : ]
-#            self.origin_au[ 1 ] += self.cell_au[ 1, 1 ] * r
-#        if 'z' in dims:
-#            self.data = self.data[ :   , :   , r : -r ]
-#            self.origin_au[ 2 ] += self.cell_au[ 2, 2 ] * r
-
-
     def auto_crop( self, **kwargs ): #can only xyz
         '''crop after threshold (default: ...)'''
         thresh = kwargs.get( 'thresh', 1.E-3 )
@@ -186,57 +253,38 @@ class ScalarField():
         else:
             raise Exception('Unknown format (Not implemented).')
 
-class VectorField(ScalarField): #inheritence for pos_grid
-    ###parser partly deprectaed (see Scalar Field)
-    def __init__(self,fn1,fn2,fn3,**kwargs): #**kwargs for named (dict), *args for unnamed
-        self.fmt = kwargs.get('fmt',fn1.split('.')[-1])
-        if self.fmt=="cube":
-            buf_x = cubeReader(fn1)
-            buf_y = cubeReader(fn2)
-            buf_z = cubeReader(fn3)
-            self.comments  = np.array([buf_x['comments'].strip(), buf_y['comments'].strip(), buf_z['comments'].strip()])
-            self.origin_au = np.array(buf_x['origin_au'])
-            self.cell_au   = np.array(buf_x['cell_au'])
-            self.cell_vec_au = np.array(buf_x['cell_au'])
-            self.pos_au    = np.array(buf_x['coords_au'])
-            self.n_atoms   = self.pos_au.shape[0]
-            self.numbers   = np.array(buf_x['numbers'])
-            self.data      = np.array([buf_x['volume_data'],buf_y['volume_data'],buf_z['volume_data']])
-            self.voxel     = np.dot(self.cell_au[0],np.cross(self.cell_au[1],self.cell_au[2]))
+class VectorField(ScalarField):
+    def __init__(self, *args, **kwargs):
+        if len(args) not in [0, 3]:
+            raise TypeError( "File reader of %s takes exactly zero or three arguments!" % self.__class__.__name__ )
+        elif len(args) == 3:
+            buf_x = ScalarField(args[0], **kwargs)
+            buf_y = ScalarField(args[1], **kwargs)
+            buf_z = ScalarField(args[2], **kwargs)
+            self._join_scalar_fields(buf_x, buf_y, buf_z)
+            del buf_x, buf_y, buf_z
+        elif len(args) == 0:
+            if hasattr(self, "fmt"): #deprecated but still in heavy use
+                self = self.__class__.from_data(**kwargs)
+        #elif len(args) == 1:
+        #    raise NotImplementedError('Not a supported format!')
 
-        elif self.fmt=='wfn':
-            raise Exception('Not implemented.')
-        else:
-            raise Exception('Unknown format.')
-
-    ##ToDo: sparsity and crop could be generalised to fit to both, scalar and vector field (see also gen_box)
-
-    #copy to new object?
-#    def sparsity(self, sp, **kwargs):
-#        '''sp int'''
-#        dims = kwargs.get( 'dims', 'xyz' )
-#        if 'x' in dims:
-#            self.data = self.data[::sp, :, :]
-#            self.cell_au[0] *= sp 
-#        if 'y' in dims:
-#            self.data = self.data[:, ::sp, :]
-#            self.cell_au[1] *= sp 
-#        if 'z' in dims:
-#            self.data = self.data[:, :, ::sp]
-#            self.cell_au[2] *= sp 
-#        self.voxel = np.dot(self.cell_au[0],np.cross(self.cell_au[1],self.cell_au[2]))
-#
-#    def crop(self,r,**kwargs):
-#        dims = kwargs.get('dims','xyz')
-#        if 'x' in dims:
-#            self.data=self.data[:,r:-r,:   ,:]
-#        self.origin_au[0] += self.cell_au[0,0]*r
-#        if 'y' in dims:
-#            self.data=self.data[:,:   ,r:-r,:]
-#        self.origin_au[1] += self.cell_au[1,1]*r
-#        if 'z' in dims:
-#            self.data=self.data[:,:   ,:   ,r:-r]
-#        self.origin_au[2] += self.cell_au[2,2]*r
+    def _join_scalar_fields(self, x, y, z):
+        '''x, y, z ... ScalarField objects'''
+        if x._is_similar(y, strict=2) and x._is_similar(z, strict=2):
+            self.fn1, self.fn2, self.fn3 = x.fn, y.fn, z.fn
+            self.comments  = np.array([x.comments, y.comments, z.comments])
+            self.data      = np.array([x.data, y.data, z.data])
+            for _a in [
+                    'origin_au',
+                    'cell_au', #deprecated
+                    'cell_vec_au',
+                    'pos_au',
+                    'n_atoms',
+                    'numbers',
+                    'voxel',
+                    ]:
+                setattr(self, _a, getattr(x, _a))
 
     def streamlines(self,p0,**kwargs):
         '''pn...starting points of shape (n_points,3)'''
@@ -262,18 +310,18 @@ class VectorField(ScalarField): #inheritence for pos_grid
         v_field  = self.data[:,::sparse,::sparse,::sparse]
         gl_norm = np.amax(np.linalg.norm(v_field,axis=0))
         ds=np.linalg.norm(self.cell_au,axis=1)
-    
+
         points = np.array([pos_grid[0].ravel(),pos_grid[1].ravel(),pos_grid[2].ravel()]).swapaxes(0,1)
         values = np.array([v_field[0].ravel(),v_field[1].ravel(),v_field[2].ravel()]).swapaxes(0,1)
-    
-        traj=list() 
+
+        traj=list()
         ext_t=list()
-    
+
         if bw:
             pn = copy.deepcopy(p0)
             vn = get_value(p0.swapaxes(0,1))     
             traj.append(np.concatenate((copy.deepcopy(pn),copy.deepcopy(vn)),axis=-1))    
-            if ext: 
+            if ext:
                 ext_p = copy.deepcopy(ext_p0)
                 ext_t.append(np.concatenate((copy.deepcopy(ext_p),copy.deepcopy(ext_v)),axis=-1))    
 
@@ -293,66 +341,29 @@ class VectorField(ScalarField): #inheritence for pos_grid
 
         if fw:
             pn = copy.deepcopy(p0)
-            vn = get_value(pn.swapaxes(0,1))     
-            traj.append(np.concatenate((copy.deepcopy(pn),copy.deepcopy(vn)),axis=-1))    
-            if ext: 
+            vn = get_value(pn.swapaxes(0,1))
+            traj.append(np.concatenate((copy.deepcopy(pn),copy.deepcopy(vn)),axis=-1))
+            if ext:
                 ext_p = copy.deepcopy(ext_p0)
-                ext_t.append(np.concatenate((copy.deepcopy(ext_p),copy.deepcopy(ext_v)),axis=-1))    
+                ext_t.append(np.concatenate((copy.deepcopy(ext_p),copy.deepcopy(ext_v)),axis=-1))
 
             for t in range(l):
                 pn += vn/gl_norm*ds[None]*dt
-                vn = get_value(pn.swapaxes(0,1)) 
-                traj.append(np.concatenate((copy.deepcopy(pn),copy.deepcopy(vn)),axis=-1))    
+                vn = get_value(pn.swapaxes(0,1))
+                traj.append(np.concatenate((copy.deepcopy(pn),copy.deepcopy(vn)),axis=-1))
                 if ext:
                     ext_p += ext_v/gl_norm*ds*dt
-                    ext_t.append(np.concatenate((copy.deepcopy(ext_p),copy.deepcopy(ext_v)),axis=-1))    
+                    ext_t.append(np.concatenate((copy.deepcopy(ext_p),copy.deepcopy(ext_v)),axis=-1))
 
         if ext: return np.array(traj),np.array(ext_t)
         else: return np.array(traj)
-        
+
     def streamtubes(self):
         '''See notebook 24b'''
         pass 
 
-#    @staticmethod
-#    def _get_divrot(data,cell_au):
-#        """data of shape n_frames, 3, x, y, z"""
-#        gradients = np.array(np.gradient(data,1,cell_au[0][0],cell_au[1][1],cell_au[2][2])[1:])
-#        div = gradients.trace(axis1=0,axis2=1)
-#        rot = np.einsum('ijk,jklmn->ilmn',eijk,gradients)
-#        return div, rot
-
     @staticmethod
     def _get_helmholtz_components(data,cell_au):
-#        def GetCell(n1, n2, n3, a1, a2, a3):
-#            from numpy.fft import fftfreq
-#            r1 = np.arange(n1)*(a1/n1)-a1/2
-#            r2 = np.arange(n2)*(a2/n2)-a2/2
-#            r3 = np.arange(n3)*(a3/n3)-a3/2
-#            k1 = 2*np.pi*fftfreq(n1,a1/n1)
-#            k2 = 2*np.pi*fftfreq(n2,a2/n2)
-#            k3 = 2*np.pi*fftfreq(n3,a3/n3)
-#            ix, iy, iz = (slice(None), None, None), (None, slice(None), None), (None, None, slice(None))
-#            (X, Kx) = (r1[ix], k1[ix])
-#            (Y, Ky) = (r2[iy], k2[iy])
-#            (Z, Kz) = (r3[iz], k3[iz])
-#            R = np.sqrt(X**2 + Y**2 + Z**2)
-#            K = np.sqrt(Kx**2 + Ky**2 + Kz**2)
-#            return R,K
-#
-#        def Vk(k):
-#            """Fourier transform of Coulomb potential $1/r$"""
-#            with np.errstate(divide='ignore'):
-#                return np.where(k==0.0, 0.0, np.divide(4.0*np.pi, k**2))
-#
-#        def Potential(data, cell_au):
-#            from numpy.fft import ifftn,fftn
-#            n1, n2, n3 = data.shape
-#            a1, a2, a3 = tuple(cell_au.diagonal())
-#            R,K        = GetCell(n1, n2, n3, a1*n1, a2*n2, a3*n3)
-#            V_R        = ifftn(Vk(K)*fftn(data)).real
-#            return R, V_R
-
         div,rot = _get_divrot(data,cell_au)
         V = k_potential(div, np.array(cell_au))[1]/(4*np.pi)
         A1 = k_potential(rot[0], np.array(cell_au))[1]
@@ -364,59 +375,12 @@ class VectorField(ScalarField): #inheritence for pos_grid
 
         return irrotational_field, solenoidal_field, div, rot
 
-###These are scripts adapted from Arne Scherrer
     def divergence_and_rotation(self):
         self.div,self.rot = _get_divrot(self.data,self.cell_au)
 
     def helmholtz_decomposition(self):
          self.irrotational_field, self.solenoidal_field, self.div,self.rot = self._get_helmholtz_components(self.data,self.cell_au)
 
-#        def divergence_and_rotation(current,cell_au):
-#            """current of shape n_frames, 3, x, y, z"""
-#            gradients = np.array(np.gradient(current,1,cell_au[0][0],cell_au[1][1],cell_au[2][2])[1:])
-#            div = gradients.trace(axis1=0,axis2=1)
-#            rot = np.einsum('ijk,jklmn->ilmn',eijk,gradients)
-#            return div, rot
-#
-#        def GetCell(n1, n2, n3, a1, a2, a3):
-#            from numpy.fft import fftfreq
-#            r1 = np.arange(n1)*(a1/n1)-a1/2
-#            r2 = np.arange(n2)*(a2/n2)-a2/2
-#            r3 = np.arange(n3)*(a3/n3)-a3/2
-#            k1 = 2*np.pi*fftfreq(n1,a1/n1)
-#            k2 = 2*np.pi*fftfreq(n2,a2/n2)
-#            k3 = 2*np.pi*fftfreq(n3,a3/n3)
-#            ix, iy, iz = (slice(None), None, None), (None, slice(None), None), (None, None, slice(None))
-#            (X, Kx) = (r1[ix], k1[ix])
-#            (Y, Ky) = (r2[iy], k2[iy])
-#            (Z, Kz) = (r3[iz], k3[iz])
-#            R = np.sqrt(X**2 + Y**2 + Z**2)
-#            K = np.sqrt(Kx**2 + Ky**2 + Kz**2)
-#            return R,K
-#
-#        def Vk(k):
-#            """Fourier transform of Coulomb potential $1/r$"""
-#            with np.errstate(divide='ignore'):
-#                return np.where(k==0.0, 0.0, np.divide(4.0*np.pi, k**2))
-#
-#        def Potential(data, cell_au):
-#            from numpy.fft import ifftn,fftn
-#            n1, n2, n3 = data.shape
-#            a1, a2, a3 = tuple(cell_au.diagonal())
-#            R,K        = GetCell(n1, n2, n3, a1*n1, a2*n2, a3*n3)
-#            V_R        = ifftn(Vk(K)*fftn(data)).real
-#            return R, V_R
-#
-#        self.div,self.rot = divergence_and_rotation(self.data,self.cell_au)
-#        self.V = Potential(self.div, np.array(self.cell_au))[1]/(4*np.pi)
-#        A1 = Potential(self.rot[0], np.array(self.cell_au))[1]
-#        A2 = Potential(self.rot[1], np.array(self.cell_au))[1]
-#        A3 = Potential(self.rot[2], np.array(self.cell_au))[1]
-#        self.A = np.array([A1,A2,A3])/(4*np.pi)
-#        self.irrotational_field = -np.array(np.gradient(self.V,self.cell_au[0][0],self.cell_au[1][1],self.cell_au[2][2]))
-#        self.solenoidal_field = divergence_and_rotation(self.A, self.cell_au)[1]
-#    
-###############################################################
 
     def write(self,fn1,fn2,fn3,**kwargs): #Replace by new write routine?
         '''Generalise this routine with autodetection for scalar and velfield, since div j is a scalar field, but attr of vec field class.'''
