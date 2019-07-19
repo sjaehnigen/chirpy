@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import numpy as np
-from ..physics import constants #migrate to phdtools
+from ..physics import constants
 
-from vcdtools.vcd_utils import LeviCivita
+#old
+from pythonbase.vcdtools.vcd_utils import LeviCivita
 
 eijk = np.zeros((3, 3, 3))
 eijk[0,1,2] = eijk[1,2,0] = eijk[2,0,1] = +1
@@ -17,7 +18,6 @@ def calculate_mic(e0,r1_pert,sw_c,n_states,r_wc_aa,box_vec_aa):
     return sw_m_ic_r.sum(axis=0).sum(axis=0),sw_m_ic_t.sum(axis=0)
 
 def calculate_mic_rotation(e0,r1_pert,n_states,r_wc_aa,box_vec_aa):
-    eps       = LeviCivita()
 #case 0 if states interact within box (M_LC), +1 if state in column is considered +R with respect to state in line, et VV.
     case       = np.abs(r_wc_aa[:,np.newaxis,:] -r_wc_aa[:,:])
     case       = (case/box_vec_aa[np.newaxis,np.newaxis,:]*2).astype(np.int)
@@ -39,7 +39,6 @@ def calculate_mic_rotation(e0,r1_pert,n_states,r_wc_aa,box_vec_aa):
 
 
 def calculate_mic_translation(sw_p_pert,n_states,r_wc_aa,box_vec_aa):
-    eps       = LeviCivita()
 #translational part
     sw_m_ic_t = np.zeros((n_states,3))
     t = sw_p_pert

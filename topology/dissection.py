@@ -7,16 +7,6 @@ from ..mathematics.algebra import change_euclidean_basis as ceb
 #old
 from ..physics import constants #see ~/pythonbase
 
-def dist_crit_aa(symbols):
-    '''Get distance criteria matrix of symbols (in angstrom)'''
-    natoms = len(symbols)
-    crit_aa = np.zeros((natoms, natoms))
-    _r = np.array([constants.species[s]['RVDW'] for s in symbols]).astype(float) / 100.0
-    crit_aa = (_r[:, None] + _r[None, :])
-    crit_aa *= 0.6 #http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.1/ug/node26.html
-    return crit_aa
-
-
 ##TMP solution
 #def define_molecules_XYZclass(xyz):
 #    '''expects one System object. I use frame 0 of mol as reference.'''

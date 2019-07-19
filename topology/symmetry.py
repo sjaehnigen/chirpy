@@ -3,12 +3,9 @@
 import numpy as np
 import copy
 
-from ..topology.mapping import dec
+from ..topology.mapping import dec, dist_crit_aa
 
 from ..mathematics.algebra import change_euclidean_basis as ceb
-
-#old pythonbase
-from mgeometry.transformations import dist_crit_aa #migrate it soon
 
 def find_methyl_groups(mol,hetatm=False):
     '''expects one Molecule object. I use frame 0 as reference. Not tested for long trajectories. Outformat is C H H H'''

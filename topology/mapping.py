@@ -6,6 +6,15 @@ import copy
 
 #NB: the molecules have to be sequentially numbered starting with 0
 #the script will transform them starting with 0
+def dist_crit_aa(symbols):
+    '''Get distance criteria matrix of symbols (in angstrom)'''
+    natoms = len(symbols)
+    crit_aa = np.zeros((natoms, natoms))
+    _r = np.array([constants.species[s]['RVDW'] for s in symbols]).astype(float) / 100.0
+    crit_aa = (_r[:, None] + _r[None, :])
+    crit_aa *= 0.6 #http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.1/ug/node26.html
+    return crit_aa
+
 def dec(prop, indices):
     """decompose prop according to indices"""
     return [
