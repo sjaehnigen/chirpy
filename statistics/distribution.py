@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-#import sys 
-#import os
 import numpy as np
-from mathematics.algebra import rotation_matrix
+from ..mathematics.algebra import rotation_matrix
 
 
 def radial_distribution_function(DS, DO, cell_au = None, **kwargs):

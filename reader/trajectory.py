@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import numpy as np
 
 #PDB Version 3.30 according to Protein Data Bank Contents Guide

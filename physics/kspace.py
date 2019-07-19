@@ -2,7 +2,6 @@
 
 import numpy as np
 from numpy.fft import fftfreq, ifftn, fftn
-from physics import constants 
 
 def k_get_cell(n1, n2, n3, a1, a2, a3):            
     r1 = np.arange(n1)*(a1/n1)-a1/2

@@ -1,13 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import os
-import sys
 import numpy as np
-import copy
-from itertools import cycle
-from collections import OrderedDict
-from matplotlib import pyplot as plt
-from matplotlib.patches import ArrowStyle
 
 #Angstrom2Bohr = 1.8897261247828971
 

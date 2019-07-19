@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import numpy as np
 import argparse
-import sys
-import os
-from classes import volume,pymol
+from chemsnail.classes import volume,pymol
 
 Angstrom2Bohr = 1.8897261247828971
 

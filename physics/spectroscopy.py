@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
 import copy
 import numpy as np
 
-from physics import classical_electrodynamics as edyn
+from ..physics import classical_electrodynamics as edyn
+from ..physics import constants
 #old pythonbase
 from vcdtools.correlation_functions import Filter
 from bin.scaled_spectra import CurrentCurrentPrefactor,CurrentMagneticPrefactor
-from lib import constants
 
 #constants
 h_si = 6.62606957E-34 # Planck's constant [Js]

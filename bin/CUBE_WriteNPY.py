@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
 import numpy as np
-from classes import volume
+from chemsnail.classes import volume
 
 def main():
     '''Converts CUBE kernel into numpy array on disk (beta version; no cell parametres conserved!)'''

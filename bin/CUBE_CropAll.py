@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import os
 import sys
 import copy
 import numpy as np
-from classes import quantum, volume
+from chemsnail.classes import quantum, volume
 
 ######### Parametres ##################################
 density = 'DENSITY-000001.cube'

@@ -1,7 +1,8 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import numpy as np
-from lib import constants #migrate to phdtools
+from ..physics import constants #migrate to phdtools
+
 from vcdtools.vcd_utils import LeviCivita
 
 eijk = np.zeros((3, 3, 3))

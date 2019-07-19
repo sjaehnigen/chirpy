@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import numpy as np
 
 # outbuffer method may result in memory outage ==> Replace it

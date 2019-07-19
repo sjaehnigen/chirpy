@@ -3,9 +3,9 @@
 import numpy as np
 import copy
 
-from topology.mapping import dec
+from ..topology.mapping import dec
 
-from mathematics.algebra import change_euclidean_basis as ceb
+from ..mathematics.algebra import change_euclidean_basis as ceb
 
 #old pythonbase
 from mgeometry.transformations import dist_crit_aa #migrate it soon

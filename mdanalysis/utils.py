@@ -9,8 +9,6 @@ import os
 
 import numpy as np
 from lib import constants
-from tools.algebra import RotationMatrix
-from analysis.pcbtools import InitialiseTopology_PDB
 
 #migrate these tools to geometry or so
 def dihedral(p1,p2,p3,p4):

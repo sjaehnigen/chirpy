@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
-from classes import system
-from topology import symmetry
+from chemsnail.classes import system
+from chemsnail.topology import symmetry
 
 def main():
     '''Unit Cell parametres are taken from fn if needed'''

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 #Version important as <3.6 gives problems with OrderedDictionaries
 
 import sys
@@ -6,13 +6,12 @@ import os
 import copy
 import numpy as np
 
-from topology.dissection import assign_molecule
-from topology.mapping import get_atom_spread
-from topology.symmetry import get_cell_vec
-
-from classes.trajectory import XYZFrame
-from classes.system import Supercell
-from physics import constants
+from ..topology.dissection import assign_molecule
+from ..topology.mapping import get_atom_spread
+from ..topology.symmetry import get_cell_vec
+from ..classes.trajectory import XYZFrame
+from ..classes.system import Supercell
+from ..physics import constants
 
 #put this into new lib file
 #valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
@@ -29,6 +28,9 @@ class _BoxObject():
 #Symmetry should be determined from cell_aa
 
     def __init__( self, **kwargs ): #empty-box init allowed (bare)
+        if int(np.version.version.split('.')[1]) < 14:
+            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
+            sys.exit(1)
         self.members = kwargs.get( "members", [ ] ) # list of ( n, XYZFrame object ) tuples with n being the no. of molecules within the box
         # ToDo: auto-determine symmetry
         self.symmetry = kwargs.get( 'symmetry', 'orthorhombic' )

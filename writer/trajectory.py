@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import os
 import sys
-import numpy as np
 import copy
 from collections import OrderedDict
 

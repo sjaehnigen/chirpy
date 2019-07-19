@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import os
-import sys
 import copy
-import numpy as np
-from classes import quantum
-#imp.reload(quantum)
+from chemsnail.classes import quantum
 
 rho_cube = 'DENSITY-000001.cube'
 fn = rho_cube

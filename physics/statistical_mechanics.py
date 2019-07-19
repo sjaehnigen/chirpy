@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-#import sys,copy
 import numpy as np
-from lib import constants #migrate to phdtools
+from ..physics import constants
 
 def CalculateKineticEnergies(vel_au, masses):
     """CalculateKineticEnergies(velocities, data): velocities in a.u., masses in amu"""

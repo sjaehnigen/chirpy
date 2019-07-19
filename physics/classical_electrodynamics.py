@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-from physics import constants, kspace 
+from ..physics import constants, kspace 
 
 eijk = np.zeros((3, 3, 3))
 eijk[0,1,2] = eijk[1,2,0] = eijk[2,0,1] = +1

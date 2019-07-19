@@ -1,11 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
-import os, sys, copy
+import os
+import copy
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from vcdtools import vcd_utils
-from fileio.cpmd import WriteTrajectoryFile,WriteMomentsFile
+from fileio.cpmd import WriteMomentsFile
 
 #class SPECTRUM():
 #

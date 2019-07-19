@@ -1,13 +1,12 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 import sys
 import numpy as np
-import tempfile
 import copy 
 
-from classes.trajectory import TRAJECTORY as _TRAJ
-from writer.trajectory import cpmdWriter
-from reader.trajectory import cpmdReader
-from physics import constants
+from ..classes.trajectory import TRAJECTORY as _TRAJ
+from ..writer.trajectory import cpmdWriter
+from ..reader.trajectory import cpmdReader
+from ..physics import constants
 
 _cpmd_keyword_logic = {
     'INFO' : {

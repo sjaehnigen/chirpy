@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import os
-import sys
 import numpy as np
 import copy
-from collections import OrderedDict
 
-from scipy.ndimage.filters import gaussian_filter1d
 from scipy.interpolate import UnivariateSpline
 #old lib
 #from fileio.xyz import WriteXYZFile

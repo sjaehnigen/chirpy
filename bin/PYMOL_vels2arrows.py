@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import numpy as np
 import argparse
-import sys
-import os
-from classes import system,pymol
+from chemsnail.classes import system,pymol
 
 Angstrom2Bohr = 1.8897261247828971
-#from fileio import xyz
-from lib import constants
-#from geometry import transformations
 
 def main():
     parser=argparse.ArgumentParser(description="Generate Pymol script for the visualisation of vector field based on data in xyz format.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)

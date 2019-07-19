@@ -1,12 +1,7 @@
-#!/usr/bin/python3
-import sys
+#!/usr/bin/env python
 import numpy as np
 import tempfile
-import copy 
 
-from writer.trajectory import cpmdWriter
-from reader.trajectory import cpmdReader
-from physics import constants
 
 def get_frame_traj_and_mom(TRAJ, MOMS, n_atoms, n_moms): #by Arne Scherrer
     """iterates over TRAJECTORY and MOMENTS files and yields generator of positions, velocities and moments (in a.u.)

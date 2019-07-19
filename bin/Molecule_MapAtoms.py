@@ -1,20 +1,23 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
-import numpy as np 
-from classes import system
-from topology import mapping
+from chemsnail.classes import system
+from chemsnail.topology import mapping
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''
-    parser=argparse.ArgumentParser(description="Convert any supported input into XYZ format", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("fn", help="file (xyz.pdb,xvibs,...)")
-    parser.add_argument("-center_coords", action='store_true', help="Center Coordinates in cell centre or at origin (default: false; box_aa parametre overrides default origin).", default=False)
-    parser.add_argument("-cell_aa", nargs=6, help="Orthorhombic cell parametres a b c al be ga in angstrom/degree (default: 0 0 0 90 90 90).", default=[0.0,0.0,0.0,90.,90.,90.])
-    parser.add_argument("-f", help="Output file name (standard: 'out.xyz')", default='out.xyz')
+    parser=argparse.ArgumentParser(description="Wrap atoms from XYZ file into PBC box", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("fn1", help="file 1 (xy,pdb,xvibs,...)")
+    parser.add_argument("fn2", help="file 2 (xy,pdb,xvibs,...)")
     args = parser.parse_args()
-    args.cell_aa = np.array(args.cell_aa).astype(float)
-    system.Molecule(**vars(args)).XYZData.write(args.f,fmt='xyz')
+    fn1 = args.fn1
+    fn2 = args.fn2
+    mol1 = system.Supercell(fn1)
+    mol2 = system.Supercell(fn2)
+    assign = mapping.map_atoms_by_coordinates(mol1,mol2)
+    outbuf = ['%35d -------> %3d'%(i+1,j+1) for i,j in enumerate(assign[0])] # this module uses only frames 0
+    print(    '%35s          %s'%(fn1,fn2))
+    print('\n'.join(outbuf))
 
 
 #def map_atoms_to_crystal(pos_aa,sym,box_aa,replica,vec_trans,pos_cryst,sym_cr):

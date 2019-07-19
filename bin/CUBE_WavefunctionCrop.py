@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
-import os
-import sys
 import copy
-import numpy as np
-from classes import quantum
+from chemsnail.classes import quantum
 #imp.reload(quantum)
 
 def main():

@@ -1,13 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import numpy as np
-import copy
-import sys
 import tempfile
-from scipy.interpolate import griddata
-from scipy.integrate import simps
-from classes.volume import ScalarField
-from reader.volume import cubeReader
-#from writer.volume import cubeWriter
+from ..classes.volume import ScalarField
 
 eijk = np.zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1

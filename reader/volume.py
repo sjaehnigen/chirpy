@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
-import numpy as np
+#!/usr/bin/env python
 
+import numpy as np
 
 def cubeReader(fn):
     '''Module by Arne Scherrer'''

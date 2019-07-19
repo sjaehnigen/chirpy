@@ -1,17 +1,9 @@
-#!/usr/bin/python3
-#import unittest
-#import logging
-#import filecmp
-#import types
-#import filecmp
-#
-#from lib import debug
-#from collections import OrderedDic
+#!/usr/bin/env python
 
 import copy
 import numpy as np
-from physics import constants
-from topology.symmetry import get_cell_vec
+from ..physics import constants
+from ..topology.symmetry import get_cell_vec
 
 class UnitCell(): #maybe all-in-one class
     def __init__(self,cell_aa_deg,**kwargs): #**kwargs for named (dict), *args for unnamed

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
-import numpy as np 
-from classes import system
-from topology import mapping
+import numpy as np
+from chemsnail.classes import system
+from chemsnail.topology import mapping
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''
@@ -23,7 +23,7 @@ def main():
                           ).XYZData._make_trajectory(n_images=int(args.n_images),
                                                      ts_fs=float(args.ts)
                                                     )
-    _mol._wrap_atoms(args.cell_aa_deg)                                                             
+    _mol._wrap_atoms(args.cell_aa_deg)
 #    _mol._wrap_molecules([0]*12,args.cell_aa_deg)                                                             
     _mol.write(args.f)
 

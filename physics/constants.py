@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Adapted from Arne Scherrer's pythonbase
 
 import numpy as np

@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-#import sys 
-#import os
 import numpy as np
 
 #migrate these tools to geometry or so

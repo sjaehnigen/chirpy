@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 import numpy as np
-import copy
-from topology.symmetry import get_distance_matrix, distance_pbc, wrap, get_cell_vec
-from mathematics.algebra import change_euclidean_basis as ceb
+from ..topology.symmetry import get_distance_matrix, distance_pbc, wrap, get_cell_vec
+from ..mathematics.algebra import change_euclidean_basis as ceb
 
 #old
-from lib import constants #see ~/pythonbase
+from ..physics import constants #see ~/pythonbase
 
 def dist_crit_aa(symbols):
     '''Get distance criteria matrix of symbols (in angstrom)'''

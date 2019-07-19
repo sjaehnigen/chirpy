@@ -1,14 +1,14 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import numpy as np
 import copy
 from scipy.interpolate import griddata
 from scipy.integrate import simps
 
 #from classes.domain import Domain3D,Domain2D
-from reader.volume import cubeReader
-from writer.volume import cubeWriter
-from physics.kspace import k_potential
-from physics.classical_electrodynamics import _get_divrot
+from ..reader.volume import cubeReader
+from ..writer.volume import cubeWriter
+from ..physics.kspace import k_potential
+from ..physics.classical_electrodynamics import _get_divrot
 
 eijk = np.zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1

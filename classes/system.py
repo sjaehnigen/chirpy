@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 #Version important as <3.6 gives problems with OrderedDictionaries
 
 #import unittest
@@ -6,27 +6,19 @@
 #import filecmp
 #import types
 #import filecmp
-#
-#from lib import debug
-#from collections import OrderedDict
+
 import sys
-#import os
 import copy
 import numpy as np
 
-from reader.trajectory import pdbReader
-from reader.modes import xvibsReader
-#from writer.modes import xvibsWriter
-#from interfaces import cpmd as cpmd_n #new libraries
-from classes.crystal import UnitCell
-from classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
-from physics import constants
-from physics.constants import masses_amu
-#from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
-#from physics.modern_theory_of_magnetisation import calculate_mic
-#from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
-from topology.dissection import define_molecules
-from topology.mapping import dec
+from ..reader.trajectory import pdbReader
+from ..reader.modes import xvibsReader
+from ..classes.crystal import UnitCell
+from ..classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
+from ..physics import constants
+from ..physics.constants import masses_amu
+from ..topology.dissection import define_molecules
+from ..topology.mapping import dec
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}

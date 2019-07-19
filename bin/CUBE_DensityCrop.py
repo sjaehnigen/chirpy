@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
-import os
-import sys
 import copy
-import numpy as np
-from classes import quantum
-#imp.reload(quantum)
+from chemsnail.classes import quantum
 
 def main():
     parser=argparse.ArgumentParser(description="Crop Density after threshold in order to save disk space", formatter_class=argparse.ArgumentDefaultsHelpFormatter)

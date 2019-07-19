@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
 import numpy as np 
-from classes import system
-from topology import mapping
+from chemsnail.classes import system
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''

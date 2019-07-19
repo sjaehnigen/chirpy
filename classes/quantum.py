@@ -5,10 +5,10 @@ from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.ndimage.filters import maximum_filter, minimum_filter,gaussian_filter
 from scipy import signal
 
-from classes.volume import ScalarField,VectorField
-from physics import constants
-from reader.trajectory import xyzReader
-from classes.domain import Domain3D
+from ..classes.volume import ScalarField,VectorField
+from ..physics import constants
+from ..reader.trajectory import xyzReader
+from ..classes.domain import Domain3D
 
 #class WaveFunction(ScalarField):        
 class WannierFunction(ScalarField):

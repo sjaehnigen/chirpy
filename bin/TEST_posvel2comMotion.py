@@ -1,15 +1,14 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
-import sys,copy
 import numpy as np
 import argparse
 
-from lib import constants #migrate to phdtools
+from chemsnail.physics import constants #migrate to phdtools
+
 from fileio import xyz #migrate to phdtools
-from statistics.statistical_mechanics import CalculateKineticEnergies
 
 def main():
-    parser=argparse.ArgumentParser(description="TEST_posvel2ekin.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser=argparse.ArgumentParser(description="TEST_posvel2comMotion.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('fn_inp',                                         help="posvel input file (e.g., xyz file)")
     #parser.add_argument("--verbose",  action='store_true', default=False, help="Verbose output")
     #add atom-wise info?
@@ -30,12 +29,18 @@ def main():
 
     try:
         masses = np.array([constants.species[s]['MASS'] for s in symbols])
-        e_kin_au = CalculateKineticEnergies(data[:,:,3:],masses)#[constants.species[s]['MASS'] for s in symbols])
-        print(e_kin_au.shape,e_kin_au.sum(axis=1))
-        print('temperature is %.1f K.'%(2*np.sum(e_kin_au)/constants.k_B_au))
-#        print(np.linalg.norm(data[0,:,3:],axis=-1))
+        print('COM motion is\n%s'%(1/np.sum(masses)*(data[:,:,3:]*masses[None,:,None]).sum(axis=1)))
+        print('COG motion is\n%s'%data[:,:,3:].sum(axis=1))
+
+#        #frame 0
+#        angmoms = np.zeros(data[0,0,3:].shape)
+#        for i, mass in enumerate(masses):
+#            angmoms += np.cross(data[0,i,:3],data[0,i,3:])*mass
+#        print(angmoms)
+
     except IndexError:
         raise Exception('Input file does not have the correct shape (n_frames,n_atoms,posvel)')
+
 
 if (__name__ == '__main__'):
     main()

@@ -1,23 +1,22 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 #Version important as <3.6 gives problems with OrderedDictionaries
 
 import sys
 import copy
 import numpy as np
 
-from reader.modes import xvibsReader
-from reader.trajectory import cpmdReader, xyzReader, pdbReader
-from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
-from interfaces import cpmd as cpmd_n #new libraries
+from ..reader.modes import xvibsReader
+from ..reader.trajectory import xyzReader
+from ..writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from ..interfaces import cpmd as cpmd_n #new libraries
 
-from topology.mapping import align_atoms, dec
-from topology.symmetry import wrap, join_molecules
+from ..topology.mapping import align_atoms, dec
+from ..topology.symmetry import wrap, join_molecules
 
-from physics import constants
-from physics.constants import masses_amu
-from physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
-from physics.modern_theory_of_magnetisation import calculate_mic
-from physics.statistical_mechanics import CalculateKineticEnergies #wrong taxonomy (lowercase)
+from ..physics import constants
+from ..physics.constants import masses_amu
+from ..physics.classical_electrodynamics import current_dipole_moment,magnetic_dipole_shift_origin
+from ..physics.modern_theory_of_magnetisation import calculate_mic
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
@@ -34,11 +33,18 @@ np.set_printoptions(precision=5,suppress=True)
 #from lib import debug
 #from collections import OrderedDict
 
-
 #ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
 #new class: Moments()
 
 class _FRAME():
+    #put it somewhere else
+    global ignore_warnings
+    ignore_warnings = False
+    if int(np.version.version.split('.')[1]) < 14:
+        print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
+        sys.exit(1)
+
+
     def _labels( self ):
         self._type = 'frame'
         self._labels = ( 'symbols',  '' )  #still testing this feature ( see tail() and _sync() )
@@ -116,11 +122,11 @@ class _FRAME():
         _data = [ np.moveaxis( _d, 0, -2 ) for _d in dec( np.moveaxis( self.data, -2, 0 ), mask ) ]
         _symbols = dec( self.symbols, mask )
         return [ self._from_data( data = _d, symbols = _s, comment = self.comments ) for _d, _s in zip( _data, _symbols ) ]
-         
+
     @classmethod 
     def _from_data( cls, **kwargs ):
         return cls( **kwargs )
-        
+
 class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any traj data before the actual processing)        
     def _labels( self ):
         self._type = 'trajectory'
@@ -139,7 +145,6 @@ class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any tr
             raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
         if self.n_frames != self.comments.shape[ 0 ]: 
             raise Exception( 'ERROR: Data shape inconsistent with comments attribute!\n' )
-    
 
 class _XYZ():
     '''Convention (at the moment) of data attribute: col 1-3: pos in aa; col 4-6: vel in au'''
@@ -154,7 +159,7 @@ class _XYZ():
         elif len( args ) == 1: 
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
-            if fmt == "xyz":        
+            if fmt == "xyz":
                 self.fn = fn #later: read multiple files
                 data, symbols, comments = xyzReader( fn )
             elif fmt=="xvibs":
@@ -176,7 +181,7 @@ class _XYZ():
                 data     = kwargs.get( 'data' )
                 _sh = data.shape
                 if len( _sh ) == 2: 
-                    data = data.reshape( ( 1, ) + _sh )                
+                    data = data.reshape( ( 1, ) + _sh )
                 comments = np.array( kwargs.get( 'comments', data.shape[ 0 ] * [ 'passed' ] ) )
             else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
@@ -187,8 +192,8 @@ class _XYZ():
             comments = np.array( [ comments[ _f ] ] )
 
         self.symbols  = np.array(symbols)
-        self.comments = np.array(comments)            
-        self.data     = data 
+        self.comments = np.array(comments)
+        self.data     = data
         self._sync_class()
 
         if align_coords and self._type == "trajectory": #is it a trajectory?
@@ -430,7 +435,7 @@ class XYZTrajectory( _XYZ, _TRAJECTORY ): #later: merge it with itertools (do no
 
 
     def calculate_nuclear_velocities(self,**kwargs): #finite diff, linear (frame1-frame0, frame2-frame1, etc.)
-        temperature = kwargs.get('temperature',300)
+        #temperature = kwargs.get('temperature',300)
         ts = kwargs.get('ts',0.5)
 
         if np.linalg.norm(self.vel_au) != 0: print('WARNING: Overwriting existing velocities in file %s'%self.fn)
@@ -477,7 +482,7 @@ class VibrationalModes():
             symbols  = [constants.symbols[z-1] for z in numbers]
             pos_au   = coords_aa*constants.l_aa2au
             eival_cgs = omega_cgs
-            
+
 #        elif fmt=="molvib": #mass weighted hessian as used in CPMD
 #            self.fn = fn 
         else:
@@ -536,7 +541,8 @@ class VibrationalModes():
         if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
         test = self.modes.reshape(self.n_modes,self.n_atoms*3)
         a=np.inner(test,test)[6:,6:]
-        if np.allclose(a,np.identity(self.n_modes-6),atol=atol): raise Exception('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
+        if np.allclose(a,np.identity(self.n_modes-6),atol=atol): 
+            raise Exception('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
         test = self.eivec.reshape(self.n_modes,self.n_atoms*3)
         a=np.inner(test,test)[6:,6:]
         if not np.allclose(a,np.identity(self.n_modes-6),atol=atol): 
@@ -563,7 +569,7 @@ class VibrationalModes():
         new.modes = np.concatenate((self.modes,other.modes),axis=1) #axis 0 are the modes
         new._sync_class()
         return new
-    
+
     def __iadd__(self,other):
         self.pos_au = np.concatenate((self.pos_au,other.pos_au),axis=0)
         self.symbols = np.concatenate((self.symbols,other.symbols))            
@@ -694,7 +700,7 @@ class VibrationalModes():
             if fn_APT==None or fn_AAT==None: raise Exception('ERROR: Please give fn_APT and fn_AAT for source "cpmd_nvpt_at"!')
             self.c_au = np.zeros((self.n_modes,3))
             self.m_au = np.zeros((self.n_modes,3))
-            
+
             self.APT = np.loadtxt(fn_APT).astype(float).reshape(self.n_atoms, 3, 3)
             self.AAT = np.loadtxt(fn_AAT).astype(float).reshape(self.n_atoms, 3, 3)
             sumrule = constants.e_si**2*constants.avog*np.pi*np.sum(self.APT**2/self.masses_amu[:,np.newaxis,np.newaxis])/(3*constants.c_si**2)/constants.m_amu_si
@@ -704,7 +710,7 @@ class VibrationalModes():
             self.m_au = (self.modes[:,:,:,np.newaxis]*self.AAT[np.newaxis,:,:,:]).sum(axis=2).sum(axis=1)
             #INSERT HERE MOLECULAR GAUGE
 
-            
+
         else: # orca, ...
             raise Exception('Unknown or unimplemented source: %s.'%source)
 
@@ -731,7 +737,7 @@ class VibrationalModes():
                 self.m_ic_t_au[mode] = m_ic_t
             self.m_lc_au = copy.deepcopy(self.m_au)
             self.m_au += self.m_ic_r_au#+self.m_ic_t_au
-        
+
     def calculate_mtm_spectrum(self):
         self.m_au = copy.deepcopy(self.m_lc_au)
         self.calculate_spectrum()
@@ -752,18 +758,17 @@ class VibrationalModes():
     def calculate_spectral_intensities(self): #SHOULDN'T BE METHOD OF CLASS
         self.D_cgs = (self.c_au*self.c_au).sum(axis=1) #going to be cgs
         self.R_cgs = (self.c_au*self.m_au).sum(axis=1)
-    
+
         #rot_str_p_p_trans = np.zeros(n_modes)
         #rot_str_p_p_diff  = np.zeros(n_modes)
         # NEW STUFF
         #    dip_intensity      = dip_str*IR_int_kmpmol
         #    dip_str           *= dip_str_cgs/omega_invcm
         #    rot_str_m_p       *= rot_str_cgs #**2
-        
         #Understand units later
         atomic_mass_unit = constants.m_amu_au #1822.88848367
         ev2au = 1/np.sqrt(atomic_mass_unit)  # eigenvalue to atomic units
-        ev2wn = ev2au/(2*np.pi*constants.t_au*constants.c_si)/100 # eigenvalues to wave numbers
+        #ev2wn = ev2au/(2*np.pi*constants.t_au*constants.c_si)/100 # eigenvalues to wave numbers
         au2wn = 1/(2*np.pi*constants.t_au*constants.c_si)/100 # atomic units to wave numbers
         ###################################################################################################
         # Dipole Strength
@@ -812,7 +817,7 @@ class VibrationalModes():
         #VCD intensity?
 
 #    def discrete_spectrum():
-        
+
     def continuous_spectrum(self,widths=None, nu_min_cgs=0, nu_max_cgs=3800, d_nu_cgs=2):
         def Lorentzian1(x, width, height, position):
             numerator =  1
@@ -824,7 +829,7 @@ class VibrationalModes():
             denominator = (x-position)**2 + width**2
             y = height*(numerator/denominator)/np.pi
             return y
-        
+
         try:
             n_points      = self.nu_cgs.shape[0]
             print('Found already loaded spectral data. Using now its frequency range.')
@@ -866,8 +871,8 @@ class VibrationalModes():
         S = self.eivec/np.sqrt(beta_au)/np.sqrt(constants.m_amu_au)/np.sqrt(self.masses_amu)[None,:,None]  #use eivec not modes due to normalisation of the latter (all in all not so happy :( )
         if occupation=='single':
             self.vel_au = S
-            e_kin_au = CalculateKineticEnergies(self.vel_au,self.masses_amu)
-            scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
+            #e_kin_au = CalculateKineticEnergies(self.vel_au,self.masses_amu)
+            #scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
         elif occupation=='average':
             self.vel_au = S.sum(axis=0)
             # atomic_ekin_au = traj_utils.CalculateKineticEnergies(avg, masses_amu)
@@ -892,7 +897,7 @@ class VibrationalModes():
         fmt =  kwargs.get('fmt','cpmd') #fn.split('.')[-1])
         modelist = kwargs.get('modelist',range(self.n_modes))
         factor = kwargs.get('factor',1.0)
-        loc_n_modes = len(modelist)
+        #loc_n_modes = len(modelist)
         if fmt == 'cpmd': 
             print('CPMD WARNING: Output with sorted atomlist!')
             loc_self = copy.deepcopy(self)
@@ -914,13 +919,13 @@ class VibrationalModes():
                 xyzWriter(fn,np.concatenate((pos_aa,factor*self.vel_au),axis=-1)[modelist],self.symbols,[str(m) for m in modelist])
 
         else: raise Exception('Unknown format: %s'%fmt)
-            
+
     def print_modes(self,fn,**kwargs):
         fmt =  kwargs.get('fmt','xyz') #fn.split('.')[-1])
         modelist = kwargs.get('modelist',range(self.n_modes))
         n_images = kwargs.get('n_images',3)#only odd numbers
         ts_fs = kwargs.get('ts_fs',1)
-        loc_n_modes = len(modelist)
+        #loc_n_modes = len(modelist)
         pos_aa = np.tile(self.pos_au*constants.l_au2aa,(n_images,1,1))
         self.calculate_nuclear_velocities()
         img = np.arange(-(n_images//2),n_images//2+1)
@@ -938,5 +943,4 @@ class VibrationalModes():
 class NormalModes(VibrationalModes):
     #Hessian Things
     pass
-     
 

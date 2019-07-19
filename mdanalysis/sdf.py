@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import MDAnalysis as mda
-import sys,copy
-
+import sys
+import copy
 import numpy as np
 from collections import OrderedDict
-from lib import constants
+
+from ..physics import constants
 from tools.algebra import RotationMatrix
 from analysis.pcbtools import InitialiseTopology_PDB
 from analysis.utils import AlignTrajectory

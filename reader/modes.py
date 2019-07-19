@@ -1,6 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
 import numpy as np
-from physics import constants
+from ..physics import constants
 
 def xvibsReader(fn):
     '''Module by Arne Scherrer'''

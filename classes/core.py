@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 #Version important as <3.6 gives problems with OrderedDictionaries
 
 import sys
@@ -6,8 +6,8 @@ import os
 import copy
 import numpy as np
 
-from writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
-from physics import constants
+from ..writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from ..physics import constants
 
 #put this into new lib file
 valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}

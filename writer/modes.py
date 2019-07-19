@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-import numpy as np
-from physics import constants
+#!/usr/bin/env python
+from ..physics import constants
 
 def xvibsWriter(filename, n_atoms, numbers, coordinates, frequencies, modes):
     '''Module by Arne Scherrer'''
