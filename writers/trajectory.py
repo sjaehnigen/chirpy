@@ -125,7 +125,7 @@ Output: None"""
         _write_frame(fn, data[fr], symbols,
                    comments[fr], append=append or fr != 0)
 
-#from pythonbasei (there is a second writer)
+#from pythonbasei (there is a secon..writers)
 def pdbWriter(fn, data, types, symbols, residues, box, title, append=False):
     """WritePDB(fn, data, types, symbols, residues, box, comment, append=False)
 Input:  

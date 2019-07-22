@@ -6,7 +6,7 @@ import os
 import copy
 import numpy as np
 
-from ..writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from ..physics import constants
 
 #put this into new lib file

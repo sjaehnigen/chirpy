@@ -7,7 +7,7 @@ from scipy import signal
 
 from ..classes.volume import ScalarField,VectorField
 from ..physics import constants
-from ..reader.trajectory import xyzReader
+from ..readers.trajectory import xyzReader
 from ..classes.domain import Domain3D
 
 #class WaveFunction(ScalarField):        

@@ -11,8 +11,8 @@ import sys
 import copy
 import numpy as np
 
-from ..reader.trajectory import pdbReader
-from ..reader.modes import xvibsReader
+from ..readers.trajectory import pdbReader
+from ..readers.modes import xvibsReader
 from ..classes.crystal import UnitCell
 from ..classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
 from ..physics import constants
@@ -26,7 +26,7 @@ valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5,suppress=True)
 
-#switch function which should be used in future for the standard file readers instead of elif... 
+#switch function which should be used in future for the standard fil..readerss instead of elif... 
 #def f(x):
 #    return {
 #        'a': 1,
@@ -52,7 +52,7 @@ class _SYSTEM( ):
         ignore_warnings = kwargs.get('ignore_warnings',False)
         fmt = kwargs.get('fmt',fn.split('.')[-1])
 
-        #Beta: store FileReader data in dict, try if sth is there before starting reader. Problem: memory?
+        #Beta: store FileReader data in dict, try if sth is there before startin..readers. Problem: memory?
         global _fn
         _fn = {}
         ## This is a cheap workaround

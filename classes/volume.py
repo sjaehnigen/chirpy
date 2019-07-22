@@ -5,8 +5,8 @@ from scipy.interpolate import griddata
 from scipy.integrate import simps
 
 #from classes.domain import Domain3D,Domain2D
-from ..reader.volume import cubeReader
-from ..writer.volume import cubeWriter
+from ..readers.volume import cubeReader
+from ..writers.volume import cubeWriter
 from ..physics.kspace import k_potential
 from ..physics.classical_electrodynamics import _get_divrot
 
@@ -21,7 +21,7 @@ eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 class ScalarField():
     def __init__(self, *args, **kwargs): #**kwargs for named (dict), *args for unnamed
         if len(args) > 1:
-            raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
+            raise TypeError( "Fil..readers of %s takes at most 1 argument!" % self.__class__.__name__ )
         elif len(args) == 1:
             self.fn = args[0]
             self.fmt = kwargs.get('fmt', self.fn.split('.')[-1])
@@ -256,7 +256,7 @@ class ScalarField():
 class VectorField(ScalarField):
     def __init__(self, *args, **kwargs):
         if len(args) not in [0, 3]:
-            raise TypeError( "File reader of %s takes exactly zero or three arguments!" % self.__class__.__name__ )
+            raise TypeError( "Fil..readers of %s takes exactly zero or three arguments!" % self.__class__.__name__ )
         elif len(args) == 3:
             buf_x = ScalarField(args[0], **kwargs)
             buf_y = ScalarField(args[1], **kwargs)

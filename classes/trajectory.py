@@ -5,9 +5,9 @@ import sys
 import copy
 import numpy as np
 
-from ..reader.modes import xvibsReader
-from ..reader.trajectory import xyzReader, cpmdReader
-from ..writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from ..readers.modes import xvibsReader
+from ..readers.trajectory import xyzReader, cpmdReader
+from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from ..interfaces import cpmd as cpmd_n #new libraries
 
 from ..topology.mapping import align_atoms, dec
@@ -154,7 +154,7 @@ class _XYZ():
         align_coords = kwargs.get( 'align_atoms', False )
         center_coords = kwargs.get( 'center_coords', False )
 
-        if len( args ) > 1: raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
+        if len( args ) > 1: raise TypeError( "Fil..readers of %s takes at most 1 argument!" % self.__class__.__name__ )
 
         elif len( args ) == 1:
             fn = args[ 0 ]

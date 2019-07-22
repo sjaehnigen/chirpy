@@ -4,8 +4,8 @@ import numpy as np
 import copy 
 
 from ..classes.trajectory import TRAJECTORY as _TRAJ
-from ..writer.trajectory import cpmdWriter
-from ..reader.trajectory import cpmdReader
+from ..writers.trajectory import cpmdWriter
+from ..readers.trajectory import cpmdReader
 from ..physics import constants
 
 _cpmd_keyword_logic = {
@@ -187,7 +187,7 @@ class CPMD_TRAJECTORY( _TRAJ ): ##name?
 
 #    def write( self, fn, **kwargs ): #Later: Use global write function of _TRAJ
 #        sym = [ 'X' ] * self.pos.shape[ 1 ]
-#        # ToDo: update writer: symbols not needed for TRAJSAVED output
+#        # ToDo: updat..writers: symbols not needed for TRAJSAVED output
 #        cpmdWriter( fn, self.pos, sym, self.vel, write_atoms = False )
 
 class CPMDjob( ):
