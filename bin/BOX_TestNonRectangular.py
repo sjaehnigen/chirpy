@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-from chemsnail.classes.system import Supercell
+from chirpy.classes.system import Supercell
 
 def main():
     parser = argparse.ArgumentParser( description = "Read a supercell (xyz, pdb, ...) and print box information", formatter_class = argparse.ArgumentDefaultsHelpFormatter )

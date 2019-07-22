@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np
-from chemsnail.classes import system
+from chirpy.classes import system
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''

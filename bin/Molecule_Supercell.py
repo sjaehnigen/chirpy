@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np
-from chemsnail.classes import system
+from chirpy.classes import system
 
 def main():
     parser = argparse.ArgumentParser(description="Convert any supported input into XYZ format",

@@ -2,7 +2,7 @@
 
 import numpy as np
 import argparse
-from chemsnail.classes import volume,pymol
+from chirpy.classes import volume,pymol
 
 Angstrom2Bohr = 1.8897261247828971
 

@@ -2,7 +2,7 @@
 
 import argparse
 import copy
-from chemsnail.classes import quantum
+from chirpy.classes import quantum
 #imp.reload(quantum)
 
 def main():

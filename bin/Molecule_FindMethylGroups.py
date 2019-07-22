@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-from chemsnail.classes import system
-from chemsnail.topology import symmetry
+from chirpy.classes import system
+from chirpy.topology import symmetry
 
 def main():
     '''Unit Cell parametres are taken from fn if needed'''

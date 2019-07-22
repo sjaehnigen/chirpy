@@ -2,7 +2,7 @@
 
 import argparse
 import numpy as np
-from chemsnail.classes import volume
+from chirpy.classes import volume
 
 def main():
     '''Converts CUBE kernel into numpy array on disk (beta version; no cell parametres conserved!)'''

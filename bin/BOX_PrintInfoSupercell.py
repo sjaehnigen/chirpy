@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-from chemsnail.generators.gen_box import Solution
+from chirpy.generators.gen_box import Solution
 
 def main():
     parser = argparse.ArgumentParser( description = "Read a supercell (xyz, pdb, ...) and print box information", formatter_class = argparse.ArgumentDefaultsHelpFormatter )

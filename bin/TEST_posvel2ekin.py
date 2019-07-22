@@ -3,7 +3,7 @@
 import numpy as np
 import argparse
 
-from chemsnail.physics import constants #migrate to phdtools
+from chirpy.physics import constants #migrate to phdtools
 from fileio import xyz #migrate to phdtools
 from statistics.statistical_mechanics import CalculateKineticEnergies
 

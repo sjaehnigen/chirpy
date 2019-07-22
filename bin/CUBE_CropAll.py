@@ -4,7 +4,7 @@ import os
 import sys
 import copy
 import numpy as np
-from chemsnail.classes import quantum, volume
+from chirpy.classes import quantum, volume
 
 ######### Parametres ##################################
 density = 'DENSITY-000001.cube'

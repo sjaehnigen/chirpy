@@ -7,9 +7,9 @@ import numpy as np
 import time
 from multiprocessing import Manager, Process
 
-from chemsnail.classes import volume,trajectory
-from chemsnail.physics.classical_electrodynamics import biot_savart, biot_savart_grid, biot_savart_kspace
-from chemsnail.physics import constants
+from chirpy.classes import volume,trajectory
+from chirpy.physics.classical_electrodynamics import biot_savart, biot_savart_grid, biot_savart_kspace
+from chirpy.physics import constants
 
 def main():
     if int(np.version.version.split('.')[1]) < 14:

@@ -2,8 +2,8 @@
 
 import argparse
 import numpy as np
-from chemsnail.classes import system
-from chemsnail.topology import mapping
+from chirpy.classes import system
+from chirpy.topology import mapping
 
 def main():
     '''Unit Cell parametres are taken from fn1 if needed'''

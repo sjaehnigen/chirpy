@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import copy
-from chemsnail.classes import quantum
+from chirpy.classes import quantum
 
 rho_cube = 'DENSITY-000001.cube'
 fn = rho_cube

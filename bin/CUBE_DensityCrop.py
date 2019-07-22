@@ -2,7 +2,7 @@
 
 import argparse
 import copy
-from chemsnail.classes import quantum
+from chirpy.classes import quantum
 
 def main():
     parser=argparse.ArgumentParser(description="Crop Density after threshold in order to save disk space", formatter_class=argparse.ArgumentDefaultsHelpFormatter)

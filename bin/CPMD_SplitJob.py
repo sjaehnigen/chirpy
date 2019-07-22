@@ -2,10 +2,10 @@
 
 import argparse
 
-from chemsnail.physics import constants
-from chemsnail.interfaces import cpmd
-from chemsnail.topology import dissection
-from chemsnail.classes import system
+from chirpy.physics import constants
+from chirpy.interfaces import cpmd
+from chirpy.topology import dissection
+from chirpy.classes import system
 
 
 def main():
