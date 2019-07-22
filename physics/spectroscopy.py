@@ -5,9 +5,6 @@ import numpy as np
 
 from ..physics import classical_electrodynamics as edyn
 from ..physics import constants
-#old pythonbase
-from vcdtools.correlation_functions import Filter
-from bin.scaled_spectra import CurrentCurrentPrefactor,CurrentMagneticPrefactor
 
 #constants
 h_si = 6.62606957E-34 # Planck's constant [Js]
@@ -24,6 +21,36 @@ eijk[0,2,1] = eijk[2,1,0] = eijk[1,0,2] = -1
    # change tp name standard: fermi_cutoff_function
 def FermiCutoffFunction(distance_au, R_cutoff_au, D_au=0.25*constants.l_aa2au):
     return 1/(1+np.exp((distance_au - R_cutoff_au)/D_au))
+
+
+#old python from Arne
+def Filter(n_frames, filter_length=None, filter_type='welch'):
+    if filter_length == None:
+        filter_length = n_frames
+    if filter_type == 'hanning':
+        return np.hanning(2*filter_length)[n_frames:]
+    elif filter_type == 'welch':
+        return (np.arange(filter_length)[::-1]/(filter_length+1))**2
+    elif filter_type == 'triangular':
+        return np.ones(filter_length) - np.arange(filter_length)/n_frames
+    else:
+        raise Exception('Filter %s not supported!'%filter_type)
+
+def CurrentCurrentPrefactor(temperature_K):
+    prefactor_cgs = DipoleDipolePrefactor(temperature_K)*(Bohr_cgs/time_au)**2
+    cm2_kmcm      = 1E-5
+    return prefactor_cgs*cm2_kmcm*time_au
+
+def CurrentMagneticPrefactor(nu_cgs, temperature_K):
+    prefactor_cgs = DipoleDipolePrefactor(temperature_K)*(Bohr_cgs**3/time_au**2/speedoflight_cgs)
+    cm2_kmcm      = 1E-5
+    omega_cgs     = nu_cgs*speedoflight_cgs*2*np.pi
+    return 4*omega_cgs*prefactor_cgs*cm2_kmcm*time_au
+
+def DipoleDipolePrefactor(temperature_K):
+    beta_cgs      = 1./(temperature_K*k_Boltzmann_cgs)
+    prefactor_cgs = (2*np.pi*N_avogadro*beta_cgs*finestructure_constant*hbar_cgs)/3
+    return prefactor_cgs
 
 ######################################################################################################################
 
@@ -84,7 +111,7 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
     for _i,_o in enumerate(origins_au):
         _c = copy.deepcopy(c)
         _m = copy.deepcopy(m)
-        
+
         #R_I(t) - R_J(t) #used in manuscript
         _trans = pos_au-_o[:,None,:] 
         if cell_au is not None:
@@ -108,7 +135,7 @@ def get_ira_and_vcd(c,m,pos_au,**kwargs):
             _ind  = np.linalg.norm(_trans,axis=2)>cutoff_aa*Angstrom2Bohr
             _c[_ind ,:] = np.array([0.0,0.0,0.0])
             _m[_ind ,:] = np.array([0.0,0.0,0.0])
-            
+
         if type(cutoff_bg_aa) is float:
             _c_bg = copy.deepcopy(_c)
             #_m_bg = copy.deepcopy(m) #only direct correlation, no transport term!
