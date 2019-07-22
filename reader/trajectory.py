@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import numpy as np
 
@@ -19,7 +19,7 @@ def pdbReader(filename):
         record = line[:6]
 
         if record == 'TITLE ':
-            continuation  = line[ 8:10] # support for continuation to be added
+            #continuation  = line[ 8:10] # support for continuation to be added
             title = line[10:80].rstrip('\n')
 
         elif record == 'CRYST1':
@@ -110,18 +110,63 @@ Output:
     return np.array(data), symbols, comments
 
 #not the final version: remove n_kinds dependency and generalise it
-# by Arne Scherrer
-def cpmdReader( FN, n_kinds, type = 'TRAJECTORY' ):
-    """iterates over FN and yields generator of positions, velocities and moments (in a.u.)"""
-    if type == 'TRAJECTORY':
-        with open( FN, 'r' ) as _f:
-            _it = ( list( map( float, line.strip( ).split( )[ 1: ] ) ) for line in _f if 'NEW DATA' not in line )
-            try:
-                while _it:
-                    pos, vel = tuple( np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 2, 3 ) ).swapaxes( 0, 1 ) )
-                    #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
-                    yield pos, vel
-            except StopIteration:
-                pass
+def cpmdReader(FN, kinds=[], type='GEOMETRY'):
+    n_kinds = np.array(kinds).shape[0]
+    with open(FN, 'r' ) as _f:
+        _it = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
+        try:
+            while _it:
+                #pos, vel = tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 1, 6)).swapaxes(0, 1))
+                #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
+                yield tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 6)))
+                        #.reshape((n_kinds, 1, 6)))
+        except StopIteration:
+            pass
 
+
+
+class cpmdReader1():
+    """iterates over FN and yields generator of positions, velocities and moments (in a.u.)"""
+    def __init__(self, *args, **kwargs):
+        if len( args ) != 2:
+            raise TypeError('cpmdReader takes two arguments: filename and kinds')
+        self.type = kwargs.get('type', 'GEOMETRY')
+        self.fn = args[0]
+        self.kinds = np.array(args[1])
+        self.n_kinds = self.kinds.shape[0]
+
+#    def _gen(self):
+        with open(self.fn, 'r' ) as _f:
+            self.gen = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
+#            try:
+#                while _it:
+#                    yield next(_it)
+#            except StopIteration:
+#                pass
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+#        with open(self.fn, 'r' ) as _f:
+#            _gen = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
+            if self.type == 'GEOMETRY':
+                try:
+                    while self.gen:
+                        yield tuple(np.array([next(self.gen) for _ik in range(self.n_kinds)]))
+                except StopIteration:
+                    pass
+
+            if self.type == 'TRAJECTORY':
+                #while _gen:
+                return tuple(np.array([next(self._gen())[1:] for _ik in range(self.n_kinds)]).reshape((self.n_kinds, 1, 6)))
+
+            raise StopIteration
+            #try:
+            #    while self._gen:
+            #        pos, vel = tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 2, 3)).swapaxes(0, 1))
+            #        #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
+            #        yield pos, vel
+            #except StopIteration:
+            #    pass
 

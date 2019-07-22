@@ -6,7 +6,7 @@ import copy
 import numpy as np
 
 from ..reader.modes import xvibsReader
-from ..reader.trajectory import xyzReader
+from ..reader.trajectory import xyzReader, cpmdReader
 from ..writer.trajectory import cpmdWriter, xyzWriter, pdbWriter
 from ..interfaces import cpmd as cpmd_n #new libraries
 
@@ -156,34 +156,49 @@ class _XYZ():
 
         if len( args ) > 1: raise TypeError( "File reader of %s takes at most 1 argument!" % self.__class__.__name__ )
 
-        elif len( args ) == 1: 
+        elif len( args ) == 1:
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
             if fmt == "xyz":
                 self.fn = fn #later: read multiple files
                 data, symbols, comments = xyzReader( fn )
             elif fmt=="xvibs":
-                self.fn = fn 
+                self.fn = fn
                 comments = [ "xvibs" ]
                 n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader( fn )
                 symbols  = [ constants.symbols[ z - 1 ] for z in numbers ]
                 data     = coords_aa.reshape( ( 1, n_atoms, 3 ) )
+            elif fmt=="cpmd":
+                self.fn = fn
+                if ( 'symbols' in kwargs or 'numbers' in kwargs ):
+                    numbers = kwargs.get( 'numbers' )
+                    symbols = kwargs.get( 'symbols' )
+                    comments = kwargs.get( 'comments', [''] )
+                    if symbols is None: symbols = [ constants.symbols[ z - 1 ] for z in numbers ]
+                    data = np.array( [ _fr for _fr in cpmdReader(fn, kinds=symbols)] )
+                    #TMP solution: what is the convention for pos and vel? 
+                    data[:,:,:3] *= constants.l_au2aa
+
+                else:
+                    raise TypeError("CPMDReader needs list of numbers of symbols.")
+
             else:
                 raise Exception( 'Unknown format: %s.' % fmt )
 
         elif len( args ) == 0: #shift it to classmethod _from_data() (see above)
             #if all( _a in kwargs for _a in [ 'data', 'symbols' ] ): 
             if 'data' in kwargs and ( 'symbols' in kwargs or 'numbers' in kwargs ):
-                self.fn = '' 
+                self.fn = ''
                 numbers = kwargs.get( 'numbers' )
                 symbols  = kwargs.get( 'symbols' )
                 if symbols is None: symbols = [ constants.symbols[ z - 1 ] for z in numbers ]
                 data     = kwargs.get( 'data' )
                 _sh = data.shape
-                if len( _sh ) == 2: 
+                if len( _sh ) == 2:
                     data = data.reshape( ( 1, ) + _sh )
                 comments = np.array( kwargs.get( 'comments', data.shape[ 0 ] * [ 'passed' ] ) )
-            else: raise TypeError( 'XYZData needs fn or data + symbols argument!' )
+            else:
+                raise TypeError( 'XYZData needs fn or data + symbols argument!' )
 
         # traj or frame (ugly solution with _labels) based on assumption that above input gives always 3-column data
         if self._type == 'frame': #is it a frame?

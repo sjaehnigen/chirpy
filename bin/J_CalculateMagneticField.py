@@ -28,13 +28,19 @@ def main():
         )
 
     parser.add_argument(
-        '-mode',
+        '--geofile',
+        default='GEOMETRY',
+        help="Name of GEOMETRY file containing nuclear positions and velocities (in CPMD format)."
+        )
+
+    parser.add_argument(
+        '--mode',
         default='grid',
         help="Calculate B at atom/grid positions."
         )
 
     parser.add_argument(
-        '-nprocs',
+        '--nprocs',
         type=int,
         default=1,
         help="Number of parallel threads."
@@ -129,11 +135,13 @@ def main():
     j.print_info()
 
     if not args.electrons_only:
-        nuc = trajectory.XYZFrame("GEOMETRY.xyz")
+        nuc = trajectory.XYZFrame(args.geofile, numbers=j.numbers, fmt='cpmd')
         if not np.allclose(j.pos_au, nuc.pos_aa*constants.l_aa2au):
-            raise ValueError("The given cube files do not correspond to GEOMETRY.xyz!")
+            raise ValueError("The given cube files do not correspond to %s!" % args.geofile)
         #Compatibility warning: In CPMD xyz velocities are given in aa per t_au! Multiplication by l_aa2au compulsory!
-        vel_au = nuc.vel_au*constants.l_aa2au
+        #Or use CPMD format
+        vel_au = nuc.vel_au#*constants.l_aa2au
+        print(vel_au)
         if args.use_valence_charges:
             _key = "ZV"
         else:
