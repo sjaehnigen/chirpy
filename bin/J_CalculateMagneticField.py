@@ -22,8 +22,8 @@ def main():
         )
 
     parser.add_argument(
-        "fn", 
-        nargs=3, 
+        "fn",
+        nargs=3,
         help="Electron current vectorfield as cube files (fn_x, fn_y, fn_z)."
         )
 
@@ -135,18 +135,31 @@ def main():
     j.print_info()
 
     if not args.electrons_only:
-        nuc = trajectory.XYZFrame(args.geofile, numbers=j.numbers, fmt='cpmd')
-        if not np.allclose(j.pos_au, nuc.pos_aa*constants.l_aa2au):
-            raise ValueError("The given cube files do not correspond to %s!" % args.geofile)
-        #Compatibility warning: In CPMD xyz velocities are given in aa per t_au! Multiplication by l_aa2au compulsory!
-        #Or use CPMD format
-        vel_au = nuc.vel_au#*constants.l_aa2au
-        print(vel_au)
-        if args.use_valence_charges:
-            _key = "ZV"
-        else:
-            _key = "Z"
-        Q = [constants.species[_s][_key] for _s in nuc.symbols]
+        try:
+            nuc = trajectory.XYZFrame(args.geofile, numbers=j.numbers, fmt='cpmd',
+                    filetype='GEOMETRY')
+            if not np.allclose(j.pos_au, nuc.pos_aa*constants.l_aa2au):
+                raise ValueError("The given cube files do not correspond to %s!" % args.geofile)
+            #Compatibility warning: In CPMD xyz velocities are given in aa per t_au! Multiplication by l_aa2au compulsory!
+            #Or use CPMD format
+            vel_au = nuc.vel_au#*constants.l_aa2au
+            if args.use_valence_charges:
+                _key = "ZV"
+            else:
+                _key = "Z"
+            Q = [constants.species[_s][_key] for _s in nuc.symbols]
+            print('Nuclear Velocities/Charges')
+            print(77 * '–')
+            print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['v_x', 'v_y', 'v_z', 'Q']))
+            for _i, (_v, _q) in enumerate(zip(vel_au, Q)):
+                print( '%4d '%_i 
+                    + ' '.join(map('{:12.5g}'.format, _v)) + ' '
+                    + '{:12.5g}'.format(_q)
+                    )
+            print(77 * '–')
+        except FileNotFoundError:
+            print('WARNING: %s not found! Proceeding with electrons only.')
+            args.electrons_only=True
     #------------------------------------------- 
 
     #-------- Create object copy for B output

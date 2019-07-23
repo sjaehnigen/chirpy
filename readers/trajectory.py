@@ -6,6 +6,9 @@ import numpy as np
 #ToDo: file check routines for all Readers (e.g., "file is not a PDB file" )
 #ToDo: integrity check for resulting data
 
+def _gen(fn):
+    return (list(map(float, line.strip().split())) for line in fn if 'NEW DATA' not in line)
+
 def pdbReader(filename):
     '''WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)'''
     names, resns,resids,data,symbols,cell_aa_deg,title = list(),list(),list(),list(), list(), None, None
@@ -109,64 +112,35 @@ Output:
 
     return np.array(data), symbols, comments
 
-#not the final version: remove n_kinds dependency and generalise it
-def cpmdReader(FN, kinds=[], type='GEOMETRY'):
-    n_kinds = np.array(kinds).shape[0]
+
+def _cpmd(gen):
+    while _it:
+        if filetype == 'GEOMETRY':
+            return tuple(np.array([next(_it) for _ik in range(n_kinds)]))
+         elif filetype in [ 'TRAJECTORY', 'MOMENTS' ]:
+            return tuple(np.array([next(_it)[1:] for _ik in range(n_kinds)]))
+         else:
+            raise TypeError('Unknown filetype %s' % filetype)
+
+
+def cpmdReader(FN, **kwargs):
+    """Iterates over FN and yields generator of positions, velocities and/or moments (in a.u.)"""
+    #try to get mode from filename
+    filetype = kwargs.get('filetype', FN)
+    kinds = np.array(kwargs.get('kinds', [0]))
+    n_kinds = kinds.shape[0]
+
     with open(FN, 'r' ) as _f:
-        _it = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
+        _it = _gen(_f)
         try:
-            while _it:
-                #pos, vel = tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 1, 6)).swapaxes(0, 1))
-                #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
-                yield tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 6)))
-                        #.reshape((n_kinds, 1, 6)))
+            yield _cpmd(_it)
+#            while _it:
+#                if filetype == 'GEOMETRY':
+#                    yield tuple(np.array([next(_it) for _ik in range(n_kinds)]))
+#                elif filetype in [ 'TRAJECTORY', 'MOMENTS' ]:
+#                    yield tuple(np.array([next(_it)[1:] for _ik in range(n_kinds)]))
+#                else:
+#                    raise TypeError('Unknown filetype %s' % filetype)
         except StopIteration:
             pass
-
-
-
-class cpmdReader1():
-    """iterates over FN and yields generator of positions, velocities and moments (in a.u.)"""
-    def __init__(self, *args, **kwargs):
-        if len( args ) != 2:
-            raise TypeError('cpmdReader takes two arguments: filename and kinds')
-        self.type = kwargs.get('type', 'GEOMETRY')
-        self.fn = args[0]
-        self.kinds = np.array(args[1])
-        self.n_kinds = self.kinds.shape[0]
-
-#    def _gen(self):
-        with open(self.fn, 'r' ) as _f:
-            self.gen = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
-#            try:
-#                while _it:
-#                    yield next(_it)
-#            except StopIteration:
-#                pass
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-#        with open(self.fn, 'r' ) as _f:
-#            _gen = (list(map(float, line.strip().split())) for line in _f if 'NEW DATA' not in line)
-            if self.type == 'GEOMETRY':
-                try:
-                    while self.gen:
-                        yield tuple(np.array([next(self.gen) for _ik in range(self.n_kinds)]))
-                except StopIteration:
-                    pass
-
-            if self.type == 'TRAJECTORY':
-                #while _gen:
-                return tuple(np.array([next(self._gen())[1:] for _ik in range(self.n_kinds)]).reshape((self.n_kinds, 1, 6)))
-
-            raise StopIteration
-            #try:
-            #    while self._gen:
-            #        pos, vel = tuple(np.array([next(_it) for _ik in range(n_kinds)]).reshape((n_kinds, 2, 3)).swapaxes(0, 1))
-            #        #yield np.array( [ next( _it ) for _ik in range( n_kinds ) ] ).reshape( ( n_kinds, 1, 3 ) ).swapaxes( 0, 1 ) 
-            #        yield pos, vel
-            #except StopIteration:
-            #    pass
 

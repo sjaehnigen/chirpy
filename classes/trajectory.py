@@ -5,6 +5,7 @@ import sys
 import copy
 import numpy as np
 
+from ..snippets import extract_keys
 from ..readers.modes import xvibsReader
 from ..readers.trajectory import xyzReader, cpmdReader
 from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
@@ -159,28 +160,30 @@ class _XYZ():
         elif len( args ) == 1:
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
+            _until = float(kwargs.get('read_until', 'inf'))
+            self.fn = fn #later: read multiple files
+
             if fmt == "xyz":
-                self.fn = fn #later: read multiple files
                 data, symbols, comments = xyzReader( fn )
             elif fmt=="xvibs":
-                self.fn = fn
                 comments = [ "xvibs" ]
                 n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader( fn )
                 symbols  = [ constants.symbols[ z - 1 ] for z in numbers ]
                 data     = coords_aa.reshape( ( 1, n_atoms, 3 ) )
             elif fmt=="cpmd":
-                self.fn = fn
-                if ( 'symbols' in kwargs or 'numbers' in kwargs ):
-                    numbers = kwargs.get( 'numbers' )
-                    symbols = kwargs.get( 'symbols' )
-                    comments = kwargs.get( 'comments', [''] )
-                    if symbols is None: symbols = [ constants.symbols[ z - 1 ] for z in numbers ]
-                    data = np.array( [ _fr for _fr in cpmdReader(fn, kinds=symbols)] )
-                    #TMP solution: what is the convention for pos and vel? 
-                    data[:,:,:3] *= constants.l_au2aa
-
+                if ('symbols' in kwargs or 'numbers' in kwargs):
+                    numbers = kwargs.get('numbers')
+                    symbols = kwargs.get('symbols', [constants.symbols[z - 1] for z in numbers])
                 else:
-                    raise TypeError("CPMDReader needs list of numbers of symbols.")
+                    raise TypeError("cpmdReader needs list of numbers or symbols.")
+                comments = kwargs.get('comments', [''])
+
+                #data = np.array([_fr for _i, _fr in enumerate(
+                #    cpmdReader(fn, **extract_keys(kwargs, kinds=symbols, filetype=fn))
+                #    ) if _i <= _until])
+                data = np.array(list(cpmdReader(fn, **extract_keys(kwargs, kinds=symbols, filetype=fn))))
+                #TMP solution: what is the convention for pos and vel? 
+                data[:,:,:3] *= constants.l_au2aa
 
             else:
                 raise Exception( 'Unknown format: %s.' % fmt )
