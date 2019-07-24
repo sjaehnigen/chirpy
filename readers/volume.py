@@ -2,21 +2,26 @@
 
 import numpy as np
 
-def cubeReader(fn):
+def _gen(fn):
+    '''Global generator for all formats'''
+    return (_line for _line in fn)
+
+def cubeReader(FN):
     '''Module by Arne Scherrer'''
-    with open(fn, 'r') as f:
-        comments = f.readline() + f.readline()
+    with open(FN, 'r') as _f:
+        _it = _gen(_f)
+        comments = next(_it) + next(_it)
         origin_au, n_grid, cell_au = (0,0,0), [0,0,0], [(0,0,0), (0,0,0), (0,0,0)]
-        n_atoms, *origin_au = map(float, f.readline().split())
+        n_atoms, *origin_au = map(float, next(_it).split())
         for i in range(3):
-            n_grid[i], *cell_au[i] = map(float, f.readline().split())
+            n_grid[i], *cell_au[i] = map(float, next(_it).split())
         n_atoms, *n_grid = map(int, [n_atoms] + n_grid )
         numbers, coords_au = [0]*n_atoms, [(0,0,0)]*n_atoms
         for i_atom in range(n_atoms):
-            numbers[i_atom], dummy, *coords_au[i_atom] = map(float, f.readline().split())
+            numbers[i_atom], dummy, *coords_au[i_atom] = map(float, next(_it).split())
         numbers = list(map(int, numbers))
         volume_data = list()
-        for line in f.readlines():
+        for line in _it:
             volume_data.extend(line.strip().split())
         volume_data = np.array(volume_data).astype(np.float).reshape(n_grid)
         data = {'comments':comments,'origin_au':origin_au,'cell_au':cell_au,\

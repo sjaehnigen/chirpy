@@ -142,9 +142,9 @@ class _TRAJECTORY( _FRAME ): #later: merge it with itertools (do not load any tr
     def _sync_class( self ):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         #ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[ 0 ]: 
+        if self.n_atoms != self.symbols.shape[ 0 ]:
             raise Exception( 'ERROR: Data shape inconsistent with symbols attribute!\n' )
-        if self.n_frames != self.comments.shape[ 0 ]: 
+        if self.n_frames != self.comments.shape[ 0 ]:
             raise Exception( 'ERROR: Data shape inconsistent with comments attribute!\n' )
 
 class _XYZ():
@@ -160,16 +160,23 @@ class _XYZ():
         elif len( args ) == 1:
             fn = args[ 0 ]
             fmt = kwargs.get( 'fmt' , fn.split( '.' )[ -1 ] )
-            _until = float(kwargs.get('read_until', 'inf'))
+            if self._type == 'frame':
+                 _fr = kwargs.get('frame', 0)
+                 _fr = _fr, _fr+1
+            elif self._type == 'trajectory':
+                _fr = kwargs.get('frame_range', (0,float('inf')))
             self.fn = fn #later: read multiple files
 
             if fmt == "xyz":
-                data, symbols, comments = xyzReader( fn )
+                data, symbols, comments = xyzReader(fn)
+                symbols = symbols[0] #ToDo: add test on whether all frames have the same symbols
+
             elif fmt=="xvibs":
                 comments = [ "xvibs" ]
                 n_atoms, numbers, coords_aa, n_modes, omega_invcm, modes = xvibsReader( fn )
                 symbols  = [ constants.symbols[ z - 1 ] for z in numbers ]
                 data     = coords_aa.reshape( ( 1, n_atoms, 3 ) )
+
             elif fmt=="cpmd":
                 if ('symbols' in kwargs or 'numbers' in kwargs):
                     numbers = kwargs.get('numbers')
@@ -178,10 +185,10 @@ class _XYZ():
                     raise TypeError("cpmdReader needs list of numbers or symbols.")
                 comments = kwargs.get('comments', [''])
 
-                #data = np.array([_fr for _i, _fr in enumerate(
-                #    cpmdReader(fn, **extract_keys(kwargs, kinds=symbols, filetype=fn))
-                #    ) if _i <= _until])
-                data = np.array(list(cpmdReader(fn, **extract_keys(kwargs, kinds=symbols, filetype=fn))))
+                data = np.array(cpmdReader(fn,
+                    **extract_keys(kwargs, kinds=symbols, filetype=fn, range=_fr)
+                    ))
+
                 #TMP solution: what is the convention for pos and vel? 
                 data[:,:,:3] *= constants.l_au2aa
 

@@ -2,15 +2,82 @@
 
 import numpy as np
 
-#PDB Version 3.30 according to Protein Data Bank Contents Guide
-#ToDo: file check routines for all Readers (e.g., "file is not a PDB file" )
-#ToDo: integrity check for resulting data
-
 def _gen(fn):
-    return (list(map(float, line.strip().split())) for line in fn if 'NEW DATA' not in line)
+    '''Global generator for all formats'''
+    return (line for line in fn if 'NEW DATA' not in line)
 
+
+def _get(_it, kernel, **kwargs):
+    n_lines = kwargs.get('n_lines')
+    r0, r1 = kwargs.pop("range", (0, float('inf')))
+    _r = 0
+    while _r < r0:
+        [next(_it) for _ik in range(n_lines)]
+        _r += 1
+    try:
+        yield kernel([next(_it) for _ik in range(n_lines)], **kwargs)
+        _r += 1
+        if _r >= r1:
+            raise StopIteration()
+    except StopIteration:
+        pass
+
+
+def _reader(FN, _nlines, _kernel, **kwargs):
+    kwargs.update({'n_lines' : _nlines})
+    with open(FN, 'r' ) as _f:
+        _it = _gen(_f)
+        data = tuple(_get(_it, _kernel, **kwargs))
+        if np.size(data) == 0:
+            raise ValueError('Given input and arguments do not yield any data!')
+        else:
+            return data
+
+
+def _xyz(frame, **kwargs):
+    if kwargs.get('n_lines') != int(frame[0].strip()) + 2:
+        raise ValueError('Corrupt XYZ file!')
+
+    comment =frame[1].rstrip('\n')
+    _split = (_l.strip().split() for _l in frame[2:])
+    symbols, data = tuple(zip(*[(_l[0], _l[1:]) for _l in _split]))
+
+    return np.array(data).astype(float), symbols, comment
+
+
+def _cpmd(frame, **kwargs):
+    """Iterates over FN and yields generator of positions, velocities and/or moments (in a.u.)"""
+    filetype = kwargs.get('filetype')
+    if filetype == 'GEOMETRY':
+        return np.array([_l.strip().split() for _l in frame]).astype(float)
+    elif filetype in [ 'TRAJECTORY', 'MOMENTS' ]:
+        return np.array([_l.strip().split()[1:] for _l in frame]).astype(float)
+    else:
+        raise TypeError('Unknown filetype %s' % filetype)
+
+
+def xyzReader(FN, **kwargs):
+    _kernel = _xyz
+
+    with open(FN, 'r') as _f:
+        _nlines = int(_f.readline().strip()) + 2
+
+    return zip(*_reader(FN, _nlines, _kernel, **kwargs))
+
+
+def cpmdReader(FN, **kwargs):
+    _kernel = _cpmd
+
+    _nlines = np.array(kwargs.get('kinds', [0])).shape[0]
+
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
+
+
+# ------ old readers
 def pdbReader(filename):
-    '''WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)'''
+    '''PDB Version 3.30 according to Protein Data Bank Contents Guide.
+    WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)'''
     names, resns,resids,data,symbols,cell_aa_deg,title = list(),list(),list(),list(), list(), None, None
     cell=0
     mk_int = lambda s: int(s) if s.strip() else 0
@@ -80,67 +147,34 @@ def pdbReader(filename):
     return np.array(data), names, np.array(symbols), np.array([[i,n] for i,n in zip(resids,resns)]), cell_aa_deg, title
 
 ##DEBUG 
-def xyzReader(fn):
-    """Adapted from Arne Scherrer's pythonbase ReadTrajectory_BruteForce(filename)
-Input:  
-        1. filename: File to read
-Output: 
-        1. np.array of shape (#frames, #atoms, #fields/atom)
-        2. list of atom symbols (contains strings)
-        3. list of comment lines (contains strings)"""
-    f = open(fn, 'r')
-    lines = f.readlines()
-    f.close()
-
-    n_atoms = int(lines[0].strip())
-    n_frames = len(lines)//(n_atoms+2)
-    data, symbols, comments = list(), list(), list()
-
-    for n_frame in range(n_frames):
-        offset = n_frame*(n_atoms + 2)
-
-        # get comments
-        comments.append(lines[offset+1].rstrip('\n'))
-
-        # get symbols
-        if n_frame == 0:
-            symbols = [s.strip().split()[0] for s in lines[offset+2:offset+n_atoms+2]]
-
-        # get data
-        tmp = [[float(d) for d in s.strip().split()[1:]] for s in lines[offset+2:offset+n_atoms+2]]
-        data.append(tmp)
-
-    return np.array(data), symbols, comments
-
-
-def _cpmd(gen):
-    while _it:
-        if filetype == 'GEOMETRY':
-            return tuple(np.array([next(_it) for _ik in range(n_kinds)]))
-         elif filetype in [ 'TRAJECTORY', 'MOMENTS' ]:
-            return tuple(np.array([next(_it)[1:] for _ik in range(n_kinds)]))
-         else:
-            raise TypeError('Unknown filetype %s' % filetype)
-
-
-def cpmdReader(FN, **kwargs):
-    """Iterates over FN and yields generator of positions, velocities and/or moments (in a.u.)"""
-    #try to get mode from filename
-    filetype = kwargs.get('filetype', FN)
-    kinds = np.array(kwargs.get('kinds', [0]))
-    n_kinds = kinds.shape[0]
-
-    with open(FN, 'r' ) as _f:
-        _it = _gen(_f)
-        try:
-            yield _cpmd(_it)
-#            while _it:
-#                if filetype == 'GEOMETRY':
-#                    yield tuple(np.array([next(_it) for _ik in range(n_kinds)]))
-#                elif filetype in [ 'TRAJECTORY', 'MOMENTS' ]:
-#                    yield tuple(np.array([next(_it)[1:] for _ik in range(n_kinds)]))
-#                else:
-#                    raise TypeError('Unknown filetype %s' % filetype)
-        except StopIteration:
-            pass
-
+#def xyzReader(fn):
+#    """Adapted from Arne Scherrer's pythonbase ReadTrajectory_BruteForce(filename)
+#Input:  
+#        1. filename: File to read
+#Output: 
+#        1. np.array of shape (#frames, #atoms, #fields/atom)
+#        2. list of atom symbols (contains strings)
+#        3. list of comment lines (contains strings)"""
+#    f = open(fn, 'r')
+#    lines = f.readlines()
+#    f.close()
+#
+#    n_atoms = int(lines[0].strip())
+#    n_frames = len(lines)//(n_atoms+2)
+#    data, symbols, comments = list(), list(), list()
+#
+#    for n_frame in range(n_frames):
+#        offset = n_frame*(n_atoms + 2)
+#
+#        # get comments
+#        comments.append(lines[offset+1].rstrip('\n'))
+#
+#        # get symbols
+#        if n_frame == 0:
+#            symbols = [s.strip().split()[0] for s in lines[offset+2:offset+n_atoms+2]]
+#
+#        # get data
+#        tmp = [[float(d) for d in s.strip().split()[1:]] for s in lines[offset+2:offset+n_atoms+2]]
+#        data.append(tmp)
+#
+#    return np.array(data), symbols, comments
