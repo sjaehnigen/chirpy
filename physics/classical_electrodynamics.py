@@ -37,6 +37,7 @@ def magnetic_dipole_shift_origin(c_au,trans_au,**kwargs):
 #def magnetic_dipole_moment_shift_origin_pbc(m_old_au,pos_au,origin_au=np.array([0.0,0.0,0.0])):
 
 def biot_savart(r0, r, j, thresh=1.E-8):
+    '''r...shape(N,N,...,3)'''
     #in atomic units using cgs convention for B field (µ0 = 1/c)
     d = r0 - r
     d2 = np.linalg.norm(d, axis=-1)**2

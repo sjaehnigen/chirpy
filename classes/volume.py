@@ -286,6 +286,20 @@ class VectorField(ScalarField):
                     ]:
                 setattr(self, _a, getattr(x, _a))
 
+    @staticmethod
+    def _ip2ind(ip, F):
+        return np.unravel_index(ip, F.shape[1:])
+
+    @staticmethod
+    def _read_vec(F, ip):
+        _slc = (slice(None),) + tuple([_i for _i in VectorField._ip2ind(ip,F)])
+        return F[_slc]
+
+    @staticmethod
+    def _write_vec(F, ip, V):
+        _slc = (slice(None),) + tuple([_i for _i in VectorField._ip2ind(ip,F)])
+        F[_slc] = V
+
     def streamlines(self,p0,**kwargs):
         '''pn...starting points of shape (n_points,3)'''
         def get_value(p):
@@ -387,8 +401,8 @@ class VectorField(ScalarField):
         fmt  = kwargs.get('fmt',fn1.split('.')[-1])
         attr = kwargs.get('attribute','data')
         if fmt=="cube":
-            comment1 = kwargs.get('comment1',[c.split('\n')[0] for c in self.comments])
-            comment2 = kwargs.get('comment2',[c.split('\n')[1] for c in self.comments])
+            comment1 = kwargs.get('comment1',self.comments.split('\n')[0])
+            comment2 = kwargs.get('comment2',self.comments.split('\n')[1])
             pos_au   = kwargs.get('pos_au',self.pos_au)
             numbers  = kwargs.get('numbers',self.numbers)
             cell_au  = kwargs.get('cell_au',self.cell_au)
