@@ -70,7 +70,10 @@ class _BoxObject():
             nargs[ 'cell_aa_deg' ] = np.array( get_atom_spread( _sys.XYZData.data ) )
 
         #pass pbc? cell? WARNING: do not just pass kwargs! reassemble it!!
-        return cls( members = [ ( 1, _s._to_frame() ) for _s in _sys.XYZData._split( _sys.mol_map ) ], **nargs )
+        if _sys.mol_map is not None:
+            return cls(members=[(1, _s._to_frame()) for _s in _sys.XYZData._split(_sys.mol_map)], **nargs)
+        else:
+            return cls(members=[(1, _sys.XYZData._to_frame())], **nargs)
 
     def _cell_vec_aa( self, **kwargs ):
         return get_cell_vec( kwargs.get( 'cell_aa_deg' ) )
@@ -94,7 +97,7 @@ class _BoxObject():
         except:
             pass
     #def routine: check all xx attributes against _xx() methods
-        
+
     def _clean_members( self ):
         if self.n_members == 0: return None
         _eq = np.zeros( ( self.n_members, ) * 2 )

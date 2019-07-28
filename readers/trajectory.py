@@ -62,7 +62,9 @@ def xyzReader(FN, **kwargs):
     with open(FN, 'r') as _f:
         _nlines = int(_f.readline().strip()) + 2
 
-    return zip(*_reader(FN, _nlines, _kernel, **kwargs))
+    #ToDo: add test on whether all frames have the same symbols
+    data, symbols, comments = zip(*_reader(FN, _nlines, _kernel, **kwargs))
+    return np.array(data), symbols[0], list(comments)
 
 
 def cpmdReader(FN, **kwargs):

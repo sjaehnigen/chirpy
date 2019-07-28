@@ -124,7 +124,7 @@ class _FRAME():
         _symbols = dec( self.symbols, mask )
         return [ self._from_data( data = _d, symbols = _s, comment = self.comments ) for _d, _s in zip( _data, _symbols ) ]
 
-    @classmethod 
+    @classmethod
     def _from_data( cls, **kwargs ):
         return cls( **kwargs )
 
@@ -169,7 +169,6 @@ class _XYZ():
 
             if fmt == "xyz":
                 data, symbols, comments = xyzReader(fn)
-                symbols = symbols[0] #ToDo: add test on whether all frames have the same symbols
 
             elif fmt=="xvibs":
                 comments = [ "xvibs" ]

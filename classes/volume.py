@@ -99,7 +99,11 @@ class ScalarField():
         if any([cell_vec_au.size == 0, data.size == 0]):
             raise AttributeError('ERROR: Please give both, cell_vec_au and data!')
         obj = cls()
-        obj.comments = 'no_comment\nno_comment'
+        #quick workaround to find out if vectorfield
+        if data.shape[0]==3:
+            obj.comments = 3*['no_comment\nno_comment']
+        else:
+            obj.comments = 'no_comment\nno_comment'
         obj.origin_au = kwargs.get('origin_au', np.zeros((3)))
         obj.pos_au = kwargs.get('pos_au', np.zeros((0, 3)))
         obj.numbers = kwargs.get('numbers', np.zeros((0, )))
@@ -401,8 +405,8 @@ class VectorField(ScalarField):
         fmt  = kwargs.get('fmt',fn1.split('.')[-1])
         attr = kwargs.get('attribute','data')
         if fmt=="cube":
-            comment1 = kwargs.get('comment1',self.comments.split('\n')[0])
-            comment2 = kwargs.get('comment2',self.comments.split('\n')[1])
+            comment1 = kwargs.get('comment1',[c.split('\n')[0] for c in self.comments])
+            comment2 = kwargs.get('comment2',[c.split('\n')[1] for c in self.comments])
             pos_au   = kwargs.get('pos_au',self.pos_au)
             numbers  = kwargs.get('numbers',self.numbers)
             cell_au  = kwargs.get('cell_au',self.cell_au)

@@ -4,6 +4,8 @@ import numpy as np
 import sys
 import copy
 
+from ..physics import constants
+
 #NB: the molecules have to be sequentially numbered starting with 0
 #the script will transform them starting with 0
 def dist_crit_aa(symbols):
