@@ -19,8 +19,8 @@ class MagneticField(VectorField):
         verbose = kwargs.get('verbose', False)
         nprocs = kwargs.get('nprocs', 1)
         #---- default: electrons moving (charge -1)
-        charge = kwargs.pop('charge', -1)
-        if kwargs.pop('kspace', False):
+        charge = kwargs.get('charge', -1)
+        if kwargs.get('kspace', False):
             sys.stdout.flush()
             B1 = biot_savart_kspace(j.data, j.cell_au, j.voxel)
 
@@ -40,7 +40,7 @@ class MagneticField(VectorField):
 
 
             #------- Get R -----------------------------
-            R = kwargs.pop('R', j.pos_grid())
+            R = kwargs.get('R', j.pos_grid())
             _npoints = np.prod(R.shape[1:])
 
             if verbose:
@@ -88,7 +88,7 @@ class MagneticField(VectorField):
         Q...charge (in e)
         R...of shape (3, n_positions)
         '''
-        charge = kwargs.pop('charge', +1)
+        charge = kwargs.get('charge', +1)
         verbose = kwargs.get('verbose', False)
         smear = kwargs.get('smear_charges', True)
         if verbose:
@@ -133,8 +133,8 @@ class ElectricField(VectorField):
         verbose = kwargs.get('verbose', False)
         nprocs = kwargs.get('nprocs', 1)
         #---- default: electrons moving (charge -1)
-        charge = kwargs.pop('charge', -1)
-        if kwargs.pop('kspace', False):
+        charge = kwargs.get('charge', -1)
+        if kwargs.get('kspace', False):
             sys.stdout.flush()
             E1 = coulomb_kspace(rho.data, rho.cell_au, rho.voxel)
 
@@ -154,7 +154,7 @@ class ElectricField(VectorField):
 
 
             #------- Get R -----------------------------
-            R = kwargs.pop('R', rho.pos_grid())
+            R = kwargs.get('R', rho.pos_grid())
             _npoints = np.prod(R.shape[1:])
             if verbose:
                 print("No. of grid points: %d" % _npoints)
@@ -200,7 +200,7 @@ class ElectricField(VectorField):
         Q...charge (in e)
         R...of shape (3, n_positions)
         '''
-        charge = kwargs.pop('charge', +1)
+        charge = kwargs.get('charge', +1)
         verbose = kwargs.get('verbose', False)
         smear = kwargs.get('smear_charges', True)
         if verbose:
