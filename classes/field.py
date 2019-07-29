@@ -122,7 +122,7 @@ class MagneticField(VectorField):
                         * _q\
                         for _p, _v, _q in zip(P_au, V_au, Q)
                 ], axis=0)
-            _j = VectorField.from_data(data=_tmp, cell_vec_au=_cell)
+            _j = VectorField.from_data(data=_tmp, cell_vec_au=_cell, origin_au=R[:, 0, 0, 0])
             return cls.from_current(_j, **kwargs)
 
 
@@ -233,6 +233,6 @@ class ElectricField(VectorField):
                         * _q\
                         for _p, _q in zip(P_au, Q)
                 ], axis=0)
-            _rho = ScalarField.from_data(data=_tmp, cell_vec_au=_cell)
+            _rho = ScalarField.from_data(data=_tmp, cell_vec_au=_cell, origin_au=R[:, 0, 0, 0])
 
             return cls.from_charge_density(_rho, **kwargs)
