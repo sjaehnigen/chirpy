@@ -209,7 +209,6 @@ def main():
                 verbose=args.verbose,
                 nprocs=args.nprocs,
                 kspace=args.kspace,
-                smear_charges = smear_charges
                 )
 
     if not args.electrons_only:
@@ -217,6 +216,10 @@ def main():
                 pos_au,
                 Q,
                 R=R,
+                verbose=args.verbose,
+                nprocs=args.nprocs,
+                kspace=args.kspace,
+                smear_charges = smear_charges,
                 **extract_keys(vars(rho), cell_vec_au=None, origin_au=None, numbers=None, pos_au=None)
                 )
 
