@@ -7,7 +7,7 @@ from multiprocessing import Manager, Process
 from ..physics.classical_electrodynamics import biot_savart, biot_savart_grid, biot_savart_kspace
 from ..physics.classical_electrodynamics import coulomb, coulomb_grid, coulomb_kspace
 from ..topology.grid import map_on_posgrid
-from ..classes.volume import VectorField
+from ..classes.volume import VectorField, ScalarField
 
 class MagneticField(VectorField):
     def change_reference_frame():
@@ -123,7 +123,6 @@ class MagneticField(VectorField):
                         for _p, _v, _q in zip(P_au, V_au, Q)
                 ], axis=0)
             _j = VectorField.from_data(data=_tmp, cell_vec_au=_cell)
-
             return cls.from_current(_j, **kwargs)
 
 
@@ -207,18 +206,33 @@ class ElectricField(VectorField):
         if verbose:
             print('Calculating nuclear contribution to the E field...')
 
-        R = kwargs.pop('R', P_au.T)
-        _shape = R.shape
-        _npoints = np.prod(R.shape[1:])
+        R = kwargs.get('R', P_au.T)
+        if not smear:
+            _shape = R.shape
+            _npoints = np.prod(R.shape[1:])
 
-        #flattening
-        R = np.array([cls._read_vec(R, _ip) for _ip in range(_npoints)]).T
-        _tmp_E = np.zeros_like(R.T)
+            #flattening
+            R = np.array([cls._read_vec(R, _ip) for _ip in range(_npoints)]).T
+            _tmp_E = np.zeros_like(R.T)
 
-        for _p, _q in zip(P_au, Q):
-            #change thresh because closest points will explode expression
-            _tmp_E += coulomb(R.T, _p[None,:], _q, thresh=0.01)
-        E2 = _tmp_E.T.reshape(_shape) * charge
-        if verbose:
-            print( "Done." )
-        return cls.from_data(data=E2, **kwargs)
+            for _p, _q in zip(P_au, Q):
+                #change thresh because closest points will explode expression
+                _tmp_E += coulomb(R.T, _p[None,:], _q, thresh=0.01)
+            E2 = _tmp_E.T.reshape(_shape) * charge
+            if verbose:
+                print( "Done." )
+            return cls.from_data(data=E2, **kwargs)
+
+        else:
+            _cell = np.diag(R[:, 1, 1, 1]-R[:, 0, 0, 0])
+            if verbose:
+                print(' (using smeared point charges.)')
+            #No pbc support for now (cell_aa_deg=None)
+            _tmp = np.sum([
+                        map_on_posgrid(_p, R, 0.2, cell_aa_deg=None, mode="gaussian", dim=3)\
+                        * _q\
+                        for _p, _q in zip(P_au, Q)
+                ], axis=0)
+            _rho = ScalarField.from_data(data=_tmp, cell_vec_au=_cell)
+
+            return cls.from_charge_density(_rho, **kwargs)
