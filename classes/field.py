@@ -123,6 +123,7 @@ class MagneticField(VectorField):
                         for _p, _v, _q in zip(P_au, V_au, Q)
                 ], axis=0)
             _j = VectorField.from_data(data=_tmp, cell_vec_au=_cell, origin_au=R[:, 0, 0, 0])
+            kwargs.update({'charge':charge})
             return cls.from_current(_j, **kwargs)
 
 
@@ -134,6 +135,7 @@ class ElectricField(VectorField):
         nprocs = kwargs.get('nprocs', 1)
         #---- default: electrons moving (charge -1)
         charge = kwargs.get('charge', -1)
+        print(charge)
         if kwargs.get('kspace', False):
             sys.stdout.flush()
             E1 = coulomb_kspace(rho.data, rho.cell_au, rho.voxel)
@@ -235,4 +237,5 @@ class ElectricField(VectorField):
                 ], axis=0)
             _rho = ScalarField.from_data(data=_tmp, cell_vec_au=_cell, origin_au=R[:, 0, 0, 0])
 
+            kwargs.update({'charge':charge})
             return cls.from_charge_density(_rho, **kwargs)
