@@ -3,10 +3,10 @@
 import sys
 import numpy as np
 from multiprocessing import Manager, Process
-from chirpy.physics.classical_electrodynamics import biot_savart, biot_savart_grid, biot_savart_kspace
-from chirpy.physics.classical_electrodynamics import coulomb, coulomb_grid, coulomb_kspace
-#import copy
 
+from ..physics.classical_electrodynamics import biot_savart, biot_savart_grid, biot_savart_kspace
+from ..physics.classical_electrodynamics import coulomb, coulomb_grid, coulomb_kspace
+from ..topology.grid import map_on_posgrid
 from ..classes.volume import VectorField
 
 class MagneticField(VectorField):
@@ -42,6 +42,7 @@ class MagneticField(VectorField):
             #------- Get R -----------------------------
             R = kwargs.pop('R', j.pos_grid())
             _npoints = np.prod(R.shape[1:])
+
             if verbose:
                 print("No. of grid points: %d" % _npoints)
             if verbose:
@@ -89,24 +90,42 @@ class MagneticField(VectorField):
         '''
         charge = kwargs.pop('charge', +1)
         verbose = kwargs.get('verbose', False)
+        smear = kwargs.get('smear_charges', True)
         if verbose:
             print('Calculating nuclear contribution to the B field...')
 
-        R = kwargs.pop('R', P_au.T)
-        _shape = R.shape
-        _npoints = np.prod(R.shape[1:])
+        R = kwargs.get('R', P_au.T)
+        if not smear:
+            _shape = R.shape
+            _npoints = np.prod(R.shape[1:])
 
-        #flattening
-        R = np.array([cls._read_vec(R, _ip) for _ip in range(_npoints)]).T
-        _tmp_B = np.zeros_like(R.T)
+            #flattening
+            R = np.array([cls._read_vec(R, _ip) for _ip in range(_npoints)]).T
 
-        for _p, _v, _q in zip(P_au, V_au, Q):
-            #change thresh because closest points will explode expression
-            _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q, thresh=0.01) #j.voxel**(1/3))
-        B2 = _tmp_B.T.reshape(_shape) * charge
-        if verbose:
-            print( "Done." )
-        return cls.from_data(data=B2, **kwargs)
+            _tmp_B = np.zeros_like(R.T)
+            for _p, _v, _q in zip(P_au, V_au, Q):
+                #change thresh because closest points will explode expression
+                _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q, thresh=0.01) #j.voxel**(1/3))
+            B2 = _tmp_B.T.reshape(_shape) * charge
+            if verbose:
+                print( "Done." )
+            return cls.from_data(data=B2, **kwargs)
+
+        else:
+            _cell = np.diag(R[:, 1, 1, 1]-R[:, 0, 0, 0])
+            if verbose:
+                print(' (using smeared point charges.)')
+            #No pbc support for now (cell_aa_deg=None)
+            _tmp = np.sum([
+                    _v[:, None, None, None]\
+                        * map_on_posgrid(_p, R, 0.2, cell_aa_deg=None, mode="gaussian", dim=3)\
+                        * _q\
+                        for _p, _v, _q in zip(P_au, V_au, Q)
+                ], axis=0)
+            _j = VectorField.from_data(data=_tmp, cell_vec_au=_cell)
+
+            return cls.from_current(_j, **kwargs)
+
 
 class ElectricField(VectorField):
     @classmethod
@@ -184,6 +203,7 @@ class ElectricField(VectorField):
         '''
         charge = kwargs.pop('charge', +1)
         verbose = kwargs.get('verbose', False)
+        smear = kwargs.get('smear_charges', True)
         if verbose:
             print('Calculating nuclear contribution to the E field...')
 

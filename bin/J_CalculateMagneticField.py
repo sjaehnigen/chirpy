@@ -208,9 +208,11 @@ def main():
                _tmp.crop(args.r_crop)
            _tmp.sparsity(args.r_sparse)
            R = _tmp.pos_grid()
+           smear_charges = True
 
        if args.mode == "atom":
            R = j.pos_au.T
+           smear_charges = False
     #else:
     #    R = np.array(args.r).T.astype(float)
 
@@ -225,7 +227,7 @@ def main():
                 R=R,
                 verbose=args.verbose,
                 nprocs=args.nprocs,
-                kspace=args.kspace
+                kspace=args.kspace,
                 )
 
     if not args.electrons_only:
@@ -234,6 +236,10 @@ def main():
                 vel_au,
                 Q,
                 R=R,
+                smear_charges=smear_charges,
+                verbose=args.verbose,
+                nprocs=args.nprocs,
+                kspace=args.kspace,
                 **extract_keys(vars(j), cell_vec_au=None, origin_au=None, numbers=None, pos_au=None)
                 )
 

@@ -167,7 +167,7 @@ def main():
             Q = [constants.species[_s][_key] for _s in nuc.symbols]
             print('Nuclear Positions/Charges')
             print(77 * '–')
-            print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['v_x', 'v_y', 'v_z', 'Q']))
+            print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['p_x', 'p_y', 'p_z', 'Q']))
             for _i, (_v, _q) in enumerate(zip(pos_au, Q)):
                 print( '%4d '%_i
                     + ' '.join(map('{:12.5g}'.format, _v)) + ' '
@@ -189,9 +189,11 @@ def main():
                _tmp.crop(args.r_crop)
            _tmp.sparsity(args.r_sparse)
            R = _tmp.pos_grid()
+           smear_charges = True
 
        if args.mode == "atom":
            R = rho.pos_au.T
+           smear_charges = False
     #else:
     #    R = np.array(args.r).T.astype(float)
 
@@ -206,7 +208,8 @@ def main():
                 R=R,
                 verbose=args.verbose,
                 nprocs=args.nprocs,
-                kspace=args.kspace
+                kspace=args.kspace,
+                smear_charges = smear_charges
                 )
 
     if not args.electrons_only:

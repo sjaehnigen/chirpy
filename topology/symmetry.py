@@ -72,15 +72,17 @@ def distance_pbc(p1, p0, **kwargs):
     try:
         return _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
     except TypeError:
-        print('i am here')
         return _d
 
 def _pbc_shift(_d, cell_aa_deg):
-    '''_d of shape ...'''
+    '''_d in aa of shape ...'''
     if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
-        cell_vec_aa = get_cell_vec(cell_aa_deg)
-        _c = ceb(_d, cell_vec_aa)
-        return np.tensordot(np.around(_c), cell_vec_aa, axes=1)
+        if not all([_a == 90.0 for _a in cell_aa_deg[3:]]):
+            cell_vec_aa = get_cell_vec(cell_aa_deg)
+            _c = ceb(_d, cell_vec_aa)
+            return np.tensordot(np.around(_c), cell_vec_aa, axes=1)
+        else:
+            return np.around(_d/cell_aa_deg[:3]) * cell_aa_deg[:3]
     else:
         return _d
 
