@@ -91,6 +91,8 @@ class MagneticField(VectorField):
         charge = kwargs.get('charge', +1)
         verbose = kwargs.get('verbose', False)
         smear = kwargs.get('smear_charges', True)
+        smear_sigma = kwargs.get('smear_sigma', 0.2)
+        thresh = kwargs.get('thresh', 0.01)
         if verbose:
             print('Calculating nuclear contribution to the B field...')
 
@@ -105,7 +107,7 @@ class MagneticField(VectorField):
             _tmp_B = np.zeros_like(R.T)
             for _p, _v, _q in zip(P_au, V_au, Q):
                 #change thresh because closest points will explode expression
-                _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q, thresh=0.01) #j.voxel**(1/3))
+                _tmp_B += biot_savart(R.T, _p[None,:], _v[None,:]*_q, thresh=thresh) #j.voxel**(1/3))
             B2 = _tmp_B.T.reshape(_shape) * charge
             if verbose:
                 print( "Done." )
@@ -118,7 +120,7 @@ class MagneticField(VectorField):
             #No pbc support for now (cell_aa_deg=None)
             _tmp = np.sum([
                     _v[:, None, None, None]\
-                        * map_on_posgrid(_p, R, 0.2, cell_aa_deg=None, mode="gaussian", dim=3)\
+                        * map_on_posgrid(_p, R, smear_sigma, cell_aa_deg=None, mode="gaussian", dim=3)\
                         * _q\
                         for _p, _v, _q in zip(P_au, V_au, Q)
                 ], axis=0)
@@ -135,7 +137,6 @@ class ElectricField(VectorField):
         nprocs = kwargs.get('nprocs', 1)
         #---- default: electrons moving (charge -1)
         charge = kwargs.get('charge', -1)
-        print(charge)
         if kwargs.get('kspace', False):
             sys.stdout.flush()
             E1 = coulomb_kspace(rho.data, rho.cell_au, rho.voxel)
@@ -205,6 +206,8 @@ class ElectricField(VectorField):
         charge = kwargs.get('charge', +1)
         verbose = kwargs.get('verbose', False)
         smear = kwargs.get('smear_charges', True)
+        smear_sigma = kwargs.get('smear_sigma', 0.2)
+        thresh = kwargs.get('thresh', 0.01)
         if verbose:
             print('Calculating nuclear contribution to the E field...')
 
@@ -219,7 +222,7 @@ class ElectricField(VectorField):
 
             for _p, _q in zip(P_au, Q):
                 #change thresh because closest points will explode expression
-                _tmp_E += coulomb(R.T, _p[None,:], _q, thresh=0.01)
+                _tmp_E += coulomb(R.T, _p[None,:], _q, thresh=thresh)
             E2 = _tmp_E.T.reshape(_shape) * charge
             if verbose:
                 print( "Done." )
@@ -231,7 +234,7 @@ class ElectricField(VectorField):
                 print(' (using smeared point charges.)')
             #No pbc support for now (cell_aa_deg=None)
             _tmp = np.sum([
-                        map_on_posgrid(_p, R, 0.2, cell_aa_deg=None, mode="gaussian", dim=3)\
+                        map_on_posgrid(_p, R, smear_sigma, cell_aa_deg=None, mode="gaussian", dim=3)\
                         * _q\
                         for _p, _q in zip(P_au, Q)
                 ], axis=0)
