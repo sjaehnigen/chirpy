@@ -1,5 +1,15 @@
+#------------------------------------------------------
+#
+#  ChirPy 0.1
+#
+#  https://hartree.chimie.ens.fr/sjaehnigen/ChirPy.git
+#
+#  2010-2016 Arne Scherrer
+#  2014-2019 Sascha Jähnigen
+#
+#
+#------------------------------------------------------
 #!/usr/bin/env python
-# Adapted from Arne Scherrer's pythonbase
 
 import numpy as np
 
@@ -46,16 +56,8 @@ t_fs2au = 1/t_au2fs
 v_au2si = 1E-5*l_au2aa/t_au2fs
 v_si2au = 1/v_au2si
 v_au2aaperfs = l_au2aa/t_au2fs
-#v_au2aaperfs = l_au2aa/t_au2fs ~ 21.876911778605557 aa/fs = 2187691.1778605557 m/s
-#old
-#l_au2aa = 1/l_au*1E-10 # convertion A.U. to Angstrom
-#l_aa2au = 1/l_au2aa # convertion Angstrom to A.U.
 
-
-#machine_precision = 1E-14
-#max_memory_usage = 0.8 # NB! not yet added to test!
-#
-# element species # NB! not yet added to test!
+# element species
 species = dict()
 species['H']  = {'SYMBOL': 'H', 'MASS':  1.00797, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
 species['D']  = {'SYMBOL': 'H', 'MASS':  2.01410, 'Z':  1, 'ZV':  1, 'RVDW' : 110.0 }
@@ -98,7 +100,6 @@ masses_amu = { _s : _m for _s, _m in zip( elements.symbol, elements.mass_amu )  
 
 
 # element symbols
-# symbols = ['H', 'D', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'X'] 
 # don't add Deuterium to this list since cubefiletools identifies species by atomic number
 symbols = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'X']
 
