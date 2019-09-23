@@ -1,5 +1,6 @@
 name: chirpy 
 channels:
+  - conda-forge
   - defaults
 dependencies:
   - ipykernel=4.9.*
@@ -15,5 +16,5 @@ dependencies:
   - pip:
     - mayavi==4.7.*
     - pyqt5==5.13.*
-    - pytest=3.8.*
+    - pytest==5.1.*
 
