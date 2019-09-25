@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #------------------------------------------------------
 #
 #  ChirPy 0.1
@@ -9,7 +10,7 @@
 #
 #
 #------------------------------------------------------
-#!/usr/bin/env python
+
 
 #For basic python functionalities 
 def extract_keys(dict1, **defaults):

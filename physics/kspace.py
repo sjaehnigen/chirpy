@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #------------------------------------------------------
 #
 #  ChirPy 0.1
@@ -9,7 +10,7 @@
 #
 #
 #------------------------------------------------------
-#!/usr/bin/env python
+
 
 import numpy as np
 from numpy.fft import fftfreq, ifftn, fftn

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #------------------------------------------------------
 #
 #  ChirPy 0.1
@@ -9,7 +10,7 @@
 #
 #
 #------------------------------------------------------
-#!/usr/bin/env python
+
 from ..physics import constants
 
 def xvibsWriter(filename, n_atoms, numbers, coordinates, frequencies, modes):
