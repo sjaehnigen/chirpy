@@ -15,6 +15,7 @@
 import numpy as np
 from ..physics import constants
 
+#change to python name standard
 def CalculateKineticEnergies(vel_au, masses):
     """CalculateKineticEnergies(velocities, data): velocities in a.u., masses in amu"""
     n_frames = vel_au.shape[0]

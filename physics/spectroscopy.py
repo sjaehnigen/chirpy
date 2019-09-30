@@ -10,7 +10,6 @@
 #
 #
 #------------------------------------------------------
-3
 
 import copy
 import numpy as np
@@ -30,7 +29,7 @@ eijk[0,1,2] = eijk[1,2,0] = eijk[2,0,1] = +1
 eijk[0,2,1] = eijk[2,1,0] = eijk[1,0,2] = -1
 
 #### MOVE TO UTILS ###################################################################################################
-   # change tp name standard: fermi_cutoff_function
+   # change to name standard: fermi_cutoff_function
 def FermiCutoffFunction(distance_au, R_cutoff_au, D_au=0.25*constants.l_aa2au):
     return 1/(1+np.exp((distance_au - R_cutoff_au)/D_au))
 
@@ -77,10 +76,10 @@ def calculate_spectral_density(val1,*args,**kwargs):
     filter = Filter(n_frames, filter_length=n_frames, filter_type='welch')**flt_pow
 
     auto=True
-    try: 
+    try:
         val2 = args[0]
         auto = False
-    except IndexError: 
+    except IndexError:
         pass
 
     if auto:
