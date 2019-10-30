@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,15 +9,9 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
-#Version important as <3.6 gives problems with OrderedDictionaries
-
-#import unittest
-#import logging
-#import filecmp
-#import types
-#import filecmp
+# Version important as <3.6 gives problems with OrderedDictionaries
 
 import sys
 import copy
@@ -32,37 +26,35 @@ from ..physics.constants import masses_amu
 from ..topology.dissection import define_molecules
 from ..topology.mapping import dec
 
-#put this into new lib file
-valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-#masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
+# put this into new lib file
+valence_charges = {'H': 1, 'D': 1, 'C': 4, 'N': 5, 'O': 6, 'S': 6}
+# masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
 Angstrom2Bohr = 1.8897261247828971
-np.set_printoptions(precision=5,suppress=True)
+np.set_printoptions(precision=5, suppress=True)
 
-#switch function which should be used in future for the standard fil..readerss instead of elif... 
-#def f(x):
+# switch function which should be used in future for the standard fil..readerss instead of elif... 
+# def f(x):
 #    return {
 #        'a': 1,
 #        'b': 2
 #    }.get(x, 9)    # 9 is default if x not found
 
-#NEEDS
+# NEEDS
 # - CPMD format Reader
 # - Tidying up
 # - USE XYZData for file reading and extract further data for Molecule from it ( ? )
 
-# ToDo: A lot!
 # ToDo: PDB input does not save file as potential fn_topo (problem since disabling automatic mol gauge installation )
 
-#ToDo: Write should also be called here (e.g. problem of mol_map )
 
-class _SYSTEM( ):
-    def __init__(self,fn,**kwargs):
+class _SYSTEM():
+    def __init__(self, fn, **kwargs):
         if int(np.version.version.split('.')[1]) < 14:
-            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
+            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.' % np.version.version)
             sys.exit(1)
         global ignore_warnings
-        ignore_warnings = kwargs.get('ignore_warnings',False)
-        fmt = kwargs.get('fmt',fn.split('.')[-1])
+        ignore_warnings = kwargs.get('ignore_warnings', False)
+        fmt = kwargs.get('fmt', fn.split('.')[-1])
 
         #Beta: store FileReader data in dict, try if sth is there before startin..readers. Problem: memory?
         global _fn
@@ -85,14 +77,15 @@ class _SYSTEM( ):
         # only data preparation / parsing 
         # overload read method (see write method)
 
-        if fmt=="xyz":
-            self.XYZData = self._XYZ( fn, **kwargs )
-        elif fmt=="xvibs":
-            mw = kwargs.get('mw',False)
-            _fn[ fn ] = xvibsReader( fn )
+        if fmt == "xyz":
+            self.XYZData = self._XYZ(fn, **kwargs)
+
+        elif fmt == "xvibs":
+            mw = kwargs.get('mw', False)
+            _fn[fn] = xvibsReader(fn)
             n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = _fn[ fn ]
-            symbols  = [constants.symbols[z-1] for z in numbers]
-            masses   = [masses_amu[s] for s in symbols]
+            symbols = [constants.symbols[z-1] for z in numbers]
+            masses = [masses_amu[s] for s in symbols]
             if mw:
                 print('Assuming mass-weighted coordinates in XVIBS.')
                 modes /= np.sqrt(masses)[None,:,None]*np.sqrt(constants.m_amu_au)
@@ -100,18 +93,20 @@ class _SYSTEM( ):
                 print('Not assuming mass-weighted coordinates in XVIBS (use mw=True otherwise).')
             self.XYZData = self._XYZ( data = coords_aa.reshape( (1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
             self.Modes = VibrationalModes(fn,modes=modes,numbers=numbers,omega_cgs=omega_cgs,coords_aa=coords_aa,**kwargs)
-        elif fmt=="pdb":
-            _fn[ fn ] = pdbReader( fn )
-            data, types, symbols, residues, box_aa_deg, title = _fn[ fn ]
-            n_atoms = symbols.shape[ 0 ]
-            self.XYZData = self._XYZ( data = data.reshape( ( 1, n_atoms, 3 ) ), symbols = symbols, **kwargs )
-            setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
-            #Disabled 2018-12-04/Enabled 2019-05-23 w/ condition
-            #print('Found PDB: Automatic installation of molecular gauge.')
-            if self.mol_map is None:
-                self.install_molecular_origin_gauge( fn_topo = fn ) #re-reads pdb file
 
-        else: raise Exception('Unknown format: %s.'%fmt)
+        elif fmt == "pdb":
+            _fn[fn] = pdbReader(fn)
+            data, types, symbols, residues, box_aa_deg, title = _fn[fn]
+            n_atoms = symbols.shape[0]
+            self.XYZData = self._XYZ(data=data.reshape((1, n_atoms, 3)), symbols=symbols, **kwargs)
+            setattr( self, 'cell_aa_deg', kwargs.get( 'cell_aa', box_aa_deg ) )
+            # Disabled 2018-12-04/Enabled 2019-05-23 w/ condition
+            # print('Found PDB: Automatic installation of molecular gauge.')
+            if self.mol_map is None:
+                self.install_molecular_origin_gauge(fn_topo=fn)  # re-reads pdb file
+
+        else:
+            raise Exception('Unknown format: %s.' % fmt)
 
 
         cell_aa_deg = kwargs.get( 'cell_aa' ) #DEPRECATED
@@ -154,6 +149,9 @@ class _SYSTEM( ):
                     self.install_molecular_origin_gauge()
                 self.wrap_molecules() 
 
+            if kwargs.get('sort', False):
+                self.sort_atoms()
+
             center_res = kwargs.get('center_residue',-1) #-1 means False, has to be integer ##==> ToDo if time: elaborate this method (maybe class independnet as symmetry tool)
             if center_res != -1: #is not None
                 self.wrap_molecules() 
@@ -191,7 +189,7 @@ class _SYSTEM( ):
                 if not np.allclose(cell_au,abc*Angstrom2Bohr):
                     raise Exception('Unit cell parametres of Molecule do not agree with topology file!')
             #n_atoms, n_mols, n_moms = len(symbols), max(n_map)+1, sum(ZV)//2
-            n_atoms, n_mols = symbols.shape[0], max(n_map)+1
+            n_mols = max(n_map)+1
             n_map,symbols = zip(*[(im,symbols[ia]) for ia,a in enumerate(n_map) for im,m in enumerate(kwargs.get('extract_mols',range(n_mols))) if a==m])
             #if np.array(symbols) != self.XYZData.symbols:
             #    raise Exception('Symbols of Molecule do not agree with topology file!')
@@ -241,7 +239,8 @@ class _SYSTEM( ):
     def sort_atoms(self, **kwargs):
         '''Sort atoms alphabetically (default)'''
         ind = self.XYZData._sort()
-        self.mol_map = self.mol_map[ind]
+        if self.mol_map is not None:
+            self.mol_map = self.mol_map[ind]
         #what else?
 
     def write( self, fn, **kwargs ):
@@ -255,10 +254,11 @@ class _SYSTEM( ):
         self.XYZData.write( fn, fmt=fmt, **nargs )
 
 
-class Supercell( _SYSTEM ):
-    def _XYZ( self, *args, **kwargs ):
-        return XYZTrajectory( *args, **kwargs )
+class Supercell(_SYSTEM):
+    def _XYZ(self, *args, **kwargs):
+        return XYZTrajectory(*args, **kwargs)
 
-class Molecule( _SYSTEM ):
-    def _XYZ( self, *args, **kwargs ):
-        return XYZFrame( *args, **kwargs )
+
+class Molecule(_SYSTEM):
+    def _XYZ(self, *args, **kwargs):
+        return XYZFrame(*args, **kwargs)

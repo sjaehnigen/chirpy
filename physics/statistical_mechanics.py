@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,23 +9,26 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
 import numpy as np
 from ..physics import constants
 
-#change to python name standard
-def CalculateKineticEnergies(vel_au, masses):
-    """CalculateKineticEnergies(velocities, data): velocities in a.u., masses in amu"""
+
+def calculate_kinetic_energies(vel_au, masses_amu):
+    """CalculateKineticEnergies"""
     n_frames = vel_au.shape[0]
-    n_atoms  = vel_au.shape[1]
+    n_atoms = vel_au.shape[1]
     e_kin_au = np.zeros((n_frames, n_atoms))
     for i_at in range(n_atoms):
-        e_kin_au[:,i_at] = masses[i_at]*np.square(vel_au[:,i_at]).sum(axis=1)
-    return 0.5*e_kin_au*constants.m_amu_au # in au
+        e_kin_au[:, i_at] = masses_amu[i_at] *\
+                np.square(vel_au[:, i_at]).sum(axis=1)
+    return 0.5 * e_kin_au*constants.m_amu_au
 
-#REVISE, SPLIT/MERGE, AND DEBUG Boltzmann stuff
+
+# REVISE, SPLIT/MERGE, AND DEBUG Boltzmann stuff
+
 def CalculateBoltzmannVelocities(vel_au, n_bins, species):
     """CalculateBoltzmannVelocities(velocities, n_bins, species): velocities in a.u."""
     if len(vel_au.shape) == 3:

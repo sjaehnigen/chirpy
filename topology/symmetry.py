@@ -157,4 +157,3 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs): #another routine wou
         pos_aa[:, ind] = _p - (c_aa - mol_c_aa[-1])[:, None, :]
 
     return pos_aa, mol_c_aa
-

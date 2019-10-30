@@ -21,7 +21,8 @@ from ..snippets import extract_keys
 from ..readers.modes import xvibsReader
 from ..readers.trajectory import xyzReader, cpmdReader
 from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
-from ..interfaces import cpmd as cpmd_n  # new libraries
+# from ..writers.modes import xvibsWriter
+from ..interfaces import cpmd, orca
 
 from ..topology.mapping import align_atoms, dec
 from ..topology.symmetry import wrap, join_molecules
@@ -30,6 +31,9 @@ from ..physics import constants
 from ..physics.constants import masses_amu
 from ..physics.classical_electrodynamics import current_dipole_moment, magnetic_dipole_shift_origin
 from ..physics.modern_theory_of_magnetisation import calculate_mic
+from ..physics.statistical_mechanics import calculate_kinetic_energies
+
+from ..mathematics import algebra
 
 # put this into new lib file
 valence_charges = {'H': 1, 'D': 1, 'C': 4, 'N': 5, 'O': 6, 'S': 6}
@@ -48,7 +52,8 @@ np.set_printoptions(precision=5, suppress=True)
 
 # ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
 # new class: Moments()
-
+# Note: the object format is extended from behind: frame is (N,X), trajectory is (F,N,X), list of
+# modes is (M,F,N,X) ... Access data structures from behind!
 
 class _FRAME():
     # put it somewhere else
@@ -118,7 +123,7 @@ class _FRAME():
     def _sort(self):  # use set?
         elem = {s: np.where(self.symbols == s)[0] for s in np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
-        self.data = self.data[:, ind, :]
+        self.data = self.data.swapaxes(0,-2)[ind].swapaxes(0,-2)
         self.symbols = self.symbols[ind]
         self._sync_class()
         return ind
@@ -350,6 +355,37 @@ class _XYZ():
         else:
             self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2 - pos[:, None, :])
 
+    # NEW (beta)
+    def _align_to_vector(self, i0, i1, vec, **kwargs):
+        '''
+        Align a reference line pos[i1]-pos[i0] to vec (no pbc support)
+        Center of rotation is  pos[i0]. '''
+
+
+        if self._type == 'frame':
+            _ref = self.pos_aa - self.pos_aa[i0, None]
+            _R = algebra.rotation_matrix(_ref[i1], vec)
+            _pos = np.tensordot( _R, _ref, axes=([1], [1])) +\
+                    self.pos_aa[i0, None]
+            _vel = np.tensordot( _R, self.vel_au, axes=([1], [1])) *\
+                    constants.l_aa2au
+
+        else:
+            _pos = []
+            _vel = []
+            for _p, _v in zip(
+                    self.pos_aa - self.pos_aa[:, i0, None],
+                    self.vel_au
+                    ):
+                _R = algebra.rotation_matrix(_p[i1], vec)
+                _pos.append(np.tensordot(_R, _p, axes=([1], [1])).swapaxes(0, 1))
+                _vel.append(np.tensordot(_R, _v, axes=([1], [1])).swapaxes(0, 1))
+            _pos = np.array(_pos) + self.pos_aa[:, i0, None]
+            _vel = np.array(_vel)
+
+        self._pos_aa(_pos)
+        self._vel_au(_vel)
+
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data') #only for xyz format
         factor = kwargs.get('factor', 1.0) #for velocities
@@ -404,6 +440,16 @@ class _XYZ():
 
         else: raise Exception('Unknown format: %s.' % fmt)
 
+    # Some info prints
+    def get_atom_spread(self):
+        '''pos_aa: np.array of shape (n_frames, n_atoms, 3)'''
+        dim_qm = np.zeros((3))
+        for i in range(3):
+            imin = np.min(self.pos_aa[:, :, i])
+            imax = np.max(self.pos_aa[:, :, i])
+            dim_qm[i] = imax - imin
+        print('Spread of QM atoms:       %s %s %s' % tuple([round(dim, 4) for dim in dim_qm]))
+
 
 class XYZFrame(_XYZ, _FRAME):
     def _sync_class(self):
@@ -444,39 +490,6 @@ class XYZTrajectory(_XYZ, _TRAJECTORY): #later: merge it with itertools (do not 
     def _to_frame(self, fr=0):
         return XYZFrame(data=self.data[fr], symbols=self.symbols, comments=[self.comments[fr]])
 
-#To be del
-#    def _wrap_molecules(self, mol_map, cell_aa_deg, **kwargs): #another routine would be complete_molecules for both-sided completion
-#        mode = kwargs.get('mode', 'cog')
-#        abc, albega = np.split(cell_aa_deg, 2)
-#        if not np.allclose(albega, np.ones((3))*90.0):
-#            raise Exception('ERROR: Only orthorhombic cells implemented for mol wrap!')
-#        pos_aa = np.array([dec(self.pos_aa[fr, :, :3], mol_map) for fr in range(self.n_frames)])
-#        w = np.ones((self.n_atoms))
-#        if mode=='com': w = self.masses_amu
-#        w = dec(w, mol_map)
-#        mol_c_aa = []
-#        cowt = lambda x, wt: np.sum(p*wt[None, :, None], axis=1)/wt.sum()
-#        for i_mol in range(max(mol_map)+1):
-#            ind = np.array(mol_map)==i_mol
-#            p = self.pos_aa[:, ind, :3]
-#            if not any([_a<=0.0 for _a in abc]):
-#                p -= np.around((p-p[:, 0, None, :])/abc[None, None, :])*abc[None, None, :] 
-#                c_aa = cowt(p, w[i_mol])
-#                mol_c_aa.append(np.remainder(c_aa, abc[None, :])) #only for orthorhombic cells
-#            else: 
-#                print('WARNING: Cell size zero!')
-#                c_aa = cowt(p, w[i_mol])
-#                mol_c_aa.append(c_aa)
-#
-#            self.pos_aa[:, ind, :3] = p-(c_aa-mol_c_aa[-1])[:, None, :]
-#        print('UPDATE WARNING: inserted "swapaxes(0, 1)" for mol_cog_aa attribute (new shape: (n_frames, n_mols, 3))!')
-#        setattr(self, 'mol_'+mode+'_aa', np.array(mol_c_aa).swapaxes(0, 1))
-#        setattr(self, 'mol_map', mol_map)
-#        setattr(self, 'abc', abc)
-#        setattr(self, 'albega', albega)
-
-
-
     def calculate_nuclear_velocities(self, **kwargs): #finite diff, linear (frame1-frame0, frame2-frame1, etc.)
         #temperature = kwargs.get('temperature', 300)
         ts = kwargs.get('ts', 0.5)
@@ -499,31 +512,34 @@ class XYZData(XYZTrajectory):
     pass
 #------------------------------------
 
+# CLEAN UP and inherit TRAJECTORY
 
 
-#CLEAN UP and inherit TRAJECTORY
 class VibrationalModes():
-    #actually here and for the entire MD simulation we should choose one pure isotope since mixed atomic masses are not valid for the determination for "average" mode frequencies (are they?)
-    #allow partial reading of modes, insert check for completness of modes 3N-6/5
-    def __init__(self, fn, **kwargs): #**kwargs for named (dict), *args for unnamed
+    # actually here and for the entire MD simulation we should choose one pure isotope since mixed atomic masses are not valid for the determination for "average" mode frequencies (are they?)
+    # allow partial reading of modes, insert check for completness of modes 3N-6/5
+    def __init__(self, fn, **kwargs):
         fmt = kwargs.get('fmt', fn.split('.')[-1])
         center_coords = kwargs.get('center_coords', False)
-        if 'modes' in kwargs and 'numbers' in kwargs and 'omega_cgs' in kwargs and 'coords_aa' in kwargs:
-            self.fn = fn 
-            modes   = kwargs.get('modes')
+
+        # if 'modes' in kwargs and 'numbers' in kwargs and 'omega_cgs' in kwargs and 'coords_aa' in kwargs:
+        if set(['modes', 'numbers', 'omega_cgs', 'coords_aa']).issubset(kwargs):
+            self.fn = fn
+            modes = kwargs.get('modes')
             numbers = kwargs.get('numbers')
             omega_cgs = kwargs.get('omega_cgs')
             coords_aa = kwargs.get('coords_aa')
             comments = ["passed"]
-            symbols  = [constants.symbols[z-1] for z in numbers]
-            pos_au   = coords_aa*constants.l_aa2au
+            symbols = [constants.symbols[z-1] for z in numbers]
+            pos_au = coords_aa*constants.l_aa2au
             eival_cgs = omega_cgs
-        elif fmt=="xvibs":
+
+        elif fmt == "xvibs":
             self.fn = fn
             comments = ["xvibs"]
             n_atoms, numbers, coords_aa, n_modes, omega_cgs, modes = xvibsReader(fn)
-            symbols  = [constants.symbols[z-1] for z in numbers]
-            pos_au   = coords_aa*constants.l_aa2au
+            symbols = [constants.symbols[z-1] for z in numbers]
+            pos_au = coords_aa*constants.l_aa2au
             eival_cgs = omega_cgs
 
 #        elif fmt=="molvib": #mass weighted hessian as used in CPMD
@@ -556,11 +572,12 @@ class VibrationalModes():
         self._check_orthonormality()
 
     def _check_orthonormality(self):
-        atol=5.E-5
+        # How to treat rot/trans exclusion? detect 5 or 6?
+        atol = 5.E-5
         com_motion = np.linalg.norm((self.modes*self.masses_amu[None, :, None]).sum(axis=1), axis=-1)/self.masses_amu.sum()
         if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
-        a=np.inner(test, test)
+        a = np.inner(test, test)
         if any([np.allclose(a, np.identity(self.n_modes), atol=atol), np.allclose(a[6:, 6:], np.identity(self.n_modes-6), atol=atol)]): 
             print('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
             if not ignore_warnings:
@@ -568,7 +585,7 @@ class VibrationalModes():
             else:
                 print('IGNORED')
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
-        a=np.inner(test, test)
+        a = np.inner(test, test)
         if not any([np.allclose(a, np.identity(self.n_modes), atol=atol), np.allclose(a[6:, 6:], np.identity(self.n_modes-6), atol=atol)]): 
             print(a)
             print('ERROR: The eigenvectors are not orthonormal!')
@@ -578,30 +595,11 @@ class VibrationalModes():
             else:
                 print('IGNORED')
 
-    def _check_orthonormality_OLD_WITH_ROT_TRANS(self):
-        atol=5.E-5
-        com_motion = np.linalg.norm((self.modes*self.masses_amu[None, :, None]).sum(axis=1), axis=-1)/self.masses_amu.sum()
-        if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
-        test = self.modes.reshape(self.n_modes, self.n_atoms*3)
-        a=np.inner(test, test)[6:, 6:]
-        if np.allclose(a, np.identity(self.n_modes-6), atol=atol): 
-            raise Exception('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
-        test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
-        a=np.inner(test, test)[6:, 6:]
-        if not np.allclose(a, np.identity(self.n_modes-6), atol=atol): 
-            print(a)
-            print('ERROR: The eigenvectors are not orthonormal!')
-            print(np.amax(np.abs(a-np.identity(self.n_modes-6))))
-            if not ignore_warnings:
-                sys.exit(1)
-            else:
-                print('IGNORED')
-
     def _sync_class(self):
         self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
         self.n_modes, self.n_atoms, three = self.modes.shape
         norm = np.linalg.norm(self.eivec, axis=(1, 2)) #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again
-        norm[:6] = 1.0 #trans+rot
+        norm[:6] = 1.0  # trans+rot
         self.eivec /= norm[:, None, None] 
 
     def __add__(self, other):
@@ -615,14 +613,14 @@ class VibrationalModes():
 
     def __iadd__(self, other):
         self.pos_au = np.concatenate((self.pos_au, other.pos_au), axis=0)
-        self.symbols = np.concatenate((self.symbols, other.symbols))            
+        self.symbols = np.concatenate((self.symbols, other.symbols))
         self.eivec = np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
         self.modes = np.concatenate((self.modes, other.modes), axis=1) #axis 0 are the modes
         self._sync_class()
         return self
 
-    def _sort(self): #NEW
-        elem = {s:np.where(self.symbols==s)[0] for s in np.unique(self.symbols)}
+    def _sort(self):
+        elem = {s: np.where(self.symbols == s)[0] for s in np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
         self.pos_au = self.pos_au[ind, :]
         self.symbols = self.symbols[ind]
@@ -630,34 +628,28 @@ class VibrationalModes():
         self.eivec = self.eivec[:, ind, :]
         self.modes = self.modes[:, ind, :]
 
-        if hasattr(self, 'vel_au'): self.vel_au = self.vel_au[ind, :]
+        if hasattr(self, 'vel_au'):
+            self.vel_au = self.vel_au[ind, :]
         self._sync_class()
 
-    def get_transition_moments(self, source, **kwargs): # adapted from Arne Scherrer 
-#        def dec(prop, indices):
-#            """decompose prop according to indices"""
-#            return [np.array([prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol]) for i_mol in range(max(indices)+1)]
-
-        if source=='cpmd_nvpt_md': #all data in a.u.
-            '''adapted from Arne Scherrer'''
-        #modelist contains all modes of the class that are to be considered. Each mode corresponds to one frame in traj and moms file
+    def get_transition_moments(self, source, **kwargs):
+        if source == 'cpmd_nvpt_md':
+            # modelist contains all modes of the class that are to be considered. Each mode corresponds to one frame in traj and moms file
             fn_traj = kwargs.get('fn_traj')
             fn_moms = kwargs.get('fn_moms')
             modelist = kwargs.get('modelist', range(self.n_modes))
-            if fn_traj==None or fn_moms==None: raise Exception('ERROR: Please give fn_traj and fn_moms for source "cpmd_nvpt_md"!')
-            cell_au=getattr(self, 'cell_au', None)
+            # if fn_traj is None or fn_moms is None: Does the next line work ?
+            if None in [fn_traj, fn_moms]:
+                raise Exception('ERROR: Please give fn_traj and fn_moms for source "cpmd_nvpt_md"!')
+            cell_au = getattr(self, 'cell_au', None)
 
             ZV = np.array([valence_charges[s] for s in self.symbols])
-            n_atoms, n_moms = len(self.symbols), sum(ZV)//2 #all electron calcs? -> do not use ZV but Z
+            n_atoms, n_moms = len(self.symbols), sum(ZV)//2  # all electron calcs? -> do not use ZV but Z
 
             self.n_states = n_moms
             self.c_au = np.zeros((self.n_modes, 3))
             self.m_au = np.zeros((self.n_modes, 3))
             self._transport_term_au = np.zeros((self.n_modes, 3))
-#            self.el_c_au = np.zeros((self.n_modes, 3))
-#            self.nu_c_au = np.zeros((self.n_modes, 3))
-#            self.el_m_au = np.zeros((self.n_modes, 3))
-#            self.nu_m_au = np.zeros((self.n_modes, 3))
             self._r_wc_au = np.zeros((self.n_modes, self.n_states, 3))
             self._sw_c_au = np.zeros((self.n_modes, self.n_states, 3))
             self._sw_m_dwc_au = np.zeros((self.n_modes, self.n_states, 3))
@@ -674,73 +666,69 @@ class VibrationalModes():
 
             ZV = dec(ZV, n_map)
 
-            for i_mode, (pos, vel, wc, c, m) in enumerate(cpmd_n.get_frame_traj_and_mom(fn_traj, fn_moms, n_atoms, n_moms)):
-              if i_mode >= len(modelist): #NEW: if modelist has less entries than trajectory
-                print('WARNING: Trajectory file contains more entries than given modelist!')
-                break
-              else:
-                if not np.allclose(self.pos_au, pos): 
-                    test=np.unique(np.around(pos-self.pos_au, 6))
-                    if test.shape==(3, ):
-                        print('WARNING: fn_traj coordinates shifted by vector %s with respect to stored coordinates!'%test)
-                    else:
-                        print('ERROR: fn_traj not consistent with nuclear coordinates!')#, np.around(pos-self.pos_au, 6))
-                        if not ignore_warnings:
-                            sys.exit(1)
+            for i_mode, (pos, vel, wc, c, m) in enumerate(cpmd.get_frame_traj_and_mom(fn_traj, fn_moms, n_atoms, n_moms)):
+                if i_mode >= len(modelist):
+                    print('WARNING: Trajectory file contains more entries than given modelist!')
+                    break
+                else:
+                    if not np.allclose(self.pos_au, pos):
+                        test = np.unique(np.around(pos-self.pos_au, 6))
+                        if test.shape == (3, ):
+                            print('WARNING: fn_traj coordinates shifted by vector %s with respect to stored coordinates!'%test)
                         else:
-                            print('IGNORED')
+                            print('ERROR: fn_traj not consistent with nuclear coordinates!')#, np.around(pos-self.pos_au, 6))
+                            if not ignore_warnings:
+                                sys.exit(1)
+                            else:
+                                print('IGNORED')
 
-                #raw data (for mtm)
-                self._sw_c_au[modelist[i_mode]] = c
-                self._sw_m_dwc_au[modelist[i_mode]] = m
-                self._r_wc_au[modelist[i_mode]] = wc
+                    # raw data (for mtm)
+                    self._sw_c_au[modelist[i_mode]] = c
+                    self._sw_m_dwc_au[modelist[i_mode]] = m
+                    self._r_wc_au[modelist[i_mode]] = wc
 
-                # assign Wannier centers to molecules
-                dists = pos[np.newaxis, :, :] - wc[:, np.newaxis, :]
-                if hasattr(cell_au, 'shape'):
-                    dists -= np.around(dists/cell_au)*cell_au
-                e_map = [n_map[np.argmin(state_distances)] for state_distances in np.sum(dists**2, axis=2)]
-                # decompose data into molecular contributions
-                pos, vel = dec(pos, n_map), dec(vel, n_map)
-                wc, c, m = dec(wc, e_map), dec(c, e_map), dec(m, e_map)
+                    # assign Wannier centers to molecules
+                    dists = pos[np.newaxis, :, :] - wc[:, np.newaxis, :]
+                    if hasattr(cell_au, 'shape'):
+                        dists -= np.around(dists/cell_au)*cell_au
+                    e_map = [n_map[np.argmin(state_distances)] for state_distances in np.sum(dists**2, axis=2)]
+                    # decompose data into molecular contributions
+                    pos, vel = dec(pos, n_map), dec(vel, n_map)
+                    wc, c, m = dec(wc, e_map), dec(c, e_map), dec(m, e_map)
 
-                mol_c, mol_m = list(), list()
-                for i_mol, com in enumerate(coms): #wannier2molecules
-                # calculate nuclear contributions to molecular moments and the molecular current dipole moment
-                    el_c = c[i_mol]
-                    el_m = m[i_mol].sum(axis=0)
-                    el_m += magnetic_dipole_shift_origin(wc[i_mol], el_c, origin_au=com, cell_au=cell_au)
+                    mol_c, mol_m = list(), list()
+                    for i_mol, com in enumerate(coms):  # wannier2molecules
+                    # calculate nuclear contributions to molecular moments and the molecular current dipole moment
+                        el_c = c[i_mol]
+                        el_m = m[i_mol].sum(axis=0)
+                        el_m += magnetic_dipole_shift_origin(wc[i_mol], el_c, origin_au=com, cell_au=cell_au)
 
-                    nu_c = current_dipole_moment(vel[i_mol], ZV[i_mol]) 
-                    nu_m = np.zeros(nu_c.shape).sum(axis=0)
-                    nu_m += magnetic_dipole_shift_origin(pos[i_mol], nu_c, origin_au=com, cell_au=cell_au)
+                        nu_c = current_dipole_moment(vel[i_mol], ZV[i_mol]) 
+                        nu_m = np.zeros(nu_c.shape).sum(axis=0)
+                        nu_m += magnetic_dipole_shift_origin(pos[i_mol], nu_c, origin_au=com, cell_au=cell_au)
 
-                    mol_c.append(nu_c.sum(axis=0)+el_c.sum(axis=0))
-                    mol_m.append(nu_m + el_m)
+                        mol_c.append(nu_c.sum(axis=0)+el_c.sum(axis=0))
+                        mol_m.append(nu_m + el_m)
 
-                mol_c=np.array(mol_c)
-                mol_m=np.array(mol_m)
+                    mol_c = np.array(mol_c)
+                    mol_m = np.array(mol_m)
 
-                for i_mol, com in enumerate(coms): #molecules2common no scaling
-                    self.c_au[modelist[i_mode]] += mol_c.sum(axis=0)
-                    self.m_au[modelist[i_mode]] += mol_m.sum(axis=0) + magnetic_dipole_shift_origin(coms, mol_c, origin_au=com, cell_au=cell_au)
-                    self._transport_term_au[modelist[i_mode]] += magnetic_dipole_shift_origin(coms, mol_c, origin_au=com, cell_au=cell_au)
-                    #self.m_au[modelist[i_mode]] +=  magnetic_dipole_shift_origin(coms, mol_c, origin_au=com, cell_au=cell_au)
-                    #self.el_c_au[modelist[i_mode]] += el_c.sum(axis=0)
-                    #self.nu_c_au[modelist[i_mode]] += nu_c.sum(axis=0)
-                    #self.el_m_au[modelist[i_mode]] += el_m
-                    #self.nu_m_au[modelist[i_mode]] += nu_m
+                    for i_mol, com in enumerate(coms): #molecules2common no scaling
+                        self.c_au[modelist[i_mode]] += mol_c.sum(axis=0)
+                        self.m_au[modelist[i_mode]] += mol_m.sum(axis=0) + magnetic_dipole_shift_origin(coms, mol_c, origin_au=com, cell_au=cell_au)
+                        self._transport_term_au[modelist[i_mode]] += magnetic_dipole_shift_origin(coms, mol_c, origin_au=com, cell_au=cell_au)
 
-                if hasattr(self, 'mol_map'): 
-                    self.mol_c_au[modelist[i_mode]] = mol_c
-                    self.mol_m_au[modelist[i_mode]] = mol_m
+                    if hasattr(self, 'mol_map'): 
+                        self.mol_c_au[modelist[i_mode]] = mol_c
+                        self.mol_m_au[modelist[i_mode]] = mol_m
             if not i_mode+1 == self.n_modes: print('WARNING: Did not find data for all modes. Read only %d modes.'%i_mode)
 
-        elif source=='cpmd_nvpt_at':
-            ### import or explicitly exclude mol handling from ipython notebook #22
+        elif source == 'cpmd_nvpt_at':
+            # import or explicitly exclude mol handling from ipython notebook #22
             fn_APT = kwargs.get('fn_APT')
             fn_AAT = kwargs.get('fn_AAT')
-            if fn_APT==None or fn_AAT==None: raise Exception('ERROR: Please give fn_APT and fn_AAT for source "cpmd_nvpt_at"!')
+            if None in [fn_APT, fn_AAT]:
+                raise Exception('ERROR: Please give fn_APT and fn_AAT for source "cpmd_nvpt_at"!')
             self.c_au = np.zeros((self.n_modes, 3))
             self.m_au = np.zeros((self.n_modes, 3))
 
@@ -748,38 +736,36 @@ class VibrationalModes():
             self.AAT = np.loadtxt(fn_AAT).astype(float).reshape(self.n_atoms, 3, 3)
             sumrule = constants.e_si**2*constants.avog*np.pi*np.sum(self.APT**2/self.masses_amu[:, np.newaxis, np.newaxis])/(3*constants.c_si**2)/constants.m_amu_si
             print(sumrule)
-            #modes means cartesian displacements
+            # modes means cartesian displacements
             self.c_au = (self.modes[:, :, :, np.newaxis]*self.APT[np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
             self.m_au = (self.modes[:, :, :, np.newaxis]*self.AAT[np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
-            #INSERT HERE MOLECULAR GAUGE
+            # INSERT HERE MOLECULAR GAUGE
 
-
-        else: # orca, ...
-            raise Exception('Unknown or unimplemented source: %s.'%source)
+        else:  # orca, ...
+            raise Exception('Unknown or unimplemented source: %s.' % source)
 
     def mtm_calculate_mic_contribution(self, box_vec_aa, source, **kwargs):
         '''results is origin-independent'''
-        if source=='cpmd_nvpt_md': #all data in a.u.
-        #modelist contains all modes of the class that are to be considered. Each mode corresponds to one frame in cpmd file
+        if source == 'cpmd_nvpt_md':  # all data in a.u.
+        # modelist contains all modes of the class that are to be considered. Each mode corresponds to one frame in cpmd file
             fn_e0 = kwargs.get('fn_e0')
             fn_r1 = kwargs.get('fn_r1')
             modelist = kwargs.get('modelist')
-            if fn_e0==None or fn_r1==None or modelist==None: raise Exception('ERROR: Please give fn_e0, fn_r1, and modelist for source "cpmd_nvpt_md"!')
-            E0, R1 = cpmd_n.extract_mtm_data_tmp(fn_e0, fn_r1, len(modelist), self.n_states)
+            if None in [fn_e0, fn_r1, modelist]:
+                raise Exception('ERROR: Please give fn_e0, fn_r1, and modelist for source "cpmd_nvpt_md"!')
+            E0, R1 = cpmd.extract_mtm_data_tmp(fn_e0, fn_r1, len(modelist), self.n_states)
             com_au = np.sum(self.pos_au*self.masses_amu[:, None], axis=0)/self.masses_amu.sum()
-        #    if origin == 'center':
-            #origin_aa = box_vec_aa/2
             origin_aa = np.zeros(box_vec_aa.shape)
             self.m_ic_r_au = np.zeros((self.n_modes, 3))
             self.m_ic_t_au = np.zeros((self.n_modes, 3))
-            for im, mode in enumerate(modelist): 
+            for im, mode in enumerate(modelist):
                 r_aa = (self._r_wc_au[mode]-com_au[np.newaxis, :])*constants.l_au2aa+origin_aa[np.newaxis, :]
                 r_aa -= np.around(r_aa/box_vec_aa)*box_vec_aa
                 m_ic_r, m_ic_t = calculate_mic(E0[im], R1[im], self._sw_c_au[mode], self.n_states, r_aa, box_vec_aa)
                 self.m_ic_r_au[mode] = m_ic_r
                 self.m_ic_t_au[mode] = m_ic_t
             self.m_lc_au = copy.deepcopy(self.m_au)
-            self.m_au += self.m_ic_r_au#+self.m_ic_t_au
+            self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
 
     def calculate_mtm_spectrum(self):
         self.m_au = copy.deepcopy(self.m_lc_au)
@@ -789,17 +775,17 @@ class VibrationalModes():
         self.R_cgs_lc = copy.deepcopy(self.R_cgs)
         self.ira_spec_lc = copy.deepcopy(self.ira_spec)
         self.vcd_spec_lc = copy.deepcopy(self.vcd_spec)
-        self.m_au += self.m_ic_r_au#+self.m_ic_t_au
+        self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
         self.calculate_spectrum()
         self.continuous_spectrum(self.n_modes*[1])
 
     def load_localised_power_spectrum(self, fn_spec):
-        a=np.loadtxt(fn_spec)
-        self.nu_cgs = a[:, 0] #unit already cm-1 if coming from molsim
-        self.pow_loc = a[:, 1:].swapaxes(0, 1) #unit?
+        a = np.loadtxt(fn_spec)
+        self.nu_cgs = a[:, 0]  # unit already cm-1 if coming from molsim
+        self.pow_loc = a[:, 1:].swapaxes(0, 1)  # unit?
 
-    def calculate_spectral_intensities(self): #SHOULDN'T BE METHOD OF CLASS
-        self.D_cgs = (self.c_au*self.c_au).sum(axis=1) #going to be cgs
+    def calculate_spectral_intensities(self):  # SHOULDN'T BE METHOD OF CLASS
+        self.D_cgs = (self.c_au*self.c_au).sum(axis=1)  # going to be cgs
         self.R_cgs = (self.c_au*self.m_au).sum(axis=1)
 
         #rot_str_p_p_trans = np.zeros(n_modes)
@@ -845,48 +831,49 @@ class VibrationalModes():
         # factor 1/3 is due to averaging
         # altogether this yields
         # (N_a e**2)/(6*epsilon0 c m_p)*1E-3
-        epsilon0_si=8.85418782000E-12 #10(-12)C2.N-1.m-2
-        IR_int_kmpmol=(constants.avog*constants.e_si**2)/(12*epsilon0_si*constants.c_si**2*constants.m_p_si*1000)
-    
-        IR_int_kmpmol=(constants.avog*constants.e_si**2)/(12*epsilon0_si*constants.c_si**2*constants.m_p_si*1000)
+        epsilon0_si = 8.85418782000E-12 #10(-12)C2.N-1.m-2
+        IR_int_kmpmol = (constants.avog*constants.e_si**2)/(12*epsilon0_si*constants.c_si**2*constants.m_p_si*1000)
+
+        IR_int_kmpmol = (constants.avog*constants.e_si**2)/(12*epsilon0_si*constants.c_si**2*constants.m_p_si*1000)
         dip_str_cgs = (e_cgs*l_au_cgs*ev2au)**2*au2wn*1E40/2 # convert 1/omega back to au
         rot_str_cgs = (hbar_cgs*l_au_cgs*(e_cgs*ev2au)**2)/(c_cgs*m_e_cgs)*1E44/2
-    
-        self.I_kmpmol = self.D_cgs*IR_int_kmpmol #here, D_cgs is still au!
-        self.D_cgs   *= dip_str_cgs/self.eival_cgs
-        self.R_cgs   *= rot_str_cgs
-        #rot_str_p_p_trans *= rot_str_cgs/2
-        #rot_str_p_p_diff  *= rot_str_cgs/4
-        #VCD intensity?
+
+        self.I_kmpmol = self.D_cgs*IR_int_kmpmol  # here, D_cgs is still au!
+        self.D_cgs *= dip_str_cgs/self.eival_cgs
+        self.R_cgs *= rot_str_cgs
+        # rot_str_p_p_trans *= rot_str_cgs/2
+        # rot_str_p_p_diff  *= rot_str_cgs/4
+        # VCD intensity?
 
 #    def discrete_spectrum():
 
     def continuous_spectrum(self, widths=None, nu_min_cgs=0, nu_max_cgs=3800, d_nu_cgs=2):
         def Lorentzian1(x, width, height, position):
-            numerator =  1
+            numerator = 1
             denominator = (x-position)**2 + width**2
             y = height*(numerator/denominator)/np.pi
             return y
+
         def Lorentzian2(x, width, height, position):
-            numerator =  width
+            numerator = width
             denominator = (x-position)**2 + width**2
             y = height*(numerator/denominator)/np.pi
             return y
 
         try:
-            n_points      = self.nu_cgs.shape[0]
+            n_points = self.nu_cgs.shape[0]
             print('Found already loaded spectral data. Using now its frequency range.')
         except AttributeError:
             self.nu_cgs = np.arange(nu_min_cgs, nu_max_cgs, d_nu_cgs)
-            n_points      = self.nu_cgs.shape[0]
+            n_points = self.nu_cgs.shape[0]
 
         self.ira_spec = np.zeros((1+self.n_modes, n_points))
         self.vcd_spec = np.zeros((1+self.n_modes, n_points))
 
-        D_cgs = self.D_cgs*1E-40 #[esu2cm2]
-        R_cgs = self.R_cgs*1E-44 #[esu2cm2]
+        D_cgs = self.D_cgs*1E-40  # [esu2cm2]
+        R_cgs = self.R_cgs*1E-44  # [esu2cm2]
         prefactor_cgs = (4*np.pi**2*constants.avog)/(3*constants.c_cgs*constants.hbar_cgs)
-        cm2_to_kmcm   = 1E-5
+        cm2_to_kmcm = 1E-5
         D_scaled = D_cgs*1*prefactor_cgs*cm2_to_kmcm
         R_scaled = R_cgs*4*prefactor_cgs*cm2_to_kmcm
 
@@ -894,39 +881,52 @@ class VibrationalModes():
             for k, nu_k in enumerate(self.eival_cgs):
                 self.ira_spec[k+1, :] = self.pow_loc[k, :]*D_scaled[k]*nu_k #units?
                 self.vcd_spec[k+1, :] = self.pow_loc[k, :]*R_scaled[k]*nu_k #units?
-                self.ira_spec[0, :]  += self.ira_spec[k+1, :]
-                self.vcd_spec[0, :]  += self.vcd_spec[k+1, :]
+                self.ira_spec[0, :] += self.ira_spec[k+1, :]
+                self.vcd_spec[0, :] += self.vcd_spec[k+1, :]
             print('Found localised spectral data. I will use it as basis for ira and vcd calculation (instead of Lorentzian).')
         except AttributeError:
-            if widths==None:
-                widths=self.n_modes*[1]
+            if widths is None:
+                widths = self.n_modes*[1]
             for k, nu_k in enumerate(self.eival_cgs):
                 self.ira_spec[k+1, :] = Lorentzian2(self.nu_cgs, widths[k], D_scaled[k]*nu_k, nu_k)
                 self.vcd_spec[k+1, :] = Lorentzian2(self.nu_cgs, widths[k], R_scaled[k]*nu_k, nu_k)
-                self.ira_spec[0, :]  += self.ira_spec[k+1, :]
-                self.vcd_spec[0, :]  += self.vcd_spec[k+1, :]
+                self.ira_spec[0, :] += self.ira_spec[k+1, :]
+                self.vcd_spec[0, :] += self.vcd_spec[k+1, :]
 
-    def calculate_nuclear_velocities(self, **kwargs): #The velocities are so small? #SHOULDN'T BE MATHOD OF CLASS
-        '''Adapted from Arne Scherrer. Occupation can be single, average, or random.'''
+    # Needs more testing
+    # The velocities are so small?
+    # SHOULDN'T BE MATHOD OF CLASS
+
+    def calculate_nuclear_velocities(self, **kwargs):
+        '''Occupation can be single, average, or random.'''
         occupation = kwargs.get('occupation', 'single')
         temperature = kwargs.get('temperature', 300)
         beta_au = 1./(temperature*constants.k_B_au)
-        S = self.eivec/np.sqrt(beta_au)/np.sqrt(constants.m_amu_au)/np.sqrt(self.masses_amu)[None, :, None]  #use eivec not modes due to normalisation of the latter (all in all not so happy :()
-        if occupation=='single':
+        print('Calculating velocities for {} K.'.format(temperature))
+
+        S = self.eivec /\
+            np.sqrt(beta_au) /\
+            np.sqrt(constants.m_amu_au) /\
+            np.sqrt(self.masses_amu)[None, :, None]  # use eivec not modes due to normalisation of the latter (all in all not so happy :()
+
+        if occupation == 'single':
             self.vel_au = S
-            #e_kin_au = CalculateKineticEnergies(self.vel_au, self.masses_amu)
-            #scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
-        elif occupation=='average':
+            e_kin_au = calculate_kinetic_energies(self.vel_au, self.masses_amu)
+            scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
+            print(scale)
+            self.vel_au *= scale
+
+        elif occupation == 'average':
             self.vel_au = S.sum(axis=0)
             # atomic_ekin_au = traj_utils.CalculateKineticEnergies(avg, masses_amu)
             # scale = temperature/(np.sum(atomic_ekin_au)/constants.k_B_au/n_modes)/2
             # print(scale)
             # avg *= np.sqrt(scale)
-        elif occupation=='random': #NOT TESTED!
+        elif occupation == 'random':  # NOT TESTED!
             phases = np.random.rand(self.n_modes)*np.pi
             self.vel_au = (S*np.cos(phases)[:, None, None]).sum(axis=0)
 
-            #random pos
+            # random pos
 #            avg = np.zeros((1, n_atoms, 3))
 #            omega_au = 2*np.pi*np.array(self.eival_cgs)*constants.c_cgs*constants.t_au
 #            for i_mode in range(self.n_modes):
@@ -934,56 +934,92 @@ class VibrationalModes():
 #            avg *= constants.l_au2aa
 #            avg += self.pos_au*constants.l_au2aa
             print('Random seed not tested')
-        else: print('Occupation mode %s not understood!'%occupation)
+        else:
+            print('Occupation mode %s not understood!' % occupation)
 
     def write_nuclear_velocities(self, fn, **kwargs):
-        fmt =  kwargs.get('fmt', 'cpmd') #fn.split('.')[-1])
+        fmt = kwargs.get('fmt', 'cpmd')  # fn.split('.')[-1])
         modelist = kwargs.get('modelist', range(self.n_modes))
         factor = kwargs.get('factor', 1.0)
-        #loc_n_modes = len(modelist)
-        if fmt == 'cpmd': 
+        # loc_n_modes = len(modelist)
+        if fmt == 'cpmd':
             print('CPMD WARNING: Output with sorted atomlist!')
             loc_self = copy.deepcopy(self)
             loc_self._sort()
             pos_au = np.tile(loc_self.pos_au, (loc_self.n_modes, 1, 1))
             try:
-                cpmdWriter(fn, pos_au[modelist], loc_self.symbols, factor*loc_self.vel_au[modelist], offset=0, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
+                cpmdWriter(fn,
+                           pos_au[modelist],
+                           loc_self.symbols,
+                           factor*loc_self.vel_au[modelist],
+                           offset=0,
+                           **kwargs
+                           )  # DEFAULTS pp='MT_BLYP', bs=''
             except AttributeError:
                 loc_self.calculate_nuclear_velocities()
-                cpmdWriter(fn, pos_au[modelist], loc_self.symbols, factor*loc_self.vel_au[modelist], offset=0, **kwargs) # DEFAULTS pp='MT_BLYP', bs=''
+                cpmdWriter(fn,
+                           pos_au[modelist],
+                           loc_self.symbols,
+                           factor*loc_self.vel_au[modelist],
+                           offset=0,
+                           **kwargs
+                           )  # DEFAULTS pp='MT_BLYP', bs=''
             del loc_self
 
-        elif fmt=="xyz": #posvel, only vel not implemented
+        elif fmt == "xyz":  # posvel, only vel not implemented
             pos_aa = np.tile(self.pos_au/Angstrom2Bohr, (self.n_modes, 1, 1))
             try:
-                xyzWriter(fn, np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist], self.symbols, [str(m) for m in modelist])
+                xyzWriter(fn,
+                          np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
+                          self.symbols,
+                          [str(m) for m in modelist]
+                          )
             except AttributeError:
                 self.calculate_nuclear_velocities()
-                xyzWriter(fn, np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist], self.symbols, [str(m) for m in modelist])
+                xyzWriter(fn,
+                          np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
+                          self.symbols,
+                          [str(m) for m in modelist]
+                          )
 
-        else: raise Exception('Unknown format: %s'%fmt)
+        else:
+            raise Exception('Unknown format: %s' % fmt)
 
-    def print_modes(self, fn, **kwargs):
-        fmt =  kwargs.get('fmt', 'xyz') #fn.split('.')[-1])
-        modelist = kwargs.get('modelist', range(self.n_modes))
-        n_images = kwargs.get('n_images', 3)#only odd numbers
-        ts_fs = kwargs.get('ts_fs', 1)
-        #loc_n_modes = len(modelist)
-        pos_aa = np.tile(self.pos_au*constants.l_au2aa, (n_images, 1, 1))
-        self.calculate_nuclear_velocities()
-        img = np.arange(-(n_images//2), n_images//2+1)
-        for mode in modelist:
-            vel_aa = np.tile(self.vel_au[mode]*constants.t_fs2au*constants.l_au2aa, (n_images, 1, 1))*img[:, None, None]
-            pos_aa += vel_aa*ts_fs
-            if fmt=="xyz": 
-                xyzWriter('%03d'%mode+'-'+fn, pos_aa, self.symbols, [str(m) for m in img])
-
+    def write(self, fn, **kwargs):
+        fmt = kwargs.get('fmt', 'xyz')
+        # ToDo: compare this to _XYZ._make_trajectory in trajectory class
+        if fmt == "xyz":
+            modelist = kwargs.get('modelist', range(self.n_modes))
+            n_images = kwargs.get('n_images', 3)
+            img = np.arange(-(n_images//2), n_images//2+1)
+            ts_fs = kwargs.get('ts_fs', 1)
+            pos_aa = np.tile(self.pos_au*constants.l_au2aa, (n_images, 1, 1))
+            self.calculate_nuclear_velocities()
+            for mode in modelist:
+                vel_aa = np.tile(self.vel_au[mode]*constants.t_fs2au*constants.l_au2aa, (n_images, 1, 1))*img[:, None, None]
+                pos_aa += vel_aa*ts_fs
+                xyzWriter('%03d'%mode+'-'+fn,
+                          pos_aa,
+                          self.symbols,
+                          [str(m) for m in img]
+                          )
 #        elif fmt == 'cpmd': #not finished
 #            cpmd.WriteTrajectoryFile(fn, pos_aa, self.vel_au[mode], offset=0)
+#        elif fmt == "xvibs":
+#            xvibsWriter(filename,
+#                        n_atoms,
+#                        numbers,
+#                        pos_aa,
+#                        freqs,
+#                        modes
+#                        )
+#
 
-            else: raise Exception('Unknown format: %s'%fmt)
+
+            else:
+                raise Exception('Unknown format: %s' % fmt)
+
 
 class NormalModes(VibrationalModes):
-    #Hessian Things
+    # Hessian Things
     pass
-
