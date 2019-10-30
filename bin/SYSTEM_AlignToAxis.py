@@ -27,7 +27,9 @@ def main():
                         )
     parser.add_argument("--axis",
                         help="Vector to align to",
-                        default=np.array([0.0, 0.0, 1.0])
+                        nargs=3,
+                        type=float,
+                        default=[0., 0., 1.]
                         )
     parser.add_argument("-i0",
                         help="Origin of reference in system",
@@ -45,6 +47,7 @@ def main():
                         )
 
     args = parser.parse_args()
+    args.axis = np.array(args.axis)
 
     _system = system.Supercell(**vars(args)).XYZData
     _system._align_to_vector(args.i0, args.i1, args.axis)
