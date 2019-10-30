@@ -81,6 +81,10 @@ class _SYSTEM( ):
             else:
                 print('Found topology file, but will not use it (mol_map given).')
 
+        # ToDo: we do not want to call Readers in _SYSTEM object
+        # only data preparation / parsing 
+        # overload read method (see write method)
+
         if fmt=="xyz":
             self.XYZData = self._XYZ( fn, **kwargs )
         elif fmt=="xvibs":

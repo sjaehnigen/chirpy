@@ -40,3 +40,17 @@ def cubeReader(FN):
                 'coords_au':coords_au,'numbers':numbers,'volume_data':volume_data}
         return data
 
+# Something that may be included
+# def ReadGZIPCubeFile(filename):
+#     f = gzip.open(filename, 'rb')
+#     inbuffer = f.read().decode('UTF-8')
+#     f.close()
+#     data, numbers, coords, cell, comment1, comment2, origin = ParseCubeFile(inbuffer)
+#     return data, numbers, coords, cell, comment1, comment2, origin
+# 
+# def WriteGZIPCubeFile(filename, comment1, comment2, numbers, coords, cell, data, origin=np.zeros(3)):
+#     outbuffer = AssembleCubeFile(comment1, comment2, numbers, coords, cell, data, origin=origin)
+#     f = gzip.open(filename, 'wb')
+#     f.write(bytes(outbuffer, 'UTF-8'))
+#     f.close()
+

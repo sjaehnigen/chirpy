@@ -11,15 +11,15 @@
 #
 #------------------------------------------------------
 
-from ..physics import constants
 
-def xvibsWriter(filename, n_atoms, numbers, coordinates, frequencies, modes):
+def xvibsWriter(filename, n_atoms, numbers, pos_aa, freqs, modes):
     '''Module by Arne Scherrer'''
+
     obuffer = '&XVIB\n NATOMS\n %d\n COORDINATES\n'%n_atoms
-    for n, r in zip(numbers, coordinates):
-        obuffer += ' %d  %16.12f  %16.12f  %16.12f\n'%tuple([n]+list(r*constants.l_aa2au))
-    obuffer += ' FREQUENCIES\n %d\n'%len(frequencies)
-    for f in frequencies:
+    for n, r in zip(numbers, pos_aa):
+        obuffer += ' %d  %16.12f  %16.12f  %16.12f\n'%tuple([n]+list(r))
+    obuffer += ' FREQUENCIES\n %d\n'%len(freqs)
+    for f in freqs:
         obuffer += ' %16.12f\n'%f
     obuffer += ' MODES\n'
     n_modes, atoms, three = modes.shape
@@ -27,6 +27,7 @@ def xvibsWriter(filename, n_atoms, numbers, coordinates, frequencies, modes):
     for mode in modes:
         obuffer += ' %16.12f  %16.12f  %16.12f\n'%tuple(mode)
     obuffer += '&END\n'
+
     with open(filename, 'w') as f:
         f.write(obuffer)
 
