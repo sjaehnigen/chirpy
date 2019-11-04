@@ -173,10 +173,10 @@ def main():
             #Or use CPMD format
             pos_au = rho.pos_au
             if args.use_valence_charges:
-                _key = "ZV"
+                _key = "valence_charges"
             else:
-                _key = "Z"
-            Q = [constants.species[_s][_key] for _s in nuc.symbols]
+                _key = "atomic_numbers"
+            Q = [getattr(constants.elements, _key)[_s] for _s in nuc.symbols]
             print('Nuclear Positions/Charges')
             print(77 * '–')
             print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['p_x', 'p_y', 'p_z', 'Q']))

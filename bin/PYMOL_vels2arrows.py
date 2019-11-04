@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,17 +9,19 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
 import numpy as np
 import argparse
-from chirpy.classes import system,pymol
+from chirpy.classes import system
+from chirpy.generators.gen_pymol import PymolObject
 
 Angstrom2Bohr = 1.8897261247828971
 
+
 def main():
-    parser=argparse.ArgumentParser(description="Generate Pymol script for the visualisation of vector field based on data in xyz format.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="Generate Pymol script for the visualisation of vector field based on data in xyz format.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("fn_xyz",   help="XYZ file with starting points containing velocities")
     parser.add_argument("--scale",   help="Vels scaling factor",         type=float,    default=1000)
     parser.add_argument("--factor",  help="Plot scaling factor",         type=float,    default=1.0)
@@ -43,18 +45,18 @@ def main():
     p1 = mol.XYZData.pos_aa + mol.XYZData.vel_au*args.scale
 
     ind  = np.linalg.norm(p0-p1,axis=-1) >= args.cutoff #preselection
-    obj0 = pymol.PymolObject(p0[ind],
-                             p1[ind],
-                             name='vectors',
-                             type='modevectors',
-                             #headrgb=(0.0,0.0,0.0),tailrgb=(0.0,0.0,0.0),
-                             headrgb=rgb,tailrgb=rgb,
-                             notail=not args.draw_tail,
-                             head=args.head,
-                             tail=args.tail,
-                             head_length=args.head_length,
-                             cutoff = args.cutoff,
-                             factor = args.factor) 
+    obj0 = PymolObject(p0[ind],
+                       p1[ind],
+                       name='vectors',
+                       type='modevectors',
+                       #headrgb=(0.0,0.0,0.0),tailrgb=(0.0,0.0,0.0),
+                       headrgb=rgb,tailrgb=rgb,
+                       notail=not args.draw_tail,
+                       head=args.head,
+                       tail=args.tail,
+                       head_length=args.head_length,
+                       cutoff = args.cutoff,
+                       factor = args.factor) 
     obj = obj0#+obj1+obj2
     obj.write(args.f)
 

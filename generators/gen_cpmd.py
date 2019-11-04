@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,14 +9,14 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 import sys
 import numpy as np
-import copy 
+import copy
 
 from ..classes.trajectory import TRAJECTORY as _TRAJ
-from ..writers.trajectory import cpmdWriter
+# from ..writers.trajectory import cpmdWriter
 from ..readers.trajectory import cpmdReader
 from ..physics import constants
 

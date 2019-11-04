@@ -26,7 +26,7 @@ Angstrom2Bohr = 1.8897261247828971
 def VMDTube(fn, pos_aa,**kwargs):
     '''pos_au with shape n_points p. tube, n_tubes, 3'''
     arr   = kwargs.get('arrow',False)
-    label = kwargs.get('label',False)
+    # label = kwargs.get('label',False)
     res   = kwargs.get('resolution',10)
     rad   = kwargs.get('radius',0.025)
     sparse= kwargs.get('sparse',5) #sparsity of iconification (NOT of streamline production)
