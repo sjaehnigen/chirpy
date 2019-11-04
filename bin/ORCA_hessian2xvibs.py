@@ -34,7 +34,7 @@ def main():
 
     symbols, pos_au, freqs, modes, modes_res = orca.read_hessian_file(args.fn)
 
-    numbers = [constants.species[z]['Z'] for z in symbols]
+    numbers = constants.symbols_to_numbers(symbols)
     xvibsWriter(args.f, len(symbols), numbers, pos_au*constants.l_au2aa, freqs, modes_res)
 
 if(__name__ == "__main__"):

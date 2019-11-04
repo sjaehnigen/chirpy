@@ -19,7 +19,7 @@ from chirpy.physics import constants
 import argparse
 import os
 
-#by-pass Molecule class for now
+# by-pass Molecule class for now
 if(__name__ == "__main__"):
     print('WARNING: BETA version!')
     parser = argparse.ArgumentParser()
@@ -31,8 +31,8 @@ if(__name__ == "__main__"):
         raise Exception('File %s does not exist' % args.fn_inp)
 
     n_atoms, numbers, coords_aa, n_modes, freqs, modes = xvibsReader(args.fn_inp)
-    symbols  = [constants.symbols[z-1] for z in numbers]
-    masses   = [constants.species[s]['MASS'] for s in symbols]
+    symbols = constants.numbers_to_symbols(numbers)
+    masses = constants.symbols_to_masses(symbols)
     coords_au = coords_aa*constants.l_aa2au
     if args.mw:
         print('Assuming mass-weighted coordinates in XVIBS.')

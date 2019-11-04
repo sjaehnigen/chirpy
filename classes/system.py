@@ -22,13 +22,11 @@ from ..readers.modes import xvibsReader
 from ..classes.crystal import UnitCell
 from ..classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
 from ..physics import constants
-from ..physics.constants import masses_amu
+from ..physics.constants import masses_amu, valence_charges
 from ..topology.dissection import define_molecules
 from ..topology.mapping import dec
 
-# put this into new lib file
-valence_charges = {'H': 1, 'D': 1, 'C': 4, 'N': 5, 'O': 6, 'S': 6}
-# masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400, 'Cl':35.45300 }
+# ToDo: put this into new lib file
 Angstrom2Bohr = 1.8897261247828971
 np.set_printoptions(precision=5, suppress=True)
 
@@ -260,5 +258,10 @@ class Supercell(_SYSTEM):
 
 
 class Molecule(_SYSTEM):
+    def _XYZ(self, *args, **kwargs):
+        return XYZTrajectory(*args, **kwargs)
+
+
+class Snapshot(_SYSTEM):
     def _XYZ(self, *args, **kwargs):
         return XYZFrame(*args, **kwargs)

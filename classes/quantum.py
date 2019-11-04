@@ -213,7 +213,7 @@ class ElectronicSystem():
         '''Has to be in shape n_frames,n_atoms, 3'''
         self.nuc_vel_au,self.nuc_symbols,self.nuc_vel_comments = xyzReader(fn)
 #        self.nuc_vel_au = self.nuc_vel_au[0] #only first frame?
-        if self.nuc_symbols != [constants.symbols[z-1] for z in self.rho.numbers]:
+        if list(self.nuc_symbols) != [constants.symbols[z-1] for z in self.rho.numbers]:
             raise Exception('ERROR: Nuclear velocity file does not match Electronic System!')
 
     def calculate_aim_differential_current(self):
