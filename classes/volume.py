@@ -20,11 +20,6 @@ from ..readers.volume import cubeReader
 from ..writers.volume import cubeWriter
 from ..physics.kspace import k_potential
 from ..physics.classical_electrodynamics import _get_divrot
-# from ..physics import constants
-
-eijk = np.zeros((3, 3, 3))
-eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 # Convention Warning:
 # cell_au is cell_vec_au
@@ -125,7 +120,7 @@ class ScalarField():
         data = kwargs.get('data', np.empty((0)))
         if any([cell_vec_au.size == 0, data.size == 0]):
             raise AttributeError('ERROR: Please give both, \
-                                 cell_vec_au and data!')
+cell_vec_au and data!')
         obj = cls()
         # quick workaround to find out if vectorfield
         if data.shape[0] == 3:
@@ -214,6 +209,20 @@ class ScalarField():
 
     def integral(self):
         return self.voxel*simps(simps(simps(self.data)))
+
+    def normalise(self, **kwargs):
+        '''If no norm is given, the method uses np.linalg.norm
+        (give axis in kwargs).'''
+        # Do we need an upper threshold?
+        _N = kwargs.pop("norm")
+        if _N is None:
+            _N = np.linalg.norm(self.data, **kwargs)
+        thresh = kwargs.pop("tresh", 1.E-8)
+
+        with np.errstate(divide='ignore'):
+            _N_inv = np.where(_N < thresh, 0.0, np.divide(1.0, _N))
+
+        self.data *= _N_inv
 
     def grid(self):
         '''Return an empty copy of grid'''
