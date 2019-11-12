@@ -1,6 +1,7 @@
 release
 pythonbase
-*/__pycache__
+__pycache__
 *pyc
 *swp
 *~
+!.gitignore
