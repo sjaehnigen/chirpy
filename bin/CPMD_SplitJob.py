@@ -14,7 +14,6 @@
 
 import argparse
 
-from chirpy.physics import constants
 from chirpy.interfaces import cpmd
 from chirpy.topology import dissection
 from chirpy.classes import system
@@ -22,7 +21,7 @@ from chirpy.classes import system
 
 def main():
     '''Split CPMD job based on existing input file ( trajectory optional )'''
-    parser = argparse.ArgumentParser( description = "Split CPMD job based on existing input file ( trajectory optional )", 
+    parser = argparse.ArgumentParser( description = "Split CPMD job based on existing input file ( trajectory optional )",
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter
                                     )
     parser.add_argument( "fn", help = "Existing cpmd input file" )

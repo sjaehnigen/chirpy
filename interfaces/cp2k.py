@@ -14,16 +14,17 @@
 
 import numpy as np
 
+
 def read_ener_file(fn):
     with open(fn, 'r') as f:
-        title = f.readline()[1:]   # Could be used later to create a data dict of all lists
+        f.readline()[1:]   # title
         steps = f.readlines()
 
-    kin    = list()
-    pot    = list()
-    temp   = list()
-    cqty   = list()
-    time   = list()
+    kin = list()
+    pot = list()
+    temp = list()
+    cqty = list()
+    time = list()
     step_n = list()
 
     for step in steps:
@@ -36,17 +37,17 @@ def read_ener_file(fn):
         cqty.append(float(buff[5]))
 
     step_n = np.array(step_n)
-    time   = np.array(time)
-    kin    = np.array(kin)
-    temp   = np.array(temp)
-    pot    = np.array(pot)
-    cqty   = np.array(cqty)
+    time = np.array(time)
+    kin = np.array(kin)
+    temp = np.array(temp)
+    pot = np.array(pot)
+    cqty = np.array(cqty)
 
 #    kin_avg = np.average(kin)
 #    pot_avg = np.average(pot)
 #    cqty_avg= np.average(cqty)
 
-    return step_n,time,temp,kin,pot,cqty
+    return step_n, time, temp, kin, pot, cqty
 
 
 def read_tot_dipole_file(fn):

@@ -12,9 +12,7 @@
 # ------------------------------------------------------
 
 
-# import sys
 import numpy as np
-# from ..physics import constants
 
 
 def read_hessian_file(fn):
@@ -45,9 +43,8 @@ def read_hessian_file(fn):
     print('Found %s atoms.' % n_atoms)
 
     symbols = [_l.split()[0] for _l in sec_coords[1: n_atoms+1]]
-    pos_au = np.array(
-            [list(map(float, _l.split()[2:])) for _l in sec_coords[1: n_atoms+1]]
-            )
+    pos_au = np.array([list(map(float, _l.split()[2:]))
+                       for _l in sec_coords[1: n_atoms+1]])
 
     tmp = list()
     modes = np.zeros((n_freqs, n_freqs))

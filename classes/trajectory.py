@@ -22,7 +22,7 @@ from ..readers.modes import xvibsReader
 from ..readers.trajectory import xyzReader, cpmdReader
 from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
 # from ..writers.modes import xvibsWriter
-from ..interfaces import cpmd, orca
+from ..interfaces import cpmd  # orca
 
 from ..topology.mapping import align_atoms, dec
 from ..topology.symmetry import wrap, join_molecules
@@ -54,6 +54,7 @@ np.set_printoptions(precision=5, suppress=True)
 # new class: Moments()
 # Note: the object format is extended from behind: frame is (N,X), trajectory is (F,N,X), list of
 # modes is (M,F,N,X) ... Access data structures from behind!
+
 
 class _FRAME():
     # put it somewhere else
