@@ -61,7 +61,7 @@ class ScalarField():
                 raise NotImplementedError('Format wfn not supported.')
 
             else:
-                raise AttributeError('Unknown format.')
+                raise ValueError('Unknown format.')
 
         elif len(args) == 0:
             if kwargs.get("fmt") is not None:  # deprecated but still in use
@@ -119,7 +119,7 @@ class ScalarField():
         cell_vec_au = kwargs.get('cell_vec_au', np.empty((0)))
         data = kwargs.get('data', np.empty((0)))
         if any([cell_vec_au.size == 0, data.size == 0]):
-            raise AttributeError('ERROR: Please give both, \
+            raise TypeError('ERROR: Please give both, \
 cell_vec_au and data!')
         obj = cls()
         # quick workaround to find out if vectorfield
@@ -291,8 +291,9 @@ cell_vec_au and data!')
         fmt = kwargs.get('fmt', fn.split('.')[-1])
         attr = kwargs.get('attribute', 'data')
         if not hasattr(self, attr):
-            raise Exception('ERROR: Attribute %s not (yet) part of object!'
-                            % attr)
+            raise AttributeError(
+                    'ERROR: Attribute %s not (yet) part of object!'
+                    % attr)
         if fmt == "cube":
             comment1 = kwargs.get('comment1', self.comments.split('\n')[0])
             comment2 = kwargs.get('comment2', self.comments.split('\n')[1])
@@ -302,7 +303,7 @@ cell_vec_au and data!')
             # insert routine to get numbers from symbols: in derived class
             # constants.symbols_to_numbers(symbols)
             if numbers.shape[0] != n_atoms:
-                raise Exception('ERROR: Given numbers inconsistent \
+                raise ValueError('ERROR: Given numbers inconsistent \
                                 with positions')
             cell_au = kwargs.get('cell_au', self.cell_au)
             origin_au = kwargs.get('origin_au', self.origin_au)
@@ -316,7 +317,7 @@ cell_vec_au and data!')
                        data,
                        origin=origin_au)
         else:
-            raise Exception('Unknown format (Not implemented).')
+            raise ValueError('Unknown format (Not implemented).')
 
 
 class VectorField(ScalarField):
@@ -542,4 +543,4 @@ class VectorField(ScalarField):
                        data[2],
                        origin=origin_au)
         else:
-            raise Exception('Unknown format (Not implemented).')
+            raise ValueError('Unknown format (Not implemented).')

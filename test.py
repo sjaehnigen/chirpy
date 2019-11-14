@@ -22,7 +22,7 @@ import numpy as np
 # --- Done
 
 # --- ToDo (change import path later after moving bin)
-from readers import modes, trajectory, volume
+from chirpy.readers import modes, trajectory  # , volume
 # from .writers import
 # from .topology import
 # from .mathematics import
@@ -86,37 +86,129 @@ class TestReaders(unittest.TestCase):
                                                       [-4.947076501132, -0.047031588011,    0.365545752725],])))
         self.assertTrue(np.array_equal(vec, np.genfromtxt(self.dir + '/vec').reshape(39, 13, 3)))
 
-        #ToDo: I have to make sure that the test file fulfils my xvibs standard
-
     def test_xyzReader(self):
-        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_frame.xyz')
-        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_traj.xyz')
-        # verify types: np.array, np.array, list and shapes
+        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
+        self.assertIsInstance(data, np.ndarray)
+        self.assertTrue(np.array_equal(data, np.genfromtxt(self.dir +
+            '/data_frame_pos_pbc').reshape(1, 208, 3)))
+        self.assertIsInstance(comments, list)
+        self.assertTupleEqual(symbols, ('C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'N', 'N', 'N', 'N', 'N',
+            'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'O', 'O', 'O', 'O', 'O', 'O',
+            'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O',
+            'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', ))
+        [self.assertIsInstance(_c, str) for _c in comments]
 
+        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_frame_posvel_pbc.xyz')
+        self.assertIsInstance(data, np.ndarray)
+        self.assertTrue(np.array_equal(data, np.genfromtxt(self.dir +
+            '/data_frame_posvel_pbc').reshape(1, 208, 6)))
+        self.assertIsInstance(comments, list)
+        self.assertTupleEqual(symbols, ('C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+            'C', 'C', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+            'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'N', 'N', 'N', 'N', 'N',
+            'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'O', 'O', 'O', 'O', 'O', 'O',
+            'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O',
+            'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', ))
+        [self.assertIsInstance(_c, str) for _c in comments]
 
-        # self.assertTrue((at_raman[1] == ref1).all())
-        # self.assertTrue((at_vcd[4] == ref2).all())
-        # self.assertTrue(np.array([(a-b)/a < mp for a, b in zip(ref3.flat, at_test.flat)]).all())
-        # self.assertEqual(widget.size(), (50, 50))
-        # assertIsInstance(a, b)
-        # assertIsNone(x)
-        # assertIsNot(a, b)
-        # assertIn(a, b)
-        # assertLessEqual(a, b)
-        # assertMultiLineEqual()
+        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_traj_pos_pbc.xyz')
+        self.assertIsInstance(data, np.ndarray)
+        self.assertTrue(np.array_equal(data, np.genfromtxt(self.dir +
+            '/data_traj_pos_pbc').reshape(3, 393, 3)))
+        self.assertIsInstance(comments, list)
+        self.assertTupleEqual(symbols, ('C', 'C', 'C', 'O', 'O', 'H', 'H', 'H', 'H', 'O', 'H', 'C',
+            'C', 'C', 'O', 'O', 'H', 'H', 'H', 'H', 'O', 'H', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O',
+            'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H',
+            'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H',
+            'H', 'O', 'H', 'H', 'O', 'H', 'H', ))
+        [self.assertIsInstance(_c, str) for _c in comments]
 
-        # # check that s.split fails when the separator is not a string
-        # with self.assertRaises(TypeError):
-        #     s.split(2)
-    # def test_cpmdReader(self):
-    #     data = trajectory.cpmdReader(self.dir + '/GEOMETRY')
-    #     data = trajectory.cpmdReader(self.dir + '/MOMENTS')
-    #     data = trajectory.cpmdReader(self.dir + '/TRAJECTORY')
-    #     # verify types: np.array and shape
+        # Test symbol support (no recognition here)
+        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_symbols.xyz')
+        self.assertTupleEqual(symbols, ('H', 'C', 'C', 'O', 'C', 'C', 'He', 'C', 'C', 'D', 'C',
+            'Xe', 'C', 'S', 'C', 'N', 'C', 'P', 'Al', 'C', 'I', 'Cl', 'F', 'C', 'C', 'Mg', 'C',
+            'Na', ))
+        [self.assertIsInstance(_c, str) for _c in comments]
 
-    # def test_pdbReader(self):
-    #     data, names, symbols, res, cell_aa_deg, title = trajectory.pdbReader(self.dir + '/test.pdb')
-    #     # verify types: np.array, np.array?, np.array, np.array, np.array, string? and shapes
+        # Some Negatives
+        with self.assertRaises(ValueError):
+            data, symbols, comments = trajectory.xyzReader(self.dir + '/test_wrong_number.xyz')
+            data, symbols, comments = trajectory.xyzReader(self.dir + '/test_broken_frame.xyz')
+            data, symbols, comments = trajectory.xyzReader(self.dir + '/test_broken_frame_2.xyz')
+
+        # Test range
+        data, symbols, comments = trajectory.xyzReader(self.dir + '/test_traj_pos_pbc.xyz',
+                range=(1,3))
+        self.assertTrue(np.array_equal(data, np.genfromtxt(self.dir +
+            '/data_traj_pos_pbc').reshape(3, 393, 3)[1:3]))
+
+    def test_cpmdReader(self):
+        for _i, _n in zip(['GEOMETRY', 'MOMENTS', 'TRAJECTORY'],
+                          [(1, 208, 6), (5, 288, 9), (6, 208, 6)]):
+
+            data = trajectory.cpmdReader(self.dir + '/' + _i,
+                                         filetype=_i,
+                                         kinds=['X']*_n[1])
+
+            self.assertTrue(np.array_equal(data, np.genfromtxt(self.dir +
+              '/data_' + _i).reshape(_n)))
+
+        # Some Negatives
+        with self.assertRaises(ValueError):
+            data = trajectory.cpmdReader(self.dir + '/MOMENTS_broken',
+                                         filetype='MOMENTS',
+                                         kinds=['X']*288)
+            data = trajectory.cpmdReader(self.dir + '/MOMENTS',
+                                         filetype='MOMENTS',
+                                         kinds=['X']*286)
+
+    def test_pdbReader(self):
+        '''Not much testing as this is an external reader'''
+        data, names, symbols, res, cell_aa_deg, title = trajectory.pdbReader(self.dir +
+                '/test_simple.pdb')
+        data, names, symbols, res, cell_aa_deg, title = trajectory.pdbReader(self.dir +
+                '/test_simple_nodims.pdb')
+        data, names, symbols, res, cell_aa_deg, title = trajectory.pdbReader(self.dir +
+                '/test_protein.pdb')
+        data, names, symbols, res, cell_aa_deg, title = trajectory.pdbReader(self.dir +
+                '/test_raw.pdb')
+        # also check is cryst is missing
+        # verify types: np.array, np.array?, np.array, np.array, np.array, string? and shapes
 
     # def test_cubeReader(self):
     #     data = volume.cubeReader(self.dir + '/test.cube')
@@ -168,6 +260,11 @@ class TestPhysics(unittest.TestCase):
 
 
 class TestClasses(unittest.TestCase):
+        # Later for trajectory class
+        # data, symbols, comments = trajectory.xyzReader(self.dir + '/test_traj_vel_pbc.xyz')
+        # unknown elements
+        # data, symbols, comments = trajectory.xyzReader(self.dir + '/test_wrong_symbols.xyz')
+
 
     def setUp(self):
         pass

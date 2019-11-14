@@ -13,10 +13,10 @@
 
 
 import numpy as np
+from ..interfaces import orca
 
 
 def xvibsReader(fn):
-    '''Module by Arne Scherrer'''
     with open(fn, 'r') as f:
         inbuffer = f.read()
     pos_natoms = inbuffer.index('NATOMS')
@@ -47,3 +47,14 @@ def xvibsReader(fn):
     modes = modes.reshape((n_modes, n_atoms, 3))
 
     return n_atoms, numbers, pos_aa, n_modes, freqs, modes
+
+
+def orcaReader(fn):
+    '''Reads ORCA 4.3 files. Currently supported:
+        *.hess
+        '''
+    fmt = fn.split('.')[-1]
+    if fmt == "hess":
+        return orca.read_hessian_file(fn)
+    else:
+        raise ValueError('Unknown file format.')

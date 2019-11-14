@@ -18,6 +18,10 @@ import numpy as np
 from chirpy.classes import system
 
 
+def create_name(F):
+    return F.split('.')[0] + '_last_step' + '.xyz'
+
+
 def main():
     '''Extract last frame from a trajectory.'''
     parser = argparse.ArgumentParser(
@@ -45,11 +49,15 @@ def main():
                         default=[0.0, 0.0, 0.0, 90., 90., 90.]
                         )
     parser.add_argument("-f",
-                        help="Output file name",
-                        default='out.xyz'
+                        help="Output XYZ file name (auto: 'fn_[step].xyz')",
+                        default=create_name
                         )
+
     args = parser.parse_args()
     args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
+
+    if args.f is create_name:
+        args.f = create_name(args.fn)
 
     system.Molecule(**vars(args)).XYZData._to_frame(fr=-1).write(
                                                                  args.f,

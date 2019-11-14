@@ -13,6 +13,7 @@
 
 
 import numpy as np
+import MDAnalysis as mda
 
 
 def _gen(fn):
@@ -21,6 +22,9 @@ def _gen(fn):
 
 
 def _get(_it, kernel, **kwargs):
+    '''Gets batch of lines defined by _n_lines and processes
+       it with given _kernel. Returns processed data.'''
+
     n_lines = kwargs.get('n_lines')
     r0, r1 = kwargs.pop("range", (0, float('inf')))
     _r = 0
@@ -30,30 +34,50 @@ def _get(_it, kernel, **kwargs):
         _r += 1
 
     while True:
+        # No list comprehension here to allow yield of incomplete _data
+        _data = []
         try:
-            yield kernel([next(_it) for _ik in range(n_lines)], **kwargs)
+            for _ik in range(n_lines):
+                _data.append(next(_it))
+            yield kernel(_data, **kwargs)
             _r += 1
             if _r >= r1:
+                _data = []
                 raise StopIteration()
+
         except StopIteration:
+            if len(_data) != 0:
+                raise ValueError('Reached end of while processing frame!')
             break
 
 
 def _reader(FN, _nlines, _kernel, **kwargs):
+    '''Opens file, checks contents, and parses arguments,
+       _kernel, and generator.'''
+
     kwargs.update({'n_lines': _nlines})
+
     with open(FN, 'r') as _f:
         _it = _gen(_f)
         data = tuple(_get(_it, _kernel, **kwargs))
+
         if np.size(data) == 0:
-            raise ValueError('Given input and arguments \
-                    do not yield any data!')
+            raise ValueError('Given input and arguments '
+                             'do not yield any data!')
         else:
             return data
 
 
+def _dummy_kernel(frame, **kwargs):
+    '''Simplest _kernel. Does nothing.'''
+    return frame
+
+
 def _xyz(frame, **kwargs):
+    '''Kernel for processing xyz frame.'''
+
     if kwargs.get('n_lines') != int(frame[0].strip()) + 2:
-        raise ValueError('Corrupt XYZ file!')
+        raise ValueError('Inconsistent XYZ file!')
 
     comment = frame[1].rstrip('\n')
     _split = (_l.strip().split() for _l in frame[2:])
@@ -63,41 +87,79 @@ def _xyz(frame, **kwargs):
 
 
 def _cpmd(frame, **kwargs):
-    """Iterates over FN and yields generator of positions, \
-           velocities and/or moments (in a.u.)"""
+    '''Kernel for processing cpmd frame.
+       Related to CPMD interface get_frame_traj_and_mom()'''
+
     filetype = kwargs.get('filetype')
+
     if filetype == 'GEOMETRY':
         return np.array([_l.strip().split() for _l in frame]).astype(float)
+
     elif filetype in ['TRAJECTORY', 'MOMENTS']:
         return np.array([_l.strip().split()[1:] for _l in frame]).astype(float)
+
     else:
-        raise TypeError('Unknown filetype %s' % filetype)
+        raise ValueError('Unknown CPMD filetype %s' % filetype)
 
 
 def xyzReader(FN, **kwargs):
+    '''Reads frame size (n_lines) from first line'''
     _kernel = _xyz
 
     with open(FN, 'r') as _f:
         _nlines = int(_f.readline().strip()) + 2
 
     data, symbols, comments = zip(*_reader(FN, _nlines, _kernel, **kwargs))
+
     return np.array(data), symbols[0], list(comments)
 
 
 def cpmdReader(FN, **kwargs):
     _kernel = _cpmd
+    kinds = kwargs.pop('kinds', None)
 
-    _nlines = np.array(kwargs.get('kinds', [0])).shape[0]
+    if kinds is None:
+        _nlines = 1
+    else:
+        _nlines = len([_k for _k in kinds])  # type-independent
 
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    data = np.array(_reader(FN, _nlines, _kernel, **kwargs))
+    return data
 
 
-# ------ old readers
+# ------ external readers
 
-def pdbReader(filename):
+def pdbReader(fn):
+    '''https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
+       no trajectory support enabled'''
+    u = mda.Universe(fn)
+
+    # only take what is needed in ChirPy
+    data = u.coord.positions
+    resns = u.residues.resnames
+    resids = u.residues.resids
+    names = u.atoms.names
+    symbols = u.atoms.types
+    cell_aa_deg = u.dimensions
+    title = u.trajectory.title
+    if len(title) == 0:
+        title = None
+    else:
+        title = title[0]
+
+    return data, names, symbols, np.array([_n for _n in zip(resids, resns)]), cell_aa_deg, title
+
+
+# ------ old readers (no trajectory support)
+
+def pdbReader_old(filename):
     '''PDB Version 3.30 according to Protein Data Bank Contents Guide.
-    WARNING BETA VERSION: Reading of occupancy and temp factor not yet implemented. I do not read the space group, either (i.e. giving P1)'''
-    names, resns,resids,data,symbols,cell_aa_deg,title = list(),list(),list(),list(), list(), None, None
+       WARNING BETA VERSION: Reading of occupancy and temp factor not yet
+       implemented.
+       There are many fancy PDBReaders out there (such as MDAnalysis) that
+       do the job.
+       I do not read the space group, either (i.e. giving P1).'''
+    names, resns, resids, data, symbols, cell_aa_deg, title = list(),list(),list(),list(), list(), None, None
     cell=0
     mk_int = lambda s: int(s) if s.strip() else 0
 
