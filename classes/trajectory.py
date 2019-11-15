@@ -14,11 +14,12 @@
 import sys
 import copy
 import numpy as np
+import warnings
 
 from ..snippets import extract_keys
 from ..readers.modes import xvibsReader
-from ..readers.trajectory import xyzReader, cpmdReader
-from ..writers.trajectory import cpmdWriter, xyzWriter, pdbWriter
+from ..readers.coordinates import xyzReader, cpmdReader
+from ..writers.coordinates import cpmdWriter, xyzWriter, pdbWriter
 # from ..writers.modes import xvibsWriter
 
 from ..topology.mapping import align_atoms, dec
@@ -71,7 +72,7 @@ class _FRAME():
         # ToDo: more general routine looping _labels of object
         if self.n_atoms != self.symbols.shape[0]:
             raise ValueError('ERROR: Data shape inconsistent '
-                            'with symbols attribute!\n')
+                             'with symbols attribute!\n')
 
     def __add__(self, other):
         new = copy.deepcopy(self)
@@ -161,10 +162,10 @@ class _TRAJECTORY(_FRAME):
         # ToDo: more general routine looping _labels of object
         if self.n_atoms != self.symbols.shape[0]:
             raise ValueError('ERROR: Data shape inconsistent with '
-                            'symbols attribute!\n')
+                             'symbols attribute!\n')
         if self.n_frames != self.comments.shape[0]:
             raise ValueError('ERROR: Data shape inconsistent with '
-                            'comments attribute!\n')
+                             'comments attribute!\n')
 
 
 class _XYZ():
@@ -261,19 +262,22 @@ class _XYZ():
         # --------has to be an external function
         if center_coords:
             print('Centering coordinates in cell and wrap atoms.')
-            cell_aa = kwargs.get('cell_aa', np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
-            if not all([cl == 90. for cl in cell_aa[3:]]):
-                print([cl for cl in cell_aa[3:]])
-                print('ERROR: only orthorhombic/cubic cells can be used with center function!')
-                sys.exit(1)
+            cell_aa_deg = kwargs.get('cell_aa_deg',
+                                     np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
+            # ToDo: Add universal cell support
+            if not all([cl == 90. for cl in cell_aa_deg[3:]]):
+                print([cl for cl in cell_aa_deg[3:]])
+                raise ValueError('Only orthorhombic/cubic cells can be used '
+                                 'with center function!')
             P = self.pos_aa
             M = self.masses_amu
-            # --- works for both traj and frame, as last two axes agree (smart numpy magic recognises frame axis)
+            # --- works for both traj and frame, as last two axes
+            #     agree (smart numpy magic recognises frame axis)
             com_aa = np.sum(P * M[:, None], axis=-2) / M.sum()
-            self.pos_aa += cell_aa[None, :3] / 2 - com_aa[None, :]
+            self.pos_aa += cell_aa_deg[None, :3] / 2 - com_aa[None, :]
             print('WARNING: Auto-wrap of atoms (not mols) activated!')
-            if not any(_c == 0.0 for _c in cell_aa[:3]):
-                self.pos_aa = np.remainder(self.pos_aa, cell_aa[:3])
+            if not any(_c == 0.0 for _c in cell_aa_deg[:3]):
+                self.pos_aa = np.remainder(self.pos_aa, cell_aa_deg[:3])
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -303,7 +307,8 @@ class _XYZ():
         try:
             self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
         except KeyError:
-            print('WARNING: Could not find all element masses!')
+            warnings.warn('Could not find all element masses!',
+                          RuntimeWarning)
         # These are NOT pointers and any changes to pos/vel will be overwritte
         # by data! You have to change data instead or use _pos/_vel
         self._pos_aa()
@@ -443,7 +448,10 @@ class _XYZ():
             if separate_files:
                 frame_list = kwargs.get('frames', range(loc_self.n_frames))
                 # rethink outfile syntax
-                [xyzWriter(''.join(fn.split('.')[:-1]) + '%03d' % fr + '.' + fn.split('.')[-1],
+                [xyzWriter(''.join(fn.split('.')[:-1])
+                           + '%03d' % fr
+                           + '.'
+                           + fn.split('.')[-1],
                            [getattr(loc_self, attr)[fr]],
                            loc_self.symbols,
                            [loc_self.comments[fr]])
@@ -453,14 +461,16 @@ class _XYZ():
                 xyzWriter(fn,
                           getattr(loc_self, attr),
                           loc_self.symbols,
-                          getattr(loc_self, 'comments', loc_self.n_frames * ['passed']), #Writer is stupid
+                          getattr(loc_self, 'comments',
+                                            loc_self.n_frames * ['passed']),
                           )
 
         elif fmt == "pdb":
             mol_map = kwargs.get('mol_map')
             cell_aa_deg = kwargs.get('cell_aa_deg')
             if cell_aa_deg is None:
-                print("WARNING: Missing cell parametres for PDB output!")
+                warnings.warn("Missing cell parametres for PDB output!",
+                              RuntimeWarning)
                 cell_aa_deg = np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter(fn,
                       loc_self.pos_aa[0],  # only frame 0 vels are not written
@@ -525,16 +535,18 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
-    #### The next two methods should be externalised?
-    #DEPRECATED
+    # ### The next two methods should be externalised?
+    # DEPRECATED
     def _move_residue_to_centre(self, ref, cell_aa_deg, **kwargs):
-       try: ref_pos_aa = getattr(self, 'mol_cog_aa')[:, ref]
-       except: ref_pos_aa = getattr(self, 'mol_com_aa')[:, ref]
-       if not all([cl == 90. for cl in cell_aa_deg[3:]]): 
-           print([cl for cl in cell_aa_deg[3:]])
-           print('ERROR: only orthorhombic/cubic cells can be used with center function!')
-           sys.exit(1)
-       self.pos_aa[:, :, :3] += cell_aa_deg[None, None, :3]/2 - ref_pos_aa[:, None, :]
+        try:
+            ref_pos_aa = getattr(self, 'mol_cog_aa')[:, ref]
+        except:
+            ref_pos_aa = getattr(self, 'mol_com_aa')[:, ref]
+        if not all([cl == 90. for cl in cell_aa_deg[3:]]):
+            print([cl for cl in cell_aa_deg[3:]])
+            print('ERROR: only orthorhombic/cubic cells can be used with center function!')
+            sys.exit(1)
+        self.pos_aa[:, :, :3] += cell_aa_deg[None, None, :3]/2 - ref_pos_aa[:, None, :]
 
     def _to_frame(self, fr=0):
         return XYZFrame(data=self.data[fr],
@@ -547,8 +559,9 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
         ts = kwargs.get('ts', 0.5)
 
         if np.linalg.norm(self.vel_au) != 0:
-            print('WARNING: Overwriting existing velocities in file %s'
-                  % self.fn)
+            warnings.warn('Overwriting existing velocities in file %s'
+                          % self.fn,
+                          RuntimeWarning)
         self.vel_au[:-1] = np.diff(self.pos_aa,
                                    axis=0) / (ts * constants.v_au2aaperfs)  # *np.sqrt(self.masses_amu)[None, :, None]
 
@@ -571,14 +584,20 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
 
 class VibrationalModes():
-    # actually here and for the entire MD simulation we should choose one pure isotope since mixed atomic masses are not valid for the determination for "average" mode frequencies (are they?)
-    # allow partial reading of modes, insert check for completness of modes 3N-6/5
+    # actually here and for the entire MD simulation we should choose one pure
+    # isotope since mixed atomic masses are not valid for the determination for
+    # "average" mode frequencies (are they?)
+    # allow partial reading of modes, insert check for completness of
+    # modes 3N-6/5
+
     def __init__(self, fn, **kwargs):
         fmt = kwargs.get('fmt', fn.split('.')[-1])
         center_coords = kwargs.get('center_coords', False)
 
-        # if 'modes' in kwargs and 'numbers' in kwargs and 'omega_cgs' in kwargs and 'coords_aa' in kwargs:
-        if set(['modes', 'numbers', 'omega_cgs', 'coords_aa']).issubset(kwargs):
+        if set(['modes',
+                'numbers',
+                'omega_cgs',
+                'coords_aa']).issubset(kwargs):
             self.fn = fn
             modes = kwargs.get('modes')
             numbers = kwargs.get('numbers')
@@ -597,11 +616,8 @@ class VibrationalModes():
             pos_au = coords_aa*constants.l_aa2au
             eival_cgs = omega_cgs
 
-#        elif fmt=="molvib": #mass weighted hessian as used in CPMD
-#            self.fn = fn 
         else:
-            raise ValueError('Unknown format: %s.'%fmt)
-
+            raise ValueError('Unknown format: %s.' % fmt)
 
         self.pos_au = pos_au
         self.comments = np.array(comments)
@@ -614,9 +630,11 @@ class VibrationalModes():
         self.eivec  = new_eivec#/np.linalg.norm(new_eivec, axis=(1, 2))[:, None, None]  #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again 
         self._sync_class()
 
+        # use external function
         if center_coords:
-            cell_aa = kwargs.get('cell_aa', np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
-            if not all([cl == 90. for cl in cell_aa[3:]]): 
+            cell_aa = kwargs.get('cell_aa',
+                                 np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
+            if not all([cl == 90. for cl in cell_aa[3:]]):
                 print('ERROR: only orthorhombic/cubic cells can be used with center function!')
             P = self.pos_au
             M = self.masses_amu
@@ -629,19 +647,38 @@ class VibrationalModes():
     def _check_orthonormality(self):
         # How to treat rot/trans exclusion? detect 5 or 6?
         atol = 5.E-5
-        com_motion = np.linalg.norm((self.modes*self.masses_amu[None, :, None]).sum(axis=1), axis=-1)/self.masses_amu.sum()
-        if np.amax(com_motion) > atol: print('WARNING: Significant motion of COM for certain modes!')
+        com_motion = np.linalg.norm((
+                                self.modes * self.masses_amu[None, :, None]
+                                ).sum(axis=1), axis=-1)/self.masses_amu.sum()
+
+        if np.amax(com_motion) > atol:
+            warnings.warn('Significant motion of COM for certain modes!',
+                          RuntimeWarning)
+
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
         a = np.inner(test, test)
-        if any([np.allclose(a, np.identity(self.n_modes), atol=atol), np.allclose(a[6:, 6:], np.identity(self.n_modes-6), atol=atol)]): 
-            print('ERROR: The given cartesian displacements are orthonormal! Please try to enable/disable the -mw flag!')
+        if any([np.allclose(a,
+                            np.identity(self.n_modes),
+                            atol=atol),
+                np.allclose(a[6:, 6:],
+                            np.identity(self.n_modes-6),
+                            atol=atol)]):
+            # DEPRECATED use of 'ignore_warnings'
+            print('ERROR: The given cartesian displacements are orthonormal! '
+                  'Please try to enable/disable the -mw flag!')
             if not ignore_warnings:
                 sys.exit(1)
             else:
                 print('IGNORED')
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
         a = np.inner(test, test)
-        if not any([np.allclose(a, np.identity(self.n_modes), atol=atol), np.allclose(a[6:, 6:], np.identity(self.n_modes-6), atol=atol)]): 
+        if not any([np.allclose(a,
+                                np.identity(self.n_modes),
+                                atol=atol),
+                    np.allclose(a[6:, 6:],
+                                np.identity(self.n_modes-6),
+                                atol=atol)
+                    ]):
             print(a)
             print('ERROR: The eigenvectors are not orthonormal!')
             print(np.amax(np.abs(a-np.identity(self.n_modes))))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,8 +9,7 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
- 
+# ------------------------------------------------------
 
 import argparse
 import numpy as np
@@ -19,7 +18,7 @@ from chirpy.classes import system
 
 
 def main():
-    '''Unit Cell parametres are taken from fn1 if needed'''
+    '''Convert any supported input into XYZ format'''
     parser = argparse.ArgumentParser(
             description="Convert any supported input into XYZ format",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -29,8 +28,7 @@ def main():
                         )
     parser.add_argument("--center_coords",
                         action='store_true',
-                        help="Center Coordinates in cell centre or at origin \
-                                (cell_aa parametre overrides default origin)",
+                        help="Center Coordinates in cell centre or at origin",
                         default=False
                         )
     parser.add_argument("--sort",
@@ -40,16 +38,20 @@ def main():
                         )
     parser.add_argument("--cell_aa_deg",
                         nargs=6,
-                        help="Orthorhombic cell parametres a b c al be ga in \
+                        help="Use custom cell parametres a b c al be ga in \
                                 angstrom/degree",
-                        default=[0.0, 0.0, 0.0, 90., 90., 90.]
+                        default=None,
                         )
     parser.add_argument("-f",
                         help="Output file name",
                         default='out.xyz'
                         )
     args = parser.parse_args()
-    args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
+
+    if args.cell_aa_deg is None:
+        del args.cell_aa_deg
+    else:
+        args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
 
     system.Molecule(**vars(args)).XYZData.write(args.f, fmt='xyz')
 #    system.Molecule(**vars(args)).sort_atoms.XYZData.write(args.f, fmt='xyz')

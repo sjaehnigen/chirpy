@@ -17,7 +17,7 @@ from ..topology.symmetry import get_distance_matrix, distance_pbc, wrap, get_cel
 from ..mathematics.algebra import change_euclidean_basis as ceb
 
 #old
-from ..physics import constants #see ~/pythonbase
+# from ..physics import constants #see ~/pythonbase
 
 ##TMP solution
 #def define_molecules_XYZclass(xyz):

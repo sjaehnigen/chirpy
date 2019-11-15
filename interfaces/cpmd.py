@@ -15,8 +15,8 @@ import numpy as np
 import tempfile
 
 from ..classes.trajectory import _TRAJECTORY as _TRAJ
-# from ..writers.trajectory import cpmdWriter
-from ..readers.trajectory import cpmdReader
+# from ..writers.coordinates import cpmdWriter
+from ..readers.coordinates import cpmdReader
 from ..physics import constants
 
 # SECTION > KEYWORD > ( <list of ARGUMENTS>, <next line (optional)> )
