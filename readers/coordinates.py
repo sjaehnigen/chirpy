@@ -60,13 +60,14 @@ def _reader(FN, _nlines, _kernel, **kwargs):
 
     with open(FN, 'r') as _f:
         _it = _gen(_f)
-        data = tuple(_get(_it, _kernel, **kwargs))
+        data = _get(_it, _kernel, **kwargs)
 
         if np.size(data) == 0:
             raise ValueError('Given input and arguments '
                              'do not yield any data!')
         else:
-            return data
+            for _d in data:
+                yield _d
 
 
 def _dummy_kernel(frame, **kwargs):
@@ -82,7 +83,7 @@ def _xyz(frame, **kwargs):
 
     comment = frame[1].rstrip('\n')
     _split = (_l.strip().split() for _l in frame[2:])
-    symbols, data = tuple(zip(*[(_l[0], _l[1:]) for _l in _split]))
+    symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
     return np.array(data).astype(float), symbols, comment
 
@@ -115,6 +116,18 @@ def xyzReader(FN, **kwargs):
     return np.array(data), symbols[0], list(comments)
 
 
+def xyzIterator(FN, **kwargs):
+    '''Iterator version of xyzReader
+       Usage: next() returns data, symbols, comments of
+       current frame'''
+    _kernel = _xyz
+
+    with open(FN, 'r') as _f:
+        _nlines = int(_f.readline().strip()) + 2
+
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
+
 def cpmdReader(FN, **kwargs):
     _kernel = _cpmd
     kinds = kwargs.pop('kinds', None)
@@ -124,11 +137,24 @@ def cpmdReader(FN, **kwargs):
     else:
         _nlines = len([_k for _k in kinds])  # type-independent
 
-    data = np.array(_reader(FN, _nlines, _kernel, **kwargs))
+    data = np.array(tuple(_reader(FN, _nlines, _kernel, **kwargs)))
     return data
 
 
+def cpmdIterator(FN, **kwargs):
+    _kernel = _cpmd
+    kinds = kwargs.pop('kinds', None)
+
+    if kinds is None:
+        _nlines = 1
+    else:
+        _nlines = len([_k for _k in kinds])  # type-independent
+
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
+
 # ------ external readers
+
 
 def pdbReader(fn):
     '''https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html

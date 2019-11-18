@@ -14,7 +14,6 @@
 import unittest
 import os
 import numpy as np
-import sys
 
 # import logging
 # import filecmp
@@ -270,7 +269,53 @@ class TestReaders(unittest.TestCase):
                 self.dir + '/test_simple.pdb')
 
         self.assertTrue(np.allclose(cell_aa_deg, np.array([
-            12.072, 12.342, 11.576, 90.00, 90.00, 90.00 ])))
+            12.072, 12.342, 11.576, 90.00, 90.00, 90.00])))
+
+        self.assertListEqual(
+             res,
+             [(1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
+              (2, 'SOL'), (5, 'SOL'), (6, 'SOL'), (7, 'SOL'), (8, 'SOL'),
+              (5, 'SOL'), (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
+              (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (9, 'SOL'), (10, 'SOL'),
+              (11, 'SOL'), (12, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'),
+              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'), (11, 'SOL'),
+              (13, 'SOL1'), (14, 'SOL'), (15, 'SOL'), (16, 'SOL'), (13, 'SOL'),
+              (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'), (14, 'SOL'),
+              (16, 'SOL'), (15, 'SOL'), (3, 'SOL'), (4, 'SOL'), (2, 'SOL'),
+              (1, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'), (2, 'SOL'),
+              (3, 'SOL'), (4, 'SOL'), (5, 'SOL'), (6, 'SOL'), (1, 'SOL'),
+              (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (5, 'SOL'), (6, 'SOL'),
+              (8, 'SOL'), (7, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
+              (2, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'), (6, 'SOL'),
+              (1, 'SOL'), (2, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
+              (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'), (6, 'SOL'),
+              (9, 'SOL'), (10, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
+              (6, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'), (11, 'SOL'),
+              (5, 'SOL'), (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (12, 'SOL'),
+              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (8, 'SOL'), (7, 'SOL'),
+              (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'),
+              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (13, 'SOL'), (14, 'SOL'),
+              (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (13, 'SOL'),
+              (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (9, 'SOL'), (10, 'SOL'),
+              (12, 'SOL'), (11, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'),
+              (14, 'SOL'), (12, 'SOL'), (11, 'SOL'), (16, 'SOL'), (15, 'SOL'),
+              (13, 'SOL'), (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'),
+              (14, 'SOL'), (3, 'SOL'), (4, 'SOL'), (16, 'SOL'), (15, 'SOL'),
+              (13, 'SOL'), (14, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
+              (2, 'SOL'), (13, 'SOL'), (14, 'SOL'), (16, 'SOL'), (15, 'SOL'),
+              (1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (16, 'SOL'),
+              (15, 'SOL'), (1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'),
+              (3, 'SOL'), (4, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
+              (6, 'SOL'), (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'),
+              (16, 'SOL'), (15, 'SOL'), (13, 'SOL'), (14, 'SOL'), (1, 'SOL'),
+              (2, 'SOL'), (1, 'SOL'), (3, 'SOL'), (4, 'SOL'), (7, 'SOL'),
+              (8, 'SOL'), (5, 'SOL'), (6, 'SOL'), (7, 'SOL'), (8, 'SOL'),
+              (5, 'SOL'), (6, 'SOL'), (11, 'SOL'), (12, 'SOL'), (9, 'SOL'),
+              (10, 'SOL'), (11, 'SOL'), (12, 'SOL'), (9, 'SOL'), (10, 'SOL'),
+              (15, 'SOL'), (16, 'SOL'), (13, 'SOL'), (14, 'SOL'), (15, 'SOL'),
+              (16, 'SOL'), (13, 'SOL'), (14, 'SOL'), (2, 'SOL'), (1, 'SOL'),
+              (3, 'SOL'), (4, 'SOL')]
+             )
 
         # ToFo: add more tests like for xyz
         # self.assertListEqual(res, ()
@@ -298,11 +343,14 @@ class TestReaders(unittest.TestCase):
 
         # check missing-CRYST1 warning (important feature in ChirPy)
         with self.assertWarns(RuntimeWarning):
-            data, names, symbols, res, cell_aa_deg, title = coordinates.pdbReader(
-                        self.dir + '/test_simple_nodims.pdb')
+            data, names, symbols, res, cell_aa_deg, title = \
+                    coordinates.pdbReader(
+                          self.dir + '/test_simple_nodims.pdb')
 
     # def test_cubeReader(self):
     #     data = volume.cubeReader(self.dir + '/test.cube')
+
+    # test iterators
 
 
 class TestWriters(unittest.TestCase):
@@ -358,6 +406,9 @@ class TestClasses(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+# also test the Iterators (important if they return correct shapes, especially
+# CPMD)
 
 #    @unittest.expectedFailure
 #    def test_fail(self):

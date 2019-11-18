@@ -42,7 +42,7 @@ class VCDSampling(): #later: merge it with itertools (do not load any traj data 
         del buf        
         
     def __add__(self,other):
-        new = _copy.deep_copy(self)
+        new = _copy.deepcopy(self)
         new.moments = _np.concatenate((self.moments,other.moments),axis=0)
         new.trajectory = _np.concatenate((self.trajectory,other.trajectory),axis=0)     
         new.n_frames = self.n_frames + other.n_frames
@@ -55,7 +55,7 @@ class VCDSampling(): #later: merge it with itertools (do not load any traj data 
         return self
     
     def __prod__(self,other):
-        new = _copy.deep_copy(self)
+        new = _copy.deepcopy(self)
         new.moments = _np.concatenate((self.moments,other.moments),axis=1)
         new.trajectory = _np.concatenate((self.trajectory,other.trajectory),axis=1)     
         new.n_moms = self.n_moms + other.n_moms        
@@ -64,7 +64,7 @@ class VCDSampling(): #later: merge it with itertools (do not load any traj data 
     
     
     def tail(self,n):
-        new = _copy.deep_copy(self)        
+        new = _copy.deepcopy(self)        
         new.moments = self.moments[-n:]
         new.trajectory = self.trajectory[-n:]
         new.n_frames = n

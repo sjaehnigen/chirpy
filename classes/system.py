@@ -126,7 +126,7 @@ class _SYSTEM():
                 if kwargs.get('cell_multiply') is not None:
                     cell_multiply = kwargs.get('cell_multiply')
                     cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
-                    self.XYZData_UnitCell = _copy.deep_copy(self.XYZData)
+                    self.XYZData_UnitCell = _copy.deepcopy(self.XYZData)
                     self.XYZData = self._UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
 
                     #---------------------------------------
@@ -140,7 +140,7 @@ class _SYSTEM():
                     #---------------------------------------
 
                     if hasattr(self,'Modes'):
-                        self.Modes_UnitCell = _copy.deep_copy(self.Modes)
+                        self.Modes_UnitCell = _copy.deepcopy(self.Modes)
                         self.Modes = self._UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
             except TypeError: #is this the correct Exception?
                 pass

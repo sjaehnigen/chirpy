@@ -19,6 +19,8 @@ import warnings as _warnings
 from ..snippets import extract_keys as _extract_keys
 from ..readers.modes import xvibsReader
 from ..readers.coordinates import xyzReader, cpmdReader
+from ..readers.coordinates import xyzIterator as _xyzIterator
+from ..readers.coordinates import cpmdIterator as _cpmdIterator
 from ..writers.coordinates import cpmdWriter, xyzWriter, pdbWriter
 # from ..writers.modes import xvibsWriter
 
@@ -44,6 +46,7 @@ from ..mathematics import algebra as _algebra
 #   trajectory is (F,N,X),
 #   list of modes is (M,F,N,X)
 #       --> Access data structures from behind!
+#   add iterators
 
 
 class _FRAME():
@@ -73,12 +76,12 @@ class _FRAME():
     def _sync_class(self):
         self.n_atoms, self.n_fields = self.data.shape
         # ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[0]:
+        if self.n_atoms != len(self.symbols):
             raise ValueError('ERROR: Data shape inconsistent '
                              'with symbols attribute!\n')
 
     def __add__(self, other):
-        new = _copy.deep_copy(self)
+        new = _copy.deepcopy(self)
         new.data = _np.concatenate((self.data, other.data),
                                    axis=self.axis_pointer)
         _l = new._labels[self.axis_pointer]
@@ -97,7 +100,7 @@ class _FRAME():
         return self
 
 #    def __prod__(self, other):
-#        new = _copy.deep_copy(self)
+#        new = _copy.deepcopy(self)
 #        new.data = self.data*other
 #        return new
 #
@@ -107,7 +110,7 @@ class _FRAME():
 
     def tail(self, n, **kwargs):
         axis = kwargs.get("axis", self.axis_pointer)
-        new = _copy.deep_copy(self)
+        new = _copy.deepcopy(self)
         new.data = self.data.swapaxes(axis, 0)[-n:].swapaxes(0, axis)
         try:
             _l = new._labels[axis]
@@ -163,10 +166,10 @@ class _TRAJECTORY(_FRAME):
     def _sync_class(self):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         # ToDo: more general routine looping _labels of object
-        if self.n_atoms != self.symbols.shape[0]:
+        if self.n_atoms != len(self.symbols):
             raise ValueError('ERROR: Data shape inconsistent with '
                              'symbols attribute!\n')
-        if self.n_frames != self.comments.shape[0]:
+        if self.n_frames != len(self.comments):
             raise ValueError('ERROR: Data shape inconsistent with '
                              'comments attribute!\n')
 
@@ -194,7 +197,11 @@ class _XYZ():
             self.fn = fn  # later: read multiple files
 
             if fmt == "xyz":
-                data, symbols, comments = xyzReader(fn)
+                data, symbols, comments = xyzReader(fn,
+                                                    **_extract_keys(kwargs,
+                                                                    range=_fr,
+                                                                    )
+                                                    )
 
             elif fmt == "xvibs":
                 comments = ["xvibs"]
@@ -239,8 +246,9 @@ class _XYZ():
                 _sh = data.shape
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
-                comments = _np.array(kwargs.get('comments',
-                                                data.shape[0] * ['passed']))
+                comments = _np.array([kwargs.get('comments',
+                                                 data.shape[0] * ['passed'])
+                                      ]).flatten()
             else:
                 raise TypeError('XYZData needs fn or data + symbols argument!')
 
@@ -249,10 +257,10 @@ class _XYZ():
         if self._type == 'frame':  # is it a frame?
             _f = kwargs.get("frame", 0)
             data = data[_f]
-            comments = _np.array([comments[_f]])
+            comments = [comments[_f]]
 
-        self.symbols = _np.array(symbols)
-        self.comments = _np.array(comments)
+        self.symbols = tuple(symbols)
+        self.comments = list(comments)
         self.data = data
         self._sync_class()
 
@@ -437,7 +445,7 @@ class _XYZ():
         separate_files = kwargs.get('separate_files', False)
 
         # not so nice but it works
-        loc_self = _copy.deep_copy(self)
+        loc_self = _copy.deepcopy(self)
         if self._type == "frame":
             loc_self.data = loc_self.data.reshape((1,
                                                    self.n_atoms,
@@ -533,6 +541,100 @@ class XYZFrame(_XYZ, _FRAME):
                              comments=[self.comments[0] + ' im ' + str(m)
                                        for m in _img]
                              )
+
+
+class XYZIterator():
+    '''Testing. Work in progress...'''
+    def __init__(self, *args, **kwargs):
+        if len(args) != 1:
+            raise TypeError("File reader of %s takes at exactly 1 argument!"
+                            % self.__class__.__name__)
+        else:
+            fn = args[0]
+            self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if self._fmt == "xyz":
+                buf, self._symbols, self._comments = xyzReader(fn,
+                                                               range=(0, 1),
+                                                               )
+
+                self._gen = _xyzIterator(fn,
+                                         **_extract_keys(
+                                                    kwargs,
+                                                    range=(0, float('inf')),
+                                                    )
+                                         )
+            elif self._fmt == "cpmd":
+                if ('symbols' in kwargs or 'numbers' in kwargs):
+                    numbers = kwargs.get('numbers')
+                    self._symbols = kwargs.get('symbols',
+                                               [constants.symbols[z - 1]
+                                                for z in numbers]
+                                               )
+                else:
+                    raise TypeError("cpmdReader needs list of numbers or "
+                                    "symbols.")
+                self._comments = kwargs.get('comments', [''])
+
+                self._gen = _cpmdIterator(fn,
+                                          **_extract_keys(
+                                                    kwargs,
+                                                    kinds=self._symbols,
+                                                    filetype=fn,
+                                                    range=(0, float('inf')),
+                                                    )
+                                          )
+
+            else:
+                raise ValueError('Unknown format: %s.' % self._fmt)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # self.current += 1
+        # if self.current < self.high:
+        #     return self.current
+        # raise StopIteration
+        frame = next(self._gen)
+
+        if self._fmt == 'xyz':
+            out = {
+                    'data': frame[0],
+                    'symbols': frame[1],
+                    'comments': frame[2],
+                    }
+
+        if self._fmt == 'cpmd':
+            frame[:, :3] *= constants.l_au2aa
+            out = {
+                    'data': frame,
+                    'symbols': self._symbols,
+                    'comments': self._comments,
+                    }
+
+        return XYZFrame(**out)
+
+    def _to_trajectory(self):
+        '''Perform iteration on remaining iterator
+           (may take some time)'''
+        if self._fmt == 'xyz':
+            data, symbols, comments = zip(*self._gen)
+            out = {
+                    'data': _np.array(data),
+                    'symbols': symbols[0],
+                    'comments': list(comments)
+                    }
+
+        if self._fmt == 'cpmd':
+            data = _np.array(tuple(self._gen))
+            data[:, :, :3] *= constants.l_au2aa
+            out = {
+                    'data': data,
+                    'symbols': self._symbols,
+                    'comments': [self._comments] * data.shape[0],
+                    }
+
+        return XYZTrajectory(**out)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):
@@ -705,7 +807,7 @@ class VibrationalModes():
         self.eivec /= norm[:, None, None] 
 
     def __add__(self, other):
-        new = _copy.deep_copy(self)
+        new = _copy.deepcopy(self)
         new.pos_au = _np.concatenate((self.pos_au, other.pos_au), axis=0)
         new.symbols = _np.concatenate((self.symbols, other.symbols)) #not so beautiful
         new.eivec = _np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
@@ -872,17 +974,17 @@ class VibrationalModes():
 #                m_ic_r, m_ic_t = calculate_mic(E0[im], R1[im], self._sw_c_au[mode], self.n_states, r_aa, box_vec_aa)
 #                self.m_ic_r_au[mode] = m_ic_r
 #                self.m_ic_t_au[mode] = m_ic_t
-#            self.m_lc_au = _copy.deep_copy(self.m_au)
+#            self.m_lc_au = _copy.deepcopy(self.m_au)
 #            self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
 #
 #    def calculate_mtm_spectrum(self):
-#        self.m_au = _copy.deep_copy(self.m_lc_au)
+#        self.m_au = _copy.deepcopy(self.m_lc_au)
 #        self.calculate_spectrum()
 #        self.continuous_spectrum(self.n_modes*[1])
-#        self.D_cgs_lc = _copy.deep_copy(self.D_cgs)
-#        self.R_cgs_lc = _copy.deep_copy(self.R_cgs)
-#        self.ira_spec_lc = _copy.deep_copy(self.ira_spec)
-#        self.vcd_spec_lc = _copy.deep_copy(self.vcd_spec)
+#        self.D_cgs_lc = _copy.deepcopy(self.D_cgs)
+#        self.R_cgs_lc = _copy.deepcopy(self.R_cgs)
+#        self.ira_spec_lc = _copy.deepcopy(self.ira_spec)
+#        self.vcd_spec_lc = _copy.deepcopy(self.vcd_spec)
 #        self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
 #        self.calculate_spectrum()
 #        self.continuous_spectrum(self.n_modes*[1])
@@ -1052,7 +1154,7 @@ class VibrationalModes():
         # loc_n_modes = len(modelist)
         if fmt == 'cpmd':
             print('CPMD WARNING: Output with sorted atomlist!')
-            loc_self = _copy.deep_copy(self)
+            loc_self = _copy.deepcopy(self)
             loc_self._sort()
             pos_au = _np.tile(loc_self.pos_au, (loc_self.n_modes, 1, 1))
             try:

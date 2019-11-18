@@ -16,7 +16,7 @@ import argparse
 import numpy as np
 
 from chirpy.classes import system
-
+from chirpy.snippets import  extract_keys
 
 def main():
     '''Extract given time step from trajectory.'''
@@ -55,10 +55,17 @@ def main():
     args = parser.parse_args()
     args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
 
-    system.Molecule(**vars(args)).XYZData._to_frame(fr=args.step).write(
-                                                                     args.f,
-                                                                     fmt='xyz',
-                                                                        )
+    system.Molecule(**extract_keys(vars(args),
+                                   fn=False,
+                                   center_coords=False,
+                                   sort=False,
+                                   cell_aa_deg=False,
+                                   ),
+                    frame_range=(args.step, args.step+1)
+                    ).XYZData._to_frame().write(
+                                                args.f,
+                                                fmt='xyz',
+                                                )
 
 
 if __name__ == "__main__":
