@@ -12,9 +12,9 @@
 # ------------------------------------------------------
 
 
-import sys
-import copy
-import numpy as np
+import sys as _sys
+import copy as _copy
+import numpy as _np
 
 known_types = {'modevectors': 'Modevectors',
                'molecule': 'Molecule',  # default
@@ -39,10 +39,10 @@ class PymolObject():
                     )
         except KeyError:
             print('ERROR: Unkown type  % s!' % kwargs.get('type'))
-            sys.exit(1)
+            _sys.exit(1)
 
     def __add__(self, other):
-        new = copy.deepcopy(self)
+        new = _copy.deepcopy(self)
         for name in other.__name__.split('+'):
             if not hasattr(new, name):
                 setattr(new, name, getattr(other, name))
@@ -93,15 +93,15 @@ class Modevectors(NamedObject):
             raise Exception('The given point arrays do not have the same shape')
         self.p0 = p0
         self.p1 = p1
-        lengths = np.linalg.norm(p0-p1, axis=1)
+        lengths = _np.linalg.norm(p0-p1, axis=1)
         # defaults
         self.cutoff = kwargs.get('cutoff', 0.0)
         self.cut = kwargs.get('cut', 0.0)
         self.factor = kwargs.get('factor', 1.0)
         # self.head_length = kwargs.get('head_length', 0.3) # my own default
-        self.head_length = kwargs.get('head_length', self.factor*np.mean(lengths)*0.4)  # my own default, t = 1 - d/lenght
-        self.head = kwargs.get('head', self.factor*np.mean(lengths)*0.100)  # my own default
-        self.tail = kwargs.get('tail', self.factor*np.mean(lengths)*0.033)  # my own default
+        self.head_length = kwargs.get('head_length', self.factor*_np.mean(lengths)*0.4)  # my own default, t = 1 - d/lenght
+        self.head = kwargs.get('head', self.factor*_np.mean(lengths)*0.100)  # my own default
+        self.tail = kwargs.get('tail', self.factor*_np.mean(lengths)*0.033)  # my own default
         self.notail = bool(kwargs.get('notail', False))
         self.headrgb = str(kwargs.get('headrgb', (1.0, 1.0, 1.0)))
         self.tailrgb = str(kwargs.get('tailrgb', (1.0, 1.0, 1.0)))

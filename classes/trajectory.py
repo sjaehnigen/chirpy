@@ -11,28 +11,31 @@
 #
 # ------------------------------------------------------
 
-import sys
-import copy
-import numpy as np
-import warnings
+import sys as _sys
+import copy as _copy
+import numpy as _np
+import warnings as _warnings
 
-from ..snippets import extract_keys
+from ..snippets import extract_keys as _extract_keys
 from ..readers.modes import xvibsReader
 from ..readers.coordinates import xyzReader, cpmdReader
 from ..writers.coordinates import cpmdWriter, xyzWriter, pdbWriter
 # from ..writers.modes import xvibsWriter
 
-from ..topology.mapping import align_atoms, dec
-from ..topology.symmetry import wrap, join_molecules
+from ..topology.mapping import align_atoms as _align_atoms
+from ..topology.mapping import dec as _dec
+from ..topology.symmetry import wrap as _wrap
+from ..topology.symmetry import join_molecules as _join_molecules
 
 from ..physics import constants
-from ..physics.constants import masses_amu
+from ..physics.constants import masses_amu as _masses_amu
 # from ..physics.classical_electrodynamics import current_dipole_moment, \
 # magnetic_dipole_shift_origin
 # from ..physics.modern_theory_of_magnetisation import calculate_mic
-from ..physics.statistical_mechanics import calculate_kinetic_energies
+from ..physics.statistical_mechanics import calculate_kinetic_energies as \
+        _calculate_kinetic_energies
 
-from ..mathematics import algebra
+from ..mathematics import algebra as _algebra
 
 # ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
 # new class: Moments()
@@ -45,12 +48,12 @@ from ..mathematics import algebra
 
 class _FRAME():
     # put it somewhere else
-    global ignore_warnings
-    ignore_warnings = False
-    if int(np.version.version.split('.')[1]) < 14:
+    global ignore__warnings
+    ignore__warnings = False
+    if int(_np.version.version.split('.')[1]) < 14:
         print('ERROR: You have to use a numpy version >= 1.14.0! '
-              'You are using %s.' % np.version.version)
-        sys.exit(1)
+              'You are using %s.' % _np.version.version)
+        _sys.exit(1)
 
     def _labels(self):
         self._type = 'frame'
@@ -63,9 +66,9 @@ class _FRAME():
 
     def _read_input(self,  *args, **kwargs):
         self.axis_pointer = kwargs.get('axis_pointer', 0)
-        self.comments = kwargs.get('comments', np.array([]))
-        self.symbols = kwargs.get('symbols', np.array([]))
-        self.data = kwargs.get('data', np.zeros((0, 0)))
+        self.comments = kwargs.get('comments', _np.array([]))
+        self.symbols = kwargs.get('symbols', _np.array([]))
+        self.data = kwargs.get('data', _np.zeros((0, 0)))
 
     def _sync_class(self):
         self.n_atoms, self.n_fields = self.data.shape
@@ -75,26 +78,26 @@ class _FRAME():
                              'with symbols attribute!\n')
 
     def __add__(self, other):
-        new = copy.deepcopy(self)
-        new.data = np.concatenate((self.data, other.data),
-                                  axis=self.axis_pointer)
+        new = _copy.deep_copy(self)
+        new.data = _np.concatenate((self.data, other.data),
+                                   axis=self.axis_pointer)
         _l = new._labels[self.axis_pointer]
-        setattr(new, _l, np.concatenate((getattr(self, _l),
+        setattr(new, _l, _np.concatenate((getattr(self, _l),
                                          getattr(other, _l))))
         new._sync_class()
         return new
 
     def __iadd__(self, other):
-        self.data = np.concatenate((self.data, other.data),
-                                   axis=self.axis_pointer)
+        self.data = _np.concatenate((self.data, other.data),
+                                    axis=self.axis_pointer)
         _l = self._labels[self.axis_pointer]
-        setattr(self, _l, np.concatenate((getattr(self, _l),
+        setattr(self, _l, _np.concatenate((getattr(self, _l),
                                           getattr(other, _l))))
         self._sync_class()
         return self
 
 #    def __prod__(self, other):
-#        new = copy.deepcopy(self)
+#        new = _copy.deep_copy(self)
 #        new.data = self.data*other
 #        return new
 #
@@ -104,7 +107,7 @@ class _FRAME():
 
     def tail(self, n, **kwargs):
         axis = kwargs.get("axis", self.axis_pointer)
-        new = copy.deepcopy(self)
+        new = _copy.deep_copy(self)
         new.data = self.data.swapaxes(axis, 0)[-n:].swapaxes(0, axis)
         try:
             _l = new._labels[axis]
@@ -115,8 +118,8 @@ class _FRAME():
         return new
 
     def _sort(self):  # use set?
-        elem = {s: np.where(self.symbols == s)[0]
-                for s in np.unique(self.symbols)}
+        elem = {s: _np.where(self.symbols == s)[0]
+                for s in _np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
         self.data = self.data.swapaxes(0, -2)[ind].swapaxes(0, -2)
         self.symbols = self.symbols[ind]
@@ -127,16 +130,16 @@ class _FRAME():
         # topology.map_atoms_by_coordinates
         ie = list(map(lambda a: getattr(self, a) == getattr(other, a),
                       ['n_atoms', 'n_fields']))
-        ie.append(bool(np.prod([a == b
-                                for a, b in zip(np.sort(self.symbols),
-                                                np.sort(other.symbols))])))
+        ie.append(bool(_np.prod([a == b
+                                for a, b in zip(_np.sort(self.symbols),
+                                                _np.sort(other.symbols))])))
         # if hasattr(data, 'cell_aa')
-        return np.prod(ie), ie
+        return _np.prod(ie), ie
 
     def _split(self, mask):
-        _data = [np.moveaxis(_d, 0, -2)
-                 for _d in dec(np.moveaxis(self.data, -2, 0), mask)]
-        _symbols = dec(self.symbols, mask)
+        _data = [_np.moveaxis(_d, 0, -2)
+                 for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
+        _symbols = _dec(self.symbols, mask)
 
         return [self._from_data(data=_d, symbols=_s, comment=self.comments)
                 for _d, _s in zip(_data, _symbols)]
@@ -153,9 +156,9 @@ class _TRAJECTORY(_FRAME):
 
     def _read_input(self,  *args, **kwargs):
         self.axis_pointer = kwargs.get('axis_pointer', 0)
-        self.comments = kwargs.get('comments', np.array([]))
-        self.symbols = kwargs.get('symbols', np.array([]))
-        self.data = kwargs.get('data', np.zeros((0, 0, 0)))
+        self.comments = kwargs.get('comments', _np.array([]))
+        self.symbols = kwargs.get('symbols', _np.array([]))
+        self.data = kwargs.get('data', _np.zeros((0, 0, 0)))
 
     def _sync_class(self):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
@@ -210,13 +213,13 @@ class _XYZ():
                                     "symbols.")
                 comments = kwargs.get('comments', [''])
 
-                data = np.array(cpmdReader(fn,
-                                           **extract_keys(kwargs,
-                                                          kinds=symbols,
-                                                          filetype=fn,
-                                                          range=_fr
-                                                          )
-                                           ))
+                data = _np.array(cpmdReader(fn,
+                                            **_extract_keys(kwargs,
+                                                            kinds=symbols,
+                                                            filetype=fn,
+                                                            range=_fr
+                                                            )
+                                            ))
 
                 # TMP solution: what is the convention for pos and vel?
                 data[:, :, :3] *= constants.l_au2aa
@@ -236,8 +239,8 @@ class _XYZ():
                 _sh = data.shape
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
-                comments = np.array(kwargs.get('comments',
-                                               data.shape[0] * ['passed']))
+                comments = _np.array(kwargs.get('comments',
+                                                data.shape[0] * ['passed']))
             else:
                 raise TypeError('XYZData needs fn or data + symbols argument!')
 
@@ -246,38 +249,38 @@ class _XYZ():
         if self._type == 'frame':  # is it a frame?
             _f = kwargs.get("frame", 0)
             data = data[_f]
-            comments = np.array([comments[_f]])
+            comments = _np.array([comments[_f]])
 
-        self.symbols = np.array(symbols)
-        self.comments = np.array(comments)
+        self.symbols = _np.array(symbols)
+        self.comments = _np.array(comments)
         self.data = data
         self._sync_class()
 
         if align_coords and self._type == "trajectory":  # is it a trajectory?
             print('Aligning atoms.')
-            self.pos_aa = align_atoms(self.pos_aa,
-                                      self.masses_amu,
-                                      ref=self.pos_aa[0])
+            self.pos_aa = _align_atoms(self.pos_aa,
+                                       self._masses_amu,
+                                       ref=self.pos_aa[0])
 
         # --------has to be an external function
         if center_coords:
             print('Centering coordinates in cell and wrap atoms.')
             cell_aa_deg = kwargs.get('cell_aa_deg',
-                                     np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
+                                     _np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
             # ToDo: Add universal cell support
             if not all([cl == 90. for cl in cell_aa_deg[3:]]):
                 print([cl for cl in cell_aa_deg[3:]])
                 raise ValueError('Only orthorhombic/cubic cells can be used '
                                  'with center function!')
             P = self.pos_aa
-            M = self.masses_amu
+            M = self._masses_amu
             # --- works for both traj and frame, as last two axes
             #     agree (smart numpy magic recognises frame axis)
-            com_aa = np.sum(P * M[:, None], axis=-2) / M.sum()
+            com_aa = _np.sum(P * M[:, None], axis=-2) / M.sum()
             self.pos_aa += cell_aa_deg[None, :3] / 2 - com_aa[None, :]
             print('WARNING: Auto-wrap of atoms (not mols) activated!')
             if not any(_c == 0.0 for _c in cell_aa_deg[:3]):
-                self.pos_aa = np.remainder(self.pos_aa, cell_aa_deg[:3])
+                self.pos_aa = _np.remainder(self.pos_aa, cell_aa_deg[:3])
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -305,17 +308,18 @@ class _XYZ():
 
     def _sync_class(self):
         try:
-            self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
+            self._masses_amu = _np.array([_masses_amu[s]
+                                          for s in self.symbols])
         except KeyError:
-            warnings.warn('Could not find all element masses!',
-                          RuntimeWarning)
+            _warnings.warn('Could not find all element masses!',
+                           RuntimeWarning)
         # These are NOT pointers and any changes to pos/vel will be overwritte
         # by data! You have to change data instead or use _pos/_vel
         self._pos_aa()
         self._vel_au()
         # Why using pos_aa/vel_au arguments AT ALL?
         if self.vel_au.size == 0:
-            self.vel_au = np.zeros_like(self.pos_aa)
+            self.vel_au = _np.zeros_like(self.pos_aa)
 
     def _is_equal(self, other, atol=1e-08):
         _p, ie = self._is_similar(other)
@@ -327,35 +331,35 @@ class _XYZ():
             _o_pos = getattr(other, a).reshape((1, ) + other.data.shape)
             _s_pos = getattr(self, a)
 
-            _o_pos = align_atoms(_o_pos, self.masses_amu, ref=_s_pos)[0]
-            return np.allclose(_s_pos, np.mod(_o_pos, _s_pos), atol=atol)
+            _o_pos = _align_atoms(_o_pos, self._masses_amu, ref=_s_pos)[0]
+            return _np.allclose(_s_pos, _np.mod(_o_pos, _s_pos), atol=atol)
 
         if _p == 1:
             ie += list(map(f, ['data']))
 
-        return np.prod(ie), ie
+        return _np.prod(ie), ie
 
     # join the next two methods?
     def _wrap_atoms(self, cell_aa_deg, **kwargs):
         if self._type == 'frame':
-            self._pos_aa(wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
-                              cell_aa_deg)[0])
+            self._pos_aa(_wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
+                               cell_aa_deg)[0])
         else:
-            self._pos_aa(wrap(self.pos_aa, cell_aa_deg))
+            self._pos_aa(_wrap(self.pos_aa, cell_aa_deg))
 
         # PDB needs it
-        # abc, albega = np.split(cell_aa_deg, 2)
+        # abc, albega = _np.split(cell_aa_deg, 2)
         # setattr(self, 'abc', abc)
         # setattr(self, 'albega', albega)
 
     def _wrap_molecules(self, mol_map, cell_aa_deg, **kwargs):
         mode = kwargs.get('mode', 'cog')
-        w = np.ones((self.n_atoms))
+        w = _np.ones((self.n_atoms))
         if mode == 'com':
-            w = self.masses_amu
+            w = self._masses_amu
 
         if self._type == 'frame':
-            _p, mol_c_aa = join_molecules(
+            _p, mol_c_aa = _join_molecules(
                                 self.pos_aa.reshape(1, self.n_atoms, 3),
                                 mol_map,
                                 cell_aa_deg,
@@ -364,7 +368,7 @@ class _XYZ():
             self._pos_aa(_p[0])
             del _p
         else:
-            _p, mol_c_aa = join_molecules(
+            _p, mol_c_aa = _join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 cell_aa_deg,
@@ -374,11 +378,11 @@ class _XYZ():
         return mol_c_aa
         # #print('UPDATE WARNING: inserted "swapaxes(0, 1)" for mol_cog_aa
         # attribute (new shape: (n_frames, n_mols, 3))!')
-        # setattr(self, 'mol_'+mode+'_aa', np.array(mol_c_aa).swapaxes(0, 1))
+        # setattr(self, 'mol_'+mode+'_aa', _np.array(mol_c_aa).swapaxes(0, 1))
         # setattr(self, 'mol_map', mol_map)
 
         # PDB needs it ToDo
-        # abc, albega = np.split(cell_aa_deg, 2)
+        # abc, albega = _np.split(cell_aa_deg, 2)
         # setattr(self, 'abc', abc)
         # setattr(self, 'albega', albega)
 
@@ -399,13 +403,13 @@ class _XYZ():
 
         if self._type == 'frame':
             _ref = self.pos_aa - self.pos_aa[i0, None]
-            _R = algebra.rotation_matrix(_ref[i1], vec)
-            _pos = np.tensordot(_R,
-                                _ref,
-                                axes=([1], [1])) + self.pos_aa[i0, None]
-            _vel = np.tensordot(_R,
-                                self.vel_au,
-                                axes=([1], [1])) * constants.l_aa2au
+            _R = _algebra.rotation_matrix(_ref[i1], vec)
+            _pos = _np.tensordot(_R,
+                                 _ref,
+                                 axes=([1], [1])) + self.pos_aa[i0, None]
+            _vel = _np.tensordot(_R,
+                                 self.vel_au,
+                                 axes=([1], [1])) * constants.l_aa2au
 
         else:
             _pos = []
@@ -414,15 +418,15 @@ class _XYZ():
                     self.pos_aa - self.pos_aa[:, i0, None],
                     self.vel_au
                     ):
-                _R = algebra.rotation_matrix(_p[i1], vec)
-                _pos.append(np.tensordot(_R,
-                                         _p,
-                                         axes=([1], [1])).swapaxes(0, 1))
-                _vel.append(np.tensordot(_R,
-                                         _v,
-                                         axes=([1], [1])).swapaxes(0, 1))
-            _pos = np.array(_pos) + self.pos_aa[:, i0, None]
-            _vel = np.array(_vel)
+                _R = _algebra.rotation_matrix(_p[i1], vec)
+                _pos.append(_np.tensordot(_R,
+                                          _p,
+                                          axes=([1], [1])).swapaxes(0, 1))
+                _vel.append(_np.tensordot(_R,
+                                          _v,
+                                          axes=([1], [1])).swapaxes(0, 1))
+            _pos = _np.array(_pos) + self.pos_aa[:, i0, None]
+            _vel = _np.array(_vel)
 
         self._pos_aa(_pos)
         self._vel_au(_vel)
@@ -433,7 +437,7 @@ class _XYZ():
         separate_files = kwargs.get('separate_files', False)
 
         # not so nice but it works
-        loc_self = copy.deepcopy(self)
+        loc_self = _copy.deep_copy(self)
         if self._type == "frame":
             loc_self.data = loc_self.data.reshape((1,
                                                    self.n_atoms,
@@ -469,16 +473,17 @@ class _XYZ():
             mol_map = kwargs.get('mol_map')
             cell_aa_deg = kwargs.get('cell_aa_deg')
             if cell_aa_deg is None:
-                warnings.warn("Missing cell parametres for PDB output!",
-                              RuntimeWarning)
-                cell_aa_deg = np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+                _warnings.warn("Missing cell parametres for PDB output!",
+                               RuntimeWarning)
+                cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter(fn,
                       loc_self.pos_aa[0],  # only frame 0 vels are not written
                       types=loc_self.symbols,  # types not supported
                       symbols=loc_self.symbols,
-                      residues=np.vstack((np.array(mol_map) + 1,
-                                          np.array(['MOL'] * loc_self.n_atoms)
-                                          )).swapaxes(0, 1),
+                      residues=_np.vstack((
+                                    _np.array(mol_map) + 1,
+                                    _np.array(['MOL'] * loc_self.n_atoms)
+                                    )).swapaxes(0, 1),
                       box=cell_aa_deg,
                       title='Generated from %s with Molecule Class' % self.fn
                       )
@@ -498,11 +503,11 @@ class _XYZ():
 
     # Some info prints
     def get_atom_spread(self):
-        '''pos_aa: np.array of shape (n_frames, n_atoms, 3)'''
-        dim_qm = np.zeros((3))
+        '''pos_aa: _np.array of shape (n_frames, n_atoms, 3)'''
+        dim_qm = _np.zeros((3))
         for i in range(3):
-            imin = np.min(self.pos_aa[:, :, i])
-            imax = np.max(self.pos_aa[:, :, i])
+            imin = _np.min(self.pos_aa[:, :, i])
+            imax = _np.max(self.pos_aa[:, :, i])
             dim_qm[i] = imax - imin
         print('Spread of QM atoms:       %s %s %s'
               % tuple([round(dim, 4) for dim in dim_qm]))
@@ -517,13 +522,13 @@ class XYZFrame(_XYZ, _FRAME):
     def _make_trajectory(self, **kwargs):
         n_images = kwargs.get('n_images', 3)
         ts_fs = kwargs.get('ts_fs', 1)
-        _img = np.arange(-(n_images // 2), n_images // 2 + 1)
-        _pos_aa = np.tile(self.pos_aa, (n_images, 1, 1))
-        _vel_aa = np.tile(self.vel_au * constants.t_fs2au * constants.l_au2aa,
-                          (n_images, 1, 1))
+        _img = _np.arange(-(n_images // 2), n_images // 2 + 1)
+        _pos_aa = _np.tile(self.pos_aa, (n_images, 1, 1))
+        _vel_aa = _np.tile(self.vel_au * constants.t_fs2au * constants.l_au2aa,
+                           (n_images, 1, 1))
         _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
 
-        return XYZTrajectory(data=np.dstack((_pos_aa, _vel_aa)),
+        return XYZTrajectory(data=_np.dstack((_pos_aa, _vel_aa)),
                              symbols=self.symbols,
                              comments=[self.comments[0] + ' im ' + str(m)
                                        for m in _img]
@@ -540,13 +545,15 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
     def _move_residue_to_centre(self, ref, cell_aa_deg, **kwargs):
         try:
             ref_pos_aa = getattr(self, 'mol_cog_aa')[:, ref]
-        except:
+        except AttributeError:
             ref_pos_aa = getattr(self, 'mol_com_aa')[:, ref]
         if not all([cl == 90. for cl in cell_aa_deg[3:]]):
             print([cl for cl in cell_aa_deg[3:]])
-            print('ERROR: only orthorhombic/cubic cells can be used with center function!')
-            sys.exit(1)
-        self.pos_aa[:, :, :3] += cell_aa_deg[None, None, :3]/2 - ref_pos_aa[:, None, :]
+            print('ERROR: only orthorhombic/cubic cells can be used with '
+                  'center function!')
+            _sys.exit(1)
+        self.pos_aa[:, :, :3] += cell_aa_deg[None, None, :3]/2 -\
+            ref_pos_aa[:, None, :]
 
     def _to_frame(self, fr=0):
         return XYZFrame(data=self.data[fr],
@@ -558,22 +565,25 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
         # temperature = kwargs.get('temperature', 300)
         ts = kwargs.get('ts', 0.5)
 
-        if np.linalg.norm(self.vel_au) != 0:
-            warnings.warn('Overwriting existing velocities in file %s'
-                          % self.fn,
-                          RuntimeWarning)
-        self.vel_au[:-1] = np.diff(self.pos_aa,
-                                   axis=0) / (ts * constants.v_au2aaperfs)  # *np.sqrt(self.masses_amu)[None, :, None]
+        if _np.linalg.norm(self.vel_au) != 0:
+            _warnings.warn('Overwriting existing velocities in file %s'
+                           % self.fn,
+                           RuntimeWarning)
+        self.vel_au[:-1] = _np.diff(self.pos_aa,
+                                    axis=0) / (ts * constants.v_au2aaperfs)
+        # *_np.sqrt(self._masses_amu)[None, :, None]
 
-#        norm = np.linalg.norm(vec, axis=(1, 2))
+#        norm = _np.linalg.norm(vec, axis=(1, 2))
 #        vec /= norm[:, None, None] # treat as normal mode
-        # Adapted from Arne Scherrer. Occupation can be single, average, or random.
+        # Occupation can be single, average, or random.
 #        beta_au = 1./(temperature*constants.k_B_au)
-#        S = vec/np.sqrt(beta_au)#/np.sqrt(constants.m_amu_au)/np.sqrt(self.masses_amu)[None, :, None]  
+#        S = vec/_np.sqrt(beta_au)#/_np.sqrt(constants.m_amu_au)/ \
+#        _np.sqrt(self._masses_amu)[None, :, None]
         # occupation = 'single'
 #        self.vel_au[:-1] = S #last frame remains unchanged
-#        e_kin_au = CalculateKineticEnergies(self.vel_au, self.masses_amu)
-#        scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_frames-1)/2
+#        e_kin_au = CalculateKineticEnergies(self.vel_au, self._masses_amu)
+#        scale = temperature/(_np.sum(e_kin_au)/constants.k_B_au/\
+#        self.n_frames-1)/2
 
 # -----DEPRECATED---------------------
 # class XYZData(XYZTrajectory):
@@ -620,25 +630,25 @@ class VibrationalModes():
             raise ValueError('Unknown format: %s.' % fmt)
 
         self.pos_au = pos_au
-        self.comments = np.array(comments)
-        self.symbols  = np.array(symbols)
-        self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
-        self.eival_cgs = np.array(eival_cgs)
+        self.comments = _np.array(comments)
+        self.symbols = _np.array(symbols)
+        self._masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
+        self.eival_cgs = _np.array(eival_cgs)
         self.modes = modes
-        #new_eivec = modes*np.sqrt(self.masses_amu*constants.m_amu_au)[None, :, None]
-        new_eivec = modes*np.sqrt(self.masses_amu)[None, :, None]
-        self.eivec  = new_eivec#/np.linalg.norm(new_eivec, axis=(1, 2))[:, None, None]  #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again 
+        #new_eivec = modes*_np.sqrt(self._masses_amu*constants.m_amu_au)[None, :, None]
+        new_eivec = modes*_np.sqrt(self._masses_amu)[None, :, None]
+        self.eivec  = new_eivec#/_np.linalg.norm(new_eivec, axis=(1, 2))[:, None, None]  #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again 
         self._sync_class()
 
         # use external function
         if center_coords:
             cell_aa = kwargs.get('cell_aa',
-                                 np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
+                                 _np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
             if not all([cl == 90. for cl in cell_aa[3:]]):
                 print('ERROR: only orthorhombic/cubic cells can be used with center function!')
             P = self.pos_au
-            M = self.masses_amu
-            com_au = np.sum(P*M[:, None], axis=-2)/M.sum()
+            M = self._masses_amu
+            com_au = _np.sum(P*M[:, None], axis=-2)/M.sum()
             self.pos_au += cell_aa[None, :3]/2*constants.l_aa2au - com_au[None, :]
 
         self._sync_class()
@@ -647,76 +657,76 @@ class VibrationalModes():
     def _check_orthonormality(self):
         # How to treat rot/trans exclusion? detect 5 or 6?
         atol = 5.E-5
-        com_motion = np.linalg.norm((
-                                self.modes * self.masses_amu[None, :, None]
-                                ).sum(axis=1), axis=-1)/self.masses_amu.sum()
+        com_motion = _np.linalg.norm((
+                                self.modes * self._masses_amu[None, :, None]
+                                ).sum(axis=1), axis=-1)/self._masses_amu.sum()
 
-        if np.amax(com_motion) > atol:
-            warnings.warn('Significant motion of COM for certain modes!',
-                          RuntimeWarning)
+        if _np.amax(com_motion) > atol:
+            _warnings.warn('Significant motion of COM for certain modes!',
+                           RuntimeWarning)
 
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
-        a = np.inner(test, test)
-        if any([np.allclose(a,
-                            np.identity(self.n_modes),
+        a = _np.inner(test, test)
+        if any([_np.allclose(a,
+                            _np.identity(self.n_modes),
                             atol=atol),
-                np.allclose(a[6:, 6:],
-                            np.identity(self.n_modes-6),
+                _np.allclose(a[6:, 6:],
+                            _np.identity(self.n_modes-6),
                             atol=atol)]):
-            # DEPRECATED use of 'ignore_warnings'
+            # DEPRECATED use of 'ignore__warnings'
             print('ERROR: The given cartesian displacements are orthonormal! '
                   'Please try to enable/disable the -mw flag!')
-            if not ignore_warnings:
-                sys.exit(1)
+            if not ignore__warnings:
+                _sys.exit(1)
             else:
                 print('IGNORED')
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
-        a = np.inner(test, test)
-        if not any([np.allclose(a,
-                                np.identity(self.n_modes),
-                                atol=atol),
-                    np.allclose(a[6:, 6:],
-                                np.identity(self.n_modes-6),
-                                atol=atol)
+        a = _np.inner(test, test)
+        if not any([_np.allclose(a,
+                                 _np.identity(self.n_modes),
+                                 atol=atol),
+                    _np.allclose(a[6:, 6:],
+                                 _np.identity(self.n_modes-6),
+                                 atol=atol)
                     ]):
             print(a)
             print('ERROR: The eigenvectors are not orthonormal!')
-            print(np.amax(np.abs(a-np.identity(self.n_modes))))
-            if not ignore_warnings:
-                sys.exit(1)
+            print(_np.amax(_np.abs(a-_np.identity(self.n_modes))))
+            if not ignore__warnings:
+                _sys.exit(1)
             else:
                 print('IGNORED')
 
     def _sync_class(self):
-        self.masses_amu = np.array([masses_amu[s] for s in self.symbols])
+        self._masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
         self.n_modes, self.n_atoms, three = self.modes.shape
-        norm = np.linalg.norm(self.eivec, axis=(1, 2)) #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again
+        norm = _np.linalg.norm(self.eivec, axis=(1, 2)) #usually modes have been normalized after mass-weighing, so eivecs have to be normalized again
         norm[:6] = 1.0  # trans+rot
         self.eivec /= norm[:, None, None] 
 
     def __add__(self, other):
-        new = copy.deepcopy(self)
-        new.pos_au = np.concatenate((self.pos_au, other.pos_au), axis=0)
-        new.symbols = np.concatenate((self.symbols, other.symbols)) #not so beautiful
-        new.eivec = np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
-        new.modes = np.concatenate((self.modes, other.modes), axis=1) #axis 0 are the modes
+        new = _copy.deep_copy(self)
+        new.pos_au = _np.concatenate((self.pos_au, other.pos_au), axis=0)
+        new.symbols = _np.concatenate((self.symbols, other.symbols)) #not so beautiful
+        new.eivec = _np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
+        new.modes = _np.concatenate((self.modes, other.modes), axis=1) #axis 0 are the modes
         new._sync_class()
         return new
 
     def __iadd__(self, other):
-        self.pos_au = np.concatenate((self.pos_au, other.pos_au), axis=0)
-        self.symbols = np.concatenate((self.symbols, other.symbols))
-        self.eivec = np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
-        self.modes = np.concatenate((self.modes, other.modes), axis=1) #axis 0 are the modes
+        self.pos_au = _np.concatenate((self.pos_au, other.pos_au), axis=0)
+        self.symbols = _np.concatenate((self.symbols, other.symbols))
+        self.eivec = _np.concatenate((self.eivec, other.eivec), axis=1) #axis 0 are the modes
+        self.modes = _np.concatenate((self.modes, other.modes), axis=1) #axis 0 are the modes
         self._sync_class()
         return self
 
     def _sort(self):
-        elem = {s: np.where(self.symbols == s)[0] for s in np.unique(self.symbols)}
+        elem = {s: _np.where(self.symbols == s)[0] for s in _np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
         self.pos_au = self.pos_au[ind, :]
         self.symbols = self.symbols[ind]
-        self.masses_amu = self.masses_amu[ind]
+        self._masses_amu = self._masses_amu[ind]
         self.eivec = self.eivec[:, ind, :]
         self.modes = self.modes[:, ind, :]
 
@@ -741,42 +751,42 @@ class VibrationalModes():
 #                raise Exception('ERROR: Please give fn_traj and fn_moms for source "cpmd_nvpt_md"!')
 #            cell_au = getattr(self, 'cell_au', None)
 #
-#            ZV = np.array([valence_charges[s] for s in self.symbols])
+#            ZV = _np.array([valence_charges[s] for s in self.symbols])
 #            n_atoms, n_moms = len(self.symbols), sum(ZV)//2  # all electron calcs? -> do not use ZV but Z
 #
 #            self.n_states = n_moms
-#            self.c_au = np.zeros((self.n_modes, 3))
-#            self.m_au = np.zeros((self.n_modes, 3))
-#            self._transport_term_au = np.zeros((self.n_modes, 3))
-#            self._r_wc_au = np.zeros((self.n_modes, self.n_states, 3))
-#            self._sw_c_au = np.zeros((self.n_modes, self.n_states, 3))
-#            self._sw_m_dwc_au = np.zeros((self.n_modes, self.n_states, 3))
+#            self.c_au = _np.zeros((self.n_modes, 3))
+#            self.m_au = _np.zeros((self.n_modes, 3))
+#            self._transport_term_au = _np.zeros((self.n_modes, 3))
+#            self._r_wc_au = _np.zeros((self.n_modes, self.n_states, 3))
+#            self._sw_c_au = _np.zeros((self.n_modes, self.n_states, 3))
+#            self._sw_m_dwc_au = _np.zeros((self.n_modes, self.n_states, 3))
 #
 #            if hasattr(self, 'mol_map'):
 #                print('Using molecular gauge.')
 #                coms = self.mol_com_au
 #                n_map = self.mol_map
-#                self.mol_c_au = np.zeros((self.n_modes, self.n_mols, 3))
-#                self.mol_m_au = np.zeros((self.n_modes, self.n_mols, 3))
+#                self.mol_c_au = _np.zeros((self.n_modes, self.n_mols, 3))
+#                self.mol_m_au = _np.zeros((self.n_modes, self.n_mols, 3))
 #            else:
-#                coms = (np.sum(self.pos_au*self.masses_amu[:, None], axis=0)/self.masses_amu.sum()).reshape((1, 3))
-#                n_map = tuple(np.zeros((self.n_atoms)).astype(int))
+#                coms = (_np.sum(self.pos_au*self._masses_amu[:, None], axis=0)/self._masses_amu.sum()).reshape((1, 3))
+#                n_map = tuple(_np.zeros((self.n_atoms)).astype(int))
 #
-#            ZV = dec(ZV, n_map)
+#            ZV = _dec(ZV, n_map)
 #
 #            for i_mode, (pos, vel, wc, c, m) in enumerate(cpmd.get_frame_traj_and_mom(fn_traj, fn_moms, n_atoms, n_moms)):
 #                if i_mode >= len(modelist):
 #                    print('WARNING: Trajectory file contains more entries than given modelist!')
 #                    break
 #                else:
-#                    if not np.allclose(self.pos_au, pos):
-#                        test = np.unique(np.around(pos-self.pos_au, 6))
+#                    if not _np.allclose(self.pos_au, pos):
+#                        test = _np.unique(_np.around(pos-self.pos_au, 6))
 #                        if test.shape == (3, ):
 #                            print('WARNING: fn_traj coordinates shifted by vector %s with respect to stored coordinates!'%test)
 #                        else:
-#                            print('ERROR: fn_traj not consistent with nuclear coordinates!')#, np.around(pos-self.pos_au, 6))
-#                            if not ignore_warnings:
-#                                sys.exit(1)
+#                            print('ERROR: fn_traj not consistent with nuclear coordinates!')#, _np.around(pos-self.pos_au, 6))
+#                            if not ignore__warnings:
+#                                _sys.exit(1)
 #                            else:
 #                                print('IGNORED')
 #
@@ -786,13 +796,13 @@ class VibrationalModes():
 #                    self._r_wc_au[modelist[i_mode]] = wc
 #
 #                    # assign Wannier centers to molecules
-#                    dists = pos[np.newaxis, :, :] - wc[:, np.newaxis, :]
+#                    dists = pos[_np.newaxis, :, :] - wc[:, _np.newaxis, :]
 #                    if hasattr(cell_au, 'shape'):
-#                        dists -= np.around(dists/cell_au)*cell_au
-#                    e_map = [n_map[np.argmin(state_distances)] for state_distances in np.sum(dists**2, axis=2)]
+#                        dists -= _np.around(dists/cell_au)*cell_au
+#                    e_map = [n_map[_np.argmin(state_distances)] for state_distances in _np.sum(dists**2, axis=2)]
 #                    # decompose data into molecular contributions
-#                    pos, vel = dec(pos, n_map), dec(vel, n_map)
-#                    wc, c, m = dec(wc, e_map), dec(c, e_map), dec(m, e_map)
+#                    pos, vel = _dec(pos, n_map), _dec(vel, n_map)
+#                    wc, c, m = _dec(wc, e_map), _dec(c, e_map), _dec(m, e_map)
 #
 #                    mol_c, mol_m = list(), list()
 #                    for i_mol, com in enumerate(coms):  # wannier2molecules
@@ -802,14 +812,14 @@ class VibrationalModes():
 #                        el_m += magnetic_dipole_shift_origin(wc[i_mol], el_c, origin_au=com, cell_au=cell_au)
 #
 #                        nu_c = current_dipole_moment(vel[i_mol], ZV[i_mol]) 
-#                        nu_m = np.zeros(nu_c.shape).sum(axis=0)
+#                        nu_m = _np.zeros(nu_c.shape).sum(axis=0)
 #                        nu_m += magnetic_dipole_shift_origin(pos[i_mol], nu_c, origin_au=com, cell_au=cell_au)
 #
 #                        mol_c.append(nu_c.sum(axis=0)+el_c.sum(axis=0))
 #                        mol_m.append(nu_m + el_m)
 #
-#                    mol_c = np.array(mol_c)
-#                    mol_m = np.array(mol_m)
+#                    mol_c = _np.array(mol_c)
+#                    mol_m = _np.array(mol_m)
 #
 #                    for i_mol, com in enumerate(coms): #molecules2common no scaling
 #                        self.c_au[modelist[i_mode]] += mol_c.sum(axis=0)
@@ -827,16 +837,16 @@ class VibrationalModes():
 #            fn_AAT = kwargs.get('fn_AAT')
 #            if None in [fn_APT, fn_AAT]:
 #                raise Exception('ERROR: Please give fn_APT and fn_AAT for source "cpmd_nvpt_at"!')
-#            self.c_au = np.zeros((self.n_modes, 3))
-#            self.m_au = np.zeros((self.n_modes, 3))
+#            self.c_au = _np.zeros((self.n_modes, 3))
+#            self.m_au = _np.zeros((self.n_modes, 3))
 #
-#            self.APT = np.loadtxt(fn_APT).astype(float).reshape(self.n_atoms, 3, 3)
-#            self.AAT = np.loadtxt(fn_AAT).astype(float).reshape(self.n_atoms, 3, 3)
-#            sumrule = constants.e_si**2*constants.avog*np.pi*np.sum(self.APT**2/self.masses_amu[:, np.newaxis, np.newaxis])/(3*constants.c_si**2)/constants.m_amu_si
+#            self.APT = _np.loadtxt(fn_APT).astype(float).reshape(self.n_atoms, 3, 3)
+#            self.AAT = _np.loadtxt(fn_AAT).astype(float).reshape(self.n_atoms, 3, 3)
+#            sumrule = constants.e_si**2*constants.avog*_np.pi*_np.sum(self.APT**2/self._masses_amu[:, _np.newaxis, _np.newaxis])/(3*constants.c_si**2)/constants.m_amu_si
 #            print(sumrule)
 #            # modes means cartesian displacements
-#            self.c_au = (self.modes[:, :, :, np.newaxis]*self.APT[np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
-#            self.m_au = (self.modes[:, :, :, np.newaxis]*self.AAT[np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
+#            self.c_au = (self.modes[:, :, :, _np.newaxis]*self.APT[_np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
+#            self.m_au = (self.modes[:, :, :, _np.newaxis]*self.AAT[_np.newaxis, :, :, :]).sum(axis=2).sum(axis=1)
 #            # INSERT HERE MOLECULAR GAUGE
 #
 #        else:  # orca, ...
@@ -852,33 +862,33 @@ class VibrationalModes():
 #            if None in [fn_e0, fn_r1, modelist]:
 #                raise Exception('ERROR: Please give fn_e0, fn_r1, and modelist for source "cpmd_nvpt_md"!')
 #            E0, R1 = cpmd.extract_mtm_data_tmp(fn_e0, fn_r1, len(modelist), self.n_states)
-#            com_au = np.sum(self.pos_au*self.masses_amu[:, None], axis=0)/self.masses_amu.sum()
-#            origin_aa = np.zeros(box_vec_aa.shape)
-#            self.m_ic_r_au = np.zeros((self.n_modes, 3))
-#            self.m_ic_t_au = np.zeros((self.n_modes, 3))
+#            com_au = _np.sum(self.pos_au*self._masses_amu[:, None], axis=0)/self._masses_amu.sum()
+#            origin_aa = _np.zeros(box_vec_aa.shape)
+#            self.m_ic_r_au = _np.zeros((self.n_modes, 3))
+#            self.m_ic_t_au = _np.zeros((self.n_modes, 3))
 #            for im, mode in enumerate(modelist):
-#                r_aa = (self._r_wc_au[mode]-com_au[np.newaxis, :])*constants.l_au2aa+origin_aa[np.newaxis, :]
-#                r_aa -= np.around(r_aa/box_vec_aa)*box_vec_aa
+#                r_aa = (self._r_wc_au[mode]-com_au[_np.newaxis, :])*constants.l_au2aa+origin_aa[_np.newaxis, :]
+#                r_aa -= _np.around(r_aa/box_vec_aa)*box_vec_aa
 #                m_ic_r, m_ic_t = calculate_mic(E0[im], R1[im], self._sw_c_au[mode], self.n_states, r_aa, box_vec_aa)
 #                self.m_ic_r_au[mode] = m_ic_r
 #                self.m_ic_t_au[mode] = m_ic_t
-#            self.m_lc_au = copy.deepcopy(self.m_au)
+#            self.m_lc_au = _copy.deep_copy(self.m_au)
 #            self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
 #
 #    def calculate_mtm_spectrum(self):
-#        self.m_au = copy.deepcopy(self.m_lc_au)
+#        self.m_au = _copy.deep_copy(self.m_lc_au)
 #        self.calculate_spectrum()
 #        self.continuous_spectrum(self.n_modes*[1])
-#        self.D_cgs_lc = copy.deepcopy(self.D_cgs)
-#        self.R_cgs_lc = copy.deepcopy(self.R_cgs)
-#        self.ira_spec_lc = copy.deepcopy(self.ira_spec)
-#        self.vcd_spec_lc = copy.deepcopy(self.vcd_spec)
+#        self.D_cgs_lc = _copy.deep_copy(self.D_cgs)
+#        self.R_cgs_lc = _copy.deep_copy(self.R_cgs)
+#        self.ira_spec_lc = _copy.deep_copy(self.ira_spec)
+#        self.vcd_spec_lc = _copy.deep_copy(self.vcd_spec)
 #        self.m_au += self.m_ic_r_au  # +self.m_ic_t_au
 #        self.calculate_spectrum()
 #        self.continuous_spectrum(self.n_modes*[1])
 
     def load_localised_power_spectrum(self, fn_spec):
-        a = np.loadtxt(fn_spec)
+        a = _np.loadtxt(fn_spec)
         self.nu_cgs = a[:, 0]  # unit already cm-1 if coming from molsim
         self.pow_loc = a[:, 1:].swapaxes(0, 1)  # unit?
 
@@ -886,17 +896,17 @@ class VibrationalModes():
         self.D_cgs = (self.c_au*self.c_au).sum(axis=1)  # going to be cgs
         self.R_cgs = (self.c_au*self.m_au).sum(axis=1)
 
-        #rot_str_p_p_trans = np.zeros(n_modes)
-        #rot_str_p_p_diff  = np.zeros(n_modes)
+        #rot_str_p_p_trans = _np.zeros(n_modes)
+        #rot_str_p_p_diff  = _np.zeros(n_modes)
         # NEW STUFF
         #    dip_intensity      = dip_str*IR_int_kmpmol
         #    dip_str           *= dip_str_cgs/omega_invcm
         #    rot_str_m_p       *= rot_str_cgs #**2
         #Understand units later
         atomic_mass_unit = constants.m_amu_au #1822.88848367
-        ev2au = 1/np.sqrt(atomic_mass_unit)  # eigenvalue to atomic units
-        #ev2wn = ev2au/(2*np.pi*constants.t_au*constants.c_si)/100 # eigenvalues to wave numbers
-        au2wn = 1/(2*np.pi*constants.t_au*constants.c_si)/100 # atomic units to wave numbers
+        ev2au = 1/_np.sqrt(atomic_mass_unit)  # eigenvalue to atomic units
+        #ev2wn = ev2au/(2*_np.pi*constants.t_au*constants.c_si)/100 # eigenvalues to wave numbers
+        au2wn = 1/(2*_np.pi*constants.t_au*constants.c_si)/100 # atomic units to wave numbers
         ###################################################################################################
         # Dipole Strength
         # D_n = APT^2 S_n^2  hbar/(2 omega_n)
@@ -949,28 +959,28 @@ class VibrationalModes():
         def Lorentzian1(x, width, height, position):
             numerator = 1
             denominator = (x-position)**2 + width**2
-            y = height*(numerator/denominator)/np.pi
+            y = height*(numerator/denominator)/_np.pi
             return y
 
         def Lorentzian2(x, width, height, position):
             numerator = width
             denominator = (x-position)**2 + width**2
-            y = height*(numerator/denominator)/np.pi
+            y = height*(numerator/denominator)/_np.pi
             return y
 
         try:
             n_points = self.nu_cgs.shape[0]
             print('Found already loaded spectral data. Using now its frequency range.')
         except AttributeError:
-            self.nu_cgs = np.arange(nu_min_cgs, nu_max_cgs, d_nu_cgs)
+            self.nu_cgs = _np.arange(nu_min_cgs, nu_max_cgs, d_nu_cgs)
             n_points = self.nu_cgs.shape[0]
 
-        self.ira_spec = np.zeros((1+self.n_modes, n_points))
-        self.vcd_spec = np.zeros((1+self.n_modes, n_points))
+        self.ira_spec = _np.zeros((1+self.n_modes, n_points))
+        self.vcd_spec = _np.zeros((1+self.n_modes, n_points))
 
         D_cgs = self.D_cgs*1E-40  # [esu2cm2]
         R_cgs = self.R_cgs*1E-44  # [esu2cm2]
-        prefactor_cgs = (4*np.pi**2*constants.avog)/(3*constants.c_cgs*constants.hbar_cgs)
+        prefactor_cgs = (4*_np.pi**2*constants.avog)/(3*constants.c_cgs*constants.hbar_cgs)
         cm2_to_kmcm = 1E-5
         D_scaled = D_cgs*1*prefactor_cgs*cm2_to_kmcm
         R_scaled = R_cgs*4*prefactor_cgs*cm2_to_kmcm
@@ -1003,32 +1013,32 @@ class VibrationalModes():
         print('Calculating velocities for {} K.'.format(temperature))
 
         S = self.eivec /\
-            np.sqrt(beta_au) /\
-            np.sqrt(constants.m_amu_au) /\
-            np.sqrt(self.masses_amu)[None, :, None]  # use eivec not modes due to normalisation of the latter (all in all not so happy :()
+            _np.sqrt(beta_au) /\
+            _np.sqrt(constants.m_amu_au) /\
+            _np.sqrt(self._masses_amu)[None, :, None]  # use eivec not modes due to normalisation of the latter (all in all not so happy :()
 
         if occupation == 'single':
             self.vel_au = S
-            e_kin_au = calculate_kinetic_energies(self.vel_au, self.masses_amu)
-            scale = temperature/(np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
+            e_kin_au = _calculate_kinetic_energies(self.vel_au, self._masses_amu)
+            scale = temperature/(_np.sum(e_kin_au)/constants.k_B_au/self.n_modes)/2
             print(scale)
             self.vel_au *= scale
 
         elif occupation == 'average':
             self.vel_au = S.sum(axis=0)
-            # atomic_ekin_au = traj_utils.CalculateKineticEnergies(avg, masses_amu)
-            # scale = temperature/(np.sum(atomic_ekin_au)/constants.k_B_au/n_modes)/2
+            # atomic_ekin_au = traj_utils.CalculateKineticEnergies(avg, _masses_amu)
+            # scale = temperature/(_np.sum(atomic_ekin_au)/constants.k_B_au/n_modes)/2
             # print(scale)
-            # avg *= np.sqrt(scale)
+            # avg *= _np.sqrt(scale)
         elif occupation == 'random':  # NOT TESTED!
-            phases = np.random.rand(self.n_modes)*np.pi
-            self.vel_au = (S*np.cos(phases)[:, None, None]).sum(axis=0)
+            phases = _np.random.rand(self.n_modes)*_np.pi
+            self.vel_au = (S*_np.cos(phases)[:, None, None]).sum(axis=0)
 
             # random pos
-#            avg = np.zeros((1, n_atoms, 3))
-#            omega_au = 2*np.pi*np.array(self.eival_cgs)*constants.c_cgs*constants.t_au
+#            avg = _np.zeros((1, n_atoms, 3))
+#            omega_au = 2*_np.pi*_np.array(self.eival_cgs)*constants.c_cgs*constants.t_au
 #            for i_mode in range(self.n_modes):
-#                avg += S[i_mode].reshape(1, self.n_atoms, 3)*np.sin(phases[i_mode])/omega_au[i_mode]
+#                avg += S[i_mode].reshape(1, self.n_atoms, 3)*_np.sin(phases[i_mode])/omega_au[i_mode]
 #            avg *= constants.l_au2aa
 #            avg += self.pos_au*constants.l_au2aa
             print('Random seed not tested')
@@ -1042,9 +1052,9 @@ class VibrationalModes():
         # loc_n_modes = len(modelist)
         if fmt == 'cpmd':
             print('CPMD WARNING: Output with sorted atomlist!')
-            loc_self = copy.deepcopy(self)
+            loc_self = _copy.deep_copy(self)
             loc_self._sort()
-            pos_au = np.tile(loc_self.pos_au, (loc_self.n_modes, 1, 1))
+            pos_au = _np.tile(loc_self.pos_au, (loc_self.n_modes, 1, 1))
             try:
                 cpmdWriter(fn,
                            pos_au[modelist],
@@ -1065,17 +1075,17 @@ class VibrationalModes():
             del loc_self
 
         elif fmt == "xyz":  # posvel, only vel not implemented
-            pos_aa = np.tile(self.pos_au * constants.l_au2aa, (self.n_modes, 1, 1))
+            pos_aa = _np.tile(self.pos_au * constants.l_au2aa, (self.n_modes, 1, 1))
             try:
                 xyzWriter(fn,
-                          np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
+                          _np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
                           self.symbols,
                           [str(m) for m in modelist]
                           )
             except AttributeError:
                 self.calculate_nuclear_velocities()
                 xyzWriter(fn,
-                          np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
+                          _np.concatenate((pos_aa, factor*self.vel_au), axis=-1)[modelist],
                           self.symbols,
                           [str(m) for m in modelist]
                           )
@@ -1089,12 +1099,12 @@ class VibrationalModes():
         if fmt == "xyz":
             modelist = kwargs.get('modelist', range(self.n_modes))
             n_images = kwargs.get('n_images', 3)
-            img = np.arange(-(n_images//2), n_images//2+1)
+            img = _np.arange(-(n_images//2), n_images//2+1)
             ts_fs = kwargs.get('ts_fs', 1)
-            pos_aa = np.tile(self.pos_au*constants.l_au2aa, (n_images, 1, 1))
+            pos_aa = _np.tile(self.pos_au*constants.l_au2aa, (n_images, 1, 1))
             self.calculate_nuclear_velocities()
             for mode in modelist:
-                vel_aa = np.tile(self.vel_au[mode]*constants.t_fs2au*constants.l_au2aa, (n_images, 1, 1))*img[:, None, None]
+                vel_aa = _np.tile(self.vel_au[mode]*constants.t_fs2au*constants.l_au2aa, (n_images, 1, 1))*img[:, None, None]
                 pos_aa += vel_aa*ts_fs
                 xyzWriter('%03d'%mode+'-'+fn,
                           pos_aa,

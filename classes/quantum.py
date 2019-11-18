@@ -11,30 +11,31 @@
 #
 # ------------------------------------------------------
 
-import numpy as np
+import numpy as _np
 import copy
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.ndimage.filters import maximum_filter, minimum_filter, \
         gaussian_filter
-from scipy import signal
+from scipy import signal as _signal
 
-from ..classes.volume import ScalarField, VectorField
+from ..classes.volume import ScalarField as _ScalarField
+from ..classes.volume import VectorField as _VectorField
 from ..physics import constants
-from ..readers.trajectory import xyzReader
-from ..classes.domain import Domain3D
+from ..readers.trajectory import xyzReader as _xyzReader
+from ..classes.domain import Domain3D as _Domain3D
 
 
-class WaveFunction(ScalarField):
+class WaveFunction(_ScalarField):
     pass
 
 
-class WannierFunction(ScalarField):
+class WannierFunction(_ScalarField):
     def auto_crop(self, **kwargs):
         '''crop after threshold (default: ...)'''
         thresh = kwargs.get('thresh', 1.0)
-        a = np.amin(np.array(self.data.shape) -
-                    np.argwhere(np.abs(self.data) > thresh))
-        b = np.amin(np.argwhere(np.abs(self.data) > thresh))
+        a = _np.amin(_np.array(self.data.shape) -
+                     _np.argwhere(_np.abs(self.data) > thresh))
+        b = _np.amin(_np.argwhere(_np.abs(self.data) > thresh))
         self.crop(min(a, b))
 
     def extrema(self, **kwargs):
@@ -42,7 +43,7 @@ class WannierFunction(ScalarField):
         neighborhood = generate_binary_structure(3, 3)
         local_max = maximum_filter(data, footprint=neighborhood) == data
         local_min = minimum_filter(data, footprint=neighborhood) == data
-        background = (np.abs(data) > 0.8 * np.amax(np.abs(data)))
+        background = (_np.abs(data) > 0.8 * _np.amax(_np.abs(data)))
         eroded_background = binary_erosion(background,
                                            structure=neighborhood,
                                            border_value=1)
@@ -58,7 +59,7 @@ class WannierFunction(ScalarField):
 #        return ....#enter math here
 
 
-class ElectronDensity(ScalarField):
+class ElectronDensity(_ScalarField):
     def integral(self):
         # self.n_electrons = self.voxel*simps(simps(simps(self.data)))
         self.n_electrons = self.voxel*self.data.sum()
@@ -69,10 +70,10 @@ class ElectronDensity(ScalarField):
         '''Min Yu and Dallas R. Trinkle, Accurate and efficient algorithm for \
 Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
         def pbc(a, dim):
-            return np.remainder(a, self.data.shape[dim])
+            return _np.remainder(a, self.data.shape[dim])
 
         def env_basin(f, x, y, z):
-            return np.array([
+            return _np.array([
                         f[x,           y,           z],
                         f[pbc(x+1, 0), y,           z],
                         f[x-1,         y,           z],
@@ -84,34 +85,34 @@ Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
 
         self.aim_threshold = self.threshold
         boundary_max = 0
-        boundary_max = max(boundary_max, np.amax(self.data[0, :, :]))
-        boundary_max = max(boundary_max, np.amax(self.data[-1, :, :]))
-        boundary_max = max(boundary_max, np.amax(self.data[:, 0, :]))
-        boundary_max = max(boundary_max, np.amax(self.data[:, -1, :]))
-        boundary_max = max(boundary_max, np.amax(self.data[:, :, 0]))
-        boundary_max = max(boundary_max, np.amax(self.data[:, :, -1]))
+        boundary_max = max(boundary_max, _np.amax(self.data[0, :, :]))
+        boundary_max = max(boundary_max, _np.amax(self.data[-1, :, :]))
+        boundary_max = max(boundary_max, _np.amax(self.data[:, 0, :]))
+        boundary_max = max(boundary_max, _np.amax(self.data[:, -1, :]))
+        boundary_max = max(boundary_max, _np.amax(self.data[:, :, 0]))
+        boundary_max = max(boundary_max, _np.amax(self.data[:, :, -1]))
         if boundary_max >= self.aim_threshold:
             print('WARNING: Your density at the boundary exceeds given density \
 threshold of %f! %f' % (self.aim_threshold, boundary_max))
 
         # neighborhood = generate_binary_structure(3,1)
-        test = np.unravel_index(np.argsort(self.data.ravel())[::-1],
-                                self.data.shape)
+        test = _np.unravel_index(_np.argsort(self.data.ravel())[::-1],
+                                 self.data.shape)
 
         atoms = range(self.n_atoms)
 
-        basin = np.zeros([j for i in (self.data.shape, len(atoms))
+        basin = _np.zeros([j for i in (self.data.shape, len(atoms))
                           for j in (i if isinstance(i, tuple) else (i,))])
         atoms = iter(atoms)
         n_points = (self.data > self.aim_threshold).sum()
         g0 = self.data
-        g1 = np.roll(self.data, -1, axis=0)
-        g2 = np.roll(self.data, +1, axis=0)
-        g3 = np.roll(self.data, -1, axis=1)
-        g4 = np.roll(self.data, +1, axis=1)
-        g5 = np.roll(self.data, -1, axis=2)
-        g6 = np.roll(self.data, +1, axis=2)
-        R = np.array([g0, g1, g2, g3, g4, g5, g6]) - self.data[None]
+        g1 = _np.roll(self.data, -1, axis=0)
+        g2 = _np.roll(self.data, +1, axis=0)
+        g3 = _np.roll(self.data, -1, axis=1)
+        g4 = _np.roll(self.data, +1, axis=1)
+        g5 = _np.roll(self.data, -1, axis=2)
+        g6 = _np.roll(self.data, +1, axis=2)
+        R = _np.array([g0, g1, g2, g3, g4, g5, g6]) - self.data[None]
         R[R < 0] = 0
         # R /= R.sum(axis=0)
 
@@ -136,20 +137,20 @@ threshold of %f! %f' % (self.aim_threshold, boundary_max))
         aim_atoms = list()
         pos_grid = self.pos_grid()
         for iatom in range(self.n_atoms):
-            ind = np.unravel_index(
-                    np.argmin(
-                        np.linalg.norm(
+            ind = _np.unravel_index(
+                    _np.argmin(
+                        _np.linalg.norm(
                             pos_grid[:, :, :, :] -
                             self.pos_au[iatom, :, None, None, None],
                             axis=0)), self.data.shape)
-            jatom = np.argmax(basin[ind])
+            jatom = _np.argmax(basin[ind])
             transfer = (self.comments,
                         self.numbers[iatom].reshape((1)),
                         self.pos_au[iatom].reshape((1, 3)),
                         self.cell_au, self.origin_au)
             # outer class won't be accessible even with inheritance
             aim_atoms.append(AIMAtom(basin[:, :, :, jatom], transfer))
-        self.aim_atoms = np.array(aim_atoms)
+        self.aim_atoms = _np.array(aim_atoms)
 
     @staticmethod
     def integrate_volume(data):
@@ -157,7 +158,7 @@ threshold of %f! %f' % (self.aim_threshold, boundary_max))
         return data.sum()
 
 
-class AIMAtom(Domain3D):
+class AIMAtom(_Domain3D):
     def __init__(self, basin, transfer, **kwargs):
         self.comments,\
             self.numbers,\
@@ -165,19 +166,19 @@ class AIMAtom(Domain3D):
             self.cell_au,\
             self.origin_au = transfer
         self.grid_shape = basin.shape
-        self.indices = np.where(basin != 0)
+        self.indices = _np.where(basin != 0)
         self.weights = basin[self.indices]
 
     def attach_gain_and_loss(self, gain, loss, **kwargs):
         self.j_grid_shape = gain.shape
-        self.gain_indices = np.where(gain != 0)
-        self.loss_indices = np.where(loss != 0)
+        self.gain_indices = _np.where(gain != 0)
+        self.loss_indices = _np.where(loss != 0)
         self.gain_weights = gain[self.gain_indices]
         self.loss_weights = loss[self.loss_indices]
 
     def expand_gain_and_loss(self):
-        tmp_gain = np.zeros(self.j_grid_shape)
-        tmp_loss = np.zeros(self.j_grid_shape)
+        tmp_gain = _np.zeros(self.j_grid_shape)
+        tmp_loss = _np.zeros(self.j_grid_shape)
         tmp_gain[self.gain_indices] = self.gain_weights
         tmp_loss[self.loss_indices] = self.loss_weights
         return tmp_gain, tmp_loss
@@ -188,7 +189,7 @@ class AIMAtom(Domain3D):
         return self.numbers.sum() - self.integrate_volume(func)
 
 
-class CurrentDensity(VectorField):
+class CurrentDensity(_VectorField):
     pass
 
 
@@ -218,15 +219,15 @@ Current Data are not consistent!')
 #   #      isstate=kwargs.get('state',False)
 #   #      if isstate: scale = 2*self.rho.data**2
     #     scale = self.rho.data
-    #     a=np.amin(np.array(self.rho.data.shape)-np.argwhere(scale > thresh))
-    #     b=np.amin(np.argwhere(scale > thresh))
+    #     a=_np.amin(_np.array(self.rho.data.shape)-_np.argwhere(scale>thresh))
+    #     b=_np.amin(_np.argwhere(scale > thresh))
     #     self.crop( min( a, b ) )
 
     #     return min( a, b )
 
     def calculate_velocity_field(self, rho, **kwargs):
         '''Requires total density rho'''
-        self.v = VectorField.from_object(self.j)
+        self.v = _VectorField.from_object(self.j)
         self.v.normalise(norm=rho.data, **kwargs)
 
         self.v.__class__.__name__ = "VelocityField"
@@ -258,14 +259,15 @@ Current Data are not consistent!')
 #        isstate=kwargs.get('state',False)
 #        if isstate: scale = 2*self.rho.data**2
         scale = self.rho.data
-        a = np.amin(np.array(self.rho.data.shape)-np.argwhere(scale > thresh))
-        b = np.amin(np.argwhere(scale > thresh))
+        a = _np.amin(_np.array(self.rho.data.shape)
+                     - _np.argwhere(scale > thresh))
+        b = _np.amin(_np.argwhere(scale > thresh))
         self.crop(min(a, b))
 
         return min(a, b)
 
     def calculate_velocity_field(self, **kwargs):
-        self.v = VectorField.from_object(self.j)
+        self.v = _VectorField.from_object(self.j)
         self.v.normalise(norm=self.rho.data, **kwargs)
 
         self.v.__class__.__name__ = "VelocityField"
@@ -283,7 +285,7 @@ Current Data are not consistent!')
         '''Has to be in shape n_frames,n_atoms, 3'''
         self.nuc_vel_au,\
             self.nuc_symbols,\
-            self.nuc_vel_comments = xyzReader(fn)
+            self.nuc_vel_comments = _xyzReader(fn)
 #        self.nuc_vel_au = self.nuc_vel_au[0] #only first frame?
         if list(self.nuc_symbols) != \
                 constants.numbers_to_symbols(self.rho.numbers):
@@ -297,22 +299,22 @@ Electronic System!')
             field = self.rho.aim_atoms[i].map_vector(self.nuc_vel_au[0, i, :])
             self.v_diff.data -= field
             # self.rho.aim_atoms[i].map_vector(self.nuc_vel_au[0,i,:])
-        self.v_diff.data = signal.medfilt(self.v_diff.data, kernel_size=3)
+        self.v_diff.data = _signal.medfilt(self.v_diff.data, kernel_size=3)
         self.j_diff = copy.deepcopy(self.j)
-        self.j_diff.data = self.v_diff.data*self.rho.data[np.newaxis]
+        self.j_diff.data = self.v_diff.data*self.rho.data[_np.newaxis]
 
     def calculate_interatomic_flux(self, rho_dt, sign_dt):
         '''rho_dt ... ElectronicDensity object; needs aim_atoms list'''
         def rec_grid(grid):
-            r_grid = np.zeros(grid.shape)
-            r_grid[grid != 0] = np.reciprocal(grid[grid != 0])
+            r_grid = _np.zeros(grid.shape)
+            r_grid[grid != 0] = _np.reciprocal(grid[grid != 0])
             return r_grid
-        j_norm = np.linalg.norm(self.j.data, axis=0)
+        j_norm = _np.linalg.norm(self.j.data, axis=0)
         r_j_norm = rec_grid(j_norm)
         j_dir = self.j.data*r_j_norm[None, :, :, :]*sign_dt
 
-        j_gain = np.zeros(self.j.data.shape)
-        j_loss = np.zeros(self.j.data.shape)
+        j_gain = _np.zeros(self.j.data.shape)
+        j_loss = _np.zeros(self.j.data.shape)
 
         # expand all AIM and get diff in all cartesian directions
         for i_atom, (aim_0, aim_t) in enumerate(zip(self.rho.aim_atoms,
@@ -320,16 +322,16 @@ Electronic System!')
             tmp1 = aim_0.expand()
             tmp2 = aim_t.expand()
             dw = list()
-            dw.append(np.roll(tmp2, -1, axis=0))
-            dw.append(np.roll(tmp2, +1, axis=0))
-            dw.append(np.roll(tmp2, -1, axis=1))
-            dw.append(np.roll(tmp2, +1, axis=1))
-            dw.append(np.roll(tmp2, -1, axis=2))
-            dw.append(np.roll(tmp2, +1, axis=2))
-            dw = np.array(dw)-tmp1
+            dw.append(_np.roll(tmp2, -1, axis=0))
+            dw.append(_np.roll(tmp2, +1, axis=0))
+            dw.append(_np.roll(tmp2, -1, axis=1))
+            dw.append(_np.roll(tmp2, +1, axis=1))
+            dw.append(_np.roll(tmp2, -1, axis=2))
+            dw.append(_np.roll(tmp2, +1, axis=2))
+            dw = _np.array(dw)-tmp1
 
             # gain
-            gn = np.zeros(self.j.data.shape)
+            gn = _np.zeros(self.j.data.shape)
             gn[0] += j_dir[0] * (j_dir[0, :, :, :] > 0) * \
                 dw[0, :, :, :] * (dw[0, :, :, :] > 0)
             gn[0] += j_dir[0] * (j_dir[0, :, :, :] < 0) * \
@@ -344,7 +346,7 @@ Electronic System!')
                 dw[5, :, :, :] * (dw[5, :, :, :] > 0)
 
             # loss
-            ls = np.zeros(self.j.data.shape)
+            ls = _np.zeros(self.j.data.shape)
             ls[0] += j_dir[0] * (j_dir[0, :, :, :] > 0) * \
                 dw[0, :, :, :] * (dw[0, :, :, :] < 0)
             ls[0] += j_dir[0] * (j_dir[0, :, :, :] < 0) * \
@@ -366,15 +368,15 @@ Electronic System!')
             aim_0.attach_gain_and_loss(gn, ls)
         del tmp1, tmp2, dw, gn, ls, j_dir
 
-        if not np.allclose(j_gain, -j_loss, atol=1.E-4):
+        if not _np.allclose(j_gain, -j_loss, atol=1.E-4):
             print('WARNING: AIM gain/loss unbalanced!')
         print('AIM gain/loss calculation done.')
 
         r_j_gain = rec_grid(j_gain)
         r_j_loss = rec_grid(j_loss)
 
-        ia_gain = np.zeros((self.j.n_atoms, self.j.n_atoms))
-        ia_loss = np.zeros((self.j.n_atoms, self.j.n_atoms))
+        ia_gain = _np.zeros((self.j.n_atoms, self.j.n_atoms))
+        ia_loss = _np.zeros((self.j.n_atoms, self.j.n_atoms))
 
         z = 1
         for i, i_aim in enumerate(self.rho.aim_atoms):
@@ -385,9 +387,9 @@ Electronic System!')
                 i_gain, i_loss = i_aim.expand_gain_and_loss()
                 k_gain, k_loss = k_aim.expand_gain_and_loss()
                 # dt?
-                ia_gain[i, k] = np.linalg.norm(
+                ia_gain[i, k] = _np.linalg.norm(
                         (i_gain*k_loss*r_j_loss).sum(axis=(1, 2, 3)))
-                ia_loss[i, k] = np.linalg.norm(
+                ia_loss[i, k] = _np.linalg.norm(
                         (i_loss*k_gain*r_j_gain).sum(axis=(1, 2, 3)))
                 # debug sign
                 # else: print('Skipping')

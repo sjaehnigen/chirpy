@@ -11,9 +11,9 @@
 #
 # ------------------------------------------------------
 
-import sys
-import numpy as np
-import copy
+import sys as _sys
+import numpy as _np
+import copy as _copy
 
 from ..interfaces import cpmd
 
@@ -76,11 +76,11 @@ class CPMDjob():
     def write_input_file(self, *args):
         ''' CPMD 4 '''
 
-        _stdout = sys.stdout
-        # sys.__stdout__ is not Jupyter Output,
+        _stdout = _sys.stdout
+        # _sys.__stdout__ is not Jupyter Output,
         # so use this way to restore stdout
         if len(args) == 1:
-            sys.stdout = open(args[0], 'w')
+            _sys.stdout = open(args[0], 'w')
         elif len(args) > 1:
             raise TypeError(self.write_input_file.__name__ +
                             ' takes at most 1 argument.')
@@ -92,31 +92,31 @@ class CPMDjob():
             if hasattr(self, _s):
                 getattr(self, _s).print_section()
 
-        sys.stdout.flush()
-        # sys.stdout = sys.__stdout__
-        sys.stdout = _stdout
+        _sys.stdout.flush()
+        # _sys.stdout = _sys.__stdout__
+        _sys.stdout = _stdout
 
     def get_positions(self):
         ''' in a. u. ? '''
-        return np.vstack(self.ATOMS.data)
+        return _np.vstack(self.ATOMS.data)
 
     def get_symbols(self):
         symbols = []
         for _s, _n in zip(self.ATOMS.kinds, self.ATOMS.n_kinds):
             symbols += _s.split('_')[0][1:] * _n
-        return np.array(symbols)
+        return _np.array(symbols)
 
     def get_kinds(self):
         kinds = []
         for _s, _n in zip(self.ATOMS.kinds, self.ATOMS.n_kinds):
             kinds += [_s] * _n
-        return np.array(kinds)
+        return _np.array(kinds)
 
     def get_channels(self):
         channels = []
         for _s, _n in zip(self.ATOMS.channels, self.ATOMS.n_kinds):
             channels += [_s] * _n
-        return np.array(channels)
+        return _np.array(channels)
 
     def split_atoms(self, ids):
         ''' Split atomic system into fragments and create CPMD job,
@@ -167,20 +167,20 @@ class CPMDjob():
                              ][0])  # a little awkward
                     _C['n_kinds'].append(_frag[1].count(_isk))
                     _C['data'].append(
-                            np.array([_frag[0][_j]
-                                     for _j, _jsk in enumerate(_frag[1])
-                                     if _jsk == _isk])
+                            _np.array([_frag[0][_j]
+                                      for _j, _jsk in enumerate(_frag[1])
+                                      if _jsk == _isk])
                             )
-                _isk_old = copy.deepcopy(_isk)  # necessary?
+                _isk_old = _copy.deepcopy(_isk)  # necessary?
 
-            out = copy.deepcopy(self)
+            out = _copy.deepcopy(self)
             out.ATOMS = cpmd.ATOMS(**_C)
 
             if hasattr(self, 'TRAJECTORY'):
                 out.TRAJECTORY = cpmd.TRAJECTORY(
-                                      pos_aa=np.array(_frag[3]).swapaxes(0, 1),
-                                      vel_au=np.array(_frag[4]).swapaxes(0, 1),
-                                      symbols=out.get_symbols(),
+                                     pos_aa=_np.array(_frag[3]).swapaxes(0, 1),
+                                     vel_au=_np.array(_frag[4]).swapaxes(0, 1),
+                                     symbols=out.get_symbols(),
                                                  )
 
             _L.append(out)

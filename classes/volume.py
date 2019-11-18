@@ -11,14 +11,14 @@
 #
 # ------------------------------------------------------
 
-import numpy as np
-import copy
-from scipy.interpolate import griddata
-from scipy.integrate import simps
+import numpy as _np
+import copy as _copy
+from scipy.interpolate import griddata as _griddata
+from scipy.integrate import simps as _simps
 
 from ..readers.volume import cubeReader
 from ..writers.volume import cubeWriter
-from ..physics.kspace import k_potential
+from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
 
 # Convention Warning:
@@ -38,15 +38,15 @@ class ScalarField():
             if self.fmt == "cube":
                 buf = cubeReader(self.fn)
                 self.comments = buf['comments'].strip()
-                self.origin_au = np.array(buf['origin_au'])
-                self.cell_au = np.array(buf['cell_au'])  # deprecated
-                self.cell_vec_au = np.array(buf['cell_au'])
-                self.pos_au = np.array(buf['coords_au'])
-                self.numbers = np.array(buf['numbers'])
+                self.origin_au = _np.array(buf['origin_au'])
+                self.cell_au = _np.array(buf['cell_au'])  # deprecated
+                self.cell_vec_au = _np.array(buf['cell_au'])
+                self.pos_au = _np.array(buf['coords_au'])
+                self.numbers = _np.array(buf['numbers'])
                 self.data = buf['volume_data']
 
             elif self.fmt == 'npy':
-                test = ScalarField.from_data(data=np.load(self.fn), **kwargs)
+                test = ScalarField.from_data(data=_np.load(self.fn), **kwargs)
                 # I do not know why, but this has to be explicit
                 # otherwise self remains empty
                 self.comments = test.comments
@@ -77,9 +77,9 @@ class ScalarField():
                 raise ValueError('ERROR: List of atom numbers and atom \
                                  positions do not match!')
 
-            self.voxel = np.dot(self.cell_vec_au[0],
-                                np.cross(self.cell_vec_au[1],
-                                         self.cell_vec_au[2]))
+            self.voxel = _np.dot(self.cell_vec_au[0],
+                                 _np.cross(self.cell_vec_au[1],
+                                           self.cell_vec_au[2]))
         except AttributeError:
             pass
 
@@ -108,7 +108,7 @@ class ScalarField():
 
     @classmethod
     def from_object(cls, obj):
-        return cls.from_data(**vars(copy.deepcopy(obj)))
+        return cls.from_data(**vars(_copy.deepcopy(obj)))
 
     @classmethod
     def from_domain(cls, domain, **kwargs):
@@ -116,8 +116,8 @@ class ScalarField():
 
     @classmethod
     def from_data(cls, **kwargs):
-        cell_vec_au = kwargs.get('cell_vec_au', np.empty((0)))
-        data = kwargs.get('data', np.empty((0)))
+        cell_vec_au = kwargs.get('cell_vec_au', _np.empty((0)))
+        data = kwargs.get('data', _np.empty((0)))
         if any([cell_vec_au.size == 0, data.size == 0]):
             raise TypeError('ERROR: Please give both, \
 cell_vec_au and data!')
@@ -127,9 +127,9 @@ cell_vec_au and data!')
             obj.comments = 3*['no_comment\nno_comment']
         else:
             obj.comments = 'no_comment\nno_comment'
-        obj.origin_au = kwargs.get('origin_au', np.zeros((3)))
-        obj.pos_au = kwargs.get('pos_au', np.zeros((0, 3)))
-        obj.numbers = kwargs.get('numbers', np.zeros((0, )))
+        obj.origin_au = kwargs.get('origin_au', _np.zeros((3)))
+        obj.pos_au = kwargs.get('pos_au', _np.zeros((0, 3)))
+        obj.numbers = kwargs.get('numbers', _np.zeros((0, )))
         obj.cell_au = cell_vec_au  # deprecated
         obj.cell_vec_au = cell_vec_au
         obj.data = data
@@ -141,7 +141,7 @@ cell_vec_au and data!')
 
     def __add__(self, other):
         self._is_similar(other)
-        new = copy.deepcopy(self)
+        new = _copy.deepcopy(self)
         new.data += other.data
         return new
 
@@ -156,7 +156,7 @@ cell_vec_au and data!')
             return [_BOOL for _BOOL in (
                 (getattr(self, a) != getattr(other, a), )
                 if isinstance(getattr(self, a), int)
-                else (not np.allclose(getattr(self, a), getattr(other, a)), )
+                else (not _np.allclose(getattr(self, a), getattr(other, a)), )
                 )][0]
 
         err_keys = [
@@ -208,36 +208,36 @@ cell_vec_au and data!')
         return True
 
     def integral(self):
-        return self.voxel*simps(simps(simps(self.data)))
+        return self.voxel*_simps(_simps(_simps(self.data)))
 
     def normalise(self, **kwargs):
-        '''If no norm is given, the method uses np.linalg.norm
+        '''If no norm is given, the method uses _np.linalg.norm
         (give axis in kwargs).'''
         # Do we need an upper threshold?
         _N = kwargs.pop("norm")
         if _N is None:
-            _N = np.linalg.norm(self.data, **kwargs)
+            _N = _np.linalg.norm(self.data, **kwargs)
         thresh = kwargs.pop("tresh", 1.E-8)
 
-        with np.errstate(divide='ignore'):
-            _N_inv = np.where(_N < thresh, 0.0, np.divide(1.0, _N))
+        with _np.errstate(divide='ignore'):
+            _N_inv = _np.where(_N < thresh, 0.0, _np.divide(1.0, _N))
 
         self.data *= _N_inv
 
     def grid(self):
         '''Return an empty copy of grid'''
-        return np.zeros(self.data.shape)
+        return _np.zeros(self.data.shape)
 
     def pos_grid(self):
         '''Generate grid point coordinates (only for tetragonal cells)'''
         self.n_x = self.data.shape[-3]
         self.n_y = self.data.shape[-2]
         self.n_z = self.data.shape[-1]
-        xaxis = self.cell_au[0, 0]*np.arange(0, self.n_x) + self.origin_au[0]
-        yaxis = self.cell_au[1, 1]*np.arange(0, self.n_y) + self.origin_au[1]
-        zaxis = self.cell_au[2, 2]*np.arange(0, self.n_z) + self.origin_au[2]
+        xaxis = self.cell_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
+        yaxis = self.cell_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
+        zaxis = self.cell_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
 
-        return np.array(np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
+        return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
 
     # copy to new object?
     def sparsity(self, sp, **kwargs):
@@ -245,7 +245,9 @@ cell_vec_au and data!')
         dims = kwargs.get('dims', 'xyz')
 
         def _apply(_i):
-            self.data = np.moveaxis(np.moveaxis(self.data, _i, 0)[::sp], 0, _i)
+            self.data = _np.moveaxis(_np.moveaxis(self.data, _i, 0)[::sp],
+                                     0,
+                                     _i)
             self.cell_au[_i] *= sp
             self.cell_vec_au[_i] *= sp
 
@@ -255,16 +257,18 @@ cell_vec_au and data!')
             _apply(-2)
         if 'z' in dims:
             _apply(-1)
-        self.voxel = np.dot(self.cell_vec_au[0],
-                            np.cross(self.cell_vec_au[1],
-                                     self.cell_vec_au[2]))
+        self.voxel = _np.dot(self.cell_vec_au[0],
+                             _np.cross(self.cell_vec_au[1],
+                                       self.cell_vec_au[2]))
 
     # only symmetric crop; ToDo: routine for centering + crop
     def crop(self, r, **kwargs):
         dims = kwargs.get('dims', 'xyz')
 
         def _apply(_i):
-            self.data = np.moveaxis(np.moveaxis(self.data, _i, 0)[r:-r], 0, _i)
+            self.data = _np.moveaxis(_np.moveaxis(self.data, _i, 0)[r:-r],
+                                     0,
+                                     _i)
             self.origin_au[_i] += self.cell_au[_i, _i] * r
 
         if 'x' in dims:
@@ -277,9 +281,9 @@ cell_vec_au and data!')
     def auto_crop(self, **kwargs):
         '''crop after threshold (default: ...)'''
         thresh = kwargs.get('thresh', 1.E-3)
-        a = np.amin(np.array(self.data.shape)
-                    - np.argwhere(np.abs(self.data) > thresh))
-        b = np.amin(np.argwhere(np.abs(self.data) > thresh))
+        a = _np.amin(_np.array(self.data.shape)
+                     - _np.argwhere(_np.abs(self.data) > thresh))
+        b = _np.amin(_np.argwhere(_np.abs(self.data) > thresh))
         self.crop(min(a, b))
 
         return min(a, b)
@@ -340,8 +344,8 @@ class VectorField(ScalarField):
         '''x, y, z ... ScalarField objects'''
         if x._is_similar(y, strict=2) and x._is_similar(z, strict=2):
             self.fn1, self.fn2, self.fn3 = x.fn, y.fn, z.fn
-            self.comments = np.array([x.comments, y.comments, z.comments])
-            self.data = np.array([x.data, y.data, z.data])
+            self.comments = _np.array([x.comments, y.comments, z.comments])
+            self.data = _np.array([x.data, y.data, z.data])
             for _a in [
                     'origin_au',
                     'cell_au',  # deprecated
@@ -355,7 +359,7 @@ class VectorField(ScalarField):
 
     @staticmethod
     def _ip2ind(ip, F):
-        return np.unravel_index(ip, F.shape[1:])
+        return _np.unravel_index(ip, F.shape[1:])
 
     @staticmethod
     def _read_vec(F, ip):
@@ -372,10 +376,10 @@ class VectorField(ScalarField):
     def streamlines(self, p0, **kwargs):
         '''pn...starting points of shape (n_points, 3)'''
         def get_value(p):
-            return griddata(points,
-                            values,
-                            (p[0], p[1], p[2]),
-                            method='nearest')
+            return _griddata(points,
+                             values,
+                             (p[0], p[1], p[2]),
+                             method='nearest')
 
         sparse = kwargs.get('sparse', 4)
         fw = kwargs.get('forward', True)
@@ -398,14 +402,14 @@ class VectorField(ScalarField):
 
         pos_grid = self.pos_grid()[:, ::sparse, ::sparse, ::sparse]
         v_field = self.data[:, ::sparse, ::sparse, ::sparse]
-        gl_norm = np.amax(np.linalg.norm(v_field, axis=0))
-        ds = np.linalg.norm(self.cell_au, axis=1)
+        gl_norm = _np.amax(_np.linalg.norm(v_field, axis=0))
+        ds = _np.linalg.norm(self.cell_au, axis=1)
 
-        points = np.array(
+        points = _np.array(
                 [pos_grid[0].ravel(), pos_grid[1].ravel(), pos_grid[2].ravel()]
                 ).swapaxes(0, 1)
 
-        values = np.array(
+        values = _np.array(
                 [v_field[0].ravel(), v_field[1].ravel(), v_field[2].ravel()]
                 ).swapaxes(0, 1)
 
@@ -413,27 +417,28 @@ class VectorField(ScalarField):
         ext_t = list()
 
         if bw:
-            pn = copy.deepcopy(p0)
+            pn = _copy.deepcopy(p0)
             vn = get_value(p0.swapaxes(0, 1))
-            traj.append(np.concatenate((copy.deepcopy(pn), copy.deepcopy(vn)),
-                                       axis=-1))
+            traj.append(_np.concatenate((_copy.deepcopy(pn),
+                                         _copy.deepcopy(vn)),
+                                        axis=-1))
             if ext:
-                ext_p = copy.deepcopy(ext_p0)
-                ext_t.append(np.concatenate((copy.deepcopy(ext_p),
-                                             copy.deepcopy(ext_v)),
-                                            axis=-1))
+                ext_p = _copy.deepcopy(ext_p0)
+                ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
+                                              _copy.deepcopy(ext_v)),
+                                             axis=-1))
 
             for t in range(L):
                 pn -= vn/gl_norm*ds[None]*dt
                 vn = get_value(pn.swapaxes(0, 1))
-                traj.append(np.concatenate((copy.deepcopy(pn),
-                                            copy.deepcopy(vn)),
-                                           axis=-1))
+                traj.append(_np.concatenate((_copy.deepcopy(pn),
+                                             _copy.deepcopy(vn)),
+                                            axis=-1))
                 if ext:
                     ext_p -= ext_v/gl_norm*ds*dt
-                    ext_t.append(np.concatenate((copy.deepcopy(ext_p),
-                                                 copy.deepcopy(ext_v)),
-                                                axis=-1))
+                    ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
+                                                  _copy.deepcopy(ext_v)),
+                                                 axis=-1))
             if fw:
                 traj = traj[1:][::-1]
                 if ext:
@@ -444,33 +449,33 @@ class VectorField(ScalarField):
                     ext_t = ext_t[::-1]
 
         if fw:
-            pn = copy.deepcopy(p0)
+            pn = _copy.deepcopy(p0)
             vn = get_value(pn.swapaxes(0, 1))
-            traj.append(np.concatenate((copy.deepcopy(pn),
-                                        copy.deepcopy(vn)),
-                                       axis=-1))
+            traj.append(_np.concatenate((_copy.deepcopy(pn),
+                                         _copy.deepcopy(vn)),
+                                        axis=-1))
             if ext:
-                ext_p = copy.deepcopy(ext_p0)
-                ext_t.append(np.concatenate((copy.deepcopy(ext_p),
-                                             copy.deepcopy(ext_v)),
-                                            axis=-1))
+                ext_p = _copy.deepcopy(ext_p0)
+                ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
+                                              _copy.deepcopy(ext_v)),
+                                             axis=-1))
 
             for t in range(L):
                 pn += vn/gl_norm*ds[None]*dt
                 vn = get_value(pn.swapaxes(0, 1))
-                traj.append(np.concatenate((copy.deepcopy(pn),
-                                            copy.deepcopy(vn)),
-                                           axis=-1))
+                traj.append(_np.concatenate((_copy.deepcopy(pn),
+                                             _copy.deepcopy(vn)),
+                                            axis=-1))
                 if ext:
                     ext_p += ext_v/gl_norm*ds*dt
-                    ext_t.append(np.concatenate((copy.deepcopy(ext_p),
-                                                 copy.deepcopy(ext_v)),
-                                                axis=-1))
+                    ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
+                                                  _copy.deepcopy(ext_v)),
+                                                 axis=-1))
 
         if ext:
-            return np.array(traj), np.array(ext_t)
+            return _np.array(traj), _np.array(ext_t)
         else:
-            return np.array(traj)
+            return _np.array(traj)
 
     def streamtubes(self):
         '''See notebook 24b'''
@@ -479,15 +484,15 @@ class VectorField(ScalarField):
     @staticmethod
     def _get_helmholtz_components(data, cell_au):
         div, rot = _get_divrot(data, cell_au)
-        V = k_potential(div, np.array(cell_au))[1]/(4*np.pi)
-        A1 = k_potential(rot[0], np.array(cell_au))[1]
-        A2 = k_potential(rot[1], np.array(cell_au))[1]
-        A3 = k_potential(rot[2], np.array(cell_au))[1]
-        A = np.array([A1, A2, A3])/(4*np.pi)
-        irrotational_field = -np.array(np.gradient(V,
-                                                   cell_au[0][0],
-                                                   cell_au[1][1],
-                                                   cell_au[2][2]))
+        V = _k_potential(div, _np.array(cell_au))[1]/(4*_np.pi)
+        A1 = _k_potential(rot[0], _np.array(cell_au))[1]
+        A2 = _k_potential(rot[1], _np.array(cell_au))[1]
+        A3 = _k_potential(rot[2], _np.array(cell_au))[1]
+        A = _np.array([A1, A2, A3])/(4*_np.pi)
+        irrotational_field = -_np.array(_np.gradient(V,
+                                                     cell_au[0][0],
+                                                     cell_au[1][1],
+                                                     cell_au[2][2]))
         solenoidal_field = _get_divrot(A, cell_au)[1]
 
         return irrotational_field, solenoidal_field, div, rot

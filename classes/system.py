@@ -13,23 +13,23 @@
 
 # Version important as <3.6 gives problems with OrderedDictionaries
 
-import sys
-import copy
-import numpy as np
-import warnings
+import sys as _sys
+import copy as _copy
+import numpy as _np
+import warnings as _warnings
 
 from ..readers.coordinates import pdbReader
 from ..readers.modes import xvibsReader
-from ..classes.crystal import UnitCell
+from ..classes.crystal import UnitCell as _UnitCell
 from ..classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
 from ..physics import constants
 from ..physics.constants import masses_amu, valence_charges
-from ..topology.dissection import define_molecules
-from ..topology.mapping import dec
+from ..topology.dissection import define_molecules as _define_molecules
+from ..topology.mapping import dec as _dec
 
 # ToDo: put this into new lib file
 Angstrom2Bohr = 1.8897261247828971
-np.set_printoptions(precision=5, suppress=True)
+_np.set_printoptions(precision=5, suppress=True)
 
 # switch function which should be used in future for the standard fil..readerss instead of elif... 
 # def f(x):
@@ -48,11 +48,11 @@ np.set_printoptions(precision=5, suppress=True)
 
 class _SYSTEM():
     def __init__(self, fn, **kwargs):
-        if int(np.version.version.split('.')[1]) < 14:
-            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.' % np.version.version)
-            sys.exit(1)
-        global ignore_warnings
-        ignore_warnings = kwargs.get('ignore_warnings', False)
+        if int(_np.version.version.split('.')[1]) < 14:
+            print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.' % _np.version.version)
+            _sys.exit(1)
+        global ignore__warnings
+        ignore__warnings = kwargs.get('ignore__warnings', False)
         fmt = kwargs.get('fmt', fn.split('.')[-1])
 
         #Beta: store FileReader data in dict, try if sth is there before startin..readers. Problem: memory?
@@ -87,7 +87,7 @@ class _SYSTEM():
             masses = [masses_amu[s] for s in symbols]
             if mw:
                 print('Assuming mass-weighted coordinates in XVIBS.')
-                modes /= np.sqrt(masses)[None,:,None]*np.sqrt(constants.m_amu_au)
+                modes /= _np.sqrt(masses)[None,:,None]*_np.sqrt(constants.m_amu_au)
             else:
                 print('Not assuming mass-weighted coordinates in XVIBS (use mw=True otherwise).')
             self.XYZData = self._XYZ(data = coords_aa.reshape((1, n_atoms, 3)), symbols = symbols, **kwargs)
@@ -113,26 +113,26 @@ class _SYSTEM():
         cell_aa_deg = kwargs.get('cell_aa_deg') #, getattr(self, "cell_aa_deg", None)) )
         # ToDo: Fix this unlogical
         if cell_aa_deg is not None:
-            cell_aa_deg = np.array(cell_aa_deg)
+            cell_aa_deg = _np.array(cell_aa_deg)
             if hasattr(self,'cell_aa_deg'):
-                if not np.allclose(cell_aa_deg, self.cell_aa_deg):
-                    warnings.warn('WARNING: Given cell size differs from file parametres!',
+                if not _np.allclose(cell_aa_deg, self.cell_aa_deg):
+                    _warnings.warn('WARNING: Given cell size differs from file parametres!',
                                   RuntimeWarning)
             self.cell_aa_deg = cell_aa_deg
 
         if hasattr(self, 'cell_aa_deg'):
             try:
-                self.UnitCell = UnitCell(self.cell_aa_deg)
+                self._UnitCell = _UnitCell(self.cell_aa_deg)
                 if kwargs.get('cell_multiply') is not None:
                     cell_multiply = kwargs.get('cell_multiply')
                     cell_priority = kwargs.get('cell_priority',(2,0,1)) #priority from CPMD (monoclinic)
-                    self.XYZDataUnitCell = copy.deepcopy(self.XYZData)
-                    self.XYZData = self.UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
+                    self.XYZData_UnitCell = _copy.deep_copy(self.XYZData)
+                    self.XYZData = self._UnitCell.propagate(self.XYZData,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
 
                     #---------------------------------------
                     #TMP cell and mol_map is not replicated
-                    self.mol_map *= int(np.prod(cell_multiply))
-                    self.cell_aa_deg[:3] *= np.array(cell_multiply)
+                    self.mol_map *= int(_np.prod(cell_multiply))
+                    self.cell_aa_deg[:3] *= _np.array(cell_multiply)
                     #TMP reorder: fix it nicely
                     #_cp = list(cell_priority)
                     #self.cell_aa_deg[:3] = self.cell_aa_deg[:3][_cp] 
@@ -140,8 +140,8 @@ class _SYSTEM():
                     #---------------------------------------
 
                     if hasattr(self,'Modes'):
-                        self.ModesUnitCell = copy.deepcopy(self.Modes)
-                        self.Modes = self.UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
+                        self.Modes_UnitCell = _copy.deep_copy(self.Modes)
+                        self.Modes = self._UnitCell.propagate(self.Modes,cell_multiply,priority=cell_priority) #priority from CPMD (monoclinic)
             except TypeError: #is this the correct Exception?
                 pass
 
@@ -188,22 +188,22 @@ class _SYSTEM():
             #setattr(self,'cell_aa_deg',kwargs.get('cell_aa_deg',box_aa_deg))
             # setattr(self, 'cell_aa_deg', box_aa_deg)
 
-            #cell_au = np.array([Angstrom2Bohr*e for e in box_aa_deg[:3]])
+            #cell_au = _np.array([Angstrom2Bohr*e for e in box_aa_deg[:3]])
             #if cell_au.any() == None:
             #    raise Exception('Cell has to be specified, only orthorhombic cells supported!')
 
             # re-add this test?
-            # if hasattr(self,'UnitCell'):
-            #     abc = self.UnitCell.abc
-            #     if not np.allclose(cell_au,abc*Angstrom2Bohr):
+            # if hasattr(self,'_UnitCell'):
+            #     abc = self._UnitCell.abc
+            #     if not _np.allclose(cell_au,abc*Angstrom2Bohr):
             #         raise Exception('Unit cell parametres of Molecule do not agree with topology file!')
             #n_atoms, n_mols, n_moms = len(symbols), max(n_map)+1, sum(ZV)//2
             n_mols = max(n_map)+1
             n_map,symbols = zip(*[(im,symbols[ia]) for ia,a in enumerate(n_map) for im,m in enumerate(kwargs.get('extract_mols',range(n_mols))) if a==m])
-            #if np.array(symbols) != self.XYZData.symbols:
+            #if _np.array(symbols) != self.XYZData.symbols:
             #    raise Exception('Symbols of Molecule do not agree with topology file!')
         else:
-            n_map = tuple(define_molecules(self)-1)
+            n_map = tuple(_define_molecules(self)-1)
 
         n_mols = max(n_map)+1
         self.mol_map = n_map
@@ -222,26 +222,26 @@ class _SYSTEM():
        ##################################################################################
 
 
-       ### if hasattr(self,'UnitCell'):dd
-       ###     if hasattr(self.UnitCell,'multiply'): #This function appears frequently --> change general structure of UnitCell object
-       ###         abc = self.UnitCell.abc*self.UnitCell.multiply
+       ### if hasattr(self,'_UnitCell'):dd
+       ###     if hasattr(self._UnitCell,'multiply'): #This function appears frequently --> change general structure of _UnitCell object
+       ###         abc = self._UnitCell.abc*self._UnitCell.multiply
        ###     else:
-       ###         abc = self.UnitCell.abc
+       ###         abc = self._UnitCell.abc
         ############WRITING INTO OBJECTS FROM OUTER SCOPE IS NOT SO CLEAN############################
         ############BETTER create respective methods in objects #######################
         if hasattr(self,'Modes'):
             ZV, M = zip(*[(valence_charges[s], masses_amu[s]) for s in self.XYZData.symbols])
-            ZV, M = dec(ZV, n_map), dec(M, n_map)
+            ZV, M = _dec(ZV, n_map), _dec(M, n_map)
             #Modes
-            pos_au = dec(self.Modes.pos_au, n_map)
+            pos_au = _dec(self.Modes.pos_au, n_map)
             #wrap molecules (in order to get "correct" com), reference: first atom 0 of mol
-            if hasattr(self,'UnitCell'):
-                abc = self.UnitCell.abc
-                pos_au = [p-np.around((p-p[0,None,:])/(abc*Angstrom2Bohr))*abc*Angstrom2Bohr for p in pos_au]
+            if hasattr(self,'_UnitCell'):
+                abc = self._UnitCell.abc
+                pos_au = [p-_np.around((p-p[0,None,:])/(abc*Angstrom2Bohr))*abc*Angstrom2Bohr for p in pos_au]
                 self.Modes.cell_au = abc*Angstrom2Bohr #not so nice transfer of attributes
             # calculate molecular centers of mass
-            self.Modes.mol_com_au = np.array([np.sum(pos_au[i_mol]*M[i_mol][:,None], axis=0)/M[i_mol].sum() for i_mol in range(n_mols)])
-            self.Modes.mol_com_au = np.remainder(self.Modes.mol_com_au,self.Modes.cell_au)
+            self.Modes.mol_com_au = _np.array([_np.sum(pos_au[i_mol]*M[i_mol][:,None], axis=0)/M[i_mol].sum() for i_mol in range(n_mols)])
+            self.Modes.mol_com_au = _np.remainder(self.Modes.mol_com_au,self.Modes.cell_au)
             self.Modes.mol_map = n_map
             self.Modes.n_mols  = n_mols
 
