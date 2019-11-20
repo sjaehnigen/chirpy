@@ -79,6 +79,7 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
         print( 'WARNING: Cell size zero!' )
         return pos_aa
 
+# actually it does not calculate a "distance"
 def distance_pbc(p1, p0, **kwargs):
     _d = p1 - p0
     try:

@@ -27,13 +27,45 @@ def main():
                         help="file (xyz.pdb,xvibs,...)"
                         )
     parser.add_argument("--center_coords",
+                        nargs='+',
+                        help="Center atom list (id starting from 0) in cell \
+                                and wrap",
+                        default=None,
+                        type=int,
+                        )
+    parser.add_argument("--align_coords",
+                        nargs='+',
+                        help="Align atom list (id starting from 0)",
+                        default=None,
+                        type=int,
+                        )
+    parser.add_argument("--center_residue",
+                        help="Center residue (resid as given in fn_topo) in \
+                                cell and wrap (requires a topology file).",
+                        default=None,
+                        type=int,
+                        )
+    parser.add_argument("--use_com",
                         action='store_true',
-                        help="Center Coordinates in cell centre or at origin",
+                        help="Use centre of mass instead of centre of geometry \
+                                as reference",
                         default=False
+                        )
+    parser.add_argument("--extract_mols",
+                        nargs='+',
+                        help="Only write coordinates of given molecular ids starting from 0 \
+                                (requires a topology file).",
+                        default=None,
+                        type=int,
+                        )
+    parser.add_argument("--fn_topo",
+                        help="Topology file (molecules, clusters, residues, etc.) \
+                                in PDB format.",
+                        default=None
                         )
     parser.add_argument("--sort",
                         action='store_true',
-                        help="Alphabetically sort entries",
+                        help="Alphabetically sort atoms",
                         default=False
                         )
     parser.add_argument("--cell_aa_deg",

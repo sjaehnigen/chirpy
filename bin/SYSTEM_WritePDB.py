@@ -28,7 +28,7 @@ def main():
     if args.cell_aa is not None: args.cell_aa = np.array(args.cell_aa).astype(float)
 
     #quick workaround (molecule does not yet have a write routine)
-    system.Molecule(**vars(args),wrap_mols=True).XYZData.write(args.f,fmt='pdb')
+    system.Molecule(**vars(args),wrap_mols=True).write(args.f,fmt='pdb')
     #system.Supercell(**vars(args),wrap_mols=True).XYZData.write(args.f,fmt='pdb')
 
 

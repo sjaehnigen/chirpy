@@ -87,14 +87,17 @@ def kabsch_algorithm(P, ref):
 
 def align_atoms(pos_mobile, w, **kwargs):
     '''Demands a reference for each frame, respectively'''
+    _sub = kwargs.get('subset', slice(None))
     pos_mob = copy.deepcopy(pos_mobile)
-    pos_ref = kwargs.get('ref', pos_mobile[0])
-    pos_ref -= (np.sum(pos_ref*w[:, None], axis=-2)/w.sum())[None, :]
-    com = np.sum(pos_mob*w[None, :, None], axis=-2)/w.sum()
+    _s_pos_ref = kwargs.get('ref', pos_mobile[0])[_sub]
+    _s_pos_mob = pos_mob[:, _sub]
+    _s_pos_ref -= (np.sum(_s_pos_ref * w[_sub, None],
+                   axis=-2)/w[_sub].sum())[None, :]
+    com = np.sum(_s_pos_mob*w[None, _sub, None], axis=-2)/w[_sub].sum()
     pos_mob -= com[:, None, :]
-    for frame, P in enumerate(pos_mob):
-        U = kabsch_algorithm(P*w[:, None], pos_ref*w[:, None])
-        pos_mob[frame] = np.tensordot(U, P, axes=([1], [1])).swapaxes(0, 1)
-        # V = np.tensordot(U,P,axes=([1],[1])).swapaxes(0,1) #velocities (not debugged)
+    for frame, P in enumerate(_s_pos_mob):
+        U = kabsch_algorithm(P*w[_sub, None], _s_pos_ref*w[_sub, None])
+        pos_mob[frame] = np.tensordot(U, pos_mob[frame],
+                                      axes=([1], [1])).swapaxes(0, 1)
     pos_mob += com[:, None, :]
     return pos_mob

@@ -18,6 +18,7 @@ from ..physics import constants
 from ..topology.symmetry import get_cell_vec as _get_cell_vec
 
 class UnitCell(): #maybe all-in-one class
+    # This is actually a generator for _SYSTEM 
     def __init__(self,cell_aa_deg,**kwargs): #**kwargs for named (dict), *args for unnamed
         '''Angle Convention: alpha=from c to b, beta=from a to c, gamma=from b to a'''
         if cell_aa_deg[ :3 ].sum() == 0.0: raise TypeError( 'ERROR: Zero Cell Size!' )

@@ -14,10 +14,10 @@
 
 import numpy as np
 from ..topology.symmetry import get_distance_matrix, distance_pbc, wrap, get_cell_vec
+from ..topology.mapping import dist_crit_aa
 from ..mathematics.algebra import change_euclidean_basis as ceb
+from ..readers.coordinates import pdbReader
 
-#old
-# from ..physics import constants #see ~/pythonbase
 
 ##TMP solution
 #def define_molecules_XYZclass(xyz):
@@ -106,6 +106,7 @@ def define_molecules(mol):
         cell_vec_aa = get_cell_vec(cell_aa_deg)
         _p = ceb(_p, cell_vec_aa)
         _cell = np.array([1.0, 1.0, 1.0, 90.0, 90.0, 90.0])
+
     def _w(p):
         try:
             return wrap(p, _cell)
@@ -261,4 +262,23 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
             break
     return molecule, atom_count
 
-#EOF
+
+def read_topology_file(fn, **kwargs):
+    '''Only PDB support for now'''
+    # A little old messy code
+
+    data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
+    residues = np.array(residues).astype(str)
+    resi = ['-'.join(_r) for _r in residues]
+    # python>=3.6: keeps order
+    _map_dict = dict(zip(list(dict.fromkeys(resi)), range(len(set(resi)))))
+    n_map = [_map_dict[_r] for _r in resi]
+    n_mols = len(set(n_map))  # max(n_map)+1
+    # n_map, symbols = zip(*[(im, symbols[ia])
+    #                        for ia, a in enumerate(n_map) for im, m in
+    #                        enumerate(kwargs.get('extract_mols',
+    #                                             range(n_mols))) if a==m])
+    if n_mols != max(n_map)+1:
+        raise Exception('STH is wrong')
+
+    return n_map, symbols

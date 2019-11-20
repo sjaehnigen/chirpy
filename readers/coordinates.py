@@ -158,13 +158,13 @@ def cpmdIterator(FN, **kwargs):
 
 def pdbReader(fn):
     '''https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
-       no trajectory support enabled'''
+       No trajectory support enabled'''
     u = mda.Universe(fn)
 
     # only take what is needed in ChirPy
     data = u.coord.positions
-    resns = u.residues.resnames
-    resids = u.residues.resids
+    resns = u.atoms.resnames
+    resids = u.atoms.resids
     names = u.atoms.names
     symbols = tuple(u.atoms.types)
     cell_aa_deg = u.dimensions
@@ -177,6 +177,9 @@ def pdbReader(fn):
         title = None
     else:
         title = title[0]
+
+    # FRAME ==> TRAJ step
+    data = data.reshape((1, len(symbols), 3))
 
     return data, names, symbols, [_n for _n in zip(
                                          resids,

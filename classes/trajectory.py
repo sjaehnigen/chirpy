@@ -19,15 +19,15 @@ import itertools as _itertools
 
 from ..snippets import extract_keys as _extract_keys
 from ..readers.modes import xvibsReader
-from ..readers.coordinates import xyzReader, cpmdReader
+from ..readers.coordinates import xyzReader, cpmdReader, pdbReader
 from ..readers.coordinates import xyzIterator as _xyzIterator
 from ..readers.coordinates import cpmdIterator as _cpmdIterator
 from ..writers.coordinates import cpmdWriter, xyzWriter, pdbWriter
-# from ..writers.modes import xvibsWriter
 
 from ..topology.mapping import align_atoms as _align_atoms
 from ..topology.mapping import dec as _dec
 from ..topology.symmetry import wrap as _wrap
+from ..topology.symmetry import cowt as _cowt
 from ..topology.symmetry import join_molecules as _join_molecules
 
 from ..physics import constants
@@ -42,18 +42,16 @@ from ..mathematics import algebra as _algebra
 
 # ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
 # new class: Moments()
-# Note: the object format is extended from behind:
+# Note: the object format is extended from behind (axis_pointer):
 #   frame is (N,X)
 #   trajectory is (F,N,X),
 #   list of modes is (M,F,N,X)
 #       --> Access data structures from behind!
 #   add iterators
+# get rid of ugly solution with _labels (use iterator of _FRAMES?)
 
 
 class _FRAME():
-    # put it somewhere else
-    global ignore__warnings
-    ignore__warnings = False
     if int(_np.version.version.split('.')[1]) < 14:
         print('ERROR: You have to use a numpy version >= 1.14.0! '
               'You are using %s.' % _np.version.version)
@@ -67,16 +65,16 @@ class _FRAME():
         self._labels()
         self._read_input(*args, **kwargs)
         self._sync_class()
+        # access from behind !
+        self.axis_pointer = kwargs.get('axis_pointer', -2)
 
     def _read_input(self,  *args, **kwargs):
-        self.axis_pointer = kwargs.get('axis_pointer', 0)
-        self.comments = kwargs.get('comments', _np.array([]))
-        self.symbols = kwargs.get('symbols', _np.array([]))
+        self.comments = kwargs.get('comments', [])
+        self.symbols = kwargs.get('symbols', ())
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
     def _sync_class(self):
         self.n_atoms, self.n_fields = self.data.shape
-        # ToDo: more general routine looping _labels of object
         if self.n_atoms != len(self.symbols):
             raise ValueError('ERROR: Data shape inconsistent '
                              'with symbols attribute!\n')
@@ -85,9 +83,8 @@ class _FRAME():
         new = _copy.deepcopy(self)
         new.data = _np.concatenate((self.data, other.data),
                                    axis=self.axis_pointer)
-        _l = new._labels[self.axis_pointer]
-        setattr(new, _l, _np.concatenate((getattr(self, _l),
-                                         getattr(other, _l))))
+        _l = new._labels[self.axis_pointer + 1]
+        setattr(new, _l, getattr(self, _l) + getattr(other, _l))
         new._sync_class()
         return new
 
@@ -110,7 +107,7 @@ class _FRAME():
         new._sync_class()
         return new
 
-    def _sort(self):  # use set?
+    def _sort(self):
         elem = {s: _np.where(self.symbols == s)[0]
                 for s in _np.unique(self.symbols)}
         ind = [i for k in sorted(elem) for i in elem[k]]
@@ -148,29 +145,30 @@ class _TRAJECTORY(_FRAME):
         self._labels = ('comments', 'symbols')
 
     def _read_input(self,  *args, **kwargs):
-        self.axis_pointer = kwargs.get('axis_pointer', 0)
-        self.comments = kwargs.get('comments', _np.array([]))
-        self.symbols = kwargs.get('symbols', _np.array([]))
+        self.comments = kwargs.get('comments', [])
+        self.symbols = kwargs.get('symbols', ())
         self.data = kwargs.get('data', _np.zeros((0, 0, 0)))
 
     def _sync_class(self):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
-        # ToDo: more general routine looping _labels of object
         if self.n_atoms != len(self.symbols):
-            raise ValueError('ERROR: Data shape inconsistent with '
+            raise ValueError('Data shape inconsistent with '
                              'symbols attribute!\n')
         if self.n_frames != len(self.comments):
-            raise ValueError('ERROR: Data shape inconsistent with '
+            raise ValueError('Data shape inconsistent with '
                              'comments attribute!\n')
 
 
 class _XYZ():
     '''Convention (at the moment) of data attribute:
-       col 1-3: pos in aa; col 4-6: vel in au'''
-    # NB: CPMD writes XYZ files with vel_aa
+       col 1-3: pos in aa; col 4-6: vel in au.
+       pos_aa/vel_au attributes are protected, use underscored
+       attributes for changes.'''
+
     def _read_input(self, *args, **kwargs):
-        align_coords = kwargs.get('align_atoms', False)
-        center_coords = kwargs.get('center_coords', False)
+        align_coords = kwargs.get('align_coords')
+        center_coords = kwargs.get('center_coords')
+        self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
@@ -182,9 +180,10 @@ class _XYZ():
             if self._type == 'frame':
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, _fr+1
+                kwargs.update({'range': _fr})
             elif self._type == 'trajectory':
                 _fr = kwargs.get('frame_range', (0, float('inf')))
-            self.fn = fn  # later: read multiple files
+            self.fn = fn
 
             if fmt == "xyz":
                 data, symbols, comments = xyzReader(fn,
@@ -192,6 +191,23 @@ class _XYZ():
                                                                     range=_fr,
                                                                     )
                                                     )
+
+            elif fmt == "pdb":
+                data, types, symbols, residues, cell_aa_deg, title = \
+                        pdbReader(fn)
+                n_atoms = len(symbols)
+                comments = kwargs.get('comments', ['pdb'] * data.shape[0])
+
+                if cell_aa_deg is not None:
+                    if self.cell_aa_deg is None:
+                        self.cell_aa_deg = cell_aa_deg
+
+                    elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
+                        _warnings.warn('The given cell parametres are '
+                                       'different from those of the '
+                                       'PDB file! '
+                                       'Ignoring the latter.',
+                                       RuntimeWarning)
 
             elif fmt == "xvibs":
                 comments = ["xvibs"]
@@ -201,6 +217,7 @@ class _XYZ():
                 data = pos_aa.reshape((1, n_atoms, 3))
 
             elif fmt == "cpmd":
+                # NB: CPMD writes XYZ files with vel_aa
                 if ('symbols' in kwargs or 'numbers' in kwargs):
                     numbers = kwargs.get('numbers')
                     symbols = kwargs.get('symbols', [constants.symbols[z - 1]
@@ -208,7 +225,6 @@ class _XYZ():
                 else:
                     raise TypeError("cpmdReader needs list of numbers or "
                                     "symbols.")
-                comments = kwargs.get('comments', [''])
 
                 data = _np.array(cpmdReader(fn,
                                             **_extract_keys(kwargs,
@@ -217,8 +233,7 @@ class _XYZ():
                                                             range=_fr
                                                             )
                                             ))
-
-                # TMP solution: what is the convention for pos and vel?
+                comments = kwargs.get('comments', ['cpmd'] * data.shape[0])
                 data[:, :, :3] *= constants.l_au2aa
 
             else:
@@ -242,8 +257,9 @@ class _XYZ():
             else:
                 raise TypeError('XYZData needs fn or data + symbols argument!')
 
-        # traj or frame (ugly solution with _labels) based on assumption that
-        # above input gives always 3-column data
+        if self.cell_aa_deg is None:
+            self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+
         if self._type == 'frame':  # is it a frame?
             _f = kwargs.get("frame", 0)
             data = data[_f]
@@ -254,36 +270,56 @@ class _XYZ():
         self.data = data
         self._sync_class()
 
-        if align_coords and self._type == "trajectory":  # is it a trajectory?
-            print('Aligning atoms.')
-            self.pos_aa = _align_atoms(self.pos_aa,
-                                       self._masses_amu,
-                                       ref=self.pos_aa[0])
+        if center_coords is not None and center_coords:
+            if not isinstance(center_coords, list):
+                if isinstance(center_coords, bool):
+                    center_coords = slice(None)
+                else:
+                    raise TypeError('Expecting a bool or a list of atoms '
+                                    'for centering!')
+            print('DEBUG info: Centering coordinates and wrapping atoms.')
 
-        # --------has to be an external function
-        if center_coords:
-            print('Centering coordinates in cell and wrap atoms.')
-            cell_aa_deg = kwargs.get('cell_aa_deg',
-                                     _np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
-            # ToDo: Add universal cell support
-            if not all([cl == 90. for cl in cell_aa_deg[3:]]):
-                print([cl for cl in cell_aa_deg[3:]])
-                raise ValueError('Only orthorhombic/cubic cells can be used '
-                                 'with center function!')
-            P = self.pos_aa
-            M = self._masses_amu
-            # --- works for both traj and frame, as last two axes
-            #     agree (smart numpy magic recognises frame axis)
-            com_aa = _np.sum(P * M[:, None], axis=-2) / M.sum()
-            self.pos_aa += cell_aa_deg[None, :3] / 2 - com_aa[None, :]
-            print('WARNING: Auto-wrap of atoms (not mols) activated!')
-            if not any(_c == 0.0 for _c in cell_aa_deg[:3]):
-                self.pos_aa = _np.remainder(self.pos_aa, cell_aa_deg[:3])
+            wt = _np.ones((self.n_atoms))
+            if kwargs.get('use_com', False):
+                wt = self.masses_amu
+            wt = wt[center_coords]
+
+            if self._type == 'frame':
+                _ref = _cowt(self.pos_aa[None, center_coords], wt)[None]
+            else:
+                _ref = _cowt(self.pos_aa[:, center_coords], wt)
+
+            self._center_position(_ref, self.cell_aa_deg)
+            self._wrap_atoms(self.cell_aa_deg)
+            # self._wrap_molecules(mol_map, cell_aa_deg)
+
+        if align_coords is not None and \
+                align_coords and self._type == "trajectory":
+            if not isinstance(align_coords, list):
+                if isinstance(align_coords, bool):
+                    align_coords = slice(None)
+                else:
+                    raise TypeError('Expecting a bool or a list of atoms '
+                                    'for alignment!')
+            print('DEBUG info: Aligning atoms (No wrapping).')
+
+            wt = _np.ones((self.n_atoms))
+            if kwargs.get('use_com', False):
+                wt = self.masses_amu
+
+            self._pos_aa(_align_atoms(self.pos_aa,
+                                      wt,
+                                      ref=self.pos_aa[0],
+                                      subset=align_coords)
+                         )
 
     def _pos_aa(self, *args):
         if len(args) == 0:
             self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
         elif len(args) == 1:
+            if args[0].shape != self.pos_aa.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
             _tmp = self.data.swapaxes(0, -1)
             _tmp[:3] = args[0].swapaxes(0, -1)
             self.data = _tmp.swapaxes(0, -1)
@@ -296,6 +332,9 @@ class _XYZ():
         if len(args) == 0:
             self.vel_au = self.data.swapaxes(0, -1)[3:].swapaxes(0, -1)
         elif len(args) == 1:
+            if args[0].shape != self.vel_au.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
             _tmp = self.data.swapaxes(0, -1)
             _tmp[3:] = args[0].swapaxes(0, -1)
             self.data = _tmp.swapaxes(0, -1)
@@ -306,8 +345,8 @@ class _XYZ():
 
     def _sync_class(self):
         try:
-            self._masses_amu = _np.array([_masses_amu[s]
-                                          for s in self.symbols])
+            self.masses_amu = _np.array([_masses_amu[s]
+                                         for s in self.symbols])
         except KeyError:
             _warnings.warn('Could not find all element masses!',
                            RuntimeWarning)
@@ -329,7 +368,7 @@ class _XYZ():
             _o_pos = getattr(other, a).reshape((1, ) + other.data.shape)
             _s_pos = getattr(self, a)
 
-            _o_pos = _align_atoms(_o_pos, self._masses_amu, ref=_s_pos)[0]
+            _o_pos = _align_atoms(_o_pos, self.masses_amu, ref=_s_pos)[0]
             return _np.allclose(_s_pos, _np.mod(_o_pos, _s_pos), atol=atol)
 
         if _p == 1:
@@ -354,7 +393,7 @@ class _XYZ():
         mode = kwargs.get('mode', 'cog')
         w = _np.ones((self.n_atoms))
         if mode == 'com':
-            w = self._masses_amu
+            w = self.masses_amu
 
         if self._type == 'frame':
             _p, mol_c_aa = _join_molecules(
@@ -393,7 +432,6 @@ class _XYZ():
             self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2
                          - pos[:, None, :])
 
-    # NEW (beta)
     def _align_to_vector(self, i0, i1, vec, **kwargs):
         '''
         Align a reference line pos[i1]-pos[i0] to vec (no pbc support)
@@ -434,7 +472,6 @@ class _XYZ():
         factor = kwargs.get('factor', 1.0)  # for velocities
         separate_files = kwargs.get('separate_files', False)
 
-        # not so nice but it works
         loc_self = _copy.deepcopy(self)
         if self._type == "frame":
             loc_self.data = loc_self.data.reshape((1,
@@ -449,7 +486,6 @@ class _XYZ():
 
             if separate_files:
                 frame_list = kwargs.get('frames', range(loc_self.n_frames))
-                # rethink outfile syntax
                 [xyzWriter(''.join(fn.split('.')[:-1])
                            + '%03d' % fr
                            + '.'
@@ -469,6 +505,8 @@ class _XYZ():
 
         elif fmt == "pdb":
             mol_map = kwargs.get('mol_map')
+            if mol_map is None:
+                raise AttributeError('Could not find mol_map for PDB output!')
             cell_aa_deg = kwargs.get('cell_aa_deg')
             if cell_aa_deg is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
@@ -516,7 +554,6 @@ class XYZFrame(_XYZ, _FRAME):
         _FRAME._sync_class(self)
         _XYZ._sync_class(self)
 
-    # work in progress
     def _make_trajectory(self, **kwargs):
         n_images = kwargs.get('n_images', 3)
         ts_fs = kwargs.get('ts_fs', 1)
@@ -542,9 +579,9 @@ class XYZIterator():
         else:
             fn = args[0]
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+
             if self._fmt == "xyz":
                 self._topology = XYZFrame(fn, **kwargs)
-
                 self._gen = _xyzIterator(fn,
                                          **_extract_keys(
                                                     kwargs,
@@ -587,10 +624,6 @@ class XYZIterator():
         return self
 
     def __next__(self):
-        # self.current += 1
-        # if self.current < self.high:
-        #     return self.current
-        # raise StopIteration
         frame = next(self._gen)
 
         if self._fmt == 'xyz':
@@ -610,11 +643,21 @@ class XYZIterator():
 
         return XYZFrame(**out)
 
+    @classmethod
+    def _from_list(cls, LIST, **kwargs):
+        a = cls(LIST[0], **kwargs)
+        for _f in LIST[1:]:
+            b = cls(_f, **kwargs)
+            a += b
+        return a
+
     def __add__(self, other):
-        if self._topology._is_similar(other._topology)[0] == 0:
-            return _itertools.chain(self, other)
+        new = self
+        if new._topology._is_similar(other._topology)[0] == 1:
+            new._gen = _itertools.chain(new._gen, other._gen)
+            return new
         else:
-            ValueError('Cannot combine frames of different size!')
+            raise ValueError('Cannot combine frames of different size!')
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -651,21 +694,6 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
-    # ### The next two methods should be externalised?
-    # DEPRECATED
-    def _move_residue_to_centre(self, ref, cell_aa_deg, **kwargs):
-        try:
-            ref_pos_aa = getattr(self, 'mol_cog_aa')[:, ref]
-        except AttributeError:
-            ref_pos_aa = getattr(self, 'mol_com_aa')[:, ref]
-        if not all([cl == 90. for cl in cell_aa_deg[3:]]):
-            print([cl for cl in cell_aa_deg[3:]])
-            print('ERROR: only orthorhombic/cubic cells can be used with '
-                  'center function!')
-            _sys.exit(1)
-        self.pos_aa[:, :, :3] += cell_aa_deg[None, None, :3]/2 -\
-            ref_pos_aa[:, None, :]
-
     def _to_frame(self, fr=0):
         return XYZFrame(data=self.data[fr],
                         symbols=self.symbols,
@@ -673,7 +701,6 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
-        # temperature = kwargs.get('temperature', 300)
         ts = kwargs.get('ts', 0.5)
 
         if _np.linalg.norm(self.vel_au) != 0:
@@ -682,24 +709,7 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
                            RuntimeWarning)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
-        # *_np.sqrt(self._masses_amu)[None, :, None]
 
-#        norm = _np.linalg.norm(vec, axis=(1, 2))
-#        vec /= norm[:, None, None] # treat as normal mode
-        # Occupation can be single, average, or random.
-#        beta_au = 1./(temperature*constants.k_B_au)
-#        S = vec/_np.sqrt(beta_au)#/_np.sqrt(constants.m_amu_au)/ \
-#        _np.sqrt(self._masses_amu)[None, :, None]
-        # occupation = 'single'
-#        self.vel_au[:-1] = S #last frame remains unchanged
-#        e_kin_au = CalculateKineticEnergies(self.vel_au, self._masses_amu)
-#        scale = temperature/(_np.sum(e_kin_au)/constants.k_B_au/\
-#        self.n_frames-1)/2
-
-# -----DEPRECATED---------------------
-# class XYZData(XYZTrajectory):
-#    pass
-# ------------------------------------
 
 # CLEAN UP and inherit TRAJECTORY
 
@@ -744,12 +754,27 @@ class VibrationalModes():
         self.pos_au = pos_au
         self.comments = _np.array(comments)
         self.symbols = _np.array(symbols)
-        self._masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
+        self.masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
+
+        # --- DEBUG corner
+        # manually switch mw ON/OFF (it should be clear from the file format)
+        mw = kwargs.get('mw', False)
+
+        if mw:
+            print('DEBUG info:'
+                  'Assuming mass-weighted coordinates in XVIBS.')
+            modes /= _np.sqrt(self.masses_amu)[None, :, None] *\
+                _np.sqrt(constants.m_amu_au)
+        else:
+            print('DEBUG info:'
+                  'Not assuming mass-weighted coordinates in XVIBS.')
+        # ---
+
         self.eival_cgs = _np.array(eival_cgs)
         self.modes = modes
-        # new_eivec = modes*_np.sqrt(self._masses_amu
+        # new_eivec = modes*_np.sqrt(self.masses_amu
         # *constants.m_amu_au)[None, :, None]
-        new_eivec = modes*_np.sqrt(self._masses_amu)[None, :, None]
+        new_eivec = modes*_np.sqrt(self.masses_amu)[None, :, None]
         self.eivec = new_eivec  # /_np.linalg.norm(new_eivec,
         # axis=(1, 2))[:, None, None]
         # usually modes have been normalized after mass-weighing,
@@ -764,7 +789,7 @@ class VibrationalModes():
                 print('ERROR: only orthorhombic/cubic cells can be used with '
                       'center function!')
             P = self.pos_au
-            M = self._masses_amu
+            M = self.masses_amu
             com_au = _np.sum(P*M[:, None], axis=-2)/M.sum()
             self.pos_au += cell_aa[None, :3] / 2 * constants.l_aa2au -\
                 com_au[None, :]
@@ -776,8 +801,8 @@ class VibrationalModes():
         # How to treat rot/trans exclusion? detect 5 or 6?
         atol = 5.E-5
         com_motion = _np.linalg.norm((
-                                self.modes * self._masses_amu[None, :, None]
-                                ).sum(axis=1), axis=-1)/self._masses_amu.sum()
+                                self.modes * self.masses_amu[None, :, None]
+                                ).sum(axis=1), axis=-1)/self.masses_amu.sum()
 
         if _np.amax(com_motion) > atol:
             _warnings.warn('Significant motion of COM for certain modes!',
@@ -794,10 +819,6 @@ class VibrationalModes():
             # DEPRECATED use of 'ignore__warnings'
             print('ERROR: The given cartesian displacements are orthonormal! '
                   'Please try to enable/disable the -mw flag!')
-            if not ignore__warnings:
-                _sys.exit(1)
-            else:
-                print('IGNORED')
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
         if not any([_np.allclose(a,
@@ -810,13 +831,9 @@ class VibrationalModes():
             print(a)
             print('ERROR: The eigenvectors are not orthonormal!')
             print(_np.amax(_np.abs(a-_np.identity(self.n_modes))))
-            if not ignore__warnings:
-                _sys.exit(1)
-            else:
-                print('IGNORED')
 
     def _sync_class(self):
-        self._masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
+        self.masses_amu = _np.array([_masses_amu[s] for s in self.symbols])
         self.n_modes, self.n_atoms, three = self.modes.shape
         norm = _np.linalg.norm(self.eivec, axis=(1, 2))
         norm[:6] = 1.0  # trans+rot
@@ -845,7 +862,7 @@ class VibrationalModes():
         ind = [i for k in sorted(elem) for i in elem[k]]
         self.pos_au = self.pos_au[ind, :]
         self.symbols = self.symbols[ind]
-        self._masses_amu = self._masses_amu[ind]
+        self.masses_amu = self.masses_amu[ind]
         self.eivec = self.eivec[:, ind, :]
         self.modes = self.modes[:, ind, :]
 
@@ -888,8 +905,8 @@ class VibrationalModes():
 #                self.mol_c_au = _np.zeros((self.n_modes, self.n_mols, 3))
 #                self.mol_m_au = _np.zeros((self.n_modes, self.n_mols, 3))
 #            else:
-#                coms=(_np.sum(self.pos_au*self._masses_amu[:,None],axis=0) /\
-#        self._masses_amu.sum()).reshape((1, 3))
+#                coms=(_np.sum(self.pos_au*self.masses_amu[:,None],axis=0) /\
+#        self.masses_amu.sum()).reshape((1, 3))
 #                n_map = tuple(_np.zeros((self.n_atoms)).astype(int))
 #
 #            ZV = _dec(ZV, n_map)
@@ -978,7 +995,7 @@ class VibrationalModes():
 #            self.AAT = _np.loadtxt(fn_AAT).astype(float).reshape(self.n_atoms,
 # 3, 3)
 #            sumrule = constants.e_si**2*constants.avog*_np.pi*\
-#        _np.sum(self.APT**2/self._masses_amu[:, _np.newaxis, _np.newaxis])/\
+#        _np.sum(self.APT**2/self.masses_amu[:, _np.newaxis, _np.newaxis])/\
 #       (3*constants.c_si**2)/constants.m_amu_si
 #            print(sumrule)
 #            # modes means cartesian displacements
@@ -1002,8 +1019,8 @@ class VibrationalModes():
 # 'modelist for source "cpmd_nvpt_md"!')
 #            E0, R1 = cpmd.extract_mtm_data_tmp(fn_e0, fn_r1, len(modelist),
 # self.n_states)
-#            com_au = _np.sum(self.pos_au*self._masses_amu[:, None], axis=0)/\
-#        self._masses_amu.sum()
+#            com_au = _np.sum(self.pos_au*self.masses_amu[:, None], axis=0)/\
+#        self.masses_amu.sum()
 #            origin_aa = _np.zeros(box_vec_aa.shape)
 #            self.m_ic_r_au = _np.zeros((self.n_modes, 3))
 #            self.m_ic_t_au = _np.zeros((self.n_modes, 3))
@@ -1186,12 +1203,12 @@ class VibrationalModes():
         S = self.eivec /\
             _np.sqrt(beta_au) /\
             _np.sqrt(constants.m_amu_au) /\
-            _np.sqrt(self._masses_amu)[None, :, None]
+            _np.sqrt(self.masses_amu)[None, :, None]
 
         if occupation == 'single':
             self.vel_au = S
             e_kin_au = _calculate_kinetic_energies(self.vel_au,
-                                                   self._masses_amu)
+                                                   self.masses_amu)
             scale = temperature / (_np.sum(e_kin_au) / constants.k_B_au /
                                    self.n_modes) / 2
             print(scale)
