@@ -271,51 +271,10 @@ class TestReaders(unittest.TestCase):
         self.assertTrue(np.allclose(cell_aa_deg, np.array([
             12.072, 12.342, 11.576, 90.00, 90.00, 90.00])))
 
-        self.assertListEqual(
-             res,
-             [(1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
-              (2, 'SOL'), (5, 'SOL'), (6, 'SOL'), (7, 'SOL'), (8, 'SOL'),
-              (5, 'SOL'), (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
-              (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (9, 'SOL'), (10, 'SOL'),
-              (11, 'SOL'), (12, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'),
-              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'), (11, 'SOL'),
-              (13, 'SOL1'), (14, 'SOL'), (15, 'SOL'), (16, 'SOL'), (13, 'SOL'),
-              (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'), (14, 'SOL'),
-              (16, 'SOL'), (15, 'SOL'), (3, 'SOL'), (4, 'SOL'), (2, 'SOL'),
-              (1, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'), (2, 'SOL'),
-              (3, 'SOL'), (4, 'SOL'), (5, 'SOL'), (6, 'SOL'), (1, 'SOL'),
-              (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (5, 'SOL'), (6, 'SOL'),
-              (8, 'SOL'), (7, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
-              (2, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'), (6, 'SOL'),
-              (1, 'SOL'), (2, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
-              (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'), (6, 'SOL'),
-              (9, 'SOL'), (10, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
-              (6, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'), (11, 'SOL'),
-              (5, 'SOL'), (6, 'SOL'), (8, 'SOL'), (7, 'SOL'), (12, 'SOL'),
-              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (8, 'SOL'), (7, 'SOL'),
-              (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (12, 'SOL'),
-              (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (13, 'SOL'), (14, 'SOL'),
-              (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'), (13, 'SOL'),
-              (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (9, 'SOL'), (10, 'SOL'),
-              (12, 'SOL'), (11, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'),
-              (14, 'SOL'), (12, 'SOL'), (11, 'SOL'), (16, 'SOL'), (15, 'SOL'),
-              (13, 'SOL'), (14, 'SOL'), (16, 'SOL'), (15, 'SOL'), (13, 'SOL'),
-              (14, 'SOL'), (3, 'SOL'), (4, 'SOL'), (16, 'SOL'), (15, 'SOL'),
-              (13, 'SOL'), (14, 'SOL'), (3, 'SOL'), (4, 'SOL'), (1, 'SOL'),
-              (2, 'SOL'), (13, 'SOL'), (14, 'SOL'), (16, 'SOL'), (15, 'SOL'),
-              (1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'), (16, 'SOL'),
-              (15, 'SOL'), (1, 'SOL'), (2, 'SOL'), (3, 'SOL'), (4, 'SOL'),
-              (3, 'SOL'), (4, 'SOL'), (8, 'SOL'), (7, 'SOL'), (5, 'SOL'),
-              (6, 'SOL'), (12, 'SOL'), (11, 'SOL'), (9, 'SOL'), (10, 'SOL'),
-              (16, 'SOL'), (15, 'SOL'), (13, 'SOL'), (14, 'SOL'), (1, 'SOL'),
-              (2, 'SOL'), (1, 'SOL'), (3, 'SOL'), (4, 'SOL'), (7, 'SOL'),
-              (8, 'SOL'), (5, 'SOL'), (6, 'SOL'), (7, 'SOL'), (8, 'SOL'),
-              (5, 'SOL'), (6, 'SOL'), (11, 'SOL'), (12, 'SOL'), (9, 'SOL'),
-              (10, 'SOL'), (11, 'SOL'), (12, 'SOL'), (9, 'SOL'), (10, 'SOL'),
-              (15, 'SOL'), (16, 'SOL'), (13, 'SOL'), (14, 'SOL'), (15, 'SOL'),
-              (16, 'SOL'), (13, 'SOL'), (14, 'SOL'), (2, 'SOL'), (1, 'SOL'),
-              (3, 'SOL'), (4, 'SOL')]
-             )
+        with open(self.dir + '/res', 'r') as _f:
+            tmp = [tuple(_l.strip().split('-')) for _l in _f.readlines()]
+            tmp = [(int(_a[0]), str(_a[1])) for _a in tmp]
+        self.assertListEqual(res, tmp)
 
         # ToFo: add more tests like for xyz
         # self.assertListEqual(res, ()
@@ -431,6 +390,9 @@ class TestGenerators(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+
+# Test the binaries (all arguments)
 
 
 class TestVisualisation(unittest.TestCase):
