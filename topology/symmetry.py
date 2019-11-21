@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,19 +9,18 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
 import numpy as np
-import copy
 
 from ..topology.mapping import dec, dist_crit_aa
-
 from ..mathematics.algebra import change_euclidean_basis as ceb
+
 
 def find_methyl_groups(mol,hetatm=False):
     '''expects one Molecule object. I use frame 0 as reference. Not tested for long trajectories. Outformat is C H H H'''
-#pos_aa,sym,box_aa,replica,vec_trans,pos_cryst,sym_cr):
+    # pos_aa,sym,box_aa,replica,vec_trans,pos_cryst,sym_cr):
     d = mol.XYZData
     unit_cell=getattr(mol,'UnitCell',None)
     dist_array = d.data[0,:,None,:3]-d.data[0,None,:,:3]
@@ -65,6 +64,7 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
 
     return cell_vec_aa
 
+
 def wrap(pos_aa, cell_aa_deg, **kwargs):
     '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
        cell: [ a b c al be ga ] (distances same dim as pos_aa; angles in degree)'''
@@ -80,12 +80,15 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
         return pos_aa
 
 # actually it does not calculate a "distance"
+
+
 def distance_pbc(p1, p0, **kwargs):
     _d = p1 - p0
     try:
         return _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
     except TypeError:
         return _d
+
 
 def _pbc_shift(_d, cell_aa_deg):
     '''_d in aa of shape ...'''
@@ -98,6 +101,7 @@ def _pbc_shift(_d, cell_aa_deg):
             return np.around(_d/cell_aa_deg[:3]) * cell_aa_deg[:3]
     else:
         return _d
+
 
 def get_distance_matrix( pos_aa, **kwargs):
     '''pos_aa of shape (n_atoms, three) ... (FRAME)'''
@@ -118,17 +122,25 @@ def get_distance_matrix( pos_aa, **kwargs):
     else:
         return np.linalg.norm(dist_array, axis=-1)
 
+
 def cowt(pos_aa, wt, **kwargs):
-    '''Calculate centre of weight, consider periodic boundaries before calling this method.'''
-    _p = copy.deepcopy(pos_aa) #really necessary?
-    #cell_aa_deg = kwargs.get("cell_aa_deg")
-    return np.sum(_p * wt[None, :, None], axis=1) / wt.sum()
+    '''Calculate centre of weight, consider periodic boundaries before
+       calling this method.'''
+
+    _axis = kwargs.get("axis", 1)
+    _sub = kwargs.get('subset', slice(None))
+    _p = np.moveaxis(pos_aa, _axis, 0)
+    _slc = (_sub,) + (len(_p.shape)-1) * (None,)
+
+    return np.sum(_p[_sub] * wt[_slc], axis=0) / wt[_sub].sum()
+
 
 def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     '''DEPRECATED, use join_molecules()'''
     join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)
 
-def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs): #another routine would be complete_molecules for both-sided completion
+
+def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )
     Has still problems with cell-spanning molecules'''
     n_frames, n_atoms, three = pos_aa.shape

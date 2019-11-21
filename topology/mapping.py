@@ -87,6 +87,7 @@ def kabsch_algorithm(P, ref):
 
 def align_atoms(pos_mobile, w, **kwargs):
     '''Demands a reference for each frame, respectively'''
+
     _sub = kwargs.get('subset', slice(None))
     pos_mob = copy.deepcopy(pos_mobile)
     _s_pos_ref = kwargs.get('ref', pos_mobile[0])[_sub]
@@ -95,9 +96,11 @@ def align_atoms(pos_mobile, w, **kwargs):
                    axis=-2)/w[_sub].sum())[None, :]
     com = np.sum(_s_pos_mob*w[None, _sub, None], axis=-2)/w[_sub].sum()
     pos_mob -= com[:, None, :]
+
     for frame, P in enumerate(_s_pos_mob):
         U = kabsch_algorithm(P*w[_sub, None], _s_pos_ref*w[_sub, None])
         pos_mob[frame] = np.tensordot(U, pos_mob[frame],
                                       axes=([1], [1])).swapaxes(0, 1)
     pos_mob += com[:, None, :]
+
     return pos_mob

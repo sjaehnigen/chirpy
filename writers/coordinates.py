@@ -30,9 +30,10 @@ def _write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom')
         sys.exit(1)
 
     pos = copy.deepcopy(pos_au) #copy really necessary? 
-    if fmt=='angstrom': pos /= Angstrom2Bohr
+    if fmt=='angstrom':
+        pos /= Angstrom2Bohr
 
-    for i,sym in enumerate(symbols):
+    for i, sym in enumerate(symbols):
         if sym != sorted(symbols)[i]: 
             print('WARNING: Atom list not sorted!')
             #sys.exit(1)
@@ -47,7 +48,7 @@ def _write_atoms_section(fn, symbols, pos_au, pp='MT_BLYP',bs='',fmt='angstrom')
             elems[sym]['c'] = {elems[sym]['n'] : pos[i]}
 #            else: raise Exception("Element %s not found!" % sym)
 
-    with open(fn,'w') as f:
+    with open(fn, 'w') as f:
         format = '%20.10f'*3 + '\n'
         f.write("&ATOMS\n")
 #        f.write(" ISOTOPE\n")
@@ -123,15 +124,14 @@ Output: None"""
 
 def xyzWriter(fn, data, symbols, comments, append=False):
     """WriteXYZFile(filename, data, symbols, comments, append=False)
-    Adapted from Arne Scherrer
-Input:  
+       Input:
         1. fn: File to write
         2. data: np.array of shape (#frames, #atoms, #fields/atom)
         3. symbols: list of atom symbols (contains strings)
         4. list of comment lines (contains strings)
         5. append: Append to file (optional, default = False)
 
-Output: None"""
+        Output: None"""
     n_frames = len(comments)
     for fr in range(n_frames):
         _write_frame(fn, data[fr], symbols,

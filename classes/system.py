@@ -16,7 +16,8 @@ import numpy as _np
 import warnings as _warnings
 
 from ..classes.crystal import UnitCell as _UnitCell
-from ..classes.trajectory import XYZFrame, XYZTrajectory, VibrationalModes
+from ..classes.trajectory import XYZFrame, XYZTrajectory, XYZIterator, \
+        VibrationalModes
 from ..physics import constants
 from ..physics.constants import masses_amu, valence_charges
 from ..topology.dissection import define_molecules as _define_molecules
@@ -59,6 +60,8 @@ class _SYSTEM():
                 kwargs.update({'fn_topo': fn})
                 self.install_molecular_origin_gauge(**kwargs)
 
+        # --- ITERATOR DEVELOP info: methods called here cannot access ITER
+        #       --> shift: extract_mol, center_res etc. directly to ITER
         # --- NEEDS WORKUP
         if not any([_a <= 0.0 for _a in self.cell_aa_deg[:3]]):
             # UnitCell is DEPRECATED
@@ -131,7 +134,7 @@ class _SYSTEM():
 
     def extract_molecules(self, mols):
         '''mols: list of molecular indices
-           BETA'''
+           BETA; not for iterators (yet)'''
         if self.mol_map is None:
             raise AttributeError('Extract molecules requires a topology '
                                  '(mol_map)!')
@@ -222,6 +225,11 @@ class Supercell(_SYSTEM):
 class Molecule(_SYSTEM):
     def _XYZ(self, *args, **kwargs):
         return XYZTrajectory(*args, **kwargs)
+
+
+class Supercell_ITER(_SYSTEM):
+    def _XYZ(self, *args, **kwargs):
+        return XYZIterator(*args, **kwargs)
 
 
 class Snapshot(_SYSTEM):

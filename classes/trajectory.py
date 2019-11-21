@@ -65,8 +65,6 @@ class _FRAME():
         self._labels()
         self._read_input(*args, **kwargs)
         self._sync_class()
-        # access from behind !
-        self.axis_pointer = kwargs.get('axis_pointer', -2)
 
     def _read_input(self,  *args, **kwargs):
         self.comments = kwargs.get('comments', [])
@@ -74,6 +72,10 @@ class _FRAME():
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
     def _sync_class(self):
+        # access from behind !
+        self.axis_pointer = -2
+        # --- should be in __init__ but it is not inherited
+
         self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('ERROR: Data shape inconsistent '
@@ -157,6 +159,9 @@ class _TRAJECTORY(_FRAME):
         if self.n_frames != len(self.comments):
             raise ValueError('Data shape inconsistent with '
                              'comments attribute!\n')
+        # access from behind !
+        self.axis_pointer = -2
+        # --- should be in __init__ but it is not inherited
 
 
 class _XYZ():
@@ -277,41 +282,44 @@ class _XYZ():
                 else:
                     raise TypeError('Expecting a bool or a list of atoms '
                                     'for centering!')
-            print('DEBUG info: Centering coordinates and wrapping atoms.')
 
             wt = _np.ones((self.n_atoms))
             if kwargs.get('use_com', False):
                 wt = self.masses_amu
-            wt = wt[center_coords]
 
-            if self._type == 'frame':
-                _ref = _cowt(self.pos_aa[None, center_coords], wt)[None]
-            else:
-                _ref = _cowt(self.pos_aa[:, center_coords], wt)
+            # frame-/trajectory-independent, default: axis_pointer=-2 (= atoms)
+            _ref = _cowt(self.pos_aa,
+                         wt,
+                         subset=center_coords,
+                         axis=self.axis_pointer)
 
             self._center_position(_ref, self.cell_aa_deg)
-            self._wrap_atoms(self.cell_aa_deg)
-            # self._wrap_molecules(mol_map, cell_aa_deg)
 
-        if align_coords is not None and \
-                align_coords and self._type == "trajectory":
+            if not any([_a <= 0.0 for _a in self.cell_aa_deg[:3]]):
+                self._wrap_atoms(self.cell_aa_deg)
+                # self._wrap_molecules(mol_map, cell_aa_deg)
+
+        if align_coords is not None and align_coords:
             if not isinstance(align_coords, list):
                 if isinstance(align_coords, bool):
                     align_coords = slice(None)
                 else:
                     raise TypeError('Expecting a bool or a list of atoms '
                                     'for alignment!')
-            print('DEBUG info: Aligning atoms (No wrapping).')
 
             wt = _np.ones((self.n_atoms))
             if kwargs.get('use_com', False):
                 wt = self.masses_amu
 
-            self._pos_aa(_align_atoms(self.pos_aa,
-                                      wt,
-                                      ref=self.pos_aa[0],
-                                      subset=align_coords)
-                         )
+            if self._type == 'trajectory':
+                self._align_ref = kwargs.get('align_ref', self.pos_aa[0])
+            else:
+                self._align_ref = kwargs.get('align_ref', self.pos_aa)
+
+            self._align(weights=wt,
+                        ref=self._align_ref,
+                        subset=align_coords,
+                        )
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -423,6 +431,24 @@ class _XYZ():
         # setattr(self, 'abc', abc)
         # setattr(self, 'albega', albega)
 
+    def _align(self, **kwargs):
+        _wt = kwargs.get('weights', self.masses_amu)
+
+        if self._type == 'trajectory':
+            self._pos_aa(_align_atoms(
+                            self.pos_aa,
+                            _wt,
+                            **kwargs
+                            )
+                         )
+        elif self._type == 'frame':
+            self._pos_aa(_align_atoms(
+                            self.pos_aa.reshape((1, ) + self.data.shape),
+                            _wt,
+                            **kwargs
+                            )[0]
+                         )
+
     def _center_position(self, pos, cell_aa_deg, **kwargs):
         '''pos reference in shape (n_frames, three)'''
         if self._type == 'frame':
@@ -492,7 +518,9 @@ class _XYZ():
                            + fn.split('.')[-1],
                            [getattr(loc_self, attr)[fr]],
                            loc_self.symbols,
-                           [loc_self.comments[fr]])
+                           [loc_self.comments[fr]],
+                           **_extract_keys(kwargs, append=False)
+                           )
                  for fr in frame_list]
 
             else:
@@ -501,6 +529,7 @@ class _XYZ():
                           loc_self.symbols,
                           getattr(loc_self, 'comments',
                                             loc_self.n_frames * ['passed']),
+                          **_extract_keys(kwargs, append=False)
                           )
 
         elif fmt == "pdb":
@@ -620,6 +649,12 @@ class XYZIterator():
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
 
+            # keep kwargs for iterations
+            self._kwargs = kwargs
+            # --- TESTING
+            self._fr = kwargs.get('range', (0, float('inf')))[0]-1
+            next(self)
+
     def __iter__(self):
         return self
 
@@ -640,8 +675,18 @@ class XYZIterator():
                     'symbols': self._symbols,
                     'comments': self._comments,
                     }
+        self._fr += 1
+        self._kwargs.update(out)
 
-        return XYZFrame(**out)
+        self._frame = XYZFrame(**self._kwargs)
+
+        self.__dict__.update(self._frame.__dict__)
+
+        # Get additional keyword-dependent updates
+        if self._kwargs.get('align_coords') is not None:
+            self._kwargs.update({'align_ref': self._align_ref})
+
+        return self._fr
 
     @classmethod
     def _from_list(cls, LIST, **kwargs):
@@ -655,6 +700,7 @@ class XYZIterator():
         new = self
         if new._topology._is_similar(other._topology)[0] == 1:
             new._gen = _itertools.chain(new._gen, other._gen)
+            # Does this rewind the original _gen() ??
             return new
         else:
             raise ValueError('Cannot combine frames of different size!')
@@ -686,7 +732,30 @@ class XYZIterator():
                     'comments': [self._comments] * data.shape[0],
                     }
 
-        return XYZTrajectory(**out)
+        self._kwargs.update(out)
+        return XYZTrajectory(**self._kwargs)
+
+    @staticmethod
+    def _loop(obj, func, events, *args, **kwargs):
+        _fr = 0
+        while True:
+            try:
+                getattr(obj._frame, func)(*args, **kwargs)
+                next(obj)
+                if _fr in events:
+                    if isinstance(events[_fr], dict):
+                        kwargs.update(events[_fr])
+                _fr += 1
+            except StopIteration:
+                break
+
+    def write(self, fn, **kwargs):
+        return self._loop(self,
+                          'write',
+                          {0: {'append': True}},
+                          fn,
+                          **kwargs
+                          )
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):

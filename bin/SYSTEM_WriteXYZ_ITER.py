@@ -39,33 +39,10 @@ def main():
                         default=None,
                         type=int,
                         )
-    parser.add_argument("--center_residue",
-                        help="Center residue (resid as given in fn_topo) in \
-                                cell and wrap (requires a topology file).",
-                        default=None,
-                        type=int,
-                        )
     parser.add_argument("--use_com",
                         action='store_true',
                         help="Use centre of mass instead of centre of geometry \
                                 as reference",
-                        default=False
-                        )
-    parser.add_argument("--extract_mols",
-                        nargs='+',
-                        help="Write only coordinates of given molecular ids starting from 0 \
-                                (requires a topology file).",
-                        default=None,
-                        type=int,
-                        )
-    parser.add_argument("--fn_topo",
-                        help="Topology file (molecules, clusters, residues, etc.) \
-                                in PDB format.",
-                        default=None
-                        )
-    parser.add_argument("--sort",
-                        action='store_true',
-                        help="Alphabetically sort atoms",
                         default=False
                         )
     parser.add_argument("--cell_aa_deg",
@@ -93,7 +70,7 @@ def main():
     if args.range is None:
         args.range = (0, float('inf'))
 
-    system.Molecule(**vars(args)).XYZData.write(args.f, fmt='xyz')
+    system.Supercell_ITER(**vars(args)).XYZData.write(args.f, fmt='xyz')
 
 
 if __name__ == "__main__":
