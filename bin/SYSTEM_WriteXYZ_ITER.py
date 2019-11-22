@@ -52,8 +52,8 @@ def main():
                         default=None,
                         )
     parser.add_argument("--range",
-                        nargs=2,
-                        help="Range of frames to read (start, stop)",
+                        nargs=3,
+                        help="Range of frames to read (start, step, stop)",
                         default=None,
                         type=int,
                         )

@@ -184,10 +184,10 @@ class _XYZ():
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if self._type == 'frame':
                 _fr = kwargs.get('frame', 0)
-                _fr = _fr, _fr+1
+                _fr = _fr, 1, _fr+1
                 kwargs.update({'range': _fr})
             elif self._type == 'trajectory':
-                _fr = kwargs.get('frame_range', (0, float('inf')))
+                _fr = kwargs.get('frame_range', (0, 1, float('inf')))
             self.fn = fn
 
             if fmt == "xyz":
@@ -614,7 +614,7 @@ class XYZIterator():
                 self._gen = _xyzIterator(fn,
                                          **_extract_keys(
                                                     kwargs,
-                                                    range=(0, float('inf')),
+                                                    range=(0, 1, float('inf')),
                                                     )
                                          )
             elif self._fmt == "cpmd":
@@ -642,7 +642,7 @@ class XYZIterator():
                                                     kwargs,
                                                     kinds=symbols,
                                                     filetype=fn,
-                                                    range=(0, float('inf')),
+                                                    range=(0, 1, float('inf')),
                                                     )
                                           )
 

@@ -27,7 +27,7 @@ def _get(_it, kernel, **kwargs):
        it with given _kernel. Returns processed data.'''
 
     n_lines = kwargs.get('n_lines')
-    r0, r1 = kwargs.pop("range", (0, float('inf')))
+    r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
     _r = 0
 
     while _r < r0:
@@ -35,12 +35,14 @@ def _get(_it, kernel, **kwargs):
         _r += 1
 
     while True:
-        # No list comprehension here to allow yield of incomplete _data
         _data = []
         try:
             for _ik in range(n_lines):
-                _data.append(next(_it))
-            yield kernel(_data, **kwargs)
+                _l = next(_it)
+                if _r % _ir == 0:
+                    _data.append(_l)
+            if _r % _ir == 0:
+                yield kernel(_data, **kwargs)
             _r += 1
             if _r >= r1:
                 _data = []
