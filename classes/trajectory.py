@@ -358,7 +358,8 @@ class _XYZ():
             self.masses_amu = _np.array([_masses_amu[s]
                                          for s in self.symbols])
         except KeyError:
-            _warnings.warn('Could not find all element masses!',
+            _warnings.warn('Could not find masses for all elements! '
+                           'Centre of mass cannot be used.',
                            RuntimeWarning)
         # These are NOT pointers and any changes to pos/vel will be overwritte
         # by data! You have to change data instead or use _pos/_vel
@@ -434,7 +435,7 @@ class _XYZ():
         # setattr(self, 'albega', albega)
 
     def _align(self, **kwargs):
-        _wt = kwargs.get('weights', self.masses_amu)
+        _wt = kwargs.get('weights', _np.ones(self.n_atoms))
 
         if self._type == 'trajectory':
             self._pos_aa(_align_atoms(
