@@ -13,6 +13,7 @@
 
 
 import numpy as np
+import warnings as _warnings
 
 from ..topology.mapping import dec, dist_crit_aa
 from ..mathematics.algebra import change_euclidean_basis as ceb
@@ -76,7 +77,7 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
                                      axes=1
                                      )
     else:
-        print( 'WARNING: Cell size zero!' )
+        _warnings.warn('Cell size zero!', UserWarning)
         return pos_aa
 
 # actually it does not calculate a "distance"

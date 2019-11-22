@@ -173,6 +173,7 @@ class _XYZ():
     def _read_input(self, *args, **kwargs):
         align_coords = kwargs.get('align_coords')
         center_coords = kwargs.get('center_coords')
+        wrap = kwargs.get('wrap', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
         if len(args) > 1:
@@ -294,10 +295,7 @@ class _XYZ():
                          axis=self.axis_pointer)
 
             self._center_position(_ref, self.cell_aa_deg)
-
-            if not any([_a <= 0.0 for _a in self.cell_aa_deg[:3]]):
-                self._wrap_atoms(self.cell_aa_deg)
-                # self._wrap_molecules(mol_map, cell_aa_deg)
+            wrap = True
 
         if align_coords is not None and align_coords:
             if not isinstance(align_coords, list):
@@ -320,6 +318,10 @@ class _XYZ():
                         ref=self._align_ref,
                         subset=align_coords,
                         )
+            wrap = False
+
+        if wrap:
+            self._wrap_atoms(self.cell_aa_deg)
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -612,10 +614,11 @@ class XYZIterator():
             if self._fmt == "xyz":
                 self._topology = XYZFrame(fn, **kwargs)
                 self._gen = _xyzIterator(fn,
-                                         **_extract_keys(
-                                                    kwargs,
-                                                    range=(0, 1, float('inf')),
-                                                    )
+                                         **kwargs
+                                         # **_extract_keys(
+                                         #          kwargs,
+                                         #          range=(0, 1, float('inf')),
+                                         #          )
                                          )
             elif self._fmt == "cpmd":
                 if ('symbols' in kwargs or 'numbers' in kwargs):
@@ -624,26 +627,29 @@ class XYZIterator():
                                          [constants.symbols[z - 1]
                                           for z in numbers]
                                          )
+                    kwargs.update({'symbols': symbols})
                 else:
                     raise TypeError("cpmdReader needs list of numbers or "
                                     "symbols.")
                 # comments = kwargs.get('comments', [''])
 
                 self._topology = XYZFrame(fn,
-                                          **_extract_keys(
-                                                    kwargs,
-                                                    kinds=symbols,
-                                                    filetype=fn,
-                                                    )
+                                          **kwargs
+                                          # **_extract_keys(
+                                          #           kwargs,
+                                          #           kinds=symbols,
+                                          #           filetype=fn,
+                                          #           )
                                           )
 
                 self._gen = _cpmdIterator(fn,
-                                          **_extract_keys(
-                                                    kwargs,
-                                                    kinds=symbols,
-                                                    filetype=fn,
-                                                    range=(0, 1, float('inf')),
-                                                    )
+                                          **kwargs
+                                          # **_extract_keys(
+                                          #         kwargs,
+                                          #         kinds=symbols,
+                                          #         filetype=fn,
+                                          #         range=(0, 1, float('inf')),
+                                          #         )
                                           )
 
             else:

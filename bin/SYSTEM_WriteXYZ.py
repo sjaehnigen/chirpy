@@ -68,6 +68,11 @@ def main():
                         help="Alphabetically sort atoms",
                         default=False
                         )
+    parser.add_argument("--wrap",
+                        action='store_true',
+                        help="Wrap atoms in cell.",
+                        default=False
+                        )
     parser.add_argument("--cell_aa_deg",
                         nargs=6,
                         help="Use custom cell parametres a b c al be ga in \
