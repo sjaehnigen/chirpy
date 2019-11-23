@@ -288,7 +288,6 @@ class _XYZ():
             if kwargs.get('use_com', False):
                 wt = self.masses_amu
 
-            # frame-/trajectory-independent, default: axis_pointer=-2 (= atoms)
             _ref = _cowt(self.pos_aa,
                          wt,
                          subset=center_coords,
@@ -296,6 +295,11 @@ class _XYZ():
 
             self._center_position(_ref, self.cell_aa_deg)
             wrap = True
+
+        if wrap:
+            self._wrap_atoms(self.cell_aa_deg)
+        
+        # --- actions without allowed wrapping after this line
 
         if align_coords is not None and align_coords:
             if not isinstance(align_coords, list):
@@ -318,10 +322,6 @@ class _XYZ():
                         ref=self._align_ref,
                         subset=align_coords,
                         )
-            wrap = False
-
-        if wrap:
-            self._wrap_atoms(self.cell_aa_deg)
 
     def _pos_aa(self, *args):
         if len(args) == 0:
