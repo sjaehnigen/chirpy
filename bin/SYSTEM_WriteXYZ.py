@@ -96,7 +96,7 @@ def main():
     else:
         args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
     if args.range is None:
-        args.range = (0, float('inf'))
+        args.range = (0, 1, float('inf'))
 
     system.Molecule(**vars(args)).XYZData.write(args.f, fmt='xyz')
 

@@ -106,20 +106,8 @@ def _cpmd(frame, **kwargs):
         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
 
-def xyzReader(FN, **kwargs):
-    '''Reads frame size (n_lines) from first line'''
-    _kernel = _xyz
-
-    with open(FN, 'r') as _f:
-        _nlines = int(_f.readline().strip()) + 2
-
-    data, symbols, comments = zip(*_reader(FN, _nlines, _kernel, **kwargs))
-
-    return np.array(data), symbols[0], list(comments)
-
-
 def xyzIterator(FN, **kwargs):
-    '''Iterator version of xyzReader
+    '''Iterator for xyzReader
        Usage: next() returns data, symbols, comments of
        current frame'''
     _kernel = _xyz
@@ -130,20 +118,10 @@ def xyzIterator(FN, **kwargs):
     return _reader(FN, _nlines, _kernel, **kwargs)
 
 
-def cpmdReader(FN, **kwargs):
-    _kernel = _cpmd
-    kinds = kwargs.pop('kinds', None)
-
-    if kinds is None:
-        _nlines = 1
-    else:
-        _nlines = len([_k for _k in kinds])  # type-independent
-
-    data = np.array(tuple(_reader(FN, _nlines, _kernel, **kwargs)))
-    return data
-
-
 def cpmdIterator(FN, **kwargs):
+    '''Iterator for  cpmdReader
+       Known types: GEOMETRY, TRAJECTORY, MOMENTS
+       Usually needs additional metadata of the system.'''
     _kernel = _cpmd
     kinds = kwargs.pop('kinds', None)
 
@@ -153,6 +131,19 @@ def cpmdIterator(FN, **kwargs):
         _nlines = len([_k for _k in kinds])  # type-independent
 
     return _reader(FN, _nlines, _kernel, **kwargs)
+
+
+def xyzReader(FN, **kwargs):
+    '''Read complete XYZ file at once'''
+    data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
+    return np.array(data), symbols[0], list(comments)
+
+
+def cpmdReader(FN, **kwargs):
+    '''Read complete CPMD file at once
+       Known types: GEOMETRY, TRAJECTORY, MOMENTS
+       Usually needs additional metadata of the system.'''
+    return np.array(tuple(cpmdIterator(FN, **kwargs)))
 
 
 # ------ external readers

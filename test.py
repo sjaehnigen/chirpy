@@ -34,6 +34,7 @@ from chirpy.readers import modes, coordinates  # , volume
 # from .generators import
 # from .visualisation import
 # from .mdanalysis import
+# read iterators
 
 # --- NOT tested
 #
@@ -229,7 +230,7 @@ class TestReaders(unittest.TestCase):
         # Test range
         data, symbols, comments = coordinates.xyzReader(
                 self.dir + '/test_traj_pos_pbc.xyz',
-                range=(1, 3)
+                range=(1, 1, 3)
                 )
         self.assertTrue(np.array_equal(
          data,

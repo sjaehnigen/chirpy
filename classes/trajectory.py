@@ -298,7 +298,7 @@ class _XYZ():
 
         if wrap:
             self._wrap_atoms(self.cell_aa_deg)
-        
+
         # --- actions without allowed wrapping after this line
 
         if align_coords is not None and align_coords:
