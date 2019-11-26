@@ -307,8 +307,9 @@ class TestReaders(unittest.TestCase):
                     coordinates.pdbReader(
                           self.dir + '/test_simple_nodims.pdb')
 
-    # def test_cubeReader(self):
-    #     data = volume.cubeReader(self.dir + '/test.cube')
+    def test_cubeReader(self):
+        # data = volume.cubeReader(self.dir + '/test.cube')
+        pass
 
     # test iterators
 
@@ -395,7 +396,6 @@ class TestGenerators(unittest.TestCase):
 
 # Test the binaries (all arguments)
 
-
 class TestVisualisation(unittest.TestCase):
 
     def setUp(self):
@@ -414,5 +414,18 @@ class TestMdanalysis(unittest.TestCase):
         pass
 
 
+class TestTest:
+    def setUp(self):
+        # Change paths after moving file
+        self.dir = _test_dir
+
+    def tearDown(self):
+        pass
+
+    def test_test(self):
+        pass
+
+
 if __name__ == '__main__':
+    # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
     unittest.main()

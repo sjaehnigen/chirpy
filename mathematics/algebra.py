@@ -15,6 +15,11 @@
 import numpy as np
 
 
+def vector(p1, p2):
+    '''v = p1 - p2'''
+    return p1-p2
+
+
 def angle(v1, v2):
     """Angle between two vectors"""
     al = np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
@@ -69,6 +74,11 @@ def plane_normal(p1, p2, p3):
     n /= np.linalg.norm(n)
 
     return n
+
+
+def triple_product(v1, v2, v3):
+    '''t = (v1 x v2) · v3'''
+    return np.inner(np.cross(v1, v2), v3)
 
 
 def rotation_matrix(v1, v2):
