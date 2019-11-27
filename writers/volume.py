@@ -35,7 +35,9 @@ def AssembleCubeFile(comment1, comment2, numbers, coords, cell, data, origin=np.
     for i_x in range(dim[0]):
         for i_y in range(dim[1]):
             for i_z in range(dim[2]):
-                if i_z % 6 == 0 and i_z != 0:
+                # changed 2019-11-26: two line-breaks if n_z is multiple of 6
+                # if i_z % 6 == 0 and i_z != 0:
+                if i_z % 6 == 0:  # and i_z != 0:
                     obuffer += '\n'
                 obuffer += '%13.5E'%data[i_x][i_y][i_z]
             obuffer += '\n'

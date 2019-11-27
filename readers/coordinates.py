@@ -16,84 +16,35 @@ import numpy as np
 import MDAnalysis as mda
 import warnings
 
-
-def _gen(fn):
-    '''Global generator for all formats'''
-    return (line for line in fn if 'NEW DATA' not in line)
+from .generators import _reader
 
 
-def _get(_it, kernel, **kwargs):
-    '''Gets batch of lines defined by _n_lines and processes
-       it with given _kernel. Returns processed data.'''
-
-    n_lines = kwargs.get('n_lines')
-    r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
-    _r = 0
-
-    while _r < r0:
-        [next(_it) for _ik in range(n_lines)]
-        _r += 1
-
-    while True:
-        _data = []
-        try:
-            for _ik in range(n_lines):
-                _l = next(_it)
-                if _r % _ir == 0:
-                    _data.append(_l)
-            if _r % _ir == 0:
-                yield kernel(_data, **kwargs)
-            _r += 1
-            if _r >= r1:
-                _data = []
-                raise StopIteration()
-
-        except StopIteration:
-            if len(_data) != 0:
-                raise ValueError('Reached end of while processing frame!')
-            break
-
-
-def _reader(FN, _nlines, _kernel, **kwargs):
-    '''Opens file, checks contents, and parses arguments,
-       _kernel, and generator.'''
-
-    kwargs.update({'n_lines': _nlines})
-
-    with open(FN, 'r') as _f:
-        _it = _gen(_f)
-        data = _get(_it, _kernel, **kwargs)
-
-        if np.size(data) == 0:
-            raise ValueError('Given input and arguments '
-                             'do not yield any data!')
-        else:
-            for _d in data:
-                yield _d
-
-
-def _dummy_kernel(frame, **kwargs):
-    '''Simplest _kernel. Does nothing.'''
-    return frame
-
+# --- kernels
 
 def _xyz(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
-    if kwargs.get('n_lines') != int(frame[0].strip()) + 2:
+    # try:
+    _atomnumber = int(next(frame).strip())
+
+    if kwargs.get('n_lines') != _atomnumber + 2:
         raise ValueError('Inconsistent XYZ file!')
 
-    comment = frame[1].rstrip('\n')
-    _split = (_l.strip().split() for _l in frame[2:])
+    comment = next(frame).rstrip('\n')
+    _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
+    print(data[0])
     return np.array(data).astype(float), symbols, comment
+    #except StopIteration:
+    #    print("kernel ended")
 
 
 def _cpmd(frame, **kwargs):
     '''Kernel for processing cpmd frame.
        Related to CPMD interface get_frame_traj_and_mom()'''
 
+    print(frame)
     filetype = kwargs.get('filetype')
 
     if filetype == 'GEOMETRY':
@@ -104,6 +55,8 @@ def _cpmd(frame, **kwargs):
 
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
+
+# --- iterators
 
 
 def xyzIterator(FN, **kwargs):
@@ -132,11 +85,16 @@ def cpmdIterator(FN, **kwargs):
 
     return _reader(FN, _nlines, _kernel, **kwargs)
 
+# --- complete readers
+
 
 def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once'''
-    data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
-    return np.array(data), symbols[0], list(comments)
+    try:
+        data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
+        return np.array(data), symbols[0], list(comments)
+    except StopIteration:
+        print("End in reader")
 
 
 def cpmdReader(FN, **kwargs):
