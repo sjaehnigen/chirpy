@@ -34,10 +34,7 @@ def _xyz(frame, **kwargs):
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
-    print(data[0])
     return np.array(data).astype(float), symbols, comment
-    #except StopIteration:
-    #    print("kernel ended")
 
 
 def _cpmd(frame, **kwargs):
@@ -90,11 +87,8 @@ def cpmdIterator(FN, **kwargs):
 
 def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once'''
-    try:
-        data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
-        return np.array(data), symbols[0], list(comments)
-    except StopIteration:
-        print("End in reader")
+    data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
+    return np.array(data), symbols[0], list(comments)
 
 
 def cpmdReader(FN, **kwargs):

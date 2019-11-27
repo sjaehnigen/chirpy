@@ -29,63 +29,35 @@ def _get(_it, kernel, **kwargs):
     r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
     _r = 0
 
-    # while _r < r0:
-    #     [next(_it) for _ik in range(n_lines)]
-    #     _r += 1
-
     class _line_iterator():
         def __init__(self):
             self.current_line = 0
             self._it = _it
             self._r = 0
-            try:
-                while _r < r0:
-                    [next(_it) for _ik in range(n_lines)]
-                    self._r += 1
-            except StopIteration:
-                print("ENDE in init")
+            while _r < r0:
+                [next(_it) for _ik in range(n_lines)]
+                self._r += 1
 
         def __iter__(self):
             return self
+
         def __next__(self):
             while self._r % _ir != 0:
                 [next(_it) for _ik in range(n_lines)]
                 self._r += 1
- #           self.current_line += 1
- #           if self.current_line < n_lines:
-            # if self._r > 0: print(next(_it))
+
             self._r += 1
-            # return (next(_it) for _ik in range(n_lines))
-            # return (_iit for _iit, _ik in izip(_it, range(n_lines)))
+            if self._r > r1:
+                raise StopIteration()
+
             return islice(_it, n_lines)
+
 
     _data = _line_iterator()
     while True:
-        #_data = None
         try:
-        # while True:
-            # def _data():
-            #     for _ik in range(n_lines):
-            #         _l = next(_it)
-            #         if _r % _ir == 0:
-            #             yield _l
-            #             # _data.append(_l)
-            # _data = (_l for _l in islice(_it, n_lines) if _r % _ir == 0)
-            # if _r % _ir == 0:
-            #    _data = islice(_it, n_lines)
-            #if _r % _ir == 0:
             yield kernel(next(_data), **kwargs)
-            #else:
-            #    trash = tuple(_data)
-            #    print(trash.shape)
-            #_r += 1
-            #if _r >= r1:
-            #    _data = None
-            #    raise StopIteration()
-
         except StopIteration:
-            # if _data is not None:  # len(_data) != 0:
-            #    raise ValueError('Reached end of while processing frame!')
             break
 
 
