@@ -27,14 +27,13 @@ def _get(_it, kernel, **kwargs):
 
     n_lines = kwargs.get('n_lines')
     r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
-    _r = 0
 
     class _line_iterator():
         def __init__(self):
             self.current_line = 0
             self._it = _it
             self._r = 0
-            while _r < r0:
+            while self._r < r0:
                 [next(_it) for _ik in range(n_lines)]
                 self._r += 1
 
@@ -42,7 +41,7 @@ def _get(_it, kernel, **kwargs):
             return self
 
         def __next__(self):
-            while self._r % _ir != 0:
+            while (self._r - r0) % _ir != 0:
                 [next(_it) for _ik in range(n_lines)]
                 self._r += 1
 
@@ -51,7 +50,6 @@ def _get(_it, kernel, **kwargs):
                 raise StopIteration()
 
             return islice(_it, n_lines)
-
 
     _data = _line_iterator()
     while True:

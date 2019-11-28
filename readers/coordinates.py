@@ -24,7 +24,6 @@ from .generators import _reader
 def _xyz(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
-    # try:
     _atomnumber = int(next(frame).strip())
 
     if kwargs.get('n_lines') != _atomnumber + 2:
@@ -34,6 +33,9 @@ def _xyz(frame, **kwargs):
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
+    if len(data) != kwargs.get("n_lines") - 2:
+        raise ValueError('Tried to read broken or incomplete file!')
+
     return np.array(data).astype(float), symbols, comment
 
 
@@ -41,17 +43,38 @@ def _cpmd(frame, **kwargs):
     '''Kernel for processing cpmd frame.
        Related to CPMD interface get_frame_traj_and_mom()'''
 
-    print(frame)
     filetype = kwargs.get('filetype')
+    # --- is this a python bug?
+    # --- generator needs at least one call of next() to work properly
+    data = []
+    data.append(next(frame).strip().split())
+
+    for _l in frame:
+        _l = _l.strip().split()
+        data.append(_l)
+
+    if len(data) != kwargs.get("n_lines"):
+        raise ValueError('Tried to read broken or incomplete file!')
 
     if filetype == 'GEOMETRY':
-        return np.array([_l.strip().split() for _l in frame]).astype(float)
+        return np.array(data).astype(float)
 
     elif filetype in ['TRAJECTORY', 'MOMENTS']:
-        return np.array([_l.strip().split()[1:] for _l in frame]).astype(float)
+        return np.array(data).astype(float)[:, 1:]
 
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
+
+# --- This does currently not work (missing next() call)
+#     if filetype == 'GEOMETRY':
+#         return np.array([_l.strip().split() for _l in frame]).astype(float)
+#
+#     elif filetype in ['TRAJECTORY', 'MOMENTS']:
+#         return np.array([_l.strip().split()[1:]
+#                          for _l in frame]).astype(float)
+#
+#     else:
+#         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
 # --- iterators
 
