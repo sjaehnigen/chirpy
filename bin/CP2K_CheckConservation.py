@@ -16,16 +16,31 @@ import argparse
 import numpy as np
 from chirpy.interfaces import cp2k
 from chirpy.visualisation import timeline
-# needs cleanup
 
 
 def main(*args):
 
     if len(args) == 0:
-        parser = argparse.ArgumentParser(description="check_convergence", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser.add_argument("fn", help="CP2K energy file (*.ener)")
-        parser.add_argument("--verbose", default=False, action='store_true', help="verbose output")
-        parser.add_argument("--noplot", default=False, action='store_true', help="plot output")
+        parser = argparse.ArgumentParser(
+                description="check_convergence",
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter
+                )
+        parser.add_argument(
+                "fn",
+                help="CP2K energy file (*.ener)"
+                )
+        parser.add_argument(
+                "--verbose",
+                default=False,
+                action='store_true',
+                help="verbose output"
+                )
+        parser.add_argument(
+                "--noplot",
+                default=False,
+                action='store_true',
+                help="plot output"
+                )
         args = parser.parse_args()
         fn = args.fn
         verbose = args.verbose
@@ -42,7 +57,6 @@ def main(*args):
         plot = 1
 
     step_n, time, temp, kin, pot, cqty = cp2k.read_ener_file(fn)
-    # virial = kin/(pot/2)*312
 
     if verbose:
         print(' '.join(sys.argv))
@@ -51,18 +65,16 @@ def main(*args):
         print('temperature ', temp)
         print('conserved quantity ', cqty)
 
-    # ToDo: generate loop
-    timeline.show_and_interpolate_array(step_n, time, 'time', 'step', 'time in fs', plot)
-    timeline.show_and_interpolate_array(step_n, temp, 'temperature','step','T',plot)
-    timeline.show_and_interpolate_array(step_n, kin, 'kinetic energy','step','Ekin',plot)
-    timeline.show_and_interpolate_array(step_n, pot, 'potential energy','step','Epot',plot)
-    timeline.show_and_interpolate_array(step_n, cqty, 'conserved quantity','step','C. Qty',plot)
-    # vis.PlotAndShowArray(step_n,virial,'conserved quantity','step','C. Qty',plot)
-    kin_avg = np.average(kin)
-    pot_avg = np.average(pot)
-    cqty_avg = np.average(cqty)
-    print('%-30s%16f%16f%16f' % ('Virial theorem:',kin_avg,pot_avg/312,cqty_avg/312))
-    print('%-30s%16f%16f%16f' % ('Equipartition: ',kin_avg,pot_avg/312,cqty_avg/312))
+    timeline.show_and_interpolate_array(
+            step_n, time, 'time', 'step', 'time in fs', plot)
+    timeline.show_and_interpolate_array(
+            step_n, temp, 'temperature', 'step', 'T', plot)
+    timeline.show_and_interpolate_array(
+            step_n, kin, 'kinetic energy', 'step', 'Ekin', plot)
+    timeline.show_and_interpolate_array(
+            step_n, pot, 'potential energy', 'step', 'Epot', plot)
+    timeline.show_and_interpolate_array(
+            step_n, cqty, 'conserved quantity', 'step', 'C. Qty', plot)
 
 
 if __name__ == "__main__":
