@@ -34,3 +34,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Snippets
+
+#       def load_localised_power_spectrum(self, fn_spec):
+#           a = _np.loadtxt(fn_spec)
+#           self.nu_cgs = a[:, 0]  # unit already cm-1 if coming from molsim
+#           self.pow_loc = a[:, 1:].swapaxes(0, 1)  # unit?
+

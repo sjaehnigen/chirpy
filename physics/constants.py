@@ -132,6 +132,11 @@ def numbers_to_symbols(numbers):
     return [elements.symbol[elements.comment == ''][_n-1] for _n in numbers]
 
 
+def numbers_to_masses(numbers):
+    '''No isotope support (use symbols_to_masses)'''
+    return [elements.mass_amu[elements.comment == ''][_n-1] for _n in numbers]
+
+
 def symbols_to_numbers(symbols):
     return [atomic_numbers[_z] for _z in symbols]
 

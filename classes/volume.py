@@ -34,10 +34,12 @@ class ScalarField():
             self.fn = args[0]
             self.fmt = kwargs.get('fmt', self.fn.split('.')[-1])
             if self.fmt == "cube":
-                data, self.origin_au, self.cell_vec_au, pos_au, self.numbers, comments = cubeReader(self.fn)
+                data, self.origin_au, self.cell_vec_au, pos_au, self.numbers, \
+                    comments = cubeReader(self.fn)
                 if data.shape[0] > 1:
-                    _warnings.warn('Volume class does not (yet) support trajectory data!',
-                                   UserWarning)
+                    _warnings.warn(
+                        'Volume class does not (yet) support trajectory data!',
+                        UserWarning)
                 # No support of multiple frames for now
                 self.data = data[0]
                 self.pos_au = pos_au[0]
@@ -45,8 +47,6 @@ class ScalarField():
 
             elif self.fmt == 'npy':
                 test = ScalarField.from_data(data=_np.load(self.fn), **kwargs)
-                # I do not know why, but this has to be explicit
-                # otherwise self remains empty
                 self.comments = test.comments
                 self.origin_au = test.origin_au
                 self.cell_vec_au = test.cell_vec_au
@@ -61,7 +61,7 @@ class ScalarField():
                 raise ValueError('Unknown format.')
 
         elif len(args) == 0:
-            if kwargs.get("fmt") is not None:  # deprecated but still in use
+            if kwargs.get("fmt") is not None:  # deprecated
                 raise NotImplementedError("Use %s.from_data()!"
                                           % self.__class__.__name__)
 
@@ -84,7 +84,6 @@ class ScalarField():
             pass
 
     def print_info(self):
-        # Work in progress...
         print('')
         print(77 * '–')
         print('%-12s' % self.__class__.__name__)
@@ -212,7 +211,7 @@ cell_vec_au and data!')
     def normalise(self, **kwargs):
         '''If no norm is given, the method uses _np.linalg.norm
         (give axis in kwargs).'''
-        # Do we need an upper threshold?
+
         _N = kwargs.pop("norm")
         if _N is None:
             _N = _np.linalg.norm(self.data, **kwargs)
@@ -232,13 +231,15 @@ cell_vec_au and data!')
         self.n_x = self.data.shape[-3]
         self.n_y = self.data.shape[-2]
         self.n_z = self.data.shape[-1]
-        xaxis = self.cell_vec_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
-        yaxis = self.cell_vec_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
-        zaxis = self.cell_vec_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
+        xaxis = self.cell_vec_au[0, 0] * _np.arange(0, self.n_x) + \
+            self.origin_au[0]
+        yaxis = self.cell_vec_au[1, 1] * _np.arange(0, self.n_y) + \
+            self.origin_au[1]
+        zaxis = self.cell_vec_au[2, 2] * _np.arange(0, self.n_z) + \
+            self.origin_au[2]
 
         return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
 
-    # copy to new object?
     def sparsity(self, sp, **kwargs):
         '''sp int'''
         dims = kwargs.get('dims', 'xyz')
@@ -335,7 +336,7 @@ class VectorField(ScalarField):
             self._join_scalar_fields(buf_x, buf_y, buf_z)
             del buf_x, buf_y, buf_z
         elif len(args) == 0:
-            if hasattr(self, "fmt"):  # deprecated but still in use
+            if hasattr(self, "fmt"):  # deprecated
                 self = self.__class__.from_data(**kwargs)
 
     def _join_scalar_fields(self, x, y, z):

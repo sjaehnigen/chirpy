@@ -69,7 +69,7 @@ class _SYSTEM():
             if center_res is not None:
                 # if python 3.8: use walrus
                 self.wrap_molecules()
-                self.XYZ._center_position(
+                self.XYZ.center_position(
                         self.mol_c_aa[center_res],
                         self.cell_aa_deg
                         )  # **kwargs)
@@ -86,8 +86,8 @@ class _SYSTEM():
             raise AttributeError('Wrap molecules requires a topology '
                                  '(mol_map)!')
 
-        self.mol_c_aa = self.XYZ._wrap_molecules(self.mol_map,
-                                                 self.cell_aa_deg)
+        self.mol_c_aa = self.XYZ.wrap_molecules(self.mol_map,
+                                                self.cell_aa_deg)
 
     def extract_molecules(self, mols):
         '''mols: list of molecular indices

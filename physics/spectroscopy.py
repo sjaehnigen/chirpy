@@ -361,3 +361,143 @@ def Get_IR_and_VCD_NoCentre(val1a,val2a,pos_au,origins_au,cell_au,cutoff_aa,IR=F
         cc = CurrentMagneticPrefactor(x_spec,300)
     return [x_spec,spectrum_ac * cc ]
 
+# From VibrationalModes:
+
+# def continuous_spectrum_from_modes(self,
+#                         widths=None,
+#                         nu_min_cgs=0,
+#                         nu_max_cgs=3800,
+#                         d_nu_cgs=2):
+# 
+#     def Lorentzian1(x, width, height, position):
+#         numerator = 1
+#         denominator = (x-position)**2 + width**2
+#         y = height*(numerator/denominator)/_np.pi
+#         return y
+# 
+#     def Lorentzian2(x, width, height, position):
+#         numerator = width
+#         denominator = (x-position)**2 + width**2
+#         y = height*(numerator/denominator)/_np.pi
+#         return y
+# 
+#     try:
+#         n_points = self.nu_cgs.shape[0]
+#         print('Found already loaded spectral data. Using now its '
+#               'frequency range.')
+#     except AttributeError:
+#         self.nu_cgs = _np.arange(nu_min_cgs, nu_max_cgs, d_nu_cgs)
+#         n_points = self.nu_cgs.shape[0]
+# 
+#     self.ira_spec = _np.zeros((1+self.n_modes, n_points))
+#     self.vcd_spec = _np.zeros((1+self.n_modes, n_points))
+# 
+#     D_cgs = self.D_cgs*1E-40  # [esu2cm2]
+#     R_cgs = self.R_cgs*1E-44  # [esu2cm2]
+#     prefactor_cgs = (4 * _np.pi**2 * constants.avog) / \
+#         (3 * constants.c_cgs * constants.hbar_cgs)
+#     cm2_to_kmcm = 1E-5
+#     D_scaled = D_cgs*1*prefactor_cgs*cm2_to_kmcm
+#     R_scaled = R_cgs*4*prefactor_cgs*cm2_to_kmcm
+# 
+#     try:
+#         for k, nu_k in enumerate(self.eival_cgs):  # units?
+#             self.ira_spec[k+1, :] = self.pow_loc[k, :]*D_scaled[k]*nu_k
+#             self.vcd_spec[k+1, :] = self.pow_loc[k, :]*R_scaled[k]*nu_k
+#             self.ira_spec[0, :] += self.ira_spec[k+1, :]
+#             self.vcd_spec[0, :] += self.vcd_spec[k+1, :]
+#         print('Found localised spectral data. I will use it as basis for '
+#               'ira and vcd calculation (instead of Lorentzian).')
+#     except AttributeError:
+#         if widths is None:
+#             widths = self.n_modes*[1]
+#         for k, nu_k in enumerate(self.eival_cgs):
+#             self.ira_spec[k+1, :] = Lorentzian2(self.nu_cgs,
+#                                                 widths[k],
+#                                                 D_scaled[k]*nu_k,
+#                                                 nu_k)
+#             self.vcd_spec[k+1, :] = Lorentzian2(self.nu_cgs,
+#                                                 widths[k],
+#                                                 R_scaled[k]*nu_k,
+#                                                 nu_k)
+#             self.ira_spec[0, :] += self.ira_spec[k+1, :]
+#             self.vcd_spec[0, :] += self.vcd_spec[k+1, :]
+
+
+# def calculate_spectral_intensities(self):  # SHOULDN'T BE METHOD OF CLASS
+#     self.D_cgs = (self.c_au*self.c_au).sum(axis=1)  # going to be cgs
+#     self.R_cgs = (self.c_au*self.m_au).sum(axis=1)
+# 
+#     # rot_str_p_p_trans = _np.zeros(n_modes)
+#     # rot_str_p_p_diff  = _np.zeros(n_modes)
+#     # NEW STUFF
+#     #    dip_intensity      = dip_str*IR_int_kmpmol
+#     #    dip_str           *= dip_str_cgs/omega_invcm
+#     #    rot_str_m_p       *= rot_str_cgs #**2
+#     # Understand units later
+#     atomic_mass_unit = constants.m_amu_au  # 1822.88848367
+#     ev2au = 1/_np.sqrt(atomic_mass_unit)  # eigenvalue to atomic units
+#     # ev2wn = ev2au/(2*_np.pi*constants.t_au*constants.c_si)/100
+#     au2wn = 1/(2*_np.pi*constants.t_au*constants.c_si)/100
+#     ##############################################################
+#     # Dipole Strength
+#     # D_n = APT^2 S_n^2  hbar/(2 omega_n)
+#     # [S_n^2]     = M^-1  -> (m_u' m_e)^-1
+#     # [APT^2]     = Q^2   -> e^2
+#     # [hbar/omega_n] = M L^2 -> m_e l_au^2  (via au2wn/omega)
+#     # altogether this yields e^2 l_au^2 / m_u'
+#     # -> needs to be converted to cgs
+#     e_cgs = constants.e_si*constants.c_si*1E1  # 4.80320427E-10
+#     l_au_cgs = constants.l_au*1E2
+#     dip_str_cgs = (e_cgs*l_au_cgs*ev2au)**2*au2wn*1E40/2
+#     # convert 1/omega back to au
+# 
+#     #################################################################
+#     # Rotational Strength
+#     # R_n = 1/c AAT APT S_n^2 omega_n hbar/(2 omega_n) = \
+#     #        hbar/(2 c) AAT APT S_n^2
+#     # [S_n^2]     = M^-1  -> (m_u' m_e)^-1
+#     # [APT]       = Q     -> e
+#     # [AAT]       = Q L   -> e l_au (NB! c_au is not yet included!)
+#     # altogether this yields hbar e^2 l_au/(2 c m_e) (/m_u'?!)
+#     c_cgs = constants.c_si*1E2
+#     m_e_cgs = constants.m_e_si*1E3
+#     hbar_cgs = constants.hbar_si*1E7
+#     # rot_str_cgs = (e_cgs*l_au_cgs*ev2au)**2/constants.c_au*1E44/2
+#     rot_str_cgs = (hbar_cgs*l_au_cgs*(e_cgs*ev2au)**2)/(c_cgs*m_e_cgs) *\
+#         1E44/2
+#     #####################################################################
+#     # IR Intensity in km/mol-1
+#     # prefactor (compare master A.97 or Eq. (13) in J. Chem. Phys. 134,
+#     # 084302 (2011)): Na beta/6 epsilon0 c
+#     # harmonic approximation A.98-A.99 yields a delta function*pi(*2?) ...
+#     # beta^-1 = hbar omega / 2 (A.89-A.91)
+#     # conversion to wavenumbers yields nu = omega/2 pi c a factor of 1/2
+#     # pi c ([delta(x)] = 1/[x])
+#     # APTs give (e**2/m_p)
+#     # conversion in km**-1 gives 1E-3
+#     # factor 1/3 is due to averaging
+#     # altogether this yields
+#     # (N_a e**2)/(6*epsilon0 c m_p)*1E-3
+#     epsilon0_si = 8.85418782000E-12  # 10(-12)C2.N-1.m-2
+#     IR_int_kmpmol = (constants.avog*constants.e_si**2)/(12*epsilon0_si *
+#                                                         constants.c_si**2 *
+#                                                         constants.m_p_si *
+#                                                         1000)
+# 
+#     IR_int_kmpmol = (constants.avog*constants.e_si**2)/(12*epsilon0_si *
+#                                                         constants.c_si**2 *
+#                                                         constants.m_p_si *
+#                                                         1000)
+#     dip_str_cgs = (e_cgs*l_au_cgs*ev2au)**2*au2wn*1E40/2
+#     # convert 1/omega back to au
+#     rot_str_cgs = (hbar_cgs*l_au_cgs*(e_cgs*ev2au)**2)/(c_cgs*m_e_cgs) * \
+#         1E44/2
+# 
+#     self.I_kmpmol = self.D_cgs*IR_int_kmpmol  # here, D_cgs is still au!
+#     self.D_cgs *= dip_str_cgs/self.eival_cgs
+#     self.R_cgs *= rot_str_cgs
+#     # rot_str_p_p_trans *= rot_str_cgs/2
+#     # rot_str_p_p_diff  *= rot_str_cgs/4
+#     # VCD intensity?
+

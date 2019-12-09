@@ -32,11 +32,11 @@ def main():
         raise AttributeError('Number of images has to be an odd number!')
     args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
     _mol = system.Molecule(**vars(args)
-                          ).XYZ._make_trajectory(n_images=int(args.n_images),
-                                                     ts_fs=float(args.ts)
-                                                    )
-    _mol._wrap_atoms(args.cell_aa_deg)
-#    _mol._wrap_molecules([0]*12,args.cell_aa_deg)                                                             
+                          ).XYZ.make_trajectory(n_images=int(args.n_images),
+                                                    ts_fs=float(args.ts)
+                                                   )
+    _mol.wrap_atoms(args.cell_aa_deg)
+#    _mol.wrap_molecules([0]*12,args.cell_aa_deg)                                                             
     _mol.write(args.f)
 
 if(__name__ == "__main__"):

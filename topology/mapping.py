@@ -183,12 +183,13 @@ def cowt(pos_aa, wt, **kwargs):
     '''Calculate centre of weight, consider periodic boundaries before
        calling this method.'''
 
+    _wt = np.array(wt)
     _axis = kwargs.get("axis", 1)
     _sub = kwargs.get('subset', slice(None))
     _p = np.moveaxis(pos_aa, _axis, 0)
     _slc = (_sub,) + (len(_p.shape)-1) * (None,)
 
-    return np.sum(_p[_sub] * wt[_slc], axis=0) / wt[_sub].sum()
+    return np.sum(_p[_sub] * _wt[_slc], axis=0) / _wt[_sub].sum()
 
 
 def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
