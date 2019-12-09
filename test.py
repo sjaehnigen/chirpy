@@ -17,16 +17,16 @@ import numpy as np
 import importlib
 import pkgutil
 
-# import logging
-# import filecmp
-# import types
-
-
 # --- Done
-from chirpy.read import modes, coordinates, volume
+from chirpy.read import modes as r_modes
+from chirpy.read import coordinates as r_coordinates
+from chirpy.read import grid as r_grid
+
+from chirpy.write import modes as w_modes
+# from chirpy.write import coordinates as w_coordinates
+# from chirpy.write import grid as w_grid
 
 # --- ToDo (change import path later after moving bin)
-# from .write import
 # from .topology import
 # from .mathematics import
 # from .statistics import
@@ -52,6 +52,7 @@ from chirpy.read import modes, coordinates, volume
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
+
 class TestImports(unittest.TestCase):
 
     @staticmethod
@@ -67,42 +68,53 @@ class TestImports(unittest.TestCase):
                 results.update(TestImports.import_submodules(full_name))
         return results
 
-    def test_import_classes(self):
-        self.import_submodules('chirpy.classes')
-    def test_import_create(self):
-        self.import_submodules('chirpy.create')
-    def test_import_external(self):
-        self.import_submodules('chirpy.external')
-    def test_import_interface(self):
-        self.import_submodules('chirpy.interface')
-    def test_import_mathematics(self):
-        self.import_submodules('chirpy.mathematics')
-    def test_import_mdanalysis(self):
-        self.import_submodules('chirpy.mdanalysis')
-    def test_import_physics(self):
-        self.import_submodules('chirpy.physics')
-    def test_import_read(self):
+    def test_import_00_read(self):
         self.import_submodules('chirpy.read')
-    def test_import_topology(self):
-        self.import_submodules('chirpy.topology')
-    def test_import_visualise(self):
-        self.import_submodules('chirpy.visualise')
-    def test_import_write(self):
+
+    def test_import_00_write(self):
         self.import_submodules('chirpy.write')
+
+    def test_import_00_topology(self):
+        self.import_submodules('chirpy.topology')
+
+    def test_import_00_mathematics(self):
+        self.import_submodules('chirpy.mathematics')
+
+    def test_import_00_physics(self):
+        self.import_submodules('chirpy.physics')
+
+    def test_import_01_interface(self):
+        # numpy warning for scipy.interpolate import UnivariateSpline in vmd
+        self.import_submodules('chirpy.interface')
+
+    def test_import_01_mdanalysis(self):
+        self.import_submodules('chirpy.mdanalysis')
+
+    def test_import_02_classes(self):
+        self.import_submodules('chirpy.classes')
+
+    def test_import_03_create(self):
+        self.import_submodules('chirpy.create')
+
+    def test_import_10_visualise(self):
+        self.import_submodules('chirpy.visualise')
+
+    def test_import_10_external(self):
+        self.import_submodules('chirpy.external')
 
 
 class TestReaders(unittest.TestCase):
 
     def setUp(self):
         # Change paths after moving file
-        self.dir = _test_dir + '/readers'
+        self.dir = _test_dir + '/read_write'
 
     def tearDown(self):
         pass
 
     def test_xvibsReader(self):
-        n_atoms, numbers, pos_aa, n_modes, freqs, vec = \
-                modes.xvibsReader(self.dir + '/test.xvibs')
+        n_atoms, numbers, pos_aa, n_modes, freqs, modes = \
+                r_modes.xvibsReader(self.dir + '/test.xvibs')
         self.assertEqual(n_atoms, 13)
         self.assertEqual(n_modes, 39)
         self.assertListEqual(numbers, [16, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1, 1, 1])
@@ -117,7 +129,7 @@ class TestReaders(unittest.TestCase):
                1530.493063, 3017.469174, 3018.251568, 3053.243822, 3056.060332,
                3075.051383, 3080.396635, 3096.470496]
               )
-        [self.assertIsInstance(_m, np.ndarray) for _m in (pos_aa, vec)]
+        [self.assertIsInstance(_m, np.ndarray) for _m in (pos_aa, modes)]
         self.assertTrue(np.array_equal(
               pos_aa,
               np.array([[-2.742036245848,  2.530103531747,   -0.248174312943],
@@ -135,13 +147,13 @@ class TestReaders(unittest.TestCase):
                         [-4.947076501132, -0.047031588011,    0.365545752725]])
               ))
         self.assertTrue(np.array_equal(
-            vec,
+            modes,
             np.genfromtxt(self.dir + '/vec').reshape(39, 13, 3)
             ))
 
     def test_xyzReader(self):
         data, symbols, comments = \
-                coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
+                r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
         self.assertIsInstance(data, np.ndarray)
         self.assertTrue(np.array_equal(
             data,
@@ -171,7 +183,7 @@ class TestReaders(unittest.TestCase):
                 )
         [self.assertIsInstance(_c, str) for _c in comments]
 
-        data, symbols, comments = coordinates.xyzReader(
+        data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_frame_posvel_pbc.xyz')
         self.assertIsInstance(data, np.ndarray)
         self.assertTrue(np.array_equal(
@@ -202,7 +214,7 @@ class TestReaders(unittest.TestCase):
                 )
         [self.assertIsInstance(_c, str) for _c in comments]
 
-        data, symbols, comments = coordinates.xyzReader(
+        data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_traj_pos_pbc.xyz')
         self.assertIsInstance(data, np.ndarray)
         self.assertTrue(np.array_equal(
@@ -249,7 +261,7 @@ class TestReaders(unittest.TestCase):
         [self.assertIsInstance(_c, str) for _c in comments]
 
         # Test symbol support (no recognition here)
-        data, symbols, comments = coordinates.xyzReader(
+        data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_symbols.xyz')
         self.assertTupleEqual(
                 symbols,
@@ -261,15 +273,15 @@ class TestReaders(unittest.TestCase):
 
         # Some Negatives
         with self.assertRaises(ValueError):
-            data, symbols, comments = coordinates.xyzReader(
+            data, symbols, comments = r_coordinates.xyzReader(
                     self.dir + '/test_wrong_number.xyz')
-            data, symbols, comments = coordinates.xyzReader(
+            data, symbols, comments = r_coordinates.xyzReader(
                     self.dir + '/test_broken_frame.xyz')
-            data, symbols, comments = coordinates.xyzReader(
+            data, symbols, comments = r_coordinates.xyzReader(
                     self.dir + '/test_broken_frame_2.xyz')
 
         # Test range
-        data, symbols, comments = coordinates.xyzReader(
+        data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_traj_pos_pbc.xyz',
                 range=(1, 1, 3)
                 )
@@ -278,7 +290,7 @@ class TestReaders(unittest.TestCase):
          np.genfromtxt(self.dir + '/data_traj_pos_pbc').reshape(3, 393, 3)[1:3]
          ))
 
-        data, symbols, comments = coordinates.xyzReader(
+        data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_traj_pos_pbc.xyz',
                 range=(1, 2, 4)
                 )
@@ -292,9 +304,9 @@ class TestReaders(unittest.TestCase):
         for _i, _n in zip(['GEOMETRY', 'MOMENTS', 'TRAJECTORY'],
                           [(1, 208, 6), (5, 288, 9), (6, 208, 6)]):
 
-            data = coordinates.cpmdReader(self.dir + '/' + _i,
-                                          filetype=_i,
-                                          kinds=['X']*_n[1])
+            data = r_coordinates.cpmdReader(self.dir + '/' + _i,
+                                            filetype=_i,
+                                            kinds=['X']*_n[1])
 
             self.assertTrue(np.array_equal(
                 data,
@@ -303,33 +315,31 @@ class TestReaders(unittest.TestCase):
 
         # Some Negatives
         with self.assertRaises(ValueError):
-            data = coordinates.cpmdReader(self.dir + '/MOMENTS_broken',
-                                          filetype='MOMENTS',
-                                          kinds=['X']*288)
-            data = coordinates.cpmdReader(self.dir + '/MOMENTS',
-                                          filetype='MOMENTS',
-                                          kinds=['X']*286)
+            data = r_coordinates.cpmdReader(self.dir + '/MOMENTS_broken',
+                                            filetype='MOMENTS',
+                                            kinds=['X']*288)
+            data = r_coordinates.cpmdReader(self.dir + '/MOMENTS',
+                                            filetype='MOMENTS',
+                                            kinds=['X']*286)
         # Test range
-        data = coordinates.cpmdReader(self.dir + '/' + _i,
-                                      filetype='TRAJECTORY',
-                                      kinds=['X']*_n[1],
-                                      range=(2,3,8),
-                                      )
+        data = r_coordinates.cpmdReader(self.dir + '/' + _i,
+                                        filetype='TRAJECTORY',
+                                        kinds=['X']*_n[1],
+                                        range=(2, 3, 8),
+                                        )
         self.assertTrue(np.array_equal(
             data,
             np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3]
             ))
 
-
     def test_pdbReader(self):
         # not much testing of protein features as this is an external reader
-        data, names, symbols, res, cell_aa_deg, title = coordinates.pdbReader(
-                self.dir + '/test_protein.pdb')
-        data, names, symbols, res, cell_aa_deg, title = coordinates.pdbReader(
-                self.dir + '/test_raw.pdb')
-
-        data, names, symbols, res, cell_aa_deg, title = coordinates.pdbReader(
-                self.dir + '/test_simple.pdb')
+        data, names, symbols, res, cell_aa_deg, title = \
+                r_coordinates.pdbReader(self.dir + '/test_protein.pdb')
+        data, names, symbols, res, cell_aa_deg, title = \
+                r_coordinates.pdbReader(self.dir + '/test_raw.pdb')
+        data, names, symbols, res, cell_aa_deg, title =\
+                r_coordinates.pdbReader(self.dir + '/test_simple.pdb')
 
         self.assertTrue(np.allclose(cell_aa_deg, np.array([
             12.072, 12.342, 11.576, 90.00, 90.00, 90.00])))
@@ -339,7 +349,7 @@ class TestReaders(unittest.TestCase):
             tmp = [(int(_a[0]), str(_a[1])) for _a in tmp]
         self.assertListEqual(res, tmp)
 
-        # ToFo: add more tests like for xyz
+        # ToDo: add more tests like for xyz
         # self.assertListEqual(res, ()
         self.assertTupleEqual(
                 symbols,
@@ -366,39 +376,78 @@ class TestReaders(unittest.TestCase):
         # check missing-CRYST1 warning (important feature in ChirPy)
         with self.assertWarns(RuntimeWarning):
             data, names, symbols, res, cell_aa_deg, title = \
-                    coordinates.pdbReader(
+                    r_coordinates.pdbReader(
                           self.dir + '/test_simple_nodims.pdb')
 
     def test_cubeReader(self):
-        data = volume.cubeReader(self.dir + '/test-1.cube')
-    #     data = volume.cubeReader(self.dir + '/test-2.cube')
-    #     print(data.shape)
+        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                r_grid.cubeReader(self.dir + '/test-1.cube')
+        self.assertIsInstance(data, np.ndarray)
+        self.assertIsInstance(origin_au, np.ndarray)
+        self.assertIsInstance(cell_vec_au, np.ndarray)
+        self.assertIsInstance(pos_au, np.ndarray)
+        self.assertIsInstance(comments, list)
+        [self.assertIsInstance(_c, str) for _c in comments]
+        self.assertTupleEqual(
+                numbers,
+                (6, 6, 6, 6, 6, 7, 1, 1, 1, 1, 1)
+                )
+        self.assertTrue(np.array_equal(
+            data,
+            np.genfromtxt(self.dir + '/data_volume_1').reshape(1, 6, 6, 6)
+            ))
 
-    # add test for range (n_frames after step applied)
-    # test iterators
+        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                r_grid.cubeReader(self.dir + '/test-2.cube')
+        self.assertTupleEqual(data.shape, (1, 10, 10, 10))
+        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                r_grid.cubeReader(self.dir + '/test-4.cube')
+        self.assertTupleEqual(data.shape, (2, 6, 6, 6))
 
-# class Test(unittest.TestCase):
-#     def test_Fib(self):
-#         f = Fib()
-#         self.assertEqual(next(f), 0)
-#         self.assertEqual(next(f), 1)
-#         self.assertEqual(next(f), 1)
-#         self.assertEqual(next(f), 2) #etc...
-#     def test_Fib_is_iterator(self):
-#         f = Fib()
-#         self.assertIsInstance(f, Iterator)
-#     def test_Fib_is_generator(self):
-#         f = Fib()
-#         self.assertIsInstance(f, Generator)
+        # Some Negatives
+        with self.assertRaises(ValueError):
+            data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                    r_grid.cubeReader(self.dir + '/test-3.cube')
 
 
 class TestWriters(unittest.TestCase):
 
     def setUp(self):
-        pass
+        # Change paths after moving file
+        self.dir = _test_dir + '/read_write'
 
     def tearDown(self):
         pass
+
+    def test_xvibsWriter(self):
+        n_atoms, numbers, pos_aa, n_modes, freqs, modes = \
+                r_modes.xvibsReader(self.dir + '/test.xvibs')
+        w_modes.xvibsWriter(self.dir + '/out.xvibs',
+                            n_atoms,
+                            numbers,
+                            pos_aa,
+                            freqs,
+                            modes)
+        n_atoms2, numbers2, pos_aa2, n_modes2, freqs2, modes2 = \
+                r_modes.xvibsReader(self.dir + '/out.xvibs')
+        self.assertEqual(n_atoms2, n_atoms)
+        self.assertEqual(n_modes2, n_modes)
+        self.assertListEqual(numbers2, numbers)
+        self.assertListEqual(freqs2, freqs)
+        self.assertTrue(np.array_equal(pos_aa2, pos_aa))
+        self.assertTrue(np.array_equal(modes2, modes))
+
+    # def test_xyzWriter(self):
+    #     pass
+
+    # def test_cpmdWriter(self):
+    #     pass
+
+    # def test_pdbWriter(self):
+    #     pass
+
+    # def test_cubeWriter(self):
+    #     pass
 
 
 class TestTopology(unittest.TestCase):

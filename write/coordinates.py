@@ -91,15 +91,14 @@ def cpmdWriter(fn, pos_au, symbols, vel_au,**kwargs):
 #OLD section to be integrated with xyzWriter
 def _write_frame(filename, data, symbols, comment, append=False):
     """WriteFrame(filename, data, symbols, comment, append=False)
-    Adapted from Arne Scherrer
-Input:  
+    Input:
         1. filename: File to read
         2. data: np.array of shape (#atoms, #fields/atom)
         3. symbols: list of atom symbols (contains strings)
         4. comment line (string)
         5. append: Append to file (optional, default = False)
-
 Output: None"""
+
     format = '  %s'
     # print(data.shape, data.shape[1])
     for field in range(data.shape[1]):

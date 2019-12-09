@@ -15,9 +15,10 @@ import numpy as _np
 import copy as _copy
 from scipy.interpolate import griddata as _griddata
 from scipy.integrate import simps as _simps
+import warnings as _warnings
 
-from ..read.volume import cubeReader
-from ..write.volume import cubeWriter
+from ..read.grid import cubeReader
+from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
 
@@ -33,13 +34,14 @@ class ScalarField():
             self.fn = args[0]
             self.fmt = kwargs.get('fmt', self.fn.split('.')[-1])
             if self.fmt == "cube":
-                buf = cubeReader(self.fn)
-                self.comments = buf['comments'].strip()
-                self.origin_au = _np.array(buf['origin_au'])
-                self.cell_vec_au = _np.array(buf['cell_vec_au'])
-                self.pos_au = _np.array(buf['coords_au'])
-                self.numbers = _np.array(buf['numbers'])
-                self.data = buf['volume_data']
+                data, self.origin_au, self.cell_vec_au, pos_au, self.numbers, comments = cubeReader(self.fn)
+                if data.shape[0] > 1:
+                    _warnings.warn('Volume class does not (yet) support trajectory data!',
+                                   UserWarning)
+                # No support of multiple frames for now
+                self.data = data[0]
+                self.pos_au = pos_au[0]
+                self.comments = comments[0]
 
             elif self.fmt == 'npy':
                 test = ScalarField.from_data(data=_np.load(self.fn), **kwargs)
@@ -64,11 +66,14 @@ class ScalarField():
                                           % self.__class__.__name__)
 
         self._sync_class()
+        if kwargs.get('sparsity', 1) != 1:
+            # python 3.8: use walrus
+            self.sparsity(kwargs.get('sparsity'))
 
     def _sync_class(self):
         try:
             self.n_atoms = self.pos_au.shape[0]
-            if self.n_atoms != self.numbers.shape[0]:
+            if self.n_atoms != len(self.numbers):
                 raise ValueError('ERROR: List of atom numbers and atom \
                                  positions do not match!')
 
@@ -227,11 +232,11 @@ cell_vec_au and data!')
         self.n_x = self.data.shape[-3]
         self.n_y = self.data.shape[-2]
         self.n_z = self.data.shape[-1]
-        X = self.cell_vec_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
-        Y = self.cell_vec_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
-        Z = self.cell_vec_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
+        xaxis = self.cell_vec_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
+        yaxis = self.cell_vec_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
+        zaxis = self.cell_vec_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
 
-        return _np.array(_np.meshgrid(X, Y, Z, indexing='ij'))
+        return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
 
     # copy to new object?
     def sparsity(self, sp, **kwargs):
@@ -299,7 +304,7 @@ cell_vec_au and data!')
             numbers = kwargs.get('numbers', self.numbers)
             # insert routine to get numbers from symbols: in derived class
             # constants.symbols_to_numbers(symbols)
-            if numbers.shape[0] != n_atoms:
+            if len(numbers) != n_atoms:
                 raise ValueError('ERROR: Given numbers inconsistent \
                                 with positions')
             cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
