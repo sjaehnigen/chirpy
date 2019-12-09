@@ -14,24 +14,27 @@
 import unittest
 import os
 import numpy as np
+import importlib
+import pkgutil
 
 # import logging
 # import filecmp
 # import types
 
+
 # --- Done
-from chirpy.readers import modes, coordinates, volume
+from chirpy.read import modes, coordinates, volume
 
 # --- ToDo (change import path later after moving bin)
-# from .writers import
+# from .write import
 # from .topology import
 # from .mathematics import
 # from .statistics import
 # from .physics import
 # from .classes import
 # classes: also insert true negatives (such as wrong or unknown format)
-# from .interfaces import
-# from .generators import
+# from .interface import
+# from .create import
 # from .visualisation import
 # from .mdanalysis import
 # read iterators
@@ -48,6 +51,44 @@ from chirpy.readers import modes, coordinates, volume
 # logger = debug.logger
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+
+class TestImports(unittest.TestCase):
+
+    @staticmethod
+    def import_submodules(package, recursive=True):
+        '''https://stackoverflow.com/a/25562415'''
+        if isinstance(package, str):
+            package = importlib.import_module(package)
+        results = {}
+        for loader, name, is_pkg in pkgutil.walk_packages(package.__path__):
+            full_name = package.__name__ + '.' + name
+            results[full_name] = importlib.import_module(full_name)
+            if recursive and is_pkg:
+                results.update(TestImports.import_submodules(full_name))
+        return results
+
+    def test_import_classes(self):
+        self.import_submodules('chirpy.classes')
+    def test_import_create(self):
+        self.import_submodules('chirpy.create')
+    def test_import_external(self):
+        self.import_submodules('chirpy.external')
+    def test_import_interface(self):
+        self.import_submodules('chirpy.interface')
+    def test_import_mathematics(self):
+        self.import_submodules('chirpy.mathematics')
+    def test_import_mdanalysis(self):
+        self.import_submodules('chirpy.mdanalysis')
+    def test_import_physics(self):
+        self.import_submodules('chirpy.physics')
+    def test_import_read(self):
+        self.import_submodules('chirpy.read')
+    def test_import_topology(self):
+        self.import_submodules('chirpy.topology')
+    def test_import_visualise(self):
+        self.import_submodules('chirpy.visualise')
+    def test_import_write(self):
+        self.import_submodules('chirpy.write')
 
 
 class TestReaders(unittest.TestCase):

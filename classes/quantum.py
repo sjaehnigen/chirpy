@@ -21,7 +21,7 @@ from scipy import signal as _signal
 from ..classes.volume import ScalarField as _ScalarField
 from ..classes.volume import VectorField as _VectorField
 from ..physics import constants
-from ..readers.trajectory import xyzReader as _xyzReader
+from ..read.coordinates import xyzReader as _xyzReader
 from ..classes.domain import Domain3D as _Domain3D
 
 

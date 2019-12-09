@@ -20,7 +20,7 @@ import os
 #import MDAnalysis.analysis.align
 
 import numpy as np
-from lib import constants
+from ..physics import constants
 
 #migrate these tools to geometry or so
 def dihedral(p1,p2,p3,p4):

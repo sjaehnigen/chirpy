@@ -15,7 +15,7 @@ import sys as _sys
 import numpy as _np
 import copy as _copy
 
-from ..interfaces import cpmd
+from ..interface import cpmd
 
 # DEV log
 # Todo:

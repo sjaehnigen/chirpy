@@ -13,8 +13,8 @@
 
 
 import numpy as np
-from chirpy.readers.modes import xvibsReader
-from chirpy.interfaces import molden
+from chirpy.read.modes import xvibsReader
+from chirpy.interface import molden
 from chirpy.physics import constants
 import argparse
 import os
@@ -43,5 +43,4 @@ if(__name__ == "__main__"):
     print(modes.shape)
     freqs = np.array(freqs)
     molden.WriteMoldenVibFile(args.f, symbols, coords_au, freqs, modes)
-
 

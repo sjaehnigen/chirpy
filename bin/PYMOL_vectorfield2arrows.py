@@ -15,7 +15,7 @@
 import numpy as np
 import argparse
 from chirpy.classes import volume
-from chirpy.creators.gen_pymol import PymolObject
+from chirpy.interface.pymol import PymolObject
 
 Angstrom2Bohr = 1.8897261247828971
 

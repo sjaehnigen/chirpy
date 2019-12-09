@@ -13,7 +13,7 @@
 
 
 import argparse
-from chirpy.creators.gen_modes import *
+from chirpy.create.gen_modes import *
 
 def main():
     parser = argparse.ArgumentParser( description = "Read a supercell (xyz, pdb, ...) and print box information", formatter_class = argparse.ArgumentDefaultsHelpFormatter )

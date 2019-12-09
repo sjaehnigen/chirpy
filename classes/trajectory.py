@@ -11,30 +11,28 @@
 #
 # ------------------------------------------------------
 
-import sys as _sys
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
 import itertools as _itertools
 
 from ..snippets import extract_keys as _extract_keys
-from ..readers.modes import xvibsReader
-from ..readers.coordinates import xyzReader, cpmdReader, pdbReader
-from ..readers.coordinates import xyzIterator as _xyzIterator
-from ..readers.coordinates import cpmdIterator as _cpmdIterator
-from ..writers.coordinates import cpmdWriter, xyzWriter, pdbWriter
+from ..read.modes import xvibsReader
+from ..read.coordinates import xyzReader, cpmdReader, pdbReader
+from ..read.coordinates import xyzIterator as _xyzIterator
+from ..read.coordinates import cpmdIterator as _cpmdIterator
+from ..write.coordinates import cpmdWriter, xyzWriter, pdbWriter
 
 from ..topology.mapping import align_atoms as _align_atoms
 from ..topology.mapping import dec as _dec
-from ..topology.symmetry import wrap as _wrap
-from ..topology.symmetry import cowt as _cowt
-from ..topology.symmetry import join_molecules as _join_molecules
+from ..topology.mapping import dist_crit_aa as _dist_crit_aa
+from ..topology.mapping import wrap as _wrap
+from ..topology.mapping import cowt as _cowt
+from ..topology.mapping import join_molecules as _join_molecules
+from ..topology.mapping import get_distance_matrix as _get_distance_matrix
 
 from ..physics import constants
 from ..physics.constants import masses_amu as _masses_amu
-# from ..physics.classical_electrodynamics import current_dipole_moment, \
-# magnetic_dipole_shift_origin
-# from ..physics.modern_theory_of_magnetisation import calculate_mic
 from ..physics.statistical_mechanics import calculate_kinetic_energies as \
         _calculate_kinetic_energies
 
@@ -52,11 +50,6 @@ from ..mathematics import algebra as _algebra
 
 
 class _FRAME():
-    if int(_np.version.version.split('.')[1]) < 14:
-        print('ERROR: You have to use a numpy version >= 1.14.0! '
-              'You are using %s.' % _np.version.version)
-        _sys.exit(1)
-
     def _labels(self):
         self._type = 'frame'
         self._labels = ('symbols',  '')
@@ -72,20 +65,20 @@ class _FRAME():
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
     def _sync_class(self):
-        # access from behind !
         self.axis_pointer = -2
         # --- should be in __init__ but it is not inherited
 
         self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
-            raise ValueError('ERROR: Data shape inconsistent '
+            raise ValueError('Data shape inconsistent '
                              'with symbols attribute!\n')
 
     def __add__(self, other):
         new = _copy.deepcopy(self)
         new.data = _np.concatenate((self.data, other.data),
                                    axis=self.axis_pointer)
-        _l = new._labels[self.axis_pointer + 1]
+        # DEBUG It! removed +1 below !!
+        _l = new._labels[self.axis_pointer]
         setattr(new, _l, getattr(self, _l) + getattr(other, _l))
         new._sync_class()
         return new
@@ -119,13 +112,11 @@ class _FRAME():
         return ind
 
     def _is_similar(self, other):
-        # topology.map_atoms_by_coordinates
         ie = list(map(lambda a: getattr(self, a) == getattr(other, a),
-                      ['n_atoms', 'n_fields']))
+                      ['_type', 'n_atoms', 'n_fields']))
         ie.append(bool(_np.prod([a == b
                                 for a, b in zip(_np.sort(self.symbols),
                                                 _np.sort(other.symbols))])))
-        # if hasattr(data, 'cell_aa')
         return _np.prod(ie), ie
 
     def _split(self, mask):
@@ -135,6 +126,42 @@ class _FRAME():
 
         return [self._from_data(data=_d, symbols=_s, comment=self.comments)
                 for _d, _s in zip(_data, _symbols)]
+
+    @staticmethod
+    def map_frame(obj1, obj2, **kwargs):
+        '''obj1, obj2 ... Frame objects'''
+        ie, tmp = obj1._is_similar(obj2)
+        if not ie:
+            raise TypeError('''The two Molecule objects are not similar!
+                     n_atoms: %s
+                     n_fields: %s
+                     symbols: %s
+                  ''' % tuple(tmp))
+
+        if obj1._type != 'frame':
+            raise NotImplementedError('map supports only Frame objects!')
+
+        # def get_assign(pos1, pos2, **kwargs):
+        #     assign = []
+        #     for _p in pos1:
+        #         dist_array = get_distance_matrix(_p, pos2[0])
+        #         print(dist_array)
+        #         assign.append(np.argmin(dist_array), axis=1)
+
+        #     return np.array(assign)
+
+        assign = _np.zeros((obj1.n_atoms,)).astype(int)
+        for s in _np.unique(obj1.symbols):
+            i1 = _np.array(obj1.symbols) == s
+            i2 = _np.array(obj2.symbols) == s
+            ass = _np.argmin(_get_distance_matrix(
+                                obj1.data[i1, :3],
+                                obj2.data[i2, :3],
+                                **kwargs
+                                ),
+                             axis=1)
+            assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
+        return assign
 
     @classmethod
     def _from_data(cls, **kwargs):
@@ -261,7 +288,8 @@ class _XYZ():
                                                  data.shape[0] * ['passed'])
                                       ]).flatten()
             else:
-                raise TypeError('XYZData needs fn or data + symbols argument!')
+                raise TypeError('%s needs fn or data + symbols argument!' %
+                                self.__class__.__name__)
 
         if self.cell_aa_deg is None:
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
@@ -369,7 +397,8 @@ class _XYZ():
         if self.vel_au.size == 0:
             self.vel_au = _np.zeros_like(self.pos_aa)
 
-    def _is_equal(self, other, atol=1e-08):
+    def _is_equal(self, other, atol=1e-08, noh=True):
+        '''atol adds up to dist_crit_aa from vdw radii'''
         _p, ie = self._is_similar(other)
 
         def f(a):
@@ -380,7 +409,17 @@ class _XYZ():
             _s_pos = getattr(self, a)
 
             _o_pos = _align_atoms(_o_pos, self.masses_amu, ref=_s_pos)[0]
-            return _np.allclose(_s_pos, _np.mod(_o_pos, _s_pos), atol=atol)
+            _bool = []
+            for _s in set(self.symbols):
+                _ind = _np.array(self.symbols) == _s
+                if _s != 'H' or not noh:
+                    _bool.append(_np.allclose(
+                                   _s_pos[_ind],
+                                   _np.mod(_o_pos[_ind], _s_pos[_ind]),
+                                   atol=_dist_crit_aa([_s])[0] + atol,
+                                   ))
+            return bool(_np.prod(_bool))
+            # return _np.allclose(_s_pos, _np.mod(_o_pos, _s_pos), atol=atol)
 
         if _p == 1:
             ie += list(map(f, ['data']))
@@ -602,8 +641,9 @@ class XYZFrame(_XYZ, _FRAME):
                              )
 
 
-class XYZIterator():
+class XYZIterator(_XYZ, _FRAME):
     '''Testing. Work in progress...'''
+    # ToDo: numb inherited classmethods such as _split ?
     def __init__(self, *args, **kwargs):
         if len(args) != 1:
             raise TypeError("File reader of %s takes at exactly 1 argument!"
@@ -661,11 +701,18 @@ class XYZIterator():
             # --- TESTING
             self._fr = kwargs.get('range', (0, float('inf')))[0]-1
             next(self)
+            self._chaste = True
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        if hasattr(self, '_chaste'):
+            # repeat first step after __init__
+            if self._chaste:
+                self._chaste = False
+                return self._fr
+
         frame = next(self._gen)
 
         if self._fmt == 'xyz':
@@ -745,16 +792,12 @@ class XYZIterator():
     @staticmethod
     def _loop(obj, func, events, *args, **kwargs):
         _fr = 0
-        while True:
-            try:
-                getattr(obj._frame, func)(*args, **kwargs)
-                next(obj)
-                if _fr in events:
-                    if isinstance(events[_fr], dict):
-                        kwargs.update(events[_fr])
-                _fr += 1
-            except StopIteration:
-                break
+        for _ifr in obj:
+            getattr(obj._frame, func)(*args, **kwargs)
+            if _fr in events:
+                if isinstance(events[_fr], dict):
+                    kwargs.update(events[_fr])
+            _fr += 1
 
     def write(self, fn, **kwargs):
         return self._loop(self,
@@ -770,10 +813,10 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
-    def _to_frame(self, fr=0):
-        return XYZFrame(data=self.data[fr],
-                        symbols=self.symbols,
-                        comments=[self.comments[fr]])
+#    def _to_frame(self, fr=0):
+#        return XYZFrame(data=self.data[fr],
+#                        symbols=self.symbols,
+#                        comments=[self.comments[fr]])
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
@@ -788,12 +831,12 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
 
 # CLEAN UP and inherit TRAJECTORY
+# class Moments(_TRAJECTORY)
 
+# class VibrationalModes(_MODE, _FRAME):
+# it is an iterator as well?
 
 class VibrationalModes():
-    # actually here and for the entire MD simulation we should choose one pure
-    # isotope since mixed atomic masses are not valid for the determination for
-    # "average" mode frequencies (are they?)
     # allow partial reading of modes, insert check for completness of
     # modes 3N-6/5
 
@@ -859,15 +902,15 @@ class VibrationalModes():
 
         # use external function
         if center_coords:
-            cell_aa = kwargs.get('cell_aa',
-                                 _np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
-            if not all([cl == 90. for cl in cell_aa[3:]]):
+            cell_aa_deg = kwargs.get('cell_aa_deg',
+                                     _np.array([0.0, 0.0, 0.0, 90., 90., 90.]))
+            if not all([cl == 90. for cl in cell_aa_deg[3:]]):
                 print('ERROR: only orthorhombic/cubic cells can be used with '
                       'center function!')
             P = self.pos_au
             M = self.masses_amu
             com_au = _np.sum(P*M[:, None], axis=-2)/M.sum()
-            self.pos_au += cell_aa[None, :3] / 2 * constants.l_aa2au -\
+            self.pos_au += cell_aa_deg[None, :3] / 2 * constants.l_aa2au -\
                 com_au[None, :]
 
         self._sync_class()

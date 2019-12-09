@@ -11,31 +11,29 @@
 #
 # ------------------------------------------------------
 
-# Version important as <3.6 gives problems with OrderedDictionaries
-
 import sys as _sys
 import os as _os
 import copy as _copy
 import numpy as _np
+import warnings as _warnings
 
 from ..topology.dissection import assign_molecule as _assign_molecule
-from ..topology.mapping import get_atom_spread as _get_atom_spread
-from ..topology.symmetry import get_cell_vec as _get_cell_vec
+# from ..topology.mapping import get_atom_spread as _get_atom_spread
+from ..topology.mapping import get_cell_vec as _get_cell_vec
+from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Supercell as _Supercell
 from ..physics import constants
+from ..mathematics.algebra import angle
 
 
 class _BoxObject():
 
     # --- DEV log
-    # _np.set_printoptions(precision=5,suppress=True)
     # volume is determined by _cell_vec_aa() / cell_vec_aa()
     # methods that are allowed to manipulate _cell_vec_aa and/or volume_aa3:
     # __init__, __pow__ (via __mul__)
     # plan: check routine compares _method() to method and complains
-    # if it deviates
-    # ToDo: auto-determine symmetry
     # Symmetry should be determined from cell_aa
     # empty-box init allowed (bare)
     # --- END
@@ -49,16 +47,9 @@ class _BoxObject():
 You are using %s.' % _np.version.version)
             _sys.exit(1)
         self.members = kwargs.get("members", [])
-        self.symmetry = kwargs.get('symmetry', 'orthorhombic')
         self.origin_aa = kwargs.get('origin_aa', _np.zeros((3)).astype(float))
-        self.cell_aa_deg = kwargs.get('cell_aa_deg')
-        # if self.symmetry != 'orthorhombic':
-        # raise NotImplementedError('ERROR: Only supports orthorhombic cells')
-        try:  # ToDo: fix None case
-            if any(self.cell_aa_deg[3:] != 90.):
-                print('WARNING: Non-orthorhombic cells barely tested!')
-        except AttributeError:
-            pass
+        self.cell_aa_deg = kwargs.get('cell_aa_deg', _np.zeros(6,))
+        self.symmetry = kwargs.get('symmetry', _get_symmetry(self.cell_aa_deg))
         self.pbc = kwargs.get('pbc', True)
         _BoxObject._sync_class(self)
         self.cell_vec_aa = self._cell_vec_aa(**kwargs)
@@ -68,43 +59,47 @@ You are using %s.' % _np.version.version)
     @classmethod
     def read(cls, fn, **kwargs):
         '''Beta'''
-        # cell_aa?
-        # override
-        kwargs['wrap_mols'] = True
+        if kwargs.get('install_mol_gauge') is not None:
+            kwargs['wrap_mols'] = True
+        else:
+            kwargs['wrap'] = True
         _load = _Supercell(fn, **kwargs)
 
-        # some corrections due to deprecated Supercell structure
-        # try:
-        #    _load.mol_map
-        # except AttributeError:
-        if kwargs.get('install_mol_gauge') is not None:
-            _load.install_molecular_origin_gauge()
         nargs = {}
-        try:
-            nargs['cell_aa_deg'] = _load.cell_aa_deg
-        except AttributeError:
-            # NB: if kwargs has cell_aa attribute, _sys has to have it as well
-            # ==> no 2nd check for 'cell_aa' necessary
-            print('WARNING: Could not find cell parametres; \
-uses guess from atom spread!')
-            nargs['cell_aa_deg'] = _np.array(_get_atom_spread(
-                                            _load.XYZData.data))
+        nargs['cell_aa_deg'] = _load.cell_aa_deg
+        if _np.any(_load.cell_aa_deg == 0.):
+            _warnings.warn('Cannot detect cell dimensions!',  # Guessing.',
+                           UserWarning)
+#             nargs['cell_aa_deg'] = _np.concatenate((
+#                                   _np.array(_get_atom_spread(_load.XYZ.data)),
+#                                   _np.ones(3) * 90.
+#                                   ))
 
         if _load.mol_map is not None:
-            return cls(members=[(1, _s._to_frame())
-                                for _s in _load.XYZData._split(_load.mol_map)],
+            return cls(members=[(1, _s)
+                                for _s in _load.XYZ._frame._split(
+                                    _load.mol_map)],
                        **nargs)
         else:
-            return cls(members=[(1, _load.XYZData._to_frame())],
+            return cls(members=[(1, _load.XYZ._frame)],
                        **nargs)
 
     def _cell_vec_aa(self, **kwargs):
-        return _get_cell_vec(kwargs.get('cell_aa_deg'))
+        return _get_cell_vec(self.cell_aa_deg)
 
     def _cell_aa_deg(self):
-        if self.symmetry == 'orthorhombic':
-            return _np.concatenate((_np.dot(_np.ones((3)), self.cell_vec_aa),
-                                   _np.ones((3)) * 90.))
+        if hasattr(self, 'cell_aa_deg'):
+            if self.cell_aa_deg is not None:
+                return self.cell_aa_deg
+        if hasattr(self, 'cell_vec_aa'):
+            return _np.concatenate(
+                _np.linalg.norm(self.cell_vec_aa, axis=-1),
+                _np.array([
+                    angle(self.cell_vec_aa[1], self.cell_vec_aa[2]),
+                    angle(self.cell_vec_aa[0], self.cell_vec_aa[2]),
+                    angle(self.cell_vec_aa[0], self.cell_vec_aa[1])
+                    ]) * 180./_np.pi
+                )
 
     def _volume_aa3(self):
         return _np.dot(self.cell_vec_aa[0],
@@ -120,20 +115,17 @@ uses guess from atom spread!')
             self.cell_aa_deg = self._cell_aa_deg()
         except AttributeError:
             pass
+        if not hasattr(self, 'symmetry'):
+            self.symmetry = _get_symmetry(self.cell_aa_deg)
     # def routine: check all xx attributes against _xx() methods
 
     def _clean_members(self):
         if self.n_members == 0:
             return None
         _eq = _np.zeros((self.n_members,) * 2)
-        # calculate only half the matrix
         for _ii, (_i, _m) in enumerate(self.members):
-            _eq[_ii, _ii:] = _np.array([bool(_m._is_equal(_n, atol=2.0)[0])
+            _eq[_ii, _ii:] = _np.array([bool(_m._is_equal(_n, noh=True)[0])
                                        for _j, _n in self.members[_ii:]])
-        # _eq = _np.array([[bool(_m._is_equal(_n, atol = 1.0)[0]) for _j, _n in
-        # self.members[_ii:]] for _ii, (_i, _m) in enumerate(self.members)]
-        # ).astype(bool)
-        print(_eq.sum())
         _N = self.n_members
         _M = self.n_members
         _ass = _np.zeros((_N)).astype(int)
@@ -218,7 +210,6 @@ cell attributes!')
         return _np.array(mol_map)
 
     def print_info(self):
-        # Work in progress...
         print(77 * '–')
         print('%-12s' % self.__class__.__name__.upper())
         print(77 * '–')
@@ -239,20 +230,80 @@ cell attributes!')
                          for _m in self.members]))
         print(77 * '–')
 
-    def create_system(self, **kwargs):
+    def create(self, **kwargs):
         # most important class (must not be adapted within derived classes)
         # work in progress... # creates a system object (Supercell)
         pass
+
+    def write(self, **kwargs):
+        _SC = self.create(**kwargs)
+        _SC.write('supercell.xyz')
+#        _SC.write('supercell.pdb')
+
+
+class MolecularCrystal(_BoxObject):
+    def _sync_class(self):
+        if _np.any(self.cell_aa_deg == 0.) or self.cell_aa_deg is None:
+            raise ValueError('%s requires valid cell dimensions!'
+                             % self.__class__.__name__)
+
+        self.lattice = _get_symmetry(self.cell_aa_deg)
+        _BoxObject._sync_class(self)
+
+    # CPMD priority (monoclinic): (2, 0, 1)
+    def propagate(self, frame, multiply, priority=(0, 1, 2)):
+        '''Convolute FRAME object with unitcell.'''
+        multiply = _np.array(multiply)
+
+        cart_vec_aa = _get_cell_vec(self.cell_aa_deg,
+                                    n_fields=frame.n_fields,
+                                    priority=priority)
+        frame.axis_pointer = -2
+        new = _copy.deepcopy(frame)
+        for iz, z in enumerate(multiply):
+            tmp = _copy.deepcopy(new)
+            for iiz in range(z-1):
+                tmp.data[:, :3] += cart_vec_aa[None, iz]
+                new += tmp
+#      new.data[:,:,:3] = np.remainder(new.data[:,:,:3],self.abc*self.multiply)
+#        new._sort()
+
+        # ToDo: for modes (should be possible from FRAME object)
+        # elif hasattr(data, 'eival_cgs'):
+        #     cart_vec_aa = _get_cell_vec(self.cell_aa_deg,
+        #                                 n_fields=3,
+        #                                 priority=priority)
+        #     new = _copy.deepcopy(data)
+        #     for iz, z in enumerate(multiply):
+        #         tmp = _copy.deepcopy(new)
+        #         for iiz in range(z-1):
+        #             tmp.pos_au[:, :] += cart_vec_aa[_np.newaxis, iz] *\
+        #                                 constants.l_aa2au
+        #             new += tmp
+        #    new._sort()
+        new.cell_aa_deg[:3] *= multiply
+
+        return new
+
+    def create(self, **kwargs):
+        _SC = self.members[0][1]
+        _SC.axis_pointer = -2
+        for _i in range(self.members[0][0]-1):
+            _SC += self.members[0][1]
+
+        for _m in self.members[1:]:
+            for _i in range(_m[0]):
+                _SC += _m[1]
+
+        return self.propagate(_SC, **kwargs)
 
 
 _solvents = {}
 
 
 class Solution(_BoxObject):
-    #    def __new__(self, **kwargs):
-    #        pass
-
     def __init__(self, **kwargs):
+        self.symmetry = 'orthorhombic'  # by definition
         self.solvent = kwargs.get("solvent")
         self.rho_g_cm3 = kwargs.get("rho_g_cm3", 1.0)
         self.solutes = kwargs.get("solutes", [])
@@ -356,6 +407,9 @@ more than 1%%:\n  - %s\n' % _id)
         print('%12.4f g / cm³' % self.rho_g_cm3)
         print('\n'.join(map('{:12.4f} mol / L'.format, self.c_mol_L)))
 
+    def create(self, **kwargs):
+        return self._fill_box(**kwargs)
+
     def _fill_box(self, **kwargs):
         '''requires packmol'''
         # calculate packmol box
@@ -396,12 +450,11 @@ more than 1%%:\n  - %s\n' % _id)
                                cell_aa_deg=self._cell_aa_deg(),
                                mol_map=self._mol_map())
 
-        # write topology
         self.mol_map = self._mol_map()
         if kwargs.get('sort') is not None:
             _load.sort_atoms()
-        if kwargs.get('write_PDB', True):
-            _load.write("topology.pdb")
+        # if kwargs.get('write_PDB', True):
+        #    _load.write("topology.pdb")
 
         # clean files
         # _os.remove(".tmp_packmol.inp")
@@ -409,4 +462,5 @@ more than 1%%:\n  - %s\n' % _id)
             _os.remove(".member-%03d.xyz" % _im)
         _os.remove(".simbox.xyz")
 
+        return _load
 # class Mixture, MolecularCrystal, IonicCrystal, GasPhase(Mixture)

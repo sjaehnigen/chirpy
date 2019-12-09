@@ -13,9 +13,8 @@
 
 import sys
 import argparse
-import numpy as np
-from chirpy.interfaces import cp2k
-from chirpy.visualisation import timeline
+from chirpy.interface import cp2k
+from chirpy.visualise import timeline
 
 
 def main(*args):

@@ -14,8 +14,8 @@
 
 import argparse
 import os
-from chirpy.interfaces import orca
-from chirpy.writers.modes import xvibsWriter
+from chirpy.interface import orca
+from chirpy.write.modes import xvibsWriter
 from chirpy.physics import constants
 
 

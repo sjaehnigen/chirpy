@@ -98,7 +98,7 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
-    system.Molecule(**vars(args)).XYZData.write(args.f, fmt='xyz')
+    system.Molecule(**vars(args)).XYZ.write(args.f, fmt='xyz')
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -10,15 +10,18 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 import argparse
 import numpy as np
 from chirpy.classes import system
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Convert any supported input into XYZ format",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+            description="Assemble a supercell from input.",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
     parser.add_argument("fn", help="coord file (xyz.pdb,xvibs,...)")
     parser.add_argument("multiply", help="number of replica per dimension (three numbers)", nargs=3)
     parser.add_argument("-abc", help="cell parametres a, b, and c in angstrom (overwrites what is \
@@ -29,7 +32,7 @@ def main():
                         nargs=3, default=None)
     parser.add_argument("-wrap_mols", help="Wrap molecules along cell border?", action='store_true')
     parser.add_argument("-priority", help="Priority order of cell parametres in calculation of cell \
-    vectors. Any changes not recommended if you do not know what you are doing.",
+    vectors. Changes not recommended if you do not know what you are doing.",
                         nargs=3, type=int, default=(0, 1, 2))
     parser.add_argument("-f", help="Output file name", default='out.xyz')
     args = parser.parse_args()

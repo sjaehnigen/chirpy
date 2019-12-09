@@ -13,7 +13,7 @@
 
 
 import numpy as np
-from .symmetry import distance_pbc
+from .mapping import distance_pbc
 
 def gaussian(posgrid, b, sigma, cell_aa_deg=None, dim=3):
     '''Regularisation using Gaussian function'''

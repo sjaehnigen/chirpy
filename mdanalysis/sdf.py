@@ -12,16 +12,17 @@
 #------------------------------------------------------
 
 
-import MDAnalysis as mda
+# import MDAnalysis as mda
 import sys
-import copy
+# import copy
 import numpy as np
 from collections import OrderedDict
 
 from ..physics import constants
-from tools.algebra import RotationMatrix
-from analysis.pcbtools import InitialiseTopology_PDB
-from analysis.utils import AlignTrajectory
+# old 
+# from tools.algebra import RotationMatrix
+# from analysis.pcbtools import InitialiseTopology_PDB
+# from analysis.utils import AlignTrajectory
 
 def InitialiseGrid(u,mesh,size,origin=None): 
     grid=list()
@@ -125,12 +126,12 @@ def CalculateSDF_PCB(u,minf,maxf,step,residue,cutoff,selections,mesh,update_sel=
         #vec1 = pos_aa_rot[int(map[5 ]),:] - pos_aa_rot[int(map[11]),:] 
         #print(a1,vec1)    
         
-    #Select residue environment (update selection each frame)
+        #Select residue environment (update selection each frame)
         if update_sel == True:
-	        if cutoff != 0:
-                    pre_sel = u.select_atoms(sel_all + ' and ' + '(around %f (resname %s))'%(cutoff,residue))
-                elif cutoff == 0:
-                    pre_sel = u.select_atoms(sel_all + ' and ' + 'resname %s'%(residue))
+            if cutoff != 0:
+                pre_sel = u.select_atoms(sel_all + ' and ' + '(around %f (resname %s))'%(cutoff,residue))
+            elif cutoff == 0:
+                pre_sel = u.select_atoms(sel_all + ' and ' + 'resname %s'%(residue))
         resids.append([ts,pre_sel.resids,pre_sel.resnames,pre_sel.segids])
         for sel in selections:
             try:

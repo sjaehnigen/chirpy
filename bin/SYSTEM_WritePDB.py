@@ -29,7 +29,7 @@ def main():
 
     #quick workaround (molecule does not yet have a write routine)
     system.Molecule(**vars(args),wrap_mols=True).write(args.f,fmt='pdb')
-    #system.Supercell(**vars(args),wrap_mols=True).XYZData.write(args.f,fmt='pdb')
+    #system.Supercell(**vars(args),wrap_mols=True).XYZ.write(args.f,fmt='pdb')
 
 
 if(__name__ == "__main__"):

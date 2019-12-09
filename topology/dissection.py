@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,56 +9,17 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
 import numpy as np
-from ..topology.symmetry import get_distance_matrix, distance_pbc, wrap, get_cell_vec
-from ..topology.mapping import dist_crit_aa
+from ..topology.mapping import dist_crit_aa, get_distance_matrix, distance_pbc, wrap, get_cell_vec
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..readers.coordinates import pdbReader
+from ..read.coordinates import pdbReader
 
 
-##TMP solution
-#def define_molecules_XYZclass(xyz):
-#    '''expects one System object. I use frame 0 of mol as reference.'''
-#    d = xyz
-#    crit_aa = dist_crit_aa(d.symbols)
-#    dist_array = d.data[0, :, None, :] - d.data[0, None, :, :] #frame 0
-#    #replace by pos
-##    if hasattr(mol,'UnitCell'):
-##        abc = mol.UnitCell.abc
-##        dist_array -= np.around(dist_array/abc[None,None])*abc[None,None]
-#
-#    dist_array = np.linalg.norm(dist_array, axis=-1)
-#    dist_array[dist_array == 0.0] = 'Inf'
-#
-#    neigh_map = np.array([(dist_array <= crit_aa)])[0].astype(bool)
-#    h, noh = np.array([d.symbols == 'H'])[0], np.array([d.symbols != 'H'])[0]
-#    n_noh = noh.sum()
-#
-#    n_mol = 0
-#    fragment = np.zeros((n_noh))
-#    atom_count = n_noh
-#
-#    for atom in range(n_noh):
-#        if fragment[atom] == 0:
-#            n_mol += 1
-#            fragment, atom_count = assign_molecule(
-#                fragment,
-#                n_mol,
-#                n_noh,
-#                neigh_map[noh][:, noh],
-#                atom,
-#                atom_count
-#                )
-#        if atom_count == 0:
-#            break
-#
-#    ass = np.zeros((d.n_atoms)).astype(int)
-#    ass[noh] = fragment
-#    ass[h] = ass[np.argmin(dist_array[h], axis=1)]
-#    return ass
+# NB: No reader should be called in this module
+
 
 def _make_batches(p, nb, cell_aa_deg=None, ov=None):
     '''nb .. number of batches: tuple (nx, ny. nz)'''
@@ -81,17 +42,18 @@ def _make_batches(p, nb, cell_aa_deg=None, ov=None):
     return Z
 
 
-#ToDo remove class dependence
+# ToDo remove class dependence
 def define_molecules(mol):
     '''expects one System(Molecule, Supercell, ...) object. I use frame 0 of mol as reference.'''
-    d = mol.XYZData
+    d = mol.XYZ
+    symbols = np.array(d.symbols)
     cell_aa_deg = getattr(mol,"cell_aa_deg")
 
     if d._type == "trajectory":
         _p = d.pos_aa[0]
     elif d._type == "frame":
         _p = d.pos_aa
-    h, noh = np.array([d.symbols == 'H'])[0], np.array([d.symbols != 'H'])[0]
+    h, noh = np.array([symbols == 'H'])[0], np.array([symbols != 'H'])[0]
     n_noh = noh.sum()
     n_mol = 0
     fragment = np.zeros((noh.sum()))
@@ -135,7 +97,7 @@ def define_molecules(mol):
 
         dist_array = get_distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
         dist_array[dist_array == 0.0] = 'Inf'
-        crit_aa = dist_crit_aa(d.symbols[_ind])
+        crit_aa = dist_crit_aa(symbols[_ind])
 
         neigh_map = dist_array <= crit_aa
         neigh_list += [tuple(_ind2[_l]) for _l in np.argwhere(neigh_map[noh[_ind]][:, noh[_ind]]==1)]
@@ -210,6 +172,9 @@ def define_molecules(mol):
 
     # Old
     #ass[h] = ass[np.argmin(dist_array[h], axis=1)]
+
+    # return molecular centres of mass (and optionally wrap mols?)
+
     return ass
 
 def assign_molecule_NEW(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):

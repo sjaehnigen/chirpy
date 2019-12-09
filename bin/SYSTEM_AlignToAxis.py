@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
     args.axis = np.array(args.axis)
 
-    _system = system.Supercell(**vars(args)).XYZData
+    _system = system.Supercell(**vars(args)).XYZ
     _system._align_to_vector(args.i0, args.i1, args.axis)
     _system.write(args.f, fmt='xyz')
 

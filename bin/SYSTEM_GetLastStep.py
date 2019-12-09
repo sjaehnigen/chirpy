@@ -59,7 +59,7 @@ def main():
     if args.f is create_name:
         args.f = create_name(args.fn)
 
-    system.Molecule(**vars(args)).XYZData._to_frame(fr=-1).write(
+    system.Molecule(**vars(args)).XYZ._to_frame(fr=-1).write(
                                                                  args.f,
                                                                  fmt='xyz',
                                                                  )

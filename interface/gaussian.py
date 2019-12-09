@@ -15,7 +15,7 @@
 import sys
 import numpy as np
 
-from lib import constants
+from physics import constants
 
 # ToDo: Needs some cleanup
 

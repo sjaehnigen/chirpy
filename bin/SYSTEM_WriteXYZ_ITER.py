@@ -75,7 +75,7 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
-    system.Supercell_ITER(**vars(args)).XYZData.write(args.f, fmt='xyz')
+    system.Supercell(**vars(args)).write(args.f, fmt='xyz')
 
 
 if __name__ == "__main__":

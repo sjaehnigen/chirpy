@@ -17,8 +17,7 @@ import copy as _copy
 import numpy as _np
 
 # old:
-from vcdtools import vcd_utils
-from fileio.cpmd import WriteMomentsFile
+# from vcdtools import vcd_utils
 
 #class SPECTRUM():
 #

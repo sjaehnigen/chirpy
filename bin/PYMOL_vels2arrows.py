@@ -15,7 +15,7 @@
 import numpy as np
 import argparse
 from chirpy.classes import system
-from chirpy.creators.gen_pymol import PymolObject
+from chirpy.interface.pymol import PymolObject
 
 Angstrom2Bohr = 1.8897261247828971
 
@@ -41,8 +41,8 @@ def main():
 
     mol = system.Molecule(args.fn_xyz)
 
-    p0 = mol.XYZData.pos_aa
-    p1 = mol.XYZData.pos_aa + mol.XYZData.vel_au*args.scale
+    p0 = mol.XYZ.pos_aa
+    p1 = mol.XYZ.pos_aa + mol.XYZ.vel_au*args.scale
 
     ind  = np.linalg.norm(p0-p1,axis=-1) >= args.cutoff #preselection
     obj0 = PymolObject(p0[ind],

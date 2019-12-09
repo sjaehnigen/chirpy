@@ -17,6 +17,7 @@ from pylab import polyfit
 
 matplotlib.use('TkAgg')
 
+
 def show_and_interpolate_array(x, y, title, xlabel, ylabel, plot):
     m = list()
     b = list()

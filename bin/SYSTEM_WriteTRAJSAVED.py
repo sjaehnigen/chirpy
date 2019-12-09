@@ -77,8 +77,8 @@ def main():
         print('Override internal cell specifications by input.')
         args.cell_aa = np.array(args.cell_aa).astype(float)
 
-    # system.Molecule(**vars(args)).XYZData.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
-    system.Supercell(**vars(args)).XYZData.write(
+    # system.Molecule(**vars(args)).XYZ.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
+    system.Supercell(**vars(args)).XYZ.write(
             args.f,
             fmt='cpmd',
             pp=args.pp,

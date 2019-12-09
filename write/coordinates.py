@@ -17,7 +17,7 @@ import copy
 from collections import OrderedDict
 
 #not yet in use
-#from interfaces import cpmd
+#from interface import cpmd
 
 Angstrom2Bohr = 1.8897261247828971
 

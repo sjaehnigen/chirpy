@@ -32,9 +32,9 @@ def main():
     args = parser.parse_args()
     args.cell_aa = np.array(args.cell_aa).astype(float)
     sys = system.Molecule(**vars(args))
-    sys.XYZData.calculate_nuclear_velocities(**vars(args)) # this actions could be send as var to class
-    #sys.XYZData.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
-    sys.XYZData.write(args.f,fmt='xyz',attr='data',factor=args.factor,separate_files=args.separate_files)
+    sys.XYZ.calculate_nuclear_velocities(**vars(args)) # this actions could be send as var to class
+    #sys.XYZ.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
+    sys.XYZ.write(args.f,fmt='xyz',attr='data',factor=args.factor,separate_files=args.separate_files)
 
 
 if(__name__ == "__main__"):

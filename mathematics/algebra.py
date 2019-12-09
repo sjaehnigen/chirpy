@@ -105,3 +105,15 @@ def change_euclidean_basis(v, basis):
     V = np.dot(basis[0], np.cross(basis[1], basis[2]))
 
     return 1 / V * np.tensordot(v, M, axes=(-1, 1))
+
+
+def kabsch_algorithm(P, ref):
+    C = np.dot(np.transpose(ref), P)
+    V, S, W = np.linalg.svd(C)
+
+    d = (np.linalg.det(V) * np.linalg.det(W)) < 0.0
+    if d:
+        S[-1] = -S[-1]
+        V[:, -1] = -V[:, -1]
+    # Create Rotation matrix U
+    return np.dot(V, W)

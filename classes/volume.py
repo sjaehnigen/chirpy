@@ -16,13 +16,10 @@ import copy as _copy
 from scipy.interpolate import griddata as _griddata
 from scipy.integrate import simps as _simps
 
-from ..readers.volume import cubeReader
-from ..writers.volume import cubeWriter
+from ..read.volume import cubeReader
+from ..write.volume import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
-
-# Convention Warning:
-# cell_au is cell_vec_au
 
 
 class ScalarField():
@@ -39,8 +36,7 @@ class ScalarField():
                 buf = cubeReader(self.fn)
                 self.comments = buf['comments'].strip()
                 self.origin_au = _np.array(buf['origin_au'])
-                self.cell_au = _np.array(buf['cell_au'])  # deprecated
-                self.cell_vec_au = _np.array(buf['cell_au'])
+                self.cell_vec_au = _np.array(buf['cell_vec_au'])
                 self.pos_au = _np.array(buf['coords_au'])
                 self.numbers = _np.array(buf['numbers'])
                 self.data = buf['volume_data']
@@ -51,7 +47,6 @@ class ScalarField():
                 # otherwise self remains empty
                 self.comments = test.comments
                 self.origin_au = test.origin_au
-                self.cell_au = test.cell_vec_au  # deprecated
                 self.cell_vec_au = test.cell_vec_au
                 self.pos_au = test.pos_au
                 self.numbers = test.numbers
@@ -130,7 +125,6 @@ cell_vec_au and data!')
         obj.origin_au = kwargs.get('origin_au', _np.zeros((3)))
         obj.pos_au = kwargs.get('pos_au', _np.zeros((0, 3)))
         obj.numbers = kwargs.get('numbers', _np.zeros((0, )))
-        obj.cell_au = cell_vec_au  # deprecated
         obj.cell_vec_au = cell_vec_au
         obj.data = data
         # Check for optional data
@@ -161,7 +155,7 @@ cell_vec_au and data!')
 
         err_keys = [
                 'origin_au',
-                'cell_au',
+                'cell_vec_au',
                 'voxel',
                 ]
         wrn_keys = [
@@ -233,11 +227,11 @@ cell_vec_au and data!')
         self.n_x = self.data.shape[-3]
         self.n_y = self.data.shape[-2]
         self.n_z = self.data.shape[-1]
-        xaxis = self.cell_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
-        yaxis = self.cell_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
-        zaxis = self.cell_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
+        X = self.cell_vec_au[0, 0]*_np.arange(0, self.n_x) + self.origin_au[0]
+        Y = self.cell_vec_au[1, 1]*_np.arange(0, self.n_y) + self.origin_au[1]
+        Z = self.cell_vec_au[2, 2]*_np.arange(0, self.n_z) + self.origin_au[2]
 
-        return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
+        return _np.array(_np.meshgrid(X, Y, Z, indexing='ij'))
 
     # copy to new object?
     def sparsity(self, sp, **kwargs):
@@ -248,7 +242,6 @@ cell_vec_au and data!')
             self.data = _np.moveaxis(_np.moveaxis(self.data, _i, 0)[::sp],
                                      0,
                                      _i)
-            self.cell_au[_i] *= sp
             self.cell_vec_au[_i] *= sp
 
         if 'x' in dims:
@@ -269,7 +262,7 @@ cell_vec_au and data!')
             self.data = _np.moveaxis(_np.moveaxis(self.data, _i, 0)[r:-r],
                                      0,
                                      _i)
-            self.origin_au[_i] += self.cell_au[_i, _i] * r
+            self.origin_au[_i] += self.cell_vec_au[_i, _i] * r
 
         if 'x' in dims:
             _apply(-3)
@@ -309,7 +302,7 @@ cell_vec_au and data!')
             if numbers.shape[0] != n_atoms:
                 raise ValueError('ERROR: Given numbers inconsistent \
                                 with positions')
-            cell_au = kwargs.get('cell_au', self.cell_au)
+            cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
             origin_au = kwargs.get('origin_au', self.origin_au)
             data = getattr(self, attr)
             cubeWriter(fn,
@@ -317,7 +310,7 @@ cell_vec_au and data!')
                        comment2,
                        numbers,
                        pos_au,
-                       cell_au,
+                       cell_vec_au,
                        data,
                        origin=origin_au)
         else:
@@ -348,7 +341,6 @@ class VectorField(ScalarField):
             self.data = _np.array([x.data, y.data, z.data])
             for _a in [
                     'origin_au',
-                    'cell_au',  # deprecated
                     'cell_vec_au',
                     'pos_au',
                     'n_atoms',
@@ -403,7 +395,7 @@ class VectorField(ScalarField):
         pos_grid = self.pos_grid()[:, ::sparse, ::sparse, ::sparse]
         v_field = self.data[:, ::sparse, ::sparse, ::sparse]
         gl_norm = _np.amax(_np.linalg.norm(v_field, axis=0))
-        ds = _np.linalg.norm(self.cell_au, axis=1)
+        ds = _np.linalg.norm(self.cell_vec_au, axis=1)
 
         points = _np.array(
                 [pos_grid[0].ravel(), pos_grid[1].ravel(), pos_grid[2].ravel()]
@@ -482,23 +474,23 @@ class VectorField(ScalarField):
         pass
 
     @staticmethod
-    def _get_helmholtz_components(data, cell_au):
-        div, rot = _get_divrot(data, cell_au)
-        V = _k_potential(div, _np.array(cell_au))[1]/(4*_np.pi)
-        A1 = _k_potential(rot[0], _np.array(cell_au))[1]
-        A2 = _k_potential(rot[1], _np.array(cell_au))[1]
-        A3 = _k_potential(rot[2], _np.array(cell_au))[1]
+    def _get_helmholtz_components(data, cell_vec_au):
+        div, rot = _get_divrot(data, cell_vec_au)
+        V = _k_potential(div, _np.array(cell_vec_au))[1]/(4*_np.pi)
+        A1 = _k_potential(rot[0], _np.array(cell_vec_au))[1]
+        A2 = _k_potential(rot[1], _np.array(cell_vec_au))[1]
+        A3 = _k_potential(rot[2], _np.array(cell_vec_au))[1]
         A = _np.array([A1, A2, A3])/(4*_np.pi)
         irrotational_field = -_np.array(_np.gradient(V,
-                                                     cell_au[0][0],
-                                                     cell_au[1][1],
-                                                     cell_au[2][2]))
-        solenoidal_field = _get_divrot(A, cell_au)[1]
+                                                     cell_vec_au[0][0],
+                                                     cell_vec_au[1][1],
+                                                     cell_vec_au[2][2]))
+        solenoidal_field = _get_divrot(A, cell_vec_au)[1]
 
         return irrotational_field, solenoidal_field, div, rot
 
     def divergence_and_rotation(self):
-        self.div, self.rot = _get_divrot(self.data, self.cell_au)
+        self.div, self.rot = _get_divrot(self.data, self.cell_vec_au)
 
     def helmholtz_decomposition(self):
         self.irrotational_field,\
@@ -506,7 +498,7 @@ class VectorField(ScalarField):
                 self.div,\
                 self.rot\
                 =\
-                self._get_helmholtz_components(self.data, self.cell_au)
+                self._get_helmholtz_components(self.data, self.cell_vec_au)
 
     def write(self, fn1, fn2, fn3, **kwargs):
         '''Generalise this routine with autodetection for scalar and velfield,
@@ -520,7 +512,7 @@ class VectorField(ScalarField):
                                   [c.split('\n')[1] for c in self.comments])
             pos_au = kwargs.get('pos_au', self.pos_au)
             numbers = kwargs.get('numbers', self.numbers)
-            cell_au = kwargs.get('cell_au', self.cell_au)
+            cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
             origin_au = kwargs.get('origin_au', self.origin_au)
             data = getattr(self, attr)
             cubeWriter(fn1,
@@ -528,7 +520,7 @@ class VectorField(ScalarField):
                        comment2[0],
                        numbers,
                        pos_au,
-                       cell_au,
+                       cell_vec_au,
                        data[0],
                        origin=origin_au)
             cubeWriter(fn2,
@@ -536,7 +528,7 @@ class VectorField(ScalarField):
                        comment2[1],
                        numbers,
                        pos_au,
-                       cell_au,
+                       cell_vec_au,
                        data[1],
                        origin=origin_au)
             cubeWriter(fn3,
@@ -544,7 +536,7 @@ class VectorField(ScalarField):
                        comment2[2],
                        numbers,
                        pos_au,
-                       cell_au,
+                       cell_vec_au,
                        data[2],
                        origin=origin_au)
         else:

@@ -13,7 +13,7 @@
 
 
 import numpy as np
-from ..interfaces import orca
+from ..interface import orca
 
 
 def xvibsReader(fn):

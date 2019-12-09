@@ -14,7 +14,7 @@
 
 import argparse
 
-from chirpy.interfaces import cpmd
+from chirpy.interface import cpmd
 from chirpy.topology import dissection
 from chirpy.classes import system
 
@@ -44,7 +44,7 @@ def main():
         _JOB.TRAJECTORY = cpmd.TRAJECTORY.read( fn_trj, sum( _JOB.ATOMS.n_kinds ), symbols = _JOB.get_symbols( ) )
 
     # Get Fragments
-    _XYZ = system.XYZData( data = _JOB.get_positions(), symbols = _JOB.get_symbols() )
+    _XYZ = system.XYZ( data = _JOB.get_positions(), symbols = _JOB.get_symbols() )
     _ASS = dissection.define_molecules_XYZclass( _XYZ )
     print ( _ASS )
 

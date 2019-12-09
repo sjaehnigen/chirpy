@@ -14,7 +14,7 @@
 
 import argparse
 import os
-from chirpy.interfaces import orca, molden
+from chirpy.interface import orca, molden
 
 
 def main():

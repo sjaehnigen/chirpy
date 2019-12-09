@@ -62,7 +62,7 @@ def main():
                                    cell_aa_deg=False,
                                    ),
                     frame_range=(args.step, args.step+1)
-                    ).XYZData._to_frame().write(
+                    ).XYZ._to_frame().write(
                                                 args.f,
                                                 fmt='xyz',
                                                 )
