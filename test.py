@@ -335,22 +335,20 @@ class TestReaders(unittest.TestCase):
     def test_pdbReader(self):
         # not much testing of protein features as this is an external reader
         data, names, symbols, res, cell_aa_deg, title = \
-                r_coordinates.pdbReader(self.dir + '/test_protein.pdb')
+            r_coordinates.pdbReader(self.dir + '/test_protein.pdb')
         data, names, symbols, res, cell_aa_deg, title = \
-                r_coordinates.pdbReader(self.dir + '/test_raw.pdb')
+            r_coordinates.pdbReader(self.dir + '/test_raw.pdb')
         data, names, symbols, res, cell_aa_deg, title =\
-                r_coordinates.pdbReader(self.dir + '/test_simple.pdb')
+            r_coordinates.pdbReader(self.dir + '/test_simple.pdb')
 
         self.assertTrue(np.allclose(cell_aa_deg, np.array([
             12.072, 12.342, 11.576, 90.00, 90.00, 90.00])))
 
         with open(self.dir + '/res', 'r') as _f:
             tmp = [tuple(_l.strip().split('-')) for _l in _f.readlines()]
-            tmp = [(int(_a[0]), str(_a[1])) for _a in tmp]
-        self.assertListEqual(res, tmp)
+            tmp = tuple([(int(_a[0]), str(_a[1])) for _a in tmp])
+        self.assertTupleEqual(res, tmp)
 
-        # ToDo: add more tests like for xyz
-        # self.assertListEqual(res, ()
         self.assertTupleEqual(
                 symbols,
                 ('C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
@@ -398,10 +396,10 @@ class TestReaders(unittest.TestCase):
             ))
 
         data, origin_au, cell_vec_au, pos_au, numbers, comments = \
-                r_grid.cubeReader(self.dir + '/test-2.cube')
+            r_grid.cubeReader(self.dir + '/test-2.cube')
         self.assertTupleEqual(data.shape, (1, 10, 10, 10))
         data, origin_au, cell_vec_au, pos_au, numbers, comments = \
-                r_grid.cubeReader(self.dir + '/test-4.cube')
+            r_grid.cubeReader(self.dir + '/test-4.cube')
         self.assertTupleEqual(data.shape, (2, 6, 6, 6))
 
         # Some Negatives
@@ -429,7 +427,7 @@ class TestWriters(unittest.TestCase):
                             freqs,
                             modes)
         n_atoms2, numbers2, pos_aa2, n_modes2, freqs2, modes2 = \
-                r_modes.xvibsReader(self.dir + '/out.xvibs')
+            r_modes.xvibsReader(self.dir + '/out.xvibs')
         self.assertEqual(n_atoms2, n_atoms)
         self.assertEqual(n_modes2, n_modes)
         self.assertListEqual(numbers2, numbers)

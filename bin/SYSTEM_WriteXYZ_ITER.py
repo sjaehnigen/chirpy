@@ -39,6 +39,11 @@ def main():
                         default=None,
                         type=int,
                         )
+    parser.add_argument("--force_centre",
+                        action='store_true',
+                        help="Enforce centering after alignment.",
+                        default=False,
+                        )
     parser.add_argument("--use_com",
                         action='store_true',
                         help="Use centre of mass instead of centre of geometry \
@@ -75,7 +80,7 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
-    system.Supercell(**vars(args)).write(args.f, fmt='xyz')
+    system.Supercell(args.fn, **vars(args)).write(args.f, fmt='xyz')
 
 
 if __name__ == "__main__":

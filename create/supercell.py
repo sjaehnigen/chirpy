@@ -47,6 +47,7 @@ class _BoxObject():
 You are using %s.' % _np.version.version)
             _sys.exit(1)
         self.members = kwargs.get("members", [])
+        self.member_set = kwargs.get("members", [])
         self.origin_aa = kwargs.get('origin_aa', _np.zeros((3)).astype(float))
         self.cell_aa_deg = kwargs.get('cell_aa_deg', _np.zeros(6,))
         self.symmetry = kwargs.get('symmetry', _get_symmetry(self.cell_aa_deg))
@@ -76,10 +77,11 @@ You are using %s.' % _np.version.version)
 #                                   ))
 
         if _load.mol_map is not None:
-            return cls(members=[(1, _s)
-                                for _s in _load.XYZ._frame._split(
-                                    _load.mol_map)],
-                       **nargs)
+            return cls(
+                    members=[(1, _s)
+                             for _s in _load.XYZ._frame._split(
+                             _load.mol_map)],
+                    **nargs)
         else:
             return cls(members=[(1, _load.XYZ._frame)],
                        **nargs)
@@ -107,9 +109,9 @@ You are using %s.' % _np.version.version)
 
     def _sync_class(self):
         '''Calculates intensive properties only'''
-        self.n_members = len(self.members)
-        self.mass_amu = sum([_n * _m.masses_amu.sum()
-                             for _n, _m in self.members])
+        self.n_members = len(self.member_set)
+        self.mass_amu = sum([_n * sum(_m.masses_amu)
+                             for _n, _m in self.member_set])
         self.n_atoms = sum([_n * _m.n_atoms for _n, _m in self.members])
         try:
             self.cell_aa_deg = self._cell_aa_deg()
@@ -137,8 +139,8 @@ You are using %s.' % _np.version.version)
             if _M == 0:
                 break
         _n, _m = _np.array(self.members).T
-        self.members = [(_n[_ass == _i].sum(), _m[_ass == _i][0])
-                        for _i in _np.unique(_ass)]
+        self.member_set = [(_n[_ass == _i].sum(), _m[_ass == _i][0])
+                           for _i in _np.unique(_ass)]
         self._sync_class()
 
     def __add__(self, other):
@@ -203,7 +205,7 @@ cell attributes!')
     def _mol_map(self):
         _imol = 0
         mol_map = []
-        for _m in self.members:
+        for _m in self.member_set:
             for _i in range(_m[0]):
                 mol_map += _m[1].n_atoms * [_imol]
                 _imol += 1
@@ -226,8 +228,8 @@ cell attributes!')
         print('%45s %8s %12s' % ('File', 'No.', 'Molar Mass'))
         print(77 * '-')
         print('\n'.join(['%45s %8d %12.4f' %
-                         (_m[1].fn, _m[0], _m[1].masses_amu.sum())
-                         for _m in self.members]))
+                         (_m[1].fn, _m[0], sum(_m[1].masses_amu))
+                         for _m in self.member_set]))
         print(77 * '–')
 
     def create(self, **kwargs):
@@ -251,7 +253,7 @@ class MolecularCrystal(_BoxObject):
         _BoxObject._sync_class(self)
 
     # CPMD priority (monoclinic): (2, 0, 1)
-    def propagate(self, frame, multiply, priority=(0, 1, 2)):
+    def propagate(self, frame, multiply=(1, 1, 1), priority=(0, 1, 2)):
         '''Convolute FRAME object with unitcell.'''
         multiply = _np.array(multiply)
 
@@ -295,7 +297,7 @@ class MolecularCrystal(_BoxObject):
             for _i in range(_m[0]):
                 _SC += _m[1]
 
-        return self.propagate(_SC, **kwargs)
+        return _Supercell(XYZ=self.propagate(_SC, **kwargs))
 
 
 _solvents = {}
@@ -359,13 +361,13 @@ more than 1%%:\n  - %s\n' % _id)
                         "rho_g_cm3",
                         "solutes",
                         "c_mol_L",
-                        "member",
+                        "member_set",
                         ]}
 
         _BoxObject.__init__(
                 self,
-                members=[(int(round(_in)), _is)
-                         for _in, _is in zip(_n, _slt + [_slv])],
+                members_set=[(int(round(_in)), _is)
+                             for _in, _is in zip(_n, _slt + [_slv])],
                 **nargs)  # by definition solvent is the last member
 
         del _slt, _slv, _c_slv_mol_L, _n, _c_min_mol_L, _dev_warning
@@ -425,7 +427,7 @@ more than 1%%:\n  - %s\n' % _id)
             f.write('filetype xyz' + 2*'\n')
             f.write('output .simbox.xyz' + '\n')
 
-            for _im, _m in enumerate(self.members):
+            for _im, _m in enumerate(self.member_set):
                 _fn = '.member-%03d.xyz' % _im
                 _m[1].write(_fn)
                 f.write('\n')
@@ -458,7 +460,7 @@ more than 1%%:\n  - %s\n' % _id)
 
         # clean files
         # _os.remove(".tmp_packmol.inp")
-        for _im, _m in enumerate(self.members):
+        for _im, _m in enumerate(self.member_set):
             _os.remove(".member-%03d.xyz" % _im)
         _os.remove(".simbox.xyz")
 

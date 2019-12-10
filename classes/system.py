@@ -30,27 +30,13 @@ class _SYSTEM():
     '''Parent class that parses and manages properties of a chemical system
        organised in attributed classes.'''
 
-    def __init__(self, fn, **kwargs):
+    def __init__(self, *args, **kwargs):
         '''Manually given arguments overwrite file attributes'''
-
-        fmt = kwargs.get('fmt', fn.split('.')[-1])
         self.mol_map = kwargs.get("mol_map")
-        self.XYZ = self._XYZ(fn, **kwargs)
+        self.XYZ = kwargs.get('XYZ')
+        if self.XYZ is None:
+            self.read_fn(*args, **kwargs)
         self.cell_aa_deg = self.XYZ.cell_aa_deg
-
-        # ToDo: After repairing / cleaning up Modes implement transfer
-        # (mol info not written in XYZ or Modes)
-        # kwargs.get('extract_mols'
-        if fmt == 'xvibs':  # re-reads file
-            self.Modes = VibrationalModes(fn, **kwargs)
-
-        if kwargs.get('fn_topo') is not None:
-            self.install_molecular_origin_gauge(**kwargs)
-
-        elif fmt == "pdb":
-            if self.mol_map is None:  # re-reads file
-                kwargs.update({'fn_topo': fn})
-                self.install_molecular_origin_gauge(**kwargs)
 
         # --- ITERATOR DEVELOP info: methods called here cannot access ITER
         #       --> shift: extract_mol, center_res etc. directly to ITER
@@ -80,6 +66,23 @@ class _SYSTEM():
             # if python 3.8: use walrus
             self.extract_molecules(extract_mols)
         # ---
+
+    def read_fn(self, *args, **kwargs):
+        self.XYZ = self._XYZ(*args, **kwargs)
+        fmt = self.XYZ._fmt
+        # ToDo: After repairing / cleaning up Modes implement transfer
+        # (mol info not written in XYZ or Modes)
+        # kwargs.get('extract_mols'
+        if fmt == 'xvibs':  # re-reads file
+            self.Modes = VibrationalModes(*args, **kwargs)
+
+        if kwargs.get('fn_topo') is not None:
+            self.install_molecular_origin_gauge(**kwargs)
+
+        elif fmt == "pdb":
+            if self.mol_map is None:  # re-reads file
+                kwargs.update({'fn_topo': self.XYZ._fn})
+                self.install_molecular_origin_gauge(**kwargs)
 
     def wrap_molecules(self):
         if self.mol_map is None:
@@ -112,15 +115,22 @@ class _SYSTEM():
                            RuntimeWarning)
 
         if fn is not None:
-            n_map, symbols = _read_topology_file(fn)
+            n_map, symbols, cell_aa_deg = _read_topology_file(fn)
             if symbols != self.XYZ.symbols:
                 raise ValueError('Topology file does not represent molecule!')
             # Check agreement topology with self (unit cell, ...)?
 
+            if hasattr(self, 'cell_aa_deg'):
+                if not _np.allclose(cell_aa_deg, self.cell_aa_deg) and not all(
+                        [_a <= 0.0 for _a in self.cell_aa_deg[:3]]
+                        ):
+                    _warnings.warn('Cell dimensions different in input and '
+                                   'topology files!')
+            self.cell_aa_deg = cell_aa_deg
         else:
             n_map = tuple(_define_molecules(self)-1)
 
-        n_mols = max(n_map)+1
+        n_mols = max(n_map) + 1
         self.mol_map = n_map
         self.n_mols = n_mols
 

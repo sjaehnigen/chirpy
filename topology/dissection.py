@@ -231,8 +231,9 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
 def read_topology_file(fn, **kwargs):
     '''Only PDB support for now'''
     # A little old messy code
+    # Read also cell_aa_deg ?
 
-    data, types, symbols, residues, box_aa_deg, title = pdbReader(fn)
+    data, types, symbols, residues, cell_aa_deg, title = pdbReader(fn)
     residues = np.array(residues).astype(str)
     resi = ['-'.join(_r) for _r in residues]
     # python>=3.6: keeps order
@@ -246,4 +247,4 @@ def read_topology_file(fn, **kwargs):
     if n_mols != max(n_map)+1:
         raise Exception('STH is wrong')
 
-    return n_map, symbols
+    return n_map, symbols, cell_aa_deg

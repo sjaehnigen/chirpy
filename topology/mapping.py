@@ -147,7 +147,7 @@ def _pbc_shift(_d, cell_aa_deg):
         else:
             return np.around(_d/cell_aa_deg[:3]) * cell_aa_deg[:3]
     else:
-        return _d
+        return np.zeros_like(_d)
 
 
 def get_distance_matrix(*args, **kwargs):
@@ -204,10 +204,11 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     w = kwargs.get('weights', np.ones((n_atoms)))
     w = dec(w, mol_map)
 
+    _pos_aa = copy.deepcopy(pos_aa)
     mol_c_aa = []
     for i_mol in set(mol_map):
         ind = np.array(mol_map) == i_mol
-        _p = pos_aa[:, ind]
+        _p = _pos_aa[:, ind]
         # reference atom: 0 (this may lead to problems, say, for large,
         # cell-spanning molecules)
         # _r = [0]*sum(ind)
@@ -224,9 +225,9 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
         _p -= _pbc_shift(_p - _p[:, _r, :], cell_aa_deg)
         c_aa = cowt(_p, w[i_mol])
         mol_c_aa.append(wrap(c_aa, cell_aa_deg))
-        pos_aa[:, ind] = _p - (c_aa - mol_c_aa[-1])[:, None, :]
+        _pos_aa[:, ind] = _p - (c_aa - mol_c_aa[-1])[:, None, :]
 
-    return pos_aa, mol_c_aa
+    return _pos_aa, mol_c_aa
 
 
 def get_atom_spread(pos):
@@ -238,19 +239,30 @@ def align_atoms(pos_mobile, w, **kwargs):
     '''Demands a reference for each frame, respectively'''
 
     _sub = kwargs.get('subset', slice(None))
+
     pos_mob = copy.deepcopy(pos_mobile)
-    _s_pos_ref = kwargs.get('ref', pos_mobile[0])[_sub]
+    _s_pos_ref = copy.deepcopy(kwargs.get('ref', pos_mobile[0])[_sub])
     _s_pos_mob = pos_mob[:, _sub]
-    _s_pos_ref -= (np.sum(_s_pos_ref * w[_sub, None],
-                   axis=-2)/w[_sub].sum())[None, :]
-    com = np.sum(_s_pos_mob*w[None, _sub, None], axis=-2)/w[_sub].sum()
-    pos_mob -= com[:, None, :]
+
+    com_ref = cowt(_s_pos_ref, w[_sub], axis=-2)
+    com_mob = cowt(_s_pos_mob, w[_sub], axis=-2)
+
+    # DEVEL: reference can be frame or trajectory
+    _i_s_pos_ref = np.moveaxis(_s_pos_ref, -2, 0)
+    _s_pos_ref = np.moveaxis(_i_s_pos_ref - com_ref[(None,)], 0, -2)
+
+    _i_pos_mob = np.moveaxis(pos_mob, -2, 0)
+    pos_mob = np.moveaxis(_i_pos_mob - com_mob[(None,)], 0, -2)
+    # pos_mob -= com_mob[:, None, :]
 
     for frame, P in enumerate(_s_pos_mob):
         U = kabsch_algorithm(P*w[_sub, None], _s_pos_ref*w[_sub, None])
         pos_mob[frame] = np.tensordot(U, pos_mob[frame],
                                       axes=([1], [1])).swapaxes(0, 1)
-    pos_mob += com[:, None, :]
+
+    com_return = com_ref
+    _slc = (len(pos_mob.shape) - len(com_return.shape)) * (None,)
+    pos_mob += com_return[_slc]
 
     return pos_mob
 

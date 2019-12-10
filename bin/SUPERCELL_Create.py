@@ -63,7 +63,7 @@ def main():
     c.print_info()
 
     b.write(multiply=(1, 2, 1))
-    
+
 
 if __name__ == "__main__":
     main()

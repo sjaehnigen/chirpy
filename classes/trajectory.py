@@ -21,6 +21,7 @@ from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, cpmdReader, pdbReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
+from ..read.coordinates import pdbIterator as _pdbIterator
 from ..write.coordinates import cpmdWriter, xyzWriter, pdbWriter
 
 from ..topology.mapping import align_atoms as _align_atoms
@@ -30,6 +31,7 @@ from ..topology.mapping import wrap as _wrap
 from ..topology.mapping import cowt as _cowt
 from ..topology.mapping import join_molecules as _join_molecules
 from ..topology.mapping import get_distance_matrix as _get_distance_matrix
+from ..topology.mapping import distance_pbc as _distance_pbc
 
 from ..physics import constants
 from ..physics.statistical_mechanics import calculate_kinetic_energies as \
@@ -116,13 +118,21 @@ class _FRAME():
                                                 _np.sort(other.symbols))])))
         return _np.prod(ie), ie
 
-    def _split(self, mask):
+    def _split(self, mask, join_molecules=True):
         _data = [_np.moveaxis(_d, 0, -2)
                  for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
         _symbols = _dec(self.symbols, mask)
+        nargs = {}
+        nargs.update(self.__dict__)
+        _new = []
+        for _d, _s in zip(_data, _symbols):
+            nargs.update({'data': _d, 'symbols': _s})
+            _obj = self._from_data(**nargs)
+            if join_molecules:
+                _obj.wrap_molecules(_np.ones_like(_s).astype(int))
+            _new.append(_obj)
 
-        return [self._from_data(data=_d, symbols=_s, comment=self.comments)
-                for _d, _s in zip(_data, _symbols)]
+        return _new
 
     @staticmethod
     def map_frame(obj1, obj2, **kwargs):
@@ -270,6 +280,8 @@ class _XYZ():
         elif len(args) == 1:
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
+            self._fmt = fmt
+            self._fn = fn
             if self._type == 'frame':
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
@@ -384,6 +396,7 @@ class _XYZ():
                     raise TypeError('Expecting a bool or a list of atoms '
                                     'for centering!')
 
+            self._centered_coords = center_coords
             wt = _np.ones((self.n_atoms))
             if kwargs.get('use_com', False):
                 wt = self.masses_amu
@@ -393,11 +406,11 @@ class _XYZ():
                          subset=center_coords,
                          axis=self.axis_pointer)
 
-            self._center_position(_ref, self.cell_aa_deg)
+            self.center_position(_ref, self.cell_aa_deg)
             wrap = True
 
         if wrap:
-            self.wrap_atoms(self.cell_aa_deg)
+            self.wrap_atoms()
 
         # --- actions without allowed wrapping after this line
 
@@ -409,6 +422,7 @@ class _XYZ():
                     raise TypeError('Expecting a bool or a list of atoms '
                                     'for alignment!')
 
+            self._aligned_coords = align_coords
             wt = _np.ones((self.n_atoms))
             if kwargs.get('use_com', False):
                 wt = self.masses_amu
@@ -422,6 +436,15 @@ class _XYZ():
                        ref=self._align_ref,
                        subset=align_coords,
                        )
+
+            if hasattr(self, '_centered_coords') and kwargs.get(
+                    'force_centre', False):
+                _ref = _cowt(self.pos_aa,
+                             wt,
+                             subset=self._centered_coords,
+                             axis=self.axis_pointer)
+                self.center_position(_ref, self.cell_aa_deg)
+
         self._sync_class()
 
     def _pos_aa(self, *args):
@@ -476,35 +499,45 @@ class _XYZ():
             if self._type == 'trajectory':
                 raise TypeError('Trajectories cannot be tested for equality '
                                 '(only similarity)!')
-            _o_pos = getattr(other, a).reshape((1, ) + other.data.shape)
+            _o_pos = _copy.deepcopy(getattr(other, a).reshape(
+                                        (1, ) + other.data.shape
+                                        ))
             _s_pos = getattr(self, a)
 
-            _o_pos = _align_atoms(_o_pos, self.masses_amu, ref=_s_pos)[0]
+            _o_pos = _align_atoms(_o_pos, _np.array(self.masses_amu),
+                                  ref=_s_pos)[0]
             _bool = []
             for _s in set(self.symbols):
                 _ind = _np.array(self.symbols) == _s
                 if _s != 'H' or not noh:
-                    _bool.append(_np.allclose(
-                                   _s_pos[_ind],
-                                   _np.mod(_o_pos[_ind], _s_pos[_ind]),
-                                   atol=_dist_crit_aa([_s])[0] + atol,
-                                   ))
+                    a = _distance_pbc(_o_pos[_ind],
+                                      _s_pos[_ind],
+                                      cell_aa_deg=self.cell_aa_deg)
+                    _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
+
+                    # ToBeDel
+                    # _np.allclose(
+                    #       _s_pos[_ind],
+                    #       _np.mod(_o_pos[_ind], _s_pos[_ind]),
+                    #       atol=_dist_crit_aa([_s])[0] + atol,
+                    #       ))
             return bool(_np.prod(_bool))
 
         if _p == 1:
             ie += list(map(f, ['data']))
 
+        self._sync_class()
         return _np.prod(ie), ie
 
     # join the next two methods?
-    def wrap_atoms(self, cell_aa_deg, **kwargs):
+    def wrap_atoms(self, **kwargs):
         if self._type == 'frame':
             self._pos_aa(_wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
-                               cell_aa_deg)[0])
+                               self.cell_aa_deg)[0])
         else:
-            self._pos_aa(_wrap(self.pos_aa, cell_aa_deg))
+            self._pos_aa(_wrap(self.pos_aa, self.cell_aa_deg))
 
-    def wrap_molecules(self, mol_map, cell_aa_deg, **kwargs):
+    def wrap_molecules(self, mol_map, **kwargs):
         mode = kwargs.get('mode', 'cog')
         w = _np.ones((self.n_atoms))
         if mode == 'com':
@@ -514,7 +547,7 @@ class _XYZ():
             _p, mol_c_aa = _join_molecules(
                                 self.pos_aa.reshape(1, self.n_atoms, 3),
                                 mol_map,
-                                cell_aa_deg,
+                                self.cell_aa_deg,
                                 weights=w,
                                 )
             self._pos_aa(_p[0])
@@ -523,7 +556,7 @@ class _XYZ():
             _p, mol_c_aa = _join_molecules(
                                 self.pos_aa,
                                 mol_map,
-                                cell_aa_deg,
+                                self.cell_aa_deg,
                                 weights=w,
                                 )
             self._pos_aa(_p)
@@ -707,12 +740,18 @@ class XYZIterator(_XYZ, _FRAME):
                             % self.__class__.__name__)
         else:
             fn = args[0]
+            self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
 
             if self._fmt == "xyz":
                 self._topology = XYZFrame(fn, **kwargs)
                 self._gen = _xyzIterator(fn,
                                          **kwargs
+                                         )
+            elif self._fmt == "pdb":
+                self._topology = XYZFrame(fn, **kwargs)
+                self._gen = _pdbIterator(fn,
+                                         # **kwargs
                                          )
             elif self._fmt == "cpmd":
                 if ('symbols' in kwargs or 'numbers' in kwargs):
@@ -762,6 +801,15 @@ class XYZIterator(_XYZ, _FRAME):
                     'data': frame[0],
                     'symbols': frame[1],
                     'comments': frame[2],
+                    }
+
+        if self._fmt == 'pdb':
+            out = {
+                    'data': frame[0],
+                    'symbols': frame[2],
+                    'comments': frame[-1],
+                    'cell_aa_deg': frame[-2],
+                    # 'res':
                     }
 
         if self._fmt == 'cpmd':

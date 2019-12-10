@@ -14,6 +14,7 @@ dependencies:
   - python=3.7.*
   - scipy=1.3.*
   - mdanalysis=0.19.* 
+  - pycifrw=4.4.*
   - pip:
     - mayavi==4.7.*
     - pyqt5==5.13.*

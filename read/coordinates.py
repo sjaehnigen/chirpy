@@ -14,6 +14,7 @@
 
 import numpy as np
 import MDAnalysis as mda
+from CifFile import ReadCif
 import warnings
 
 from .generators import _reader
@@ -124,35 +125,50 @@ def cpmdReader(FN, **kwargs):
 # ------ external readers
 
 
-def pdbReader(fn):
-    '''https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
-       No trajectory support enabled'''
+def pdbIterator(fn):
+    '''Iterator for pdbReader relying on MDAnalysis
+       Usage: next() returns data, names, symbols, res,
+       cell_aa_deg, title of current frame.
+
+       https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
+       '''
     u = mda.Universe(fn)
 
-    # only take what is needed in ChirPy
-    data = u.coord.positions
-    resns = u.atoms.resnames
-    resids = u.atoms.resids
-    names = u.atoms.names
-    symbols = tuple(u.atoms.types)
-    cell_aa_deg = u.dimensions
-    title = u.trajectory.title
-    if np.prod(cell_aa_deg) == 0.0:
-        warnings.warn('No or invalid cell specified in pdb file!',
-                      RuntimeWarning)
-        cell_aa_deg = None
-    if len(title) == 0:
-        title = None
-    else:
-        title = title[0]
+    for ts in u.trajectory:
+        # only take what is needed in ChirPy
+        data = u.coord.positions
+        resns = u.atoms.resnames
+        resids = u.atoms.resids
+        names = u.atoms.names
+        symbols = tuple(u.atoms.types)
+        cell_aa_deg = u.dimensions
+        title = u.trajectory.title
+        if np.prod(cell_aa_deg) == 0.0:
+            warnings.warn('No or invalid cell specified in pdb file!',
+                          RuntimeWarning)
+            cell_aa_deg = None
+        if len(title) == 0:
+            title = None
+        else:
+            title = title[0]
 
-    # FRAME ==> TRAJ step
-    data = data.reshape((1, len(symbols), 3))
+        yield data, names, symbols, [_n for _n in zip(
+                                             resids,
+                                             resns)], cell_aa_deg, title
 
-    return data, names, symbols, [_n for _n in zip(
-                                         resids,
-                                         resns)], cell_aa_deg, title
 
+def pdbReader(FN, **kwargs):
+    '''Read complete PDB file at once.'''
+
+    data, names, symbols, res, cell_aa_deg, title = \
+        tuple([_b for _b in zip(*pdbIterator(FN, **kwargs))])
+
+    return np.array(data), names[0], tuple(symbols[0]), tuple(res[0]), \
+        cell_aa_deg[0], list(title)
+
+
+def cifReader(fn):
+    ReadCif(fn)
 
 # ------ old readers (no trajectory support)
 
