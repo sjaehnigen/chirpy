@@ -165,7 +165,7 @@ def define_molecules(mol):
     # This is more complicated (and expensive), but is batch-compatible as it avoids accessing
     # dist_array
     for _h in np.argwhere(h):
-        _d = np.linalg.norm(distance_pbc(_p, _p[_h], cell_aa_deg=cell_aa_deg), axis=-1)
+        _d = np.linalg.norm(distance_pbc(_p[_h], _p, cell_aa_deg=cell_aa_deg), axis=-1)
         _d[_d == 0.0] = 'Inf'
         _i = np.argmin(_d)
         ass[_h] = ass[_i]

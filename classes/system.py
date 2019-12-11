@@ -33,39 +33,44 @@ class _SYSTEM():
     def __init__(self, *args, **kwargs):
         '''Manually given arguments overwrite file attributes'''
         self.mol_map = kwargs.get("mol_map")
-        self.XYZ = kwargs.get('XYZ')
-        if self.XYZ is None:
-            self.read_fn(*args, **kwargs)
-        self.cell_aa_deg = self.XYZ.cell_aa_deg
+        try:
+            if len(args) != 0:
+                self.read_fn(*args, **kwargs)
+            else:
+                self.XYZ = kwargs.pop('XYZ')
+            self.cell_aa_deg = self.XYZ.cell_aa_deg
 
-        # --- ITERATOR DEVELOP info: methods called here cannot access ITER
-        #       --> shift: extract_mol, center_res etc. directly to ITER
-        # --- NEEDS WORKUP
-        if not any([_a <= 0.0 for _a in self.cell_aa_deg[:3]]):
-            if kwargs.get('wrap_mols', False):
-                if self.mol_map is None:
-                    self.install_molecular_origin_gauge()
-                self.wrap_molecules()
+            # --- ITERATOR DEVELOP info: methods called here cannot access ITER
+            #       --> shift: extract_mol, center_res etc. directly to ITER
+            #       --> allow empty / bare system init
+            # --- NEEDS WORKUP
+            if not any([_a <= 0.0 for _a in self.cell_aa_deg[:3]]):
+                if kwargs.get('wrap_mols', False):
+                    if self.mol_map is None:
+                        self.install_molecular_origin_gauge()
+                    self.wrap_molecules()
 
-            if kwargs.get('sort', False):
-                # Oh no! Modes will not be sorted. --> Sort that out!
-                self.sort_atoms()
+                if kwargs.get('sort', False):
+                    # Oh no! Modes will not be sorted. --> Sort that out!
+                    self.sort_atoms()
 
-            center_res = kwargs.get('center_residue')
-            if center_res is not None:
+                center_res = kwargs.get('center_residue')
+                if center_res is not None:
+                    # if python 3.8: use walrus
+                    self.wrap_molecules()
+                    self.XYZ.center_position(
+                            self.mol_c_aa[center_res],
+                            self.cell_aa_deg
+                            )  # **kwargs)
+                    self.wrap_molecules()
+
+            extract_mols = kwargs.get('extract_mols')
+            if extract_mols is not None:
                 # if python 3.8: use walrus
-                self.wrap_molecules()
-                self.XYZ.center_position(
-                        self.mol_c_aa[center_res],
-                        self.cell_aa_deg
-                        )  # **kwargs)
-                self.wrap_molecules()
-
-        extract_mols = kwargs.get('extract_mols')
-        if extract_mols is not None:
-            # if python 3.8: use walrus
-            self.extract_molecules(extract_mols)
-        # ---
+                self.extract_molecules(extract_mols)
+            # ---
+        except KeyError:
+            _warnings.warn('Initialised empty SYSTEM object!')
 
     def read_fn(self, *args, **kwargs):
         self.XYZ = self._XYZ(*args, **kwargs)
@@ -145,13 +150,13 @@ class _SYSTEM():
 
     def sort_atoms(self, **kwargs):
         '''Sort atoms alphabetically (default)'''
-        ind = self.XYZ._sort()
+        ind = self.XYZ.sort(**kwargs)
         if self.mol_map is not None:
-            self.mol_map = self.mol_map[ind]
+            self.mol_map = list(_np.array(self.mol_map)[ind])
 
     def print_info(self):
         print(77 * '–')
-        print('%-12s' % self.__class__.__name__.upper())
+        print('%-12s' % self.__class__.__name__)
         print(77 * '–')
         # print('%-12s %s' % ('Periodic', self.pbc))
         # print('%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %
@@ -170,10 +175,11 @@ class _SYSTEM():
         #                  for _m in self.members]))
         print(77 * '–')
 
-    def write(self, fn, **kwargs):
+    def _parse_write_args(self, fn, **kwargs):
         '''Work in progress...'''
-        fmt = kwargs.pop('fmt', fn.split('.')[-1])
         nargs = {}
+        fmt = kwargs.get('fmt', fn.split('.')[-1])
+        nargs['fmt'] = fmt
 
         if fmt == 'pdb':
             if self.mol_map is None:
@@ -187,7 +193,20 @@ class _SYSTEM():
             _warnings.warn("Direct output disabled for format %s" % fmt,
                            UserWarning)
             nargs.update(kwargs)
-        self.XYZ.write(fn, fmt=fmt, **nargs)
+
+        return nargs
+
+    def write(self, fn, **kwargs):
+        '''Write entire XYZ content to file (frame or trajectory).'''
+
+        nargs = self._parse_write_args(fn, **kwargs)
+        self.XYZ.write(fn, **nargs)
+
+    def write_frame(self, fn, **kwargs):
+        '''Write current XYZ frame to file (frame or trajectory).'''
+
+        nargs = self._parse_write_args(fn, **kwargs)
+        self.XYZ._frame.write(fn, **nargs)
 
 
 class Molecule(_SYSTEM):

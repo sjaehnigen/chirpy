@@ -38,33 +38,30 @@ class _BoxObject():
     # empty-box init allowed (bare)
     # --- END
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         '''
         members: list of (n, XYZFrame object) tuples with n being
                  the no. of molecules within the box'''
-        if int(_np.version.version.split('.')[1]) < 14:
-            print('ERROR: You have to use a numpy version >= 1.14.0! \
-You are using %s.' % _np.version.version)
-            _sys.exit(1)
         self.members = kwargs.get("members", [])
         self.member_set = kwargs.get("members", [])
         self.origin_aa = kwargs.get('origin_aa', _np.zeros((3)).astype(float))
         self.cell_aa_deg = kwargs.get('cell_aa_deg', _np.zeros(6,))
-        self.symmetry = kwargs.get('symmetry', _get_symmetry(self.cell_aa_deg))
         self.pbc = kwargs.get('pbc', True)
+        if len(args) != 0:
+            self.__dict__.update(self.read(*args, **kwargs).__dict__)
+        self.symmetry = kwargs.get('symmetry', _get_symmetry(self.cell_aa_deg))
         _BoxObject._sync_class(self)
         self.cell_vec_aa = self._cell_vec_aa(**kwargs)
         self.volume_aa3 = self._volume_aa3()
         self._clean_members()
 
     @classmethod
-    def read(cls, fn, **kwargs):
-        '''Beta'''
+    def read(cls, *args, **kwargs):
         if kwargs.get('install_mol_gauge') is not None:
             kwargs['wrap_mols'] = True
         else:
             kwargs['wrap'] = True
-        _load = _Supercell(fn, **kwargs)
+        _load = _Supercell(*args, **kwargs)
 
         nargs = {}
         nargs['cell_aa_deg'] = _load.cell_aa_deg
@@ -109,7 +106,7 @@ You are using %s.' % _np.version.version)
 
     def _sync_class(self):
         '''Calculates intensive properties only'''
-        self.n_members = len(self.member_set)
+        self.n_members = len(self.members)
         self.mass_amu = sum([_n * sum(_m.masses_amu)
                              for _n, _m in self.member_set])
         self.n_atoms = sum([_n * _m.n_atoms for _n, _m in self.members])
@@ -213,7 +210,7 @@ cell attributes!')
 
     def print_info(self):
         print(77 * '–')
-        print('%-12s' % self.__class__.__name__.upper())
+        print('%-12s' % self.__class__.__name__)
         print(77 * '–')
         print('%-12s %s' % ('Periodic', self.pbc))
         print('%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %
@@ -267,8 +264,6 @@ class MolecularCrystal(_BoxObject):
             for iiz in range(z-1):
                 tmp.data[:, :3] += cart_vec_aa[None, iz]
                 new += tmp
-#      new.data[:,:,:3] = np.remainder(new.data[:,:,:3],self.abc*self.multiply)
-#        new._sort()
 
         # ToDo: for modes (should be possible from FRAME object)
         # elif hasattr(data, 'eival_cgs'):
@@ -290,21 +285,32 @@ class MolecularCrystal(_BoxObject):
     def create(self, **kwargs):
         _SC = self.members[0][1]
         _SC.axis_pointer = -2
+        _mol = 0
+        mol_map = [_mol] * len(_SC.symbols)
         for _i in range(self.members[0][0]-1):
             _SC += self.members[0][1]
+            _mol += 1
+            mol_map += [_mol] * len(self.members[0][1].symbols)
 
         for _m in self.members[1:]:
             for _i in range(_m[0]):
                 _SC += _m[1]
+                _mol += 1
+                mol_map += [_mol] * len(self.members[0][1].symbols)
 
-        return _Supercell(XYZ=self.propagate(_SC, **kwargs))
+        multiply = kwargs.get('multiply', (1, 1, 1))
+        _uc_mol_map = mol_map
+        for _repeat in range(1, _np.prod(multiply)):
+            mol_map = _np.concatenate((mol_map, _uc_mol_map + _np.amax(mol_map)))
+
+        return _Supercell(XYZ=self.propagate(_SC, **kwargs), mol_map=mol_map)
 
 
 _solvents = {}
 
 
 class Solution(_BoxObject):
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.symmetry = 'orthorhombic'  # by definition
         self.solvent = kwargs.get("solvent")
         self.rho_g_cm3 = kwargs.get("rho_g_cm3", 1.0)

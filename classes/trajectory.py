@@ -101,14 +101,19 @@ class _FRAME():
         new._sync_class()
         return new
 
-    def _sort(self):
-        elem = {s: _np.where(self.symbols == s)[0]
-                for s in _np.unique(self.symbols)}
-        ind = [i for k in sorted(elem) for i in elem[k]]
-        self.data = self.data.swapaxes(0, -2)[ind].swapaxes(0, -2)
-        self.symbols = self.symbols[ind]
+    def sort(self, **kwargs):
+        def get_slist():
+            elem = {s: _np.where(self.symbols == s)[0]
+                    for s in _np.unique(self.symbols)}
+            return [i for k in sorted(elem) for i in elem[k]]
+
+        _slist = kwargs.get('order', get_slist())
+
+        self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
+        self.symbols = tuple(_np.array(self.symbols)[_slist])
         self._sync_class()
-        return ind
+
+        return _slist
 
     def _is_similar(self, other):
         ie = list(map(lambda a: getattr(self, a) == getattr(other, a),
@@ -136,7 +141,9 @@ class _FRAME():
 
     @staticmethod
     def map_frame(obj1, obj2, **kwargs):
-        '''obj1, obj2 ... Frame objects'''
+        '''obj1, obj2 ... Frame objects.
+           Returns indices that would sort obj2 to match obj1.
+           '''
         ie, tmp = obj1._is_similar(obj2)
         if not ie:
             raise TypeError('''The two Molecule objects are not similar!
@@ -148,17 +155,24 @@ class _FRAME():
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only Frame objects!')
 
+        com1 = _cowt(obj1.data, obj1.masses_amu, axis=-2)
+        com2 = _cowt(obj2.data, obj2.masses_amu, axis=-2)
+
         assign = _np.zeros((obj1.n_atoms,)).astype(int)
         for s in _np.unique(obj1.symbols):
             i1 = _np.array(obj1.symbols) == s
             i2 = _np.array(obj2.symbols) == s
             ass = _np.argmin(_get_distance_matrix(
-                                obj1.data[i1, :3],
-                                obj2.data[i2, :3],
+                                obj1.data[i1, :3] - com1[None],
+                                obj2.data[i2, :3] - com2[None],
                                 **kwargs
                                 ),
-                             axis=1)
+                             axis=0)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
+
+        if not len(_np.unique(assign)) == obj1.n_atoms:
+            _warnings.warn('Ambiguities encountered when mapping frames!')
+
         return assign
 
     @classmethod
@@ -510,8 +524,8 @@ class _XYZ():
             for _s in set(self.symbols):
                 _ind = _np.array(self.symbols) == _s
                 if _s != 'H' or not noh:
-                    a = _distance_pbc(_o_pos[_ind],
-                                      _s_pos[_ind],
+                    a = _distance_pbc(_s_pos[_ind],
+                                      _o_pos[_ind],
                                       cell_aa_deg=self.cell_aa_deg)
                     _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
 
@@ -779,6 +793,9 @@ class XYZIterator(_XYZ, _FRAME):
 
             # keep kwargs for iterations
             self._kwargs = kwargs
+            # initialise list of masks
+            self._kwargs['_masks'] = []
+
             # --- TESTING
             self._fr = kwargs.get('range', (0, float('inf')))[0]-1
             next(self)
@@ -823,6 +840,10 @@ class XYZIterator(_XYZ, _FRAME):
         self._kwargs.update(out)
 
         self._frame = XYZFrame(**self._kwargs)
+
+        # check for stored masks
+        for _f, _f_args, _f_kwargs in self._kwargs['_masks']:
+            getattr(self._frame, _f)(*_f_args, **_f_kwargs)
 
         self.__dict__.update(self._frame.__dict__)
 
@@ -895,6 +916,18 @@ class XYZIterator(_XYZ, _FRAME):
                           fn,
                           **kwargs
                           )
+
+    @staticmethod
+    def _mask(obj, func, *args, **kwargs):
+        '''Add an frame-owned function that is called within __next__().'''
+        # ToDo: avoid stack of the same function (such as nested sort etc.)
+        obj._kwargs['_masks'].append(
+                (func, args, kwargs),
+                )
+
+    def sort(self, **kwargs):
+        self._frame.sort(**kwargs)
+        self._mask(self, 'sort', **kwargs)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):

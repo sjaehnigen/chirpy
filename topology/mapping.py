@@ -128,7 +128,8 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
         return pos_aa
 
 
-def distance_pbc(p1, p0, **kwargs):
+def distance_pbc(p0, p1, **kwargs):
+    '''p1 – p0, accepts cell_aa_deg argument'''
     # actually it does not calculate a "distance"
     _d = p1 - p0
     try:
@@ -151,7 +152,9 @@ def _pbc_shift(_d, cell_aa_deg):
 
 
 def get_distance_matrix(*args, **kwargs):
-    '''one or two args of shape (n_atoms, three) ... (FRAME)'''
+    '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
+       Order: p0, p1 ==> d = p1 - p0
+       '''
     # ToDo: the following lines explode memory for many atoms
     #   ==> do coarse mapping beforehand
     # (overlapping batches) or set a max limit for n_atoms
@@ -167,11 +170,7 @@ def get_distance_matrix(*args, **kwargs):
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>1000 atom support in a future version)!'
                           )
-    dist_array = distance_pbc(_p1[:, None, :], _p0[None, :, :], **kwargs)
-    # dist_array = pos_aa[:, None, :] - pos_aa[None, :, :]
-    # cell_aa_deg = kwargs.get("cell_aa_deg")
-    # if cell_aa_deg is not None:
-    #    dist_array -= _pbc_shift(dist_array, cell_aa_deg)
+    dist_array = distance_pbc(_p0[None, :, :], _p1[:, None, :], **kwargs)
 
     if kwargs.get("cartesian") is not None:
         return dist_array
@@ -236,7 +235,9 @@ def get_atom_spread(pos):
 
 
 def align_atoms(pos_mobile, w, **kwargs):
-    '''Demands a reference for each frame, respectively'''
+    '''Align atoms within trajectory or towards an external
+       reference. Kinds and order of atoms (usually) have to
+       be equal.'''
 
     _sub = kwargs.get('subset', slice(None))
 

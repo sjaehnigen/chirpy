@@ -22,7 +22,7 @@ def gaussian(posgrid, b, sigma, cell_aa_deg=None, dim=3):
 
     #use cell_vec_au in the first instance?
     if cell_aa_deg is not None:
-        _r = distance_pbc(posgrid, b[_slc], cell_aa_deg=cell_aa_deg[_slc])
+        _r = distance_pbc(b[_slc], posgrid, cell_aa_deg=cell_aa_deg[_slc])
     else:
         _r = posgrid - b[_slc]
 
