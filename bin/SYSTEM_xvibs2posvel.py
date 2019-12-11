@@ -44,28 +44,10 @@ def main():
             default=None
             )
     parser.add_argument(
-            "--ignore_warnings",
-            action='store_true',
-            help="Ignore warnings regarding orthonormality",
-            default=False
-            )
-    parser.add_argument(
-            "--center_coords",
-            action='store_true',
-            help="Center Coordinates in cell center or at origin (cell_aa parametre overrides default origin).",
-            default=False
-            )
-    parser.add_argument(
             "--modelist",
             nargs='+',
             help="List of modes  (0-based index, default: all).",
             default=[None]
-            )
-    parser.add_argument(
-            "--cell_aa",
-            nargs=6,
-            help="Orthorhombic cell parametres a b c al be ga in angstrom/degree.",
-            default=[0.0, 0.0, 0.0, 90., 90., 90.]
             )
     parser.add_argument(
             "--factor",
@@ -74,7 +56,6 @@ def main():
             )
 
     args = parser.parse_args()
-    args.cell_aa = np.array(args.cell_aa).astype(float)
     args.factor = float(args.factor)
     if args.format is not None:
         args.fmt = args.format

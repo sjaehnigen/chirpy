@@ -404,62 +404,8 @@ class _XYZ():
         self.data = data
         self._sync_class()
 
-        if center_coords is not None and center_coords:
-            if not isinstance(center_coords, list):
-                if isinstance(center_coords, bool):
-                    center_coords = slice(None)
-                else:
-                    raise TypeError('Expecting a bool or a list of atoms '
-                                    'for centering!')
-
-            self._centered_coords = center_coords
-            wt = _np.ones((self.n_atoms))
-            if kwargs.get('use_com', False):
-                wt = self.masses_amu
-
-            _ref = _cowt(self.pos_aa,
-                         wt,
-                         subset=center_coords,
-                         axis=self.axis_pointer)
-
-            self.center_position(_ref, self.cell_aa_deg)
-            wrap = True
-
         if wrap:
             self.wrap_atoms()
-
-        # --- actions without allowed wrapping after this line
-
-        if align_coords is not None and align_coords:
-            if not isinstance(align_coords, list):
-                if isinstance(align_coords, bool):
-                    align_coords = slice(None)
-                else:
-                    raise TypeError('Expecting a bool or a list of atoms '
-                                    'for alignment!')
-
-            self._aligned_coords = align_coords
-            wt = _np.ones((self.n_atoms))
-            if kwargs.get('use_com', False):
-                wt = self.masses_amu
-
-            if self._type == 'trajectory':
-                self._align_ref = kwargs.get('align_ref', self.pos_aa[0])
-            else:
-                self._align_ref = kwargs.get('align_ref', self.pos_aa)
-
-            self.align(weights=wt,
-                       ref=self._align_ref,
-                       subset=align_coords,
-                       )
-
-            if hasattr(self, '_centered_coords') and kwargs.get(
-                    'force_centre', False):
-                _ref = _cowt(self.pos_aa,
-                             wt,
-                             subset=self._centered_coords,
-                             axis=self.axis_pointer)
-                self.center_position(_ref, self.cell_aa_deg)
 
         self._sync_class()
 
@@ -578,6 +524,37 @@ class _XYZ():
             self._pos_aa(_p)
         return mol_c_aa
 
+    def align_coordinates(self, align_coords, **kwargs):
+        if not isinstance(align_coords, list):
+            if isinstance(align_coords, bool) and align_coords:
+                align_coords = slice(None)
+            else:
+                raise TypeError('Expecting a bool or a list of atoms '
+                                'for alignment!')
+
+        self._aligned_coords = align_coords
+        wt = _np.ones((self.n_atoms))
+        if kwargs.get('use_com', False):
+            wt = self.masses_amu
+
+        if self._type == 'trajectory':
+            self._align_ref = kwargs.get('align_ref', self.pos_aa[0])
+        else:
+            self._align_ref = kwargs.get('align_ref', self.pos_aa)
+
+        self.align(weights=wt,
+                   ref=self._align_ref,
+                   subset=align_coords,
+                   )
+
+        if hasattr(self, '_centered_coords') and kwargs.get(
+                'force_centre', False):
+            _ref = _cowt(self.pos_aa,
+                         wt,
+                         subset=self._centered_coords,
+                         axis=self.axis_pointer)
+            self.center_position(_ref, self.cell_aa_deg)
+
     def align(self, **kwargs):
         _wt = kwargs.get('weights', _np.ones(self.n_atoms))
 
@@ -596,6 +573,25 @@ class _XYZ():
                             )[0]
                          )
 
+    def center_coordinates(self, center_coords, **kwargs):
+        if not isinstance(center_coords, list):
+            if isinstance(center_coords, bool) and center_coords:
+                center_coords = slice(None)
+            else:
+                raise TypeError('Expecting a bool or a list of atoms '
+                                'for centering!')
+        self._centered_coords = center_coords
+        wt = _np.ones((self.n_atoms))
+        if kwargs.get('use_com', False):
+            wt = self.masses_amu
+
+        _ref = _cowt(self.pos_aa,
+                     wt,
+                     subset=center_coords,
+                     axis=self.axis_pointer)
+
+        self.center_position(_ref, self.cell_aa_deg)
+
     def center_position(self, pos, cell_aa_deg, **kwargs):
         '''pos reference in shape (n_frames, three)'''
         if self._type == 'frame':
@@ -604,6 +600,9 @@ class _XYZ():
         else:
             self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2
                          - pos[:, None, :])
+
+        if kwargs.get("wrap", True):
+            self.wrap_atoms()
 
     def align_to_vector(self, i0, i1, vec, **kwargs):
         '''
@@ -849,10 +848,6 @@ class XYZIterator(_XYZ, _FRAME):
 
         self.__dict__.update(self._frame.__dict__)
 
-        # Get additional keyword-dependent updates
-        if self._kwargs.get('align_coords') is not None:
-            self._kwargs.update({'align_ref': self._align_ref})
-
         return self._fr
 
     @classmethod
@@ -926,10 +921,24 @@ class XYZIterator(_XYZ, _FRAME):
         obj._kwargs['_masks'].append(
                 (func, args, kwargs),
                 )
+        if len(obj._kwargs['_masks']) > 10:
+            _warnings.warn('Too many masks on iterator!')
 
-    def sort(self, **kwargs):
-        self._frame.sort(**kwargs)
-        self._mask(self, 'sort', **kwargs)
+    # These masks all follow the same logic (could be generalised, but python
+    # does not support call of function name from within that function)
+    def sort(self, *args, **kwargs):
+        self._frame.sort(*args, **kwargs)
+        self._mask(self, 'sort', *args, **kwargs)
+
+    def align_coordinates(self, *args, **kwargs):
+        self._frame.align_coordinates(*args, **kwargs)
+        # remember reference
+        kwargs.update({'align_ref': self._frame._align_ref})
+        self._mask(self, 'align_coordinates', *args, **kwargs)
+
+    def center_coordinates(self, *args, **kwargs):
+        self._frame.center_coordinates(*args, **kwargs)
+        self._mask(self, 'center_coordinates', *args, **kwargs)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):

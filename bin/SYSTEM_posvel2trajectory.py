@@ -22,7 +22,6 @@ def main():
     parser=argparse.ArgumentParser(description="Convert any supported vib input into normal mode traj", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("fn", help="xyz")
     parser.add_argument("-f", help="Output file name.", default='traj.xyz')
-    parser.add_argument("--center_coords", action='store_true', help="Center Coordinates in cell centre or at origin (box_aa parametre overrides default origin).", default=False)
     parser.add_argument("--cell_aa_deg", nargs=6, help="Orthorhombic cell parametres a b c al be ga in angstrom/degree (default: 0 0 0 90 90 90).", default=[0.0,0.0,0.0,90.,90.,90.])
     parser.add_argument("--n_images", help="Number of image frames to be calculated from vibration (use odd number).", default=3)
     parser.add_argument("-ts", help="Time step in fs.", default=1)

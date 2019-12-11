@@ -80,7 +80,18 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
-    system.Supercell(args.fn, **vars(args)).write(args.f, fmt='xyz')
+    largs = vars(args)
+    _load = system.Supercell(args.fn, **largs)
+
+    # python3.8: use walrus
+    center_coords = largs.pop('center_coords')
+    align_coords = largs.pop('align_coords')
+    if center_coords is not None:
+        _load.XYZ.center_coordinates(center_coords, **largs)
+    if align_coords is not None:
+        _load.XYZ.align_coordinates(align_coords, **largs)
+
+    _load.write(args.f, fmt='xyz')
 
 
 if __name__ == "__main__":

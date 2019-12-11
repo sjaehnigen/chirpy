@@ -34,12 +34,14 @@ def main():
             nargs=6,
             help="Cell specification in angstrom and degree (optional)."
             )
-    parser.add_argument(
-            "--center_coords",
-            action='store_true',
-            help="Center Coordinates in cell centre or at origin (cell_aa parametre overrides default origin).",
-            default=False
-            )
+    parser.add_argument("--center_coords",
+                        nargs='+',
+                        help="Center atom list (id starting from 0) in cell \
+                                and wrap",
+                        default=None,
+                        type=int,
+                        )
+
     parser.add_argument(
             "--center_residue",
             help="Center Residue in cell centre and wrap molecules (overrides center_coords option;\
@@ -71,14 +73,24 @@ def main():
 
     if args.center_residue != -1 and args.fn_topo is None:
         raise Exception('ERROR: center_residue needs topology file (fn_topo)!')
-    if args.cell_aa is None: 
+    if args.cell_aa is None:
         del args.cell_aa
     else:
         print('Override internal cell specifications by input.')
         args.cell_aa = np.array(args.cell_aa).astype(float)
 
-    # system.Molecule(**vars(args)).XYZ.write(args.f,fmt='cpmd',pp=args.pp,bs=args.bs,factor=args.factor)
-    system.Supercell(**vars(args)).XYZ.write(
+    largs = vars(args)
+    _load = system.Supercell(args.fn, **largs)
+
+    # python3.8: use walrus
+    center_coords = largs.pop('center_coords')
+    # align_coords = largs.pop('align_coords')
+    if center_coords is not None:
+        _load.XYZ.center_coordinates(center_coords, **largs)
+    # if align_coords is not None:
+    #     _load.XYZ.align_coordinates(align_coords, **largs)
+
+    _load.write(
             args.f,
             fmt='cpmd',
             pp=args.pp,

@@ -21,8 +21,6 @@ def main():
     parser=argparse.ArgumentParser(description="Calculate velocities from a trajectory (beta)", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("fn", help="file (xyz.pdb,xvibs,...)")
     parser.add_argument("--separate_files", action='store_true', help="Write one file for each frame (default: false).", default=False)
-    parser.add_argument("--align_atoms", action='store_true', help="Align atoms with reference to first frame (default: false).", default=False)
-    parser.add_argument("--center_coords", action='store_true', help="Center Coordinates in cell centre or at origin (default: false; box_aa parametre overrides default origin).", default=False)
     parser.add_argument("--cell_aa", nargs=6, help="Orthorhombic cell parametres a b c al be ga in angstrom/degree (default: 0 0 0 90 90 90).", default=[0.0,0.0,0.0,90.,90.,90.])
     parser.add_argument("-f", help="Output file name (standard: 'TRAJSAVED')", default='TRAJSAVED')
     parser.add_argument("-pp", help="Pseudopotential (default: 'MT_BLYP')", default='MT_BLYP')
