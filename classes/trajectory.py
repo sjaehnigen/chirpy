@@ -102,15 +102,17 @@ class _FRAME():
         return new
 
     def sort(self, **kwargs):
+        _symbols = _np.array(self.symbols)
+
         def get_slist():
-            elem = {s: _np.where(self.symbols == s)[0]
-                    for s in _np.unique(self.symbols)}
+            elem = {s: _np.where(_symbols == s)[0]
+                    for s in _np.unique(_symbols)}
             return [i for k in sorted(elem) for i in elem[k]]
 
         _slist = kwargs.get('order', get_slist())
 
         self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
-        self.symbols = tuple(_np.array(self.symbols)[_slist])
+        self.symbols = tuple(_symbols[_slist])
         self._sync_class()
 
         return _slist
