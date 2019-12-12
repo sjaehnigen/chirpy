@@ -202,6 +202,7 @@ def assign_molecule_NEW(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
             break
     return molecule, atom_count
 
+
 def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     '''This method can do more than molecules! See BoxObject
     molecule … assignment
@@ -230,21 +231,26 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
 
 def read_topology_file(fn, **kwargs):
     '''Only PDB support for now'''
-    # A little old messy code
-    # Read also cell_aa_deg ?
+    fmt = fn.split('.')[-1]
+    if fmt == 'pdb':
+        # A little old messy code
+        data, types, symbols, residues, cell_aa_deg, title = pdbReader(fn)
+        residues = np.array(residues).astype(str)
+        resi = ['-'.join(_r) for _r in residues]
+        # python>=3.6: keeps order
+        _map_dict = dict(zip(list(dict.fromkeys(resi)), range(len(set(resi)))))
+        mol_map = [_map_dict[_r] for _r in resi]
+        n_mols = len(set(mol_map))  # max(mol_map)+1
+        # n_map, symbols = zip(*[(im, symbols[ia])
+        #                        for ia, a in enumerate(n_map) for im, m in
+        #                        enumerate(kwargs.get('extract_mols',
+        #                                             range(n_mols))) if a==m])
+        if n_mols != max(mol_map)+1:
+            raise ValueError('STH is wrong')
 
-    data, types, symbols, residues, cell_aa_deg, title = pdbReader(fn)
-    residues = np.array(residues).astype(str)
-    resi = ['-'.join(_r) for _r in residues]
-    # python>=3.6: keeps order
-    _map_dict = dict(zip(list(dict.fromkeys(resi)), range(len(set(resi)))))
-    n_map = [_map_dict[_r] for _r in resi]
-    n_mols = len(set(n_map))  # max(n_map)+1
-    # n_map, symbols = zip(*[(im, symbols[ia])
-    #                        for ia, a in enumerate(n_map) for im, m in
-    #                        enumerate(kwargs.get('extract_mols',
-    #                                             range(n_mols))) if a==m])
-    if n_mols != max(n_map)+1:
-        raise Exception('STH is wrong')
+        return {'mol_map': mol_map,
+                'symbols': symbols,
+                'cell_aa_deg': cell_aa_deg}
 
-    return n_map, symbols, cell_aa_deg
+    else:
+        raise ValueError('Unknown format: %s.' % fmt)

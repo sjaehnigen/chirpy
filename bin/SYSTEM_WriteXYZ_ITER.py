@@ -66,11 +66,19 @@ def main():
                         default=None,
                         type=int,
                         )
+    parser.add_argument("--fn_topo",
+                        help="Topology file containing metadata (cell, \
+                                molecules, ...).",
+                        default=None,
+                        )
     parser.add_argument("-f",
                         help="Output file name",
                         default='out.xyz'
                         )
     args = parser.parse_args()
+
+    if args.fn_topo is None:
+        del args.fn_topo
 
     if args.cell_aa_deg is None:
         del args.cell_aa_deg

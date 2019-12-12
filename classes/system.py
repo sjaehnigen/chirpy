@@ -14,6 +14,8 @@
 import numpy as _np
 import warnings as _warnings
 
+from ..snippets import tracked_update as _tracked_update
+from ..snippets import equal as _equal
 from ..classes.trajectory import XYZIterator, VibrationalModes
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
@@ -32,7 +34,14 @@ class _SYSTEM():
 
     def __init__(self, *args, **kwargs):
         '''Manually given arguments overwrite file attributes'''
+        # python3.8: use walrus
+        fn_topo = kwargs.get('fn_topo')
+        if fn_topo is not None:
+            self._topo = _read_topology_file(fn_topo)
+            _tracked_update(kwargs, self._topo)
+
         self.mol_map = kwargs.get("mol_map")
+
         try:
             if len(args) != 0:
                 self.read_fn(*args, **kwargs)
@@ -74,6 +83,17 @@ class _SYSTEM():
                 # if python 3.8: use walrus
                 self.extract_molecules(extract_mols)
             # ---
+            # Consistency check
+            if hasattr(self, '_topo'):
+                for _k in self._topo:
+                    # python3.8: use walrus
+                    _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
+                    if _k is not None:
+                        if not _equal(_v, self._topo[_k]):
+                            raise ValueError('Topology file does not represent'
+                                             ' molecule in {}!'.format(_k)
+                                             )
+
         except KeyError:
             _warnings.warn('Initialised empty SYSTEM object!')
 
@@ -86,13 +106,9 @@ class _SYSTEM():
         if fmt == 'xvibs':  # re-reads file
             self.Modes = VibrationalModes(*args, **kwargs)
 
-        if kwargs.get('fn_topo') is not None:
-            self.install_molecular_origin_gauge(**kwargs)
-
         elif fmt == "pdb":
             if self.mol_map is None:  # re-reads file
-                kwargs.update({'fn_topo': self.XYZ._fn})
-                self.install_molecular_origin_gauge(**kwargs)
+                self._topo = _read_topology_file(self.XYZ._fn)
 
     def wrap_molecules(self):
         if self.mol_map is None:
@@ -119,30 +135,11 @@ class _SYSTEM():
 
     def install_molecular_origin_gauge(self, **kwargs):
         # iterator: keyword: do it anew or keep existing mol_map
-        fn = kwargs.get('fn_topo')
         if self.mol_map is not None:
-            _warnings.warn('Found topology file, overwriting given mol_map!',
-                           RuntimeWarning)
+            _warnings.warn('Overwriting existing mol_map!')
 
-        if fn is not None:
-            n_map, symbols, cell_aa_deg = _read_topology_file(fn)
-            if symbols != self.XYZ.symbols:
-                raise ValueError('Topology file does not represent molecule!')
-            # Check agreement topology with self (unit cell, ...)?
-
-            if hasattr(self, 'cell_aa_deg'):
-                if not _np.allclose(cell_aa_deg, self.cell_aa_deg) and not all(
-                        [_a <= 0.0 for _a in self.cell_aa_deg[:3]]
-                        ):
-                    _warnings.warn('Cell dimensions different in input and '
-                                   'topology files!')
-            self.cell_aa_deg = cell_aa_deg
-        else:
-            n_map = tuple(_define_molecules(self)-1)
-
-        n_mols = max(n_map) + 1
+        n_map = tuple(_define_molecules(self)-1)
         self.mol_map = n_map
-        self.n_mols = n_mols
 
         # (mol info not written in XYZ or Modes)
         # --- NEEDS WORKUP
