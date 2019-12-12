@@ -171,11 +171,12 @@ def define_molecules(mol):
         ass[_h] = ass[_i]
 
     # Old
-    #ass[h] = ass[np.argmin(dist_array[h], axis=1)]
+    # ass[h] = ass[np.argmin(dist_array[h], axis=1)]
 
     # return molecular centres of mass (and optionally wrap mols?)
 
     return ass
+
 
 def assign_molecule_NEW(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     '''This method can do more than molecules! See BoxObject

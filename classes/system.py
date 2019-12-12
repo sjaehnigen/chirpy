@@ -90,6 +90,7 @@ class _SYSTEM():
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
                     if _k is not None:
                         if not _equal(_v, self._topo[_k]):
+                            print(_v, self._topo[_k])
                             raise ValueError('Topology file does not represent'
                                              ' molecule in {}!'.format(_k)
                                              )
@@ -109,14 +110,17 @@ class _SYSTEM():
         elif fmt == "pdb":
             if self.mol_map is None:  # re-reads file
                 self._topo = _read_topology_file(self.XYZ._fn)
+                self.mol_map = self._topo['mol_map']
 
     def wrap_molecules(self):
         if self.mol_map is None:
             raise AttributeError('Wrap molecules requires a topology '
                                  '(mol_map)!')
 
-        self.mol_c_aa = self.XYZ.wrap_molecules(self.mol_map,
-                                                self.cell_aa_deg)
+        self.mol_c_aa = self.XYZ.wrap_molecules(self.mol_map)
+
+    def wrap_atoms(self):
+        self.XYZ.wrap_atoms()
 
     def extract_molecules(self, mols):
         '''mols: list of molecular indices
