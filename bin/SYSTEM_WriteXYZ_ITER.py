@@ -29,15 +29,14 @@ def main():
     parser.add_argument("--center_coords",
                         nargs='+',
                         help="Center atom list (id starting from 0) in cell \
-                                and wrap",
+                                and wrap or \'True\' for selecting all atoms.",
                         default=None,
-                        type=int,
                         )
     parser.add_argument("--align_coords",
                         nargs='+',
-                        help="Align atom list (id starting from 0)",
+                        help="Align atom list (id starting from 0)  or \'True\' \
+                                for selecting all atoms.",
                         default=None,
-                        type=int,
                         )
     parser.add_argument("--force_centre",
                         action='store_true',
@@ -86,9 +85,19 @@ def main():
     # python3.8: use walrus
     center_coords = largs.pop('center_coords')
     align_coords = largs.pop('align_coords')
+
     if center_coords is not None:
+        if center_coords[0] in ['True', 'False']:
+            center_coords = bool(center_coords[0])
+        else:
+            center_coords = [int(_a) for _a in center_coords]
         _load.XYZ.center_coordinates(center_coords, **largs)
+
     if align_coords is not None:
+        if align_coords[0] in ['True', 'False']:
+            align_coords = bool(align_coords[0])
+        else:
+            align_coords = [int(_a) for _a in align_coords]
         _load.XYZ.align_coordinates(align_coords, **largs)
 
     _load.write(args.f, fmt='xyz')

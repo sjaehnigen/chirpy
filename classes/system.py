@@ -37,7 +37,12 @@ class _SYSTEM():
             if len(args) != 0:
                 self.read_fn(*args, **kwargs)
             else:
-                self.XYZ = kwargs.pop('XYZ')
+                # python3.8: use walrus
+                fn = kwargs.get('fn')
+                if fn is not None:
+                    self.read_fn(fn, **kwargs)
+                else:
+                    self.XYZ = kwargs.pop('XYZ')
             self.cell_aa_deg = self.XYZ.cell_aa_deg
 
             # --- ITERATOR DEVELOP info: methods called here cannot access ITER

@@ -717,8 +717,8 @@ class _XYZ():
         '''pos_aa: _np.array of shape (n_frames, n_atoms, 3)'''
         dim_qm = _np.zeros((3))
         for i in range(3):
-            imin = _np.min(self.pos_aa[:, :, i])
-            imax = _np.max(self.pos_aa[:, :, i])
+            imin = _np.min(_np.moveaxis(self.pos_aa, -1, 0)[i])
+            imax = _np.max(_np.moveaxis(self.pos_aa, -1, 0)[i])
             dim_qm[i] = imax - imin
         print('Spread of QM atoms:       %s %s %s'
               % tuple([round(dim, 4) for dim in dim_qm]))
