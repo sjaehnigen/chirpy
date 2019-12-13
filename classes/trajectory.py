@@ -155,7 +155,7 @@ class _FRAME():
                   ''' % tuple(tmp))
 
         if obj1._type != 'frame':
-            raise NotImplementedError('map supports only Frame objects!')
+            raise NotImplementedError('map supports only FRAME objects!')
 
         com1 = _cowt(obj1.data, obj1.masses_amu, axis=-2)
         com2 = _cowt(obj2.data, obj2.masses_amu, axis=-2)
@@ -347,8 +347,9 @@ class _XYZ():
                 # NB: CPMD writes XYZ files with vel_aa
                 if ('symbols' in kwargs or 'numbers' in kwargs):
                     numbers = kwargs.get('numbers')
-                    symbols = kwargs.get('symbols', [constants.symbols[z - 1]
-                                                     for z in numbers])
+                    symbols = kwargs.get('symbols')
+                    if symbols is None:
+                        symbols = constants.numbers_to_symbols(numbers)
                 else:
                     raise TypeError("cpmdReader needs list of numbers or "
                                     "symbols.")
@@ -807,7 +808,7 @@ class XYZIterator(_XYZ, _FRAME):
 
     def __next__(self):
         if hasattr(self, '_chaste'):
-            # repeat first step after __init__
+            # repeat first step of next() after __init__
             if self._chaste:
                 self._chaste = False
                 return self._fr

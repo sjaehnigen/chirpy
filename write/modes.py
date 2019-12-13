@@ -28,4 +28,3 @@ def xvibsWriter(filename, n_atoms, numbers, pos_aa, freqs, modes):
 
     with open(filename, 'w') as f:
         f.write(obuffer)
-

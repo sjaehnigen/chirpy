@@ -14,7 +14,7 @@
 
 import argparse
 import numpy as np
-from chirpy.create.supercell import Solution
+from chirpy.create import supercell
 
 
 def main():
@@ -56,7 +56,7 @@ def main():
     if args.get_mols:
         nargs['install_mol_gauge'] = args.get_mols
 
-    b = Solution.read(args.fn, **nargs)
+    b = supercell._BoxObject.read(args.fn, **nargs)
     b.print_info()
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,15 +9,12 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
 import sys
 import copy
 from collections import OrderedDict
-
-#not yet in use
-#from interface import cpmd
 
 Angstrom2Bohr = 1.8897261247828971
 
@@ -71,7 +68,6 @@ def cpmdWriter(fn, pos_au, symbols, vel_au,**kwargs):
     pp = kwargs.get('pp','MT_BLYP')
     bs = kwargs.get('bs','')
     offset = kwargs.get('offset',0)
-    '''Adapted from Arne Scherrer'''
     if pos_au.shape[1] != len(symbols):
         print('ERROR: symbols and positions are not consistent!')
         sys.exit(1)
@@ -102,18 +98,18 @@ Output: None"""
     format = '  %s'
     # print(data.shape, data.shape[1])
     for field in range(data.shape[1]):
-        #format += '    %16.12f'
-        format += '      %14.10f' # cp2k format ...
+        # format += '    %16.12f'
+        format += '      %14.10f'  # cp2k format ...
     format += '\n'
     n_atoms = len(symbols)
-    obuffer = '% 8d\n'%n_atoms
+    obuffer = '% 8d\n' % n_atoms
     # if comment[-1] != '\n':
     #     comment += '\n'
     obuffer += comment.rstrip('\n') + '\n'
     # print(format)
     for i in range(n_atoms):
         tmp = ['{0: <2}'.format(symbols[i])] + [c for c in data[i]]
-        obuffer += format%tuple(tmp)
+        obuffer += format % tuple(tmp)
     fmt = 'w'
     if append:
         fmt = 'a'
@@ -134,7 +130,7 @@ def xyzWriter(fn, data, symbols, comments, append=False):
     n_frames = len(comments)
     for fr in range(n_frames):
         _write_frame(fn, data[fr], symbols,
-                   comments[fr], append=append or fr != 0)
+                     comments[fr], append=append or fr != 0)
 
 #from pythonbasei (there is a secon..writers)
 def pdbWriter(fn, data, types, symbols, residues, box, title, append=False):
