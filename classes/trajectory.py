@@ -287,6 +287,7 @@ class _XYZ():
         align_coords = kwargs.get('align_coords')
         center_coords = kwargs.get('center_coords')
         wrap = kwargs.get('wrap', False)
+        wrap_molecules = kwargs.get('wrap_molecules', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
         if len(args) > 1:
@@ -407,6 +408,12 @@ class _XYZ():
 
         if wrap:
             self.wrap_atoms()
+        if wrap_molecules:
+            try:
+                self.wrap_molecules(kwargs['mol_map'])
+            except KeyError:
+                _warnings.warn('Could not find molecular map for wrapping!')
+                self.wrap_atoms()
 
         self._sync_class()
 
