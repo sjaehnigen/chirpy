@@ -17,13 +17,14 @@ from scipy.interpolate import griddata as _griddata
 from scipy.integrate import simps as _simps
 import warnings as _warnings
 
+from .core import _CORE
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
 
 
-class ScalarField():
+class ScalarField(_CORE):
     def __init__(self, *args, **kwargs):
 
         if len(args) > 1:

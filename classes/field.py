@@ -16,6 +16,8 @@ import sys as _sys
 import numpy as _np
 from multiprocessing import Manager, Process
 
+from .volume import VectorField as _VectorField
+from .volume import ScalarField as _ScalarField
 from ..physics.classical_electrodynamics import biot_savart as _biot_savart
 from ..physics.classical_electrodynamics import biot_savart_grid \
         as _biot_savart_grid
@@ -26,8 +28,6 @@ from ..physics.classical_electrodynamics import coulomb_grid as _coulomb_grid
 from ..physics.classical_electrodynamics import coulomb_kspace \
         as _coulomb_kspace
 from ..topology.grid import map_on_posgrid as _map_on_posgrid
-from ..classes.volume import VectorField as _VectorField
-from ..classes.volume import ScalarField as _ScalarField
 
 
 class MagneticField(_VectorField):

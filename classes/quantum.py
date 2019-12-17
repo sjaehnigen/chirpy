@@ -18,11 +18,12 @@ from scipy.ndimage.filters import maximum_filter, minimum_filter, \
         gaussian_filter
 from scipy import signal as _signal
 
-from ..classes.volume import ScalarField as _ScalarField
-from ..classes.volume import VectorField as _VectorField
+from .core import _CORE
+from .volume import ScalarField as _ScalarField
+from .volume import VectorField as _VectorField
+from .domain import Domain3D as _Domain3D
 from ..physics import constants
 from ..read.coordinates import xyzReader as _xyzReader
-from ..classes.domain import Domain3D as _Domain3D
 
 
 class WaveFunction(_ScalarField):
@@ -193,7 +194,7 @@ class CurrentDensity(_VectorField):
     pass
 
 
-class ElectronicState():
+class ElectronicState(_CORE):
     def __init__(self, fn, fn1, fn2, fn3, **kwargs):
         self.psi = WaveFunction(fn, **kwargs)
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
@@ -233,7 +234,7 @@ Current Data are not consistent!')
         self.v.__class__.__name__ = "VelocityField"
 
 
-class ElectronicSystem():
+class ElectronicSystem(_CORE):
     def __init__(self, fn, fn1, fn2, fn3, **kwargs):
         self.rho = ElectronDensity(fn, **kwargs)
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)

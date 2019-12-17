@@ -14,9 +14,10 @@
 import numpy as _np
 import warnings as _warnings
 
+from .core import _CORE
+from .trajectory import XYZIterator, VibrationalModes
 from ..snippets import tracked_update as _tracked_update
 from ..snippets import equal as _equal
-from ..classes.trajectory import XYZIterator, VibrationalModes
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
 
@@ -28,7 +29,7 @@ from ..topology.dissection import read_topology_file as _read_topology_file
 #    }.get(x, 9)    # 9 is default if x not found
 
 
-class _SYSTEM():
+class _SYSTEM(_CORE):
     '''Parent class that parses and manages properties of a chemical system
        organised in attributed classes.'''
 

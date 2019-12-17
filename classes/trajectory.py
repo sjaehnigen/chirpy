@@ -16,6 +16,7 @@ import numpy as _np
 import warnings as _warnings
 import itertools as _itertools
 
+from .core import _CORE
 from ..snippets import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, cpmdReader, pdbReader
@@ -50,7 +51,7 @@ from ..mathematics import algebra as _algebra
 # get rid of ugly solution with _labels (use iterator of _FRAMES?)
 
 
-class _FRAME():
+class _FRAME(_CORE):
     def _labels(self):
         self._type = 'frame'
         self._labels = ('symbols',  '')
@@ -82,12 +83,12 @@ class _FRAME():
         new._sync_class()
         return new
 
-    def __radd__(self, other):
-        return self.__add__(other)
+    # def __radd__(self, other):
+    #     return self.__add__(other)
 
-    def __iadd__(self, other):
-        self = self.__add__(other)
-        return self
+    # def __iadd__(self, other):
+    #     self = self.__add__(other)
+    #     return self
 
     def tail(self, n, **kwargs):
         axis = kwargs.get("axis", self.axis_pointer)
@@ -731,6 +732,13 @@ class _XYZ():
         print('Spread of QM atoms:       %s %s %s'
               % tuple([round(dim, 4) for dim in dim_qm]))
 
+        if self._type == 'frame':
+            amax = _np.amax(_get_distance_matrix(
+                                    self.data[:, :3],
+                                    cell_aa_deg=self.cell_aa_deg
+                                    ))
+        print('Max distance:             %s' % round(amax, 4))
+
 
 class XYZFrame(_XYZ, _FRAME):
     def _sync_class(self):
@@ -874,12 +882,12 @@ class XYZIterator(_XYZ, _FRAME):
         else:
             raise ValueError('Cannot combine frames of different size!')
 
-    def __radd__(self, other):
-        return self.__add__(other)
+    # def __radd__(self, other):
+    #     return self.__add__(other)
 
-    def __iadd__(self, other):
-        self = self.__add__(other)
-        return self
+    # def __iadd__(self, other):
+    #     self = self.__add__(other)
+    #     return self
 
     def _to_trajectory(self):
         '''Perform iteration on remaining iterator

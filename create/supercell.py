@@ -21,13 +21,14 @@ from ..topology.dissection import assign_molecule as _assign_molecule
 # from ..topology.mapping import get_atom_spread as _get_atom_spread
 from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import detect_lattice as _get_symmetry
+from ..classes.core import _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Supercell as _Supercell
 from ..physics import constants
 from ..mathematics.algebra import angle
 
 
-class _BoxObject():
+class _BoxObject(_CORE):
 
     # --- DEV log
     # volume is determined by _cell_vec_aa() / cell_vec_aa()
@@ -181,23 +182,23 @@ cell attributes!')
         new._clean_members()
         return new
 
-    def __radd__(self, other):
-        return self.__add__(other)
+    # def __radd__(self, other):
+    #     return self.__add__(other)
 
-    def __iadd__(self, other):
-        self = self.__add__(other)
-        return self
+    # def __iadd__(self, other):
+    #     self = self.__add__(other)
+    #     return self
 
-    def __rmul__(self, other):
-        return self.__mul__(other)
+    # def __rmul__(self, other):
+    #     return self.__mul__(other)
 
-    def __imul__(self, other):
-        self = self.__mul__(other)
-        return self
+    # def __imul__(self, other):
+    #     self = self.__mul__(other)
+    #     return self
 
-    def __ipow__(self, other):
-        self = self.__pow__(other)
-        return self
+    # def __ipow__(self, other):
+    #     self = self.__pow__(other)
+    #     return self
 
     def _mol_map(self):
         _imol = 0

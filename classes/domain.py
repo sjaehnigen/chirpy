@@ -15,14 +15,15 @@ import numpy as _np
 import tempfile
 import warnings as _warnings
 
-from ..classes.volume import ScalarField as _ScalarField
+from .core import _CORE
+from .volume import ScalarField as _ScalarField
 
 eijk = _np.zeros((3,  3,  3))
 eijk[0,  1,  2] = eijk[1,  2,  0] = eijk[2,  0,  1] = 1
 eijk[0,  2,  1] = eijk[2,  1,  0] = eijk[1,  0,  2] = -1
 
 
-class Domain3D():
+class Domain3D(_CORE):
     '''Contains arrays of positions in a grid with assigned (scalar) values.
        The object can be expanded into a full grid representation (see volume
        class)'''

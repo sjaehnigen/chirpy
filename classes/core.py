@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------------------------------
+# ------------------------------------------------------
 #
 #  ChirPy 0.1
 #
@@ -9,23 +9,46 @@
 #  2014-2019 Sascha Jähnigen
 #
 #
-#------------------------------------------------------
+# ------------------------------------------------------
+import pickle
 
-#Version important as <3.6 gives problems with OrderedDictionaries
 
-# import numpy as _np
-# 
-# from ..physics import constants
+class _CORE():
 
-#put this into new lib file
-# valence_charges = {'H':1,'D':1,'C':4,'N':5,'O':6,'S':6}
-# masses_amu = {'H': 1.00797,'D': 2.01410,'C':12.01115,'N':14.00670,'O':15.99940,'S':32.06400}
-# Angstrom2Bohr = 1.8897261247828971
-# 
-# #not so clear how to sort all this out
-# #distant goal: python-based setup for any MD simulation
-# 
-# class Project( ):
-#     pass
-#     #this versatile class shall collect all parametres
+    def __radd__(self, other):
+        return self.__add__(other)
 
+    def __iadd__(self, other):
+        self = self.__add__(other)
+        return self
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __imul__(self, other):
+        self = self.__mul__(other)
+        return self
+
+    def __ipow__(self, other):
+        self = self.__pow__(other)
+        return self
+
+    def dump(self, FN):
+        with open(FN, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load(cls, FN):
+        with open(FN, "rb") as f:
+            _load = pickle.load(f)
+        if isinstance(_load, cls):
+            return _load
+        else:
+            raise TypeError("File does not contain %s." % cls.__name__)
+
+    def print_info(self):
+        print('')
+        print(77 * '–')
+        print('%-12s' % self.__class__.__name__)
+        print(77 * '–')
+        print('')

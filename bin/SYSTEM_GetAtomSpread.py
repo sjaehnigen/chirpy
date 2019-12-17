@@ -26,7 +26,8 @@ def main():
                         )
     args = parser.parse_args()
 
-    system.Supercell(**vars(args)).XYZ.get_atom_spread()
+    _load = system.Supercell(**vars(args))
+    _load.XYZ.get_atom_spread()
 
 
 if __name__ == "__main__":
