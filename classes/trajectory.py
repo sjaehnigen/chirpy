@@ -767,7 +767,7 @@ class XYZIterator(_XYZ, _FRAME):
     # ToDo: numb inherited classmethods such as _split ?
     def __init__(self, *args, **kwargs):
         if len(args) != 1:
-            raise TypeError("File reader of %s takes at exactly 1 argument!"
+            raise TypeError("File reader of %s takes exactly 1 argument!"
                             % self.__class__.__name__)
         else:
             fn = args[0]
@@ -808,13 +808,17 @@ class XYZIterator(_XYZ, _FRAME):
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
 
-            # keep kwargs for iterations
-            self._kwargs = kwargs
+            self._kwargs = {}
             # initialise list of masks
             self._kwargs['_masks'] = []
+            # keep kwargs for iterations
+            self._kwargs.update(kwargs)
 
-            # --- TESTING
-            self._fr = kwargs.get('range', (0, float('inf')))[0]-1
+            self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
+            self._fr, self._st, buf = self._kwargs['range']
+
+            # --- Load first frame w/o consuming it
+            self._fr -= self._st
             next(self)
             self._chaste = True
 
@@ -853,7 +857,7 @@ class XYZIterator(_XYZ, _FRAME):
                     'symbols': self._symbols,
                     'comments': self._comments,
                     }
-        self._fr += 1
+        self._fr += self._st
         self._kwargs.update(out)
 
         self._frame = XYZFrame(**self._kwargs)
@@ -912,27 +916,75 @@ class XYZIterator(_XYZ, _FRAME):
         self._kwargs.update(out)
         return XYZTrajectory(**self._kwargs)
 
+    def rewind(self):
+        '''Reinitialises the Interator (BETA)'''
+        self.__init__(self._fn, **self._kwargs)
+
     @staticmethod
     def _loop(obj, func, events, *args, **kwargs):
+        '''Unwinds the Iterator until it is exhausted constantly
+           executing the given frame-owned function and passing
+           through given arguments.
+           Events are dictionaries with (relative) frames
+           as keys and some action as argument that are only
+           executed when the Iterator reaches the value of the
+           key.'''
         _fr = 0
         for _ifr in obj:
-            getattr(obj._frame, func)(*args, **kwargs)
+            if isinstance(func, str):
+                getattr(obj._frame, func)(*args, **kwargs)
+            elif callable(func):
+                func(obj, *args, **kwargs)
             if _fr in events:
                 if isinstance(events[_fr], dict):
                     kwargs.update(events[_fr])
             _fr += 1
 
     def write(self, fn, **kwargs):
-        return self._loop(self,
-                          'write',
-                          {0: {'append': True}},
-                          fn,
-                          **kwargs
-                          )
+        self._loop(self,
+                   'write',
+                   {0: {'append': True}},
+                   fn,
+                   **kwargs
+                   )
+        self.rewind()
+
+    def mask_duplicate_frames(self, verbose=True, **kwargs):
+        def split_comment(comment):
+            # Could be a staticmethod of XYZ
+            if 'i = ' in comment:
+                return int(comment.split()[2].rstrip(','))
+            elif 'Iteration:' in comment:
+                return int(comment.split('_')[1].rstrip())
+            else:
+                raise ValueError('Cannot get frame info from comments!')
+
+        def _func(obj, **kwargs):
+            _skip = obj._kwargs.get('skip', [])
+            _timesteps = obj._kwargs.get('_timesteps', [])
+            _ts = split_comment(obj._frame.comments[0])
+
+            if _ts not in _timesteps:
+                _timesteps.append(_ts)
+            else:
+                _skip.append(obj._fr)
+
+            obj._kwargs.update({'_timesteps': _timesteps})
+            obj._kwargs.update({'skip': _skip})
+
+        self._loop(self, _func, {}, **kwargs)
+        if verbose:
+            print('Duplicate frames in %s according to given range %s:' % (
+                self._fn,
+                self._kwargs['range']
+                ), self._kwargs['skip'])
+        self.rewind()
+        self._kwargs['_timesteps'] = []
 
     @staticmethod
     def _mask(obj, func, *args, **kwargs):
-        '''Add an frame-owned function that is called within __next__().'''
+        '''Adds a frame-owned function that is called with every __next__()
+           before returning.'''
         # ToDo: avoid stack of the same function (such as nested sort etc.)
         obj._kwargs['_masks'].append(
                 (func, args, kwargs),

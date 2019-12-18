@@ -27,8 +27,10 @@ def _get(_it, kernel, **kwargs):
 
     n_lines = kwargs.get('n_lines')
     r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
+    _sk = kwargs.get("skip", [])
 
     class _line_iterator():
+        '''self._r ... the frame that will be returned next (!)'''
         def __init__(self):
             self.current_line = 0
             self._it = _it
@@ -41,7 +43,7 @@ def _get(_it, kernel, **kwargs):
             return self
 
         def __next__(self):
-            while (self._r - r0) % _ir != 0:
+            while (self._r - r0) % _ir != 0 or self._r in _sk:
                 [next(_it) for _ik in range(n_lines)]
                 self._r += 1
 
