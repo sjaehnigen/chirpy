@@ -129,15 +129,14 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
 def wrap(pos_aa, cell_aa_deg, **kwargs):
     '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
        cell: [ a b c al be ga ]'''
-    cell_vec_aa = get_cell_vec(cell_aa_deg)
 
-    if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
+    if detect_lattice(cell_aa_deg) is not None:
+        cell_vec_aa = get_cell_vec(cell_aa_deg)
         return pos_aa - np.tensordot(np.floor(ceb(pos_aa, cell_vec_aa)),
                                      cell_vec_aa,
                                      axes=1
                                      )
     else:
-        _warnings.warn('Cell size zero!', UserWarning)
         return pos_aa
 
 
@@ -179,6 +178,7 @@ def distance_matrix(*args, **kwargs):
         raise TypeError('More than two arguments given!')
 
     if max(_p0.shape[0], _p1.shape[0]) > 1000:
+        # python3.8: use walrus
         print(max(_p0.shape[0], _p1.shape[0]))
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>1000 atom support in a future version)!'

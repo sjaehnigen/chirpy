@@ -32,6 +32,12 @@ def main():
                                 and wrap or \'True\' for selecting all atoms.",
                         default=None,
                         )
+    parser.add_argument("--center_molecule",
+                        help="Center residue (resid as given in fn_topo) in \
+                                cell and wrap (requires a topology file).",
+                        default=None,
+                        type=int,
+                        )
     parser.add_argument("--align_coords",
                         nargs='+',
                         help="Align atom list (id starting from 0)  or \'True\' \
@@ -58,6 +64,13 @@ def main():
                         action='store_true',
                         help="Wrap molecules in cell (requires topology).",
                         default=False
+                        )
+    parser.add_argument("--extract_molecules",
+                        nargs='+',
+                        help="Write only coordinates of given molecular ids starting from 0 \
+                                (requires a topology file).",
+                        default=None,
+                        type=int,
                         )
     parser.add_argument("--cell_aa_deg",
                         nargs=6,

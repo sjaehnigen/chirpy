@@ -40,15 +40,10 @@ from ..physics.statistical_mechanics import calculate_kinetic_energies as \
 
 from ..mathematics import algebra as _algebra
 
-# ToDo: write() still old in _TRAJECORY, _FRAME does not have any write method
-# new class: Moments()
-# Note: the object format is extended from behind (axis_pointer):
+# NB: data is accessed from behind (axis_pointer):
 #   frame is (N,X)
 #   trajectory is (F,N,X),
 #   list of modes is (M,F,N,X)
-#       --> Access data structures from behind!
-#   add iterators
-# get rid of ugly solution with _labels (use iterator of _FRAMES?)
 
 
 class _FRAME(_CORE):
@@ -83,13 +78,6 @@ class _FRAME(_CORE):
         new._sync_class()
         return new
 
-    # def __radd__(self, other):
-    #     return self.__add__(other)
-
-    # def __iadd__(self, other):
-    #     self = self.__add__(other)
-    #     return self
-
     def tail(self, n, **kwargs):
         axis = kwargs.get("axis", self.axis_pointer)
         new = _copy.deepcopy(self)
@@ -102,7 +90,7 @@ class _FRAME(_CORE):
         new._sync_class()
         return new
 
-    def sort(self, **kwargs):
+    def sort(self, *args, **kwargs):
         _symbols = _np.array(self.symbols)
 
         def get_slist():
@@ -110,7 +98,10 @@ class _FRAME(_CORE):
                     for s in _np.unique(_symbols)}
             return [i for k in sorted(elem) for i in elem[k]]
 
-        _slist = kwargs.get('order', get_slist())
+        if len(args) == 1:
+            _slist = list(args[0])
+        else:
+            _slist = kwargs.get('order', get_slist())
 
         self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
         self.symbols = tuple(_symbols[_slist])
@@ -126,21 +117,35 @@ class _FRAME(_CORE):
                                                 _np.sort(other.symbols))])))
         return _np.prod(ie), ie
 
-    def _split(self, mask, join_molecules=True):
+    def split(self, mask, select=None, join_molecules=True):
+        '''select ... list or tuple of ids'''
         _data = [_np.moveaxis(_d, 0, -2)
                  for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
         _symbols = _dec(self.symbols, mask)
-        nargs = {}
-        nargs.update(self.__dict__)
-        _new = []
-        for _d, _s in zip(_data, _symbols):
+
+        def create_obj(_d, _s):
+            nargs = {}
+            nargs.update(self.__dict__)
             nargs.update({'data': _d, 'symbols': _s})
             _obj = self._from_data(**nargs)
             if join_molecules:
                 _obj.wrap_molecules(_np.ones_like(_s).astype(int))
-            _new.append(_obj)
+            return _obj
 
-        return _new
+        if select is None:
+            _new = []
+            for _d, _s in zip(_data, _symbols):
+                _new.append(create_obj(_d, _s))
+            return _new
+        else:
+            if isinstance(select, list):
+                _new = create_obj(_data[select[0]], _symbols[select[0]])
+                for _id in select[1:]:
+                    _new += create_obj(_data[_id], _symbols[_id])
+            else:
+                _new = create_obj(_data[select], _symbols[select])
+            self.__dict__.update(_new.__dict__)
+            self._sync_class()
 
     @staticmethod
     def map_frame(obj1, obj2, **kwargs):
@@ -237,12 +242,11 @@ class _MODES(_FRAME):
         self.eivec = self.modes * _np.sqrt(self.masses_amu)[None, :, None]
         norm = _np.linalg.norm(self.eivec, axis=(1, 2))
 
-        # --- Work Around for trans + rot
+        # --- ToDo: Work Around for trans + rot
         norm[:6] = 1.0
         # ---
         self.eivec /= norm[:, None, None]
 
-        # How to treat rot/trans exclusion? detect 5 or 6?
         atol = 5.E-5
         com_motion = _np.linalg.norm(_cowt(self.modes,
                                            self.masses_amu,
@@ -459,6 +463,9 @@ class _XYZ():
         self._vel_au()
         if self.vel_au.size == 0:
             self.vel_au = _np.zeros_like(self.pos_aa)
+        self.cell_aa_deg = _np.array(self.cell_aa_deg)
+        if not isinstance(self.comments[0], str):
+            raise AttributeError('Missing comments line! Contact support!')
 
     def _is_equal(self, other, atol=1e-08, noh=True):
         '''atol adds up to dist_crit_aa from vdw radii'''
@@ -484,12 +491,6 @@ class _XYZ():
                                       cell_aa_deg=self.cell_aa_deg)
                     _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
 
-                    # ToBeDel
-                    # _np.allclose(
-                    #       _s_pos[_ind],
-                    #       _np.mod(_o_pos[_ind], _s_pos[_ind]),
-                    #       atol=_dist_crit_aa([_s])[0] + atol,
-                    #       ))
             return bool(_np.prod(_bool))
 
         if _p == 1:
@@ -498,7 +499,7 @@ class _XYZ():
         self._sync_class()
         return _np.prod(ie), ie
 
-    # join the next two methods?
+    # --- join the next two methods?
     def wrap_atoms(self, **kwargs):
         if self._type == 'frame':
             self._pos_aa(_wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
@@ -647,7 +648,7 @@ class _XYZ():
         self._vel_au(_vel)
 
     def write(self, fn, **kwargs):
-        attr = kwargs.get('attr', 'data')  # only for xyz format
+        attr = kwargs.get('attr', 'data')
         factor = kwargs.get('factor', 1.0)  # for velocities
         separate_files = kwargs.get('separate_files', False)
 
@@ -695,7 +696,7 @@ class _XYZ():
                                RuntimeWarning)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter(fn,
-                      loc_self.pos_aa[0],  # only frame 0 vels are not written
+                      loc_self.pos_aa[0],  # only frame 0, vels are not written
                       types=loc_self.symbols,  # types not supported
                       symbols=loc_self.symbols,
                       residues=_np.vstack((
@@ -719,7 +720,6 @@ class _XYZ():
         else:
             raise ValueError('Unknown format: %s.' % fmt)
 
-    # Some info prints
     def get_atom_spread(self):
         '''pos_aa: _np.array of shape (n_frames, n_atoms, 3)'''
         dim_qm = _np.zeros((3))
@@ -761,8 +761,7 @@ class XYZFrame(_XYZ, _FRAME):
 
 
 class XYZIterator(_XYZ, _FRAME):
-    '''Testing. Work in progress...'''
-    # ToDo: numb inherited classmethods such as _split ?
+    '''A generator of XYZ frames (BETA).'''
     def __init__(self, *args, **kwargs):
         if len(args) != 1:
             raise TypeError("File reader of %s takes exactly 1 argument!"
@@ -844,7 +843,7 @@ class XYZIterator(_XYZ, _FRAME):
             out = {
                     'data': frame[0],
                     'symbols': frame[2],
-                    'comments': frame[-1],
+                    'comments': [frame[-1]],
                     'cell_aa_deg': frame[-2],
                     # 'res':
                     }
@@ -861,7 +860,7 @@ class XYZIterator(_XYZ, _FRAME):
 
         self._frame = XYZFrame(**self._kwargs)
 
-        # check for stored masks
+        # --- check for stored masks
         for _f, _f_args, _f_kwargs in self._kwargs['_masks']:
             getattr(self._frame, _f)(*_f_args, **_f_kwargs)
 
@@ -884,13 +883,6 @@ class XYZIterator(_XYZ, _FRAME):
             return new
         else:
             raise ValueError('Cannot combine frames of different size!')
-
-    # def __radd__(self, other):
-    #     return self.__add__(other)
-
-    # def __iadd__(self, other):
-    #     self = self.__add__(other)
-    #     return self
 
     def _to_trajectory(self):
         '''Perform iteration on remaining iterator
@@ -951,7 +943,7 @@ class XYZIterator(_XYZ, _FRAME):
 
     def mask_duplicate_frames(self, verbose=True, **kwargs):
         def split_comment(comment):
-            # Could be a staticmethod of XYZ
+            # --- ToDo: Could be a staticmethod of XYZ
             if 'i = ' in comment:
                 return int(comment.split()[2].rstrip(','))
             elif 'Iteration:' in comment:
@@ -983,7 +975,6 @@ class XYZIterator(_XYZ, _FRAME):
     def _mask(obj, func, *args, **kwargs):
         '''Adds a frame-owned function that is called with every __next__()
            before returning.'''
-        # ToDo: avoid stack of the same function (such as nested sort etc.)
         obj._kwargs['_masks'].append(
                 (func, args, kwargs),
                 )
@@ -994,28 +985,41 @@ class XYZIterator(_XYZ, _FRAME):
     # does not support call of function name from within that function)
     def sort(self, *args, **kwargs):
         self._frame.sort(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'sort', *args, **kwargs)
 
     def align_coordinates(self, *args, **kwargs):
         self._frame.align_coordinates(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
         # remember reference
         kwargs.update({'align_ref': self._frame._align_ref})
         self._mask(self, 'align_coordinates', *args, **kwargs)
 
     def center_coordinates(self, *args, **kwargs):
         self._frame.center_coordinates(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'center_coordinates', *args, **kwargs)
+
+    def center_position(self, *args, **kwargs):
+        self._frame.center_position(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'center_position', *args, **kwargs)
+
+    def wrap_molecules(self, *args, **kwargs):
+        self._frame.wrap_molecules(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'wrap_molecules', *args, **kwargs)
+
+    def split(self, *args, **kwargs):
+        self._frame.split(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'split', *args, **kwargs)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):
     def _sync_class(self):
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
-
-#    def _to_frame(self, fr=0):
-#        return XYZFrame(data=self.data[fr],
-#                        symbols=self.symbols,
-#                        comments=[self.comments[fr]])
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''

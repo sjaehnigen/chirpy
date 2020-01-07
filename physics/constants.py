@@ -138,15 +138,15 @@ def numbers_to_masses(numbers):
 
 
 def symbols_to_numbers(symbols):
-    return [atomic_numbers[_z] for _z in symbols]
+    return [atomic_numbers[_z.title()] for _z in symbols]
 
 
 def symbols_to_masses(symbols):
-    return [masses_amu[_z] for _z in symbols]
+    return [masses_amu[_z.title()] for _z in symbols]
 
 
 def symbols_to_rvdw(symbols):
-    return [rvdw[_z] for _z in symbols]
+    return [rvdw[_z.title()] for _z in symbols]
 
 
 atomic_numbers = _get_property_dict("atomic_number")

@@ -19,7 +19,7 @@ from chirpy.create.supercell import MolecularCrystal
 
 def main():
     parser = argparse.ArgumentParser(
-            description="Read supercell and print box information.",
+            description="Read coordinates and create a new supercell (WORK IN PROGESS).",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument(
