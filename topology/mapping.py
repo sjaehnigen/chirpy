@@ -46,6 +46,19 @@ def dec(prop, indices):
         ]
 
 
+def cowt(pos, wt, **kwargs):
+    '''Calculate centre of weight, consider periodic boundaries before
+       calling this method.'''
+
+    _wt = np.array(wt)
+    _axis = kwargs.get("axis", -2)
+    _sub = kwargs.get('subset', slice(None))
+    _p = np.moveaxis(pos, _axis, 0)
+    _slc = (_sub,) + (len(_p.shape)-1) * (None,)
+
+    return np.sum(_p[_sub] * _wt[_slc], axis=0) / _wt[_sub].sum()
+
+
 def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
     '''cell_aa_deg as np.array/list of: a b c al be ga
        n_fields: usually 3
@@ -151,7 +164,7 @@ def _pbc_shift(_d, cell_aa_deg):
         return np.zeros_like(_d)
 
 
-def get_distance_matrix(*args, **kwargs):
+def distance_matrix(*args, **kwargs):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
        '''
@@ -178,19 +191,6 @@ def get_distance_matrix(*args, **kwargs):
         return np.linalg.norm(dist_array, axis=-1)
 
 
-def cowt(pos_aa, wt, **kwargs):
-    '''Calculate centre of weight, consider periodic boundaries before
-       calling this method.'''
-
-    _wt = np.array(wt)
-    _axis = kwargs.get("axis", 1)
-    _sub = kwargs.get('subset', slice(None))
-    _p = np.moveaxis(pos_aa, _axis, 0)
-    _slc = (_sub,) + (len(_p.shape)-1) * (None,)
-
-    return np.sum(_p[_sub] * _wt[_slc], axis=0) / _wt[_sub].sum()
-
-
 def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     '''DEPRECATED, use join_molecules()'''
     join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)
@@ -215,7 +215,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
         # (works better but still not perfect; needs an adaptive scheme)
         # actually: needs connectivity pattern to wrap everything correctly
 
-        _r = np.argmin(np.linalg.norm(get_distance_matrix(
+        _r = np.argmin(np.linalg.norm(distance_matrix(
                                                     _p[0],
                                                     cell_aa_deg=cell_aa_deg,
                                                     ),
@@ -271,7 +271,7 @@ def align_atoms(pos_mobile, w, **kwargs):
 def find_methyl_groups(pos, symbols, hetatm=False, **kwargs):
     '''pos of shape (n_atoms, n_fields) (FRAME)
        Outformat is C H H H'''
-    dist_array = get_distance_matrix(pos, **kwargs)
+    dist_array = distance_matrix(pos, **kwargs)
     n_atoms = len(symbols)
     symbols = np.array(symbols)
 

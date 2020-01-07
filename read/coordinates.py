@@ -14,7 +14,7 @@
 
 import numpy as np
 import MDAnalysis as mda
-from CifFile import ReadCif
+# from CifFile import ReadCif
 import warnings
 
 from .generators import _reader

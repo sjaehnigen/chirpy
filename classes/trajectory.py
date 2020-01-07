@@ -31,7 +31,7 @@ from ..topology.mapping import dist_crit_aa as _dist_crit_aa
 from ..topology.mapping import wrap as _wrap
 from ..topology.mapping import cowt as _cowt
 from ..topology.mapping import join_molecules as _join_molecules
-from ..topology.mapping import get_distance_matrix as _get_distance_matrix
+from ..topology.mapping import distance_matrix as _distance_matrix
 from ..topology.mapping import distance_pbc as _distance_pbc
 
 from ..physics import constants
@@ -165,7 +165,7 @@ class _FRAME(_CORE):
         for s in _np.unique(obj1.symbols):
             i1 = _np.array(obj1.symbols) == s
             i2 = _np.array(obj2.symbols) == s
-            ass = _np.argmin(_get_distance_matrix(
+            ass = _np.argmin(_distance_matrix(
                                 obj1.data[i1, :3] - com1[None],
                                 obj2.data[i2, :3] - com2[None],
                                 **kwargs
@@ -455,8 +455,6 @@ class _XYZ():
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
                            RuntimeWarning)
-        # These are NOT pointers and any changes to pos/vel will be overwritte
-        # by data! You have to change data instead or use _pos/_vel
         self._pos_aa()
         self._vel_au()
         if self.vel_au.size == 0:
@@ -733,7 +731,7 @@ class _XYZ():
               % tuple([round(dim, 4) for dim in dim_qm]))
 
         if self._type == 'frame':
-            amax = _np.amax(_get_distance_matrix(
+            amax = _np.amax(_distance_matrix(
                                     self.data[:, :3],
                                     cell_aa_deg=self.cell_aa_deg
                                     ))
@@ -779,6 +777,7 @@ class XYZIterator(_XYZ, _FRAME):
                 self._gen = _xyzIterator(fn,
                                          **kwargs
                                          )
+
             elif self._fmt == "pdb":
                 self._topology = XYZFrame(fn, **kwargs)
                 self._gen = _pdbIterator(fn,
@@ -918,6 +917,7 @@ class XYZIterator(_XYZ, _FRAME):
 
     def rewind(self):
         '''Reinitialises the Interator (BETA)'''
+        self._chaste = False
         self.__init__(self._fn, **self._kwargs)
 
     @staticmethod
@@ -963,15 +963,14 @@ class XYZIterator(_XYZ, _FRAME):
             _skip = obj._kwargs.get('skip', [])
             _timesteps = obj._kwargs.get('_timesteps', [])
             _ts = split_comment(obj._frame.comments[0])
-
             if _ts not in _timesteps:
                 _timesteps.append(_ts)
             else:
                 _skip.append(obj._fr)
-
             obj._kwargs.update({'_timesteps': _timesteps})
             obj._kwargs.update({'skip': _skip})
 
+        self._kwargs['_timesteps'] = []
         self._loop(self, _func, {}, **kwargs)
         if verbose:
             print('Duplicate frames in %s according to given range %s:' % (
@@ -979,7 +978,6 @@ class XYZIterator(_XYZ, _FRAME):
                 self._kwargs['range']
                 ), self._kwargs['skip'])
         self.rewind()
-        self._kwargs['_timesteps'] = []
 
     @staticmethod
     def _mask(obj, func, *args, **kwargs):
@@ -1021,6 +1019,8 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
+        _warnings.warn("Using outdated method of XYZTrajectory. "
+                       "Proceed with care!")
         ts = kwargs.get('ts', 0.5)
 
         if _np.linalg.norm(self.vel_au) != 0:

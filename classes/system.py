@@ -55,6 +55,10 @@ class _SYSTEM(_CORE):
                     self.XYZ = kwargs.pop('XYZ')
             self.cell_aa_deg = self.XYZ.cell_aa_deg
 
+            if kwargs.get('sort', False):
+                # Oh no! Modes will not be sorted. --> Sort that out!
+                self.sort_atoms()
+
             # --- ITERATOR DEVELOP info: methods called here cannot access ITER
             #       --> shift: extract_mol, center_res etc. directly to ITER
             #       --> allow empty / bare system init
@@ -65,9 +69,6 @@ class _SYSTEM(_CORE):
                         self.install_molecular_origin_gauge()
                     self.wrap_molecules()
 
-                if kwargs.get('sort', False):
-                    # Oh no! Modes will not be sorted. --> Sort that out!
-                    self.sort_atoms()
 
                 center_res = kwargs.get('center_residue')
                 if center_res is not None:

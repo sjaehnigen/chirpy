@@ -13,7 +13,7 @@
 
 
 import numpy as np
-from ..topology.mapping import dist_crit_aa, get_distance_matrix, distance_pbc, wrap, get_cell_vec
+from ..topology.mapping import dist_crit_aa, distance_matrix, distance_pbc, wrap, get_cell_vec
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..read.coordinates import pdbReader
 
@@ -95,7 +95,7 @@ def define_molecules(mol):
         if cell_aa_deg is not None:
             _pp = np.tensordot(_pp, cell_vec_aa, axes=1)
 
-        dist_array = get_distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
+        dist_array = distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
         dist_array[dist_array == 0.0] = 'Inf'
         crit_aa = dist_crit_aa(symbols[_ind])
 
@@ -110,7 +110,7 @@ def define_molecules(mol):
         _p = np.tensordot(_p, cell_vec_aa, axes=1)
 
     #OLD (unbatched)
-    #dist_array = get_distance_matrix(_p, cell_aa_deg=cell_aa_deg)
+    #dist_array = distance_matrix(_p, cell_aa_deg=cell_aa_deg)
     #dist_array[dist_array == 0.0] = 'Inf'
     #crit_aa = dist_crit_aa(d.symbols)
 
