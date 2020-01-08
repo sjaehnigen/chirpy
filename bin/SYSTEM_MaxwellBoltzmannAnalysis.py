@@ -14,6 +14,7 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
 
 from chirpy.physics import statistical_mechanics
 from chirpy.classes import system
@@ -57,7 +58,7 @@ def main():
             "--T",
             help="Reference temperature in K.",
             type=float,
-            default=298.15,
+            default=None,
             )
     parser.add_argument(
             "--element",
@@ -105,8 +106,23 @@ def main():
         except StopIteration:
             pass
 
-    _vel_au = np.linalg.norm([_v[args.subset] for _v in get_v()],
-                             axis=-1).ravel()
+    _vel_au = np.array([_v[args.subset] for _v in get_v()])
+    e_kin_au = statistical_mechanics.kinetic_energies(_vel_au, _w[args.subset])
+    _n_f_dof = 6
+    if args.element is not None:
+        warnings.warn('Element mode: Switching off conservation of '
+                      'degrees of freedom.')
+        _n_f_dof = 0
+    T_K = np.average(statistical_mechanics.temperature_from_energies(
+                                            e_kin_au,
+                                            fixed_dof=_n_f_dof
+                                            ))
+    print(f'MD temperature: {T_K} K')
+    if args.T is None:
+        args.T = T_K
+
+    _vel_au = np.linalg.norm(_vel_au, axis=-1).ravel()
+
     plt.hist(_vel_au, lw=0.1, ec='k', bins=100, density=True, label=args.fn)
 
     _ideal = [statistical_mechanics.maxwell_boltzmann_distribution(
@@ -126,6 +142,8 @@ def main():
     plt.title(title)
     plt.legend(loc='upper right')
     plt.show()
+
+
 
 if __name__ == "__main__":
     main()

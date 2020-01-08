@@ -127,7 +127,7 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
 
 
 def wrap(pos_aa, cell_aa_deg, **kwargs):
-    '''pos_aa: shape (n_frames, n_atoms, three) or (n_atoms, three)
+    '''pos_aa: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
     if detect_lattice(cell_aa_deg) is not None:
