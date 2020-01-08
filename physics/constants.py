@@ -54,7 +54,7 @@ l_au2aa = l_au*1E10  # convertion A.U. to Angstrom: x(in au)*l_au2aa = x(in aa)
 l_aa2au = 1/l_au2aa  # convertion Angstrom to A.U.: x(in aa)*l_aa2au = x(in au)
 t_au2fs = t_au*1E15
 t_fs2au = 1/t_au2fs
-v_au2si = 1E-5*l_au2aa/t_au2fs
+v_au2si = 1E+5*l_au2aa/t_au2fs
 v_si2au = 1/v_au2si
 v_au2aaperfs = l_au2aa/t_au2fs
 
