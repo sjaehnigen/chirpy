@@ -35,8 +35,8 @@ from ..topology.mapping import distance_matrix as _distance_matrix
 from ..topology.mapping import distance_pbc as _distance_pbc
 
 from ..physics import constants
-from ..physics.statistical_mechanics import calculate_kinetic_energies as \
-        _calculate_kinetic_energies
+from ..physics.statistical_mechanics import kinetic_energies as \
+        _kinetic_energies
 
 from ..mathematics import algebra as _algebra
 
@@ -1055,8 +1055,7 @@ class VibrationalModes(_XYZ, _MODES):
 
         if occupation == 'single':
             _VEL = S
-            e_kin_au = _calculate_kinetic_energies(_VEL,
-                                                   self.masses_amu)
+            e_kin_au = _kinetic_energies(_VEL, self.masses_amu)
             scale = temperature / (_np.sum(e_kin_au) / constants.k_B_au /
                                    self.n_modes) / 2
             print(scale)

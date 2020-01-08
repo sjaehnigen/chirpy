@@ -16,60 +16,50 @@ import numpy as np
 from ..physics import constants
 
 
-def calculate_kinetic_energies(vel_au, masses_amu):
-    """CalculateKineticEnergies"""
+def kinetic_energies(vel_au, masses_amu):
+    """Calculate kinetic energy in a.u. from given velocities in a.u.
+       and masses in a.m.u."""
     n_frames = vel_au.shape[0]
     n_atoms = vel_au.shape[1]
     e_kin_au = np.zeros((n_frames, n_atoms))
     for i_at in range(n_atoms):
         e_kin_au[:, i_at] = masses_amu[i_at] *\
                 np.square(vel_au[:, i_at]).sum(axis=1)
-    return 0.5 * e_kin_au*constants.m_amu_au
+    return 0.5 * e_kin_au * constants.m_amu_au
 
 
-# REVISE, SPLIT/MERGE, AND DEBUG Boltzmann stuff
+def maxwell_boltzmann_distribution(T_K, *args, **kwargs):
+    '''Return the Maxwell-Boltzmann distribution function for given temperature
+       in K and species with masses in a.m.u.'''
 
-def CalculateBoltzmannVelocities(vel_au, n_bins, species):
-    """CalculateBoltzmannVelocities(velocities, n_bins, species): velocities in a.u."""
-    if len(vel_au.shape) == 3:
-        velnorm_au = np.linalg.norm(vel_au,axis=2)
-    elif len(vel_au.shape) == 2:
-        velnorm_au = vel_au
-    histogram  = np.empty((species.shape[0],2,n_bins))
+    def _velocity_distribution(T_K, vel_au, mass_amu):
+        '''Returns the probability density of a given velocity in a.u. of a
+           particle with mass in a.m.u. at a given temperature in K.
+           Accepts np.arrays of species if shapes of vel and mass are equal.'''
+        m_au = mass_amu * constants.m_amu_au
+        beta = constants.k_B_au * T_K
 
-    for sp, atoms in enumerate(species):
-        print(' -- species %s / %s'%(sp+1,species.shape[0]))
-        print('        no. of atoms: %s'%len(atoms))
-        histogram[sp,1,:], edges = np.histogram(velnorm_au[:,atoms], bins=n_bins, range=None, normed=False, weights=None, density=None)
-        histogram[sp,0,:] = edges[0:-1]
-    del velnorm_au
-    return histogram
+        N = np.sqrt(2 / np.pi) * pow(m_au / beta, 3.0/2.0)
+        p1 = np.exp(-(m_au * vel_au**2) / (2 * beta))
 
-def BoltzmannAnalysis(velnorm_au,numBins,species):
-    print('Starting Boltzmann analysis.')
-    if species.shape[0] > 10:
-        raise Exception('Are you sure? You are about to scan for a huge amount of species: %s!'%species.shape[0])
-    #histogram  = CalculateBoltzmannVelocities(vels_au, numBins, species)
-    histogram  = CalculateBoltzmannVelocities(velnorm_au, numBins, species) #if using scaled vels
-    print('Histogram analysis finished.')
-    return histogram
+        return N * p1 * vel_au**2
 
-def BoltzmannExpected(T,species,numBins,masses_amu,histogram):
-    def prob(m,v,T):
-        N =  pow((m*constants.m_amu_au/(2.0*np.pi*constants.k_B_au*T)),(3.0/2.0))*4*np.pi
-        p1 = np.exp(-(m*constants.m_amu_au*v**2)/(2*constants.k_B_au*T))
-        p = N*p1*v**2
-        return p
+    def _energy_distribution(T_K, E_au):
+        '''Returns the probability density of a given energy in a.u.
+           at a given temperature in K'''
+        beta = constants.k_B_au * T_K
 
-    simul = np.zeros((species.shape[0],numBins))
-    theor = np.zeros((species.shape[0],numBins))
+        N = 2 * np.sqrt(E_au / np.pi) * pow(1 / beta, 3.0/2.0)
+        p1 = np.exp(-E_au / beta)
 
-    for sp, atoms in enumerate(species):
-        #print(histogram[sp,0])
-        for atom in atoms:
-            theor[sp] += prob(masses_amu[atom],histogram[sp,0],T)
-        simul[sp] += histogram[sp,1]
-        simul[sp] /= np.amax(simul[sp])    
-        theor[sp] /= np.amax(theor[sp])    
-    
-    return simul, theor
+        return N * p1
+
+    _options = {
+            'velocity': _velocity_distribution,
+            'energy': _energy_distribution,
+            }
+
+    def PDF(x):
+        return _options.get(kwargs.get('option', 'energy'))(T_K, x, *args)
+
+    return PDF

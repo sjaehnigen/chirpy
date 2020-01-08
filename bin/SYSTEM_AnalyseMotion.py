@@ -31,7 +31,8 @@ def main():
             )
     parser.add_argument(
             "--fn_vel",
-            help="Additional trajectory file with velocities (optional)",
+            help="Additional trajectory file with velocities (optional)."
+                 "Assumes atomic units.",
             default=None,
             )
     parser.add_argument(
@@ -50,6 +51,7 @@ def main():
             "--subset",
             nargs='+',
             help="Atom list (id starting from 0).",
+            type=int,
             default=None,
             )
     parser.add_argument(
