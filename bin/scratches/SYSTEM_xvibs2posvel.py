@@ -13,7 +13,6 @@
 
 
 import argparse
-import numpy as np
 from chirpy.classes import system
 
 

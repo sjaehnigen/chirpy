@@ -26,7 +26,16 @@ def _get(_it, kernel, **kwargs):
        it with given _kernel. Returns processed data.'''
 
     n_lines = kwargs.get('n_lines')
-    r0, _ir, r1 = kwargs.pop("range", (0, 1, float('inf')))
+
+    _range = kwargs.get("range", (0, 1, float('inf')))
+    if len(_range) == 2:
+        r0, r1 = _range
+        _ir = 1
+    elif len(_range) == 3:
+        r0, _ir, r1 = _range
+    else:
+        raise ValueError('Given range is not a tuple of length 2 or 3!')
+
     _sk = kwargs.get("skip", [])
 
     class _line_iterator():

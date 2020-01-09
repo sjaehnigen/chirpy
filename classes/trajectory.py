@@ -313,7 +313,7 @@ class _XYZ():
                 _fr = _fr, 1, _fr+1
                 kwargs.update({'range': _fr})
             elif self._type == 'trajectory':
-                _fr = kwargs.get('frame_range', (0, 1, float('inf')))
+                _fr = kwargs.get('range', (0, 1, float('inf')))
             self.fn = fn
 
             if fmt == "xyz":
@@ -727,7 +727,7 @@ class _XYZ():
             raise ValueError('Unknown format: %s.' % fmt)
 
     def get_atom_spread(self):
-        '''pos_aa: _np.array of shape (n_frames, n_atoms, 3)'''
+        '''pos_aa: np.array of shape ([n_frames,] n_atoms, 3)'''
         dim_qm = _np.zeros((3))
         for i in range(3):
             imin = _np.min(_np.moveaxis(self.pos_aa, -1, 0)[i])
@@ -919,7 +919,7 @@ class XYZIterator(_XYZ, _FRAME):
         self.__init__(self._fn, **self._kwargs)
 
     @staticmethod
-    def _loop(obj, func, events, *args, **kwargs):
+    def _unwind(obj, func, events, *args, **kwargs):
         '''Unwinds the Iterator until it is exhausted constantly
            executing the given frame-owned function and passing
            through given arguments.
@@ -939,12 +939,12 @@ class XYZIterator(_XYZ, _FRAME):
             _fr += 1
 
     def write(self, fn, **kwargs):
-        self._loop(self,
-                   'write',
-                   {0: {'append': True}},
-                   fn,
-                   **kwargs
-                   )
+        self._unwind(self,
+                     'write',
+                     {0: {'append': True}},
+                     fn,
+                     **kwargs
+                     )
         self.rewind()
 
     def mask_duplicate_frames(self, verbose=True, **kwargs):
@@ -969,7 +969,7 @@ class XYZIterator(_XYZ, _FRAME):
             obj._kwargs.update({'skip': _skip})
 
         self._kwargs['_timesteps'] = []
-        self._loop(self, _func, {}, **kwargs)
+        self._unwind(self, _func, {}, **kwargs)
 
         if self._kwargs['range'][1] != 1:
             _warnings.warn('Setting range increment to 1!', stacklevel=2)

@@ -48,10 +48,9 @@ def main():
     if args.f is create_name:
         args.f = create_name(args.fn)
 
-    system.Molecule(**vars(args)).XYZ._to_frame(fr=-1).write(
-                                                             args.f,
-                                                             fmt='xyz',
-                                                             )
+    _load = system.Molecule(**vars(args)).XYZ
+    _load._unwind(_load, lambda x: 0, {})
+    _load._frame.write(args.f)
 
 
 if __name__ == "__main__":

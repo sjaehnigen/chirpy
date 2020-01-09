@@ -15,9 +15,10 @@
 import argparse
 from chirpy.classes import volume
 
+
 def main():
     '''Write volume data into file'''
-    parser=argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
             description="Write volume data into file",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
@@ -39,6 +40,7 @@ def main():
     fn = args.fn
     system = volume.ScalarField(fn, **vars(args))
     system.write(args.f)
+
 
 if(__name__ == "__main__"):
     main()

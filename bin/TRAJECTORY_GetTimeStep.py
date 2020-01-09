@@ -45,15 +45,15 @@ def main():
     args = parser.parse_args()
     args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
 
-    system.Molecule(frame_range=(args.step, args.step+1),
+    system.Molecule(range=(args.step, 1, args.step+1),
                     **extract_keys(vars(args),
                                    fn=False,
                                    cell_aa_deg=False,
                                    )
-                    ).XYZ._to_frame().write(
-                                            args.f,
-                                            fmt='xyz',
-                                            )
+                    ).XYZ.write(
+                                args.f,
+                                fmt='xyz',
+                                )
 
 
 if __name__ == "__main__":

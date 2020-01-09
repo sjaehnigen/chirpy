@@ -13,9 +13,7 @@
 
 
 import argparse
-import numpy as np
 from chirpy.classes import system
-from chirpy.topology import mapping
 
 def main():
     '''Create a topology file from input.'''

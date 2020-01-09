@@ -37,10 +37,11 @@ def main():
 
     #to J
     _eV2J = lambda x: _e * x
-    _nm2J = lambda x: _h * _c / x * 1.E-9 #inhomogeneous sparsity of points => could be interpolated (or ignored)
+    # _nm2J = lambda x: _h * _c / x * 1.E-9 
+    # inhomogeneous sparsity of points => could be interpolated (or ignored)
 
     #from J
-    _J2eV = lambda x: 1 / _e * x
+    # _J2eV = lambda x: 1 / _e * x
     _J2nm = lambda x: _h * _c / x * 1.E+9
 
     _in  = _eV2J
