@@ -17,6 +17,7 @@ import sys
 import copy
 import numpy as np
 import time
+import warnings
 
 from chirpy.classes import volume,trajectory,field
 from chirpy.physics import constants
@@ -152,7 +153,8 @@ def main():
 
     if args.kspace:
         args.mode = "grid"
-        print( 'WARNING: k space calculation still in alpha state (and no nuclear B field component, either)!' )
+        warnings.warn('k space calculation still in alpha state '
+                      '(and no nuclear B field component, either)!')
 
     for _k in _attr:
         if getattr(args,_k) not in _attr[_k]: raise AttributeError('Wrong argument for %s!' % _k)
@@ -207,7 +209,9 @@ def main():
                     )
             print(77 * '–')
         except FileNotFoundError:
-            print('WARNING: %s not found! Proceeding with electrons only.')
+            with warnings.catch_warnings():
+                warnings.warn('%s not found! Proceeding with electrons only.',
+                              RuntimeWarning, stacklevel=2)
             args.electrons_only=True
     #------------------------------------------- 
 

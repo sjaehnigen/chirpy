@@ -17,6 +17,7 @@ from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
 from scipy.ndimage.filters import maximum_filter, minimum_filter, \
         gaussian_filter
 from scipy import signal as _signal
+import warnings as _warnings
 
 from .core import _CORE
 from .volume import ScalarField as _ScalarField
@@ -92,9 +93,13 @@ Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
         boundary_max = max(boundary_max, _np.amax(self.data[:, -1, :]))
         boundary_max = max(boundary_max, _np.amax(self.data[:, :, 0]))
         boundary_max = max(boundary_max, _np.amax(self.data[:, :, -1]))
-        if boundary_max >= self.aim_threshold:
-            print('WARNING: Your density at the boundary exceeds given density \
-threshold of %f! %f' % (self.aim_threshold, boundary_max))
+        with _warnings.catch_warnings():
+            if boundary_max >= self.aim_threshold:
+                _warnings.warn('Density at the boundary exceeds given density '
+                               'threshold of %f! %f' % (self.aim_threshold,
+                                                        boundary_max),
+                               RuntimeWarning,
+                               stacklevel=2)
 
         # neighborhood = generate_binary_structure(3,1)
         test = _np.unravel_index(_np.argsort(self.data.ravel())[::-1],
@@ -370,7 +375,9 @@ Electronic System!')
         del tmp1, tmp2, dw, gn, ls, j_dir
 
         if not _np.allclose(j_gain, -j_loss, atol=1.E-4):
-            print('WARNING: AIM gain/loss unbalanced!')
+            with _warnings.catch_warnings():
+                _warnings.warn('AIM gain/loss unbalanced!',
+                               RuntimeWarning, stacklevel=2)
         print('AIM gain/loss calculation done.')
 
         r_j_gain = rec_grid(j_gain)

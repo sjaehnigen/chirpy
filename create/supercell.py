@@ -68,7 +68,7 @@ class _BoxObject(_CORE):
         nargs['cell_aa_deg'] = _load.cell_aa_deg
         if _np.any(_load.cell_aa_deg == 0.):
             _warnings.warn('Cannot detect cell dimensions!',  # Guessing.',
-                           UserWarning)
+                           stacklevel=2)
 #             nargs['cell_aa_deg'] = _np.concatenate((
 #                                   _np.array(_get_atom_spread(_load.XYZ.data)),
 #                                   _np.ones(3) * 90.
@@ -169,7 +169,8 @@ cell attributes!')
         return new
 
     def __pow__(self, other):
-        print('\nWARNING: Power in beta state. Proceed with care!\n')
+        _warnings.warn('Power in beta state. Proceed with care!',
+                       stacklevel=2)
         if not isinstance(other, int):
             raise TypeError('unsupported operand type(s) for *: \
 \'%s\' and \'%s\'' % (type(self).__name__, type(other).__name__))
@@ -355,9 +356,12 @@ density of %.2f!\n' % self.rho_g_cm3)
         _n = (self.c_mol_L + [_c_slv_mol_L]) / _c_min_mol_L
 
         def _dev_warning(_d, _id):
-            if _d > 0.01:
-                print('\nWARNING: Member counts differ from input value by \
-more than 1%%:\n  - %s\n' % _id)
+            with _warnings.catch_warnings():
+                if _d > 0.01:
+                    _warnings.warn('Member counts differ from input value by '
+                                   'more than 1%%:\n  - %s\n' % _id,
+                                   RuntimeWarning,
+                                   stacklevel=2)
         [_dev_warning(abs(round(_in) - _in) /
                       _in, ([self.solvent] + self.solutes)[_ii])
          for _ii, _in in enumerate(_n)]

@@ -178,8 +178,10 @@ class _FRAME(_CORE):
                              axis=0)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
 
-        if not len(_np.unique(assign)) == obj1.n_atoms:
-            _warnings.warn('Ambiguities encountered when mapping frames!')
+        with _warnings.catch_warnings():
+            if not len(_np.unique(assign)) == obj1.n_atoms:
+                _warnings.warn('Ambiguities encountered when mapping frames!',
+                               RuntimeWarning, stacklevel=2)
 
         return assign
 
@@ -253,9 +255,11 @@ class _MODES(_FRAME):
                                            axis=1),
                                      axis=-1)
 
-        if _np.amax(com_motion) > atol:
-            _warnings.warn('Significant motion of COM for certain modes!',
-                           RuntimeWarning)
+        with _warnings.catch_warnings():
+            if _np.amax(com_motion) > atol:
+                _warnings.warn('Significant motion of COM for certain modes!',
+                               RuntimeWarning,
+                               stacklevel=2)
 
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
@@ -334,7 +338,8 @@ class _XYZ():
                                        'different from those of the '
                                        'PDB file! '
                                        'Ignoring the latter.',
-                                       RuntimeWarning)
+                                       RuntimeWarning,
+                                       stacklevel=2)
 
             elif fmt == "xvibs":
                 n_atoms, numbers, pos_aa, \
@@ -417,7 +422,9 @@ class _XYZ():
             try:
                 self.wrap_molecules(kwargs['mol_map'])
             except KeyError:
-                _warnings.warn('Could not find molecular map for wrapping!')
+                with _warnings.catch_warnings():
+                    _warnings.warn('Could not find mol_map for wrapping!',
+                                   RuntimeWarning, stacklevel=2)
                 self.wrap_atoms()
 
         self._sync_class()
@@ -458,7 +465,7 @@ class _XYZ():
         except KeyError:
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
-                           RuntimeWarning)
+                           RuntimeWarning, stacklevel=2)
         self._pos_aa()
         self._vel_au()
         if self.vel_au.size == 0:
@@ -693,7 +700,7 @@ class _XYZ():
             cell_aa_deg = kwargs.get('cell_aa_deg')
             if cell_aa_deg is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
-                               RuntimeWarning)
+                               RuntimeWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter(fn,
                       loc_self.pos_aa[0],  # only frame 0, vels are not written
@@ -708,9 +715,8 @@ class _XYZ():
                       )
 
         elif fmt == 'cpmd':
-            if kwargs.get('sort_atoms', True):
-                print('CPMD WARNING: Output with sorted atomlist!')
-                loc_self._sort()
+            _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
+            loc_self._sort()
             cpmdWriter(fn,
                        loc_self.pos_aa * constants.l_aa2au,
                        loc_self.symbols,
@@ -985,7 +991,7 @@ class XYZIterator(_XYZ, _FRAME):
                 (func, args, kwargs),
                 )
         if len(obj._kwargs['_masks']) > 10:
-            _warnings.warn('Too many masks on iterator!')
+            _warnings.warn('Too many masks on iterator!', stacklevel=2)
 
     # These masks all follow the same logic (could be generalised, but python
     # does not support call of function name from within that function)
@@ -1030,13 +1036,13 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
     def calculate_nuclear_velocities(self, **kwargs):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
         _warnings.warn("Using outdated method of XYZTrajectory. "
-                       "Proceed with care!")
+                       "Proceed with care!", FutureWarning, stacklevel=2)
         ts = kwargs.get('ts', 0.5)
 
         if _np.linalg.norm(self.vel_au) != 0:
             _warnings.warn('Overwriting existing velocities in file %s'
                            % self.fn,
-                           RuntimeWarning)
+                           stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
 

@@ -95,7 +95,8 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
        (Beta)'''
     if cell_aa_deg is None or np.any(cell_aa_deg == 0.):
         _warnings.warn("Got empty cell. Cannot detect symmetry!",
-                       UserWarning)
+                       RuntimeWarning,
+                       stacklevel=2)
         return None
 
     abc, albega = cell_aa_deg[:3], cell_aa_deg[3:]
@@ -116,7 +117,7 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
         elif not np.any(_a):
             return 'monoclinic'
         else:
-            _warnings.warn("Strange symmetry found!", UserWarning)
+            _warnings.warn("Unusual lattice!", RuntimeWarning, stacklevel=2)
             return 'triclinic'
 
     elif np.all(abc) and np.all(albega):

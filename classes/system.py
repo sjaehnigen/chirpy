@@ -86,7 +86,10 @@ class _SYSTEM(_CORE):
                 self.extract_molecules(extract_mols)
 
         except KeyError:
-            _warnings.warn('Initialised empty SYSTEM object!')
+            with _warnings.catch_warnings():
+                _warnings.warn('Initialised void %s!'
+                               % self.__class__.__name__,
+                               stacklevel=2)
 
     def read_fn(self, *args, **kwargs):
         self.XYZ = self._XYZ(*args, **kwargs)
@@ -122,7 +125,7 @@ class _SYSTEM(_CORE):
     def install_molecular_origin_gauge(self, **kwargs):
         # iterator: keyword: do it anew or keep existing mol_map
         if self.mol_map is not None:
-            _warnings.warn('Overwriting existing mol_map!')
+            _warnings.warn('Overwriting existing mol_map!', stacklevel=2)
 
         n_map = tuple(_define_molecules(self.XYZ.pos_aa,
                                         self.XYZ.symbols,
@@ -173,7 +176,7 @@ class _SYSTEM(_CORE):
 
         if fmt == 'pdb':
             if self.mol_map is None:
-                _warnings.warn('Could not find mol_map.', UserWarning)
+                _warnings.warn('Could not find mol_map.', stacklevel=2)
                 self.mol_map = _np.zeros(self.XYZ.n_atoms).astype(int)
             nargs = {_s: getattr(self, _s)
                      for _s in ('mol_map', 'cell_aa_deg')}
@@ -181,7 +184,7 @@ class _SYSTEM(_CORE):
             nargs.update(kwargs)
         else:
             _warnings.warn("Direct output disabled for format %s" % fmt,
-                           UserWarning)
+                           stacklevel=1)
             nargs.update(kwargs)
 
         return nargs

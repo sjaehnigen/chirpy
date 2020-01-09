@@ -198,8 +198,10 @@ class FD_Domain():
 
             j_gain = self.gain.sum(axis=0)
             j_loss = self.loss.sum(axis=0)
-            if not _np.allclose(j_gain, -j_loss, atol=1.E-3):
-                _warnings.warn('Domain gain/loss unbalanced!', UserWarning)
+            with _warnings.catch_warnings():
+                if not _np.allclose(j_gain, -j_loss, atol=1.E-3):
+                    _warnings.warn('Domain gain/loss unbalanced!',
+                                   RuntimeWarning, stacklevel=2)
 
             w_gain, j_gain = self.normalise(self.gain, norm=j_gain)
             w_loss, j_loss = self.normalise(self.loss, norm=j_loss)

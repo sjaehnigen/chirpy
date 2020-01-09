@@ -54,7 +54,7 @@ def xvibsReader(fn, **kwargs):
     mw = kwargs.get('mw', False)
     if mw:
         _warnings.warn('Assuming mass-weighted coordinates in XVIBS.',
-                       UserWarning)
+                       stacklevel=2)
         masses_amu = constants.numbers_to_masses(numbers)
         modes /= np.sqrt(masses_amu)[None, :, None] *\
             np.sqrt(constants.m_amu_au)

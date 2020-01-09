@@ -11,10 +11,8 @@
 #
 # ------------------------------------------------------
 
-import _warnings
+import warnings
 import numpy as _np
-
-# For basic python functionalities
 
 
 def extract_keys(dict1, **defaults):
@@ -32,8 +30,11 @@ def tracked_update(dict1, dict2):
         _v2 = dict2.get(_k2)
         if _v1 is not None:
             if not equal(_v1, _v2):
-                _warnings.warn('Overwriting existing key \'{}\' in '
-                               'dictionary!'.format(_k2))
+                with warnings.catch_warnings():
+                    warnings.warn('Overwriting existing key \'{}\' in '
+                                  'dictionary!'.format(_k2),
+                                  RuntimeWarning,
+                                  stacklevel=2)
     dict1.update(dict2)
 
     return dict1

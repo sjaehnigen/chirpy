@@ -40,7 +40,7 @@ class ScalarField(_CORE):
                 if data.shape[0] > 1:
                     _warnings.warn(
                         'Volume class does not (yet) support trajectory data!',
-                        UserWarning)
+                        stacklevel=2)
                 # No support of multiple frames for now
                 self.data = data[0]
                 self.pos_au = pos_au[0]
@@ -184,10 +184,12 @@ cell_vec_au and data!')
 
         if any(_WRN):
             if strict == 1:
-                print('\n'.join(
-                    'WARNING: objects dissimilar in %s!'
-                    % _e for (_e, _B) in zip(wrn_keys, _WRN) if _B)
-                   )
+                with _warnings.catch_warnings():
+                    _warnings.warn('\n'.join(
+                        'Objects dissimilar in %s!'
+                        % _e for (_e, _B) in zip(wrn_keys, _WRN) if _B),
+                        RuntimeWarning, stacklevel=2
+                       )
             else:
                 if return_false:
                     return False
