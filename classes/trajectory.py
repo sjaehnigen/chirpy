@@ -964,11 +964,17 @@ class XYZIterator(_XYZ, _FRAME):
 
         self._kwargs['_timesteps'] = []
         self._loop(self, _func, {}, **kwargs)
+
+        if self._kwargs['range'][1] != 1:
+            _warnings.warn('Setting range increment to 1!', stacklevel=2)
+            self._kwargs['range'][1] = 1
+
         if verbose:
             print('Duplicate frames in %s according to given range %s:' % (
                 self._fn,
                 self._kwargs['range']
                 ), self._kwargs['skip'])
+
         self.rewind()
 
     @staticmethod
