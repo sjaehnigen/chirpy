@@ -94,9 +94,7 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
        Does not care of axis order priority.
        (Beta)'''
     if cell_aa_deg is None or np.any(cell_aa_deg == 0.):
-        _warnings.warn("Got empty cell. Cannot detect symmetry!",
-                       RuntimeWarning,
-                       stacklevel=2)
+        _warnings.warn("Got empty cell!", stacklevel=2)
         return None
 
     abc, albega = cell_aa_deg[:3], cell_aa_deg[3:]

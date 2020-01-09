@@ -29,9 +29,10 @@ class _SYSTEM(_CORE):
     def __init__(self, *args, **kwargs):
         '''Manually given arguments overwrite file attributes'''
         # python3.8: use walrus
-        fn_topo = kwargs.get('fn_topo')
-        if fn_topo is not None:
-            self._topo = _read_topology_file(fn_topo)
+        self._topo = kwargs.get('fn_topo')
+        if self._topo is not None:
+            # python 3.8: use walrus
+            self._topo = _read_topology_file(self._topo)
             _tracked_update(kwargs, self._topo)
 
         self.mol_map = kwargs.get("mol_map")
@@ -68,7 +69,7 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             # Consistency check
-            if hasattr(self, '_topo'):
+            if self._topo is not None:
                 for _k in self._topo:
                     # python3.8: use walrus
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
@@ -79,11 +80,10 @@ class _SYSTEM(_CORE):
                                              ' molecule in {}!'.format(_k)
                                              )
 
-            extract_mols = kwargs.get('extract_molecules')
-            if extract_mols is not None:
-                # if python 3.8: use walrus
-                self.wrap_molecules()
-                self.extract_molecules(extract_mols)
+            # extract_mols = kwargs.get('extract_molecules')
+            # if extract_mols is not None:
+            #     # if python 3.8: use walrus
+            #     self.extract_molecules(extract_mols)
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -142,10 +142,10 @@ class _SYSTEM(_CORE):
         if self._topo is not None:
             self._topo['mol_map'] = list(*map(list,
                                          _np.array(self._topo['mol_map'])[ind]
-                                             ))
+                                              ))
             self._topo['symbols'] = tuple(*map(tuple,
                                           _np.array(self._topo['symbols'])[ind]
-                                              ))
+                                               ))
 
     def print_info(self):
         print(77 * '–')

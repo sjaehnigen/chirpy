@@ -49,7 +49,7 @@ from ..mathematics import algebra as _algebra
 class _FRAME(_CORE):
     def _labels(self):
         self._type = 'frame'
-        self._labels = ('symbols',  '')
+        self._labels = ('symbols',  None)
 
     def __init__(self, *args, **kwargs):
         self._labels()
@@ -74,7 +74,8 @@ class _FRAME(_CORE):
         new.data = _np.concatenate((self.data, other.data),
                                    axis=self.axis_pointer)
         _l = new._labels[self.axis_pointer]
-        setattr(new, _l, getattr(self, _l) + getattr(other, _l))
+        if _l is not None:
+            setattr(new, _l, getattr(self, _l) + getattr(other, _l))
         new._sync_class()
         return new
 
@@ -117,7 +118,7 @@ class _FRAME(_CORE):
                                                 _np.sort(other.symbols))])))
         return _np.prod(ie), ie
 
-    def split(self, mask, select=None, join_molecules=True):
+    def split(self, mask, select=None):
         '''select ... list or tuple of ids'''
         _data = [_np.moveaxis(_d, 0, -2)
                  for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
@@ -128,8 +129,6 @@ class _FRAME(_CORE):
             nargs.update(self.__dict__)
             nargs.update({'data': _d, 'symbols': _s})
             _obj = self._from_data(**nargs)
-            if join_molecules:
-                _obj.wrap_molecules(_np.ones_like(_s).astype(int))
             return _obj
 
         if select is None:
@@ -193,7 +192,7 @@ class _FRAME(_CORE):
 class _TRAJECTORY(_FRAME):
     def _labels(self):
         self._type = 'trajectory'
-        self._labels = ('comments', 'symbols', '')
+        self._labels = ('comments', 'symbols', None)
 
     def _read_input(self,  *args, **kwargs):
         self.comments = kwargs.get('comments', [])
@@ -214,7 +213,7 @@ class _TRAJECTORY(_FRAME):
 class _MODES(_FRAME):
     def _labels(self):
         self._type = 'modes'
-        self._labels = ('comments', 'symbols', '')
+        self._labels = ('comments', 'symbols', None)
 
     def _sync_class(self):
         self.n_modes, self.n_atoms, self.n_fields = self.data.shape
@@ -582,7 +581,7 @@ class _XYZ():
                          )
         elif self._type == 'frame':
             self._pos_aa(_align_atoms(
-                            self.pos_aa.reshape((1, ) + self.data.shape),
+                            self.pos_aa.reshape((1, ) + self.pos_aa.shape),
                             _wt,
                             **kwargs
                             )[0]
@@ -832,6 +831,7 @@ class XYZIterator(_XYZ, _FRAME):
     def __next__(self):
         if hasattr(self, '_chaste'):
             # repeat first step of next() after __init__
+            # --- do nothing
             if self._chaste:
                 self._chaste = False
                 return self._fr
@@ -868,7 +868,10 @@ class XYZIterator(_XYZ, _FRAME):
 
         # --- check for stored masks
         for _f, _f_args, _f_kwargs in self._kwargs['_masks']:
-            getattr(self._frame, _f)(*_f_args, **_f_kwargs)
+            if isinstance(_f, str):
+                getattr(self._frame, _f)(*_f_args, **_f_kwargs)
+            elif callable(_f):
+                self._frame = _f(self._frame, *_f_args, **_f_kwargs)
 
         self.__dict__.update(self._frame.__dict__)
 
@@ -926,7 +929,8 @@ class XYZIterator(_XYZ, _FRAME):
            Events are dictionaries with (relative) frames
            as keys and some action as argument that are only
            executed when the Iterator reaches the value of the
-           key.'''
+           key.
+           This can partially also be done with masks.'''
         _fr = 0
         for _ifr in obj:
             if isinstance(func, str):
@@ -945,7 +949,8 @@ class XYZIterator(_XYZ, _FRAME):
                      fn,
                      **kwargs
                      )
-        self.rewind()
+        if kwargs.get('rewind', True):
+            self.rewind()
 
     def mask_duplicate_frames(self, verbose=True, **kwargs):
         def split_comment(comment):
@@ -1026,6 +1031,40 @@ class XYZIterator(_XYZ, _FRAME):
         self._frame.split(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'split', *args, **kwargs)
+
+    def merge(self, other, **kwargs):
+        '''Merge with other object by combining the two iterators other than
+           along principal axis (use "+") for that.
+           Specify axis 0 or 1 to combine atoms or data, respectively
+           (default: 0).
+           Other iterator should not be used anymore!
+           BETA'''
+
+        def _add(obj1, obj2, **kwargs):
+            '''combine two frames'''
+            axis = kwargs.get("axis", -1)
+            obj1.axis_pointer = axis
+            obj2.axis_pointer = axis
+            obj1 += obj2
+            return obj1
+
+        def _func(obj1, obj2, **kwargs):
+            # --- next(obj1) is called before loading mask
+            try:
+                next(obj2)
+                return _add(obj1, obj2, **kwargs)
+            except StopIteration:
+                with _warnings.catch_warnings():
+                    _warnings.warn('Merged iterator exhausted!',
+                                   RuntimeWarning,
+                                   stacklevel=1)
+                return obj1
+
+        self._frame = _add(self._frame, other._frame, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        other._chaste = False
+
+        self._mask(self, _func, other, **kwargs)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):
