@@ -15,7 +15,6 @@
 import numpy as np
 import warnings as _warnings
 
-from ..interface import orca
 from ..physics import constants
 
 
@@ -61,14 +60,3 @@ def xvibsReader(fn, **kwargs):
     # ---
 
     return n_atoms, numbers, pos_aa, n_modes, freqs_cgs, modes
-
-
-def orcaReader(fn):
-    '''Reads ORCA 4.3 files. Currently supported:
-        *.hess
-        '''
-    fmt = fn.split('.')[-1]
-    if fmt == "hess":
-        return orca.read_hessian_file(fn)
-    else:
-        raise ValueError('Unknown file format.')

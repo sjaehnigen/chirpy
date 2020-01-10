@@ -13,6 +13,18 @@
 
 
 import numpy as np
+import warnings
+
+
+def orcaReader(fn):
+    '''Reads ORCA 4.3 files. Currently supported:
+        *.hess
+        '''
+    fmt = fn.split('.')[-1]
+    if fmt == "hess":
+        return read_hessian_file(fn)
+    else:
+        raise NotImplementedError('Unknown file format!')
 
 
 def read_hessian_file(fn):
@@ -22,7 +34,7 @@ def read_hessian_file(fn):
         inbuffer = f.read()
     if inbuffer.strip().split('\n')[0] != '$orca_hessian_file':
         print(inbuffer.strip().split('\n')[1])
-        raise Exception('No ORCA format?!')
+        raise ValueError('Cannot read file. No ORCA format?')
 
     # pos_hessian = inbuffer.index('$hessian')
     pos_freqs = inbuffer.index('$vibrational_frequencies')
@@ -30,17 +42,18 @@ def read_hessian_file(fn):
     pos_coords = inbuffer.index('$atoms')
     pos_end = inbuffer.index('$end')
 
-    freqs = list()
     sec_freqs = inbuffer[pos_freqs+25: pos_modes].strip().split('\n')
     n_freqs = int(sec_freqs[0])
-    print('Found %s vibrational frequencies.' % n_freqs)
-    freqs = np.array([float(_l.split()[1]) for _l in sec_freqs[1: n_freqs+1]])
+    warnings.warn('ORCA interface: Found %d vibrational frequencies.'
+                  % n_freqs,
+                  stacklevel=2)
+    omega_cgs = np.array([float(_l.split()[1])
+                         for _l in sec_freqs[1: n_freqs+1]])
 
     pos_au = list()
     symbols = list()
     sec_coords = inbuffer[pos_coords+7: pos_end].strip().split('\n')
     n_atoms = int(sec_coords[0])
-    print('Found %s atoms.' % n_atoms)
 
     symbols = [_l.split()[0] for _l in sec_coords[1: n_atoms+1]]
     pos_au = np.array([list(map(float, _l.split()[2:]))
@@ -59,8 +72,13 @@ def read_hessian_file(fn):
                 tmp.append(sec_modes[line+block*(n_freqs+1)].split()[col+1])
             modes[i] = np.array([float(e) for e in tmp])
             if i >= n_freqs-1:
-                print('Read %s normal modes.' % n_freqs)
                 break
     modes_res = modes.reshape((n_freqs, n_atoms, 3))
 
-    return symbols, pos_au, freqs, modes, modes_res
+    data = {}
+    data['symbols'] = symbols
+    data['pos_au'] = pos_au
+    data['omega_cgs'] = omega_cgs
+    data['modes'] = modes_res
+
+    return data

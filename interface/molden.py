@@ -70,7 +70,7 @@ def WriteMoldenVibFile(filename, symbols, coords, freqs, modes):
     f.write(' [FR-NORM-COORD]\n')
     for mode in range(n_modes):
         f.write(' vibration      %i\n' % (mode+1))
-        f.write(n_atoms*format % tuple([c for c in modes[mode]]))
+        f.write(n_atoms*format % tuple([c for c in modes[mode].flatten()]))
 
 # DEPRECATED rsort/msort?
 

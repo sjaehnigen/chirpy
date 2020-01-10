@@ -14,10 +14,10 @@
 import numpy as np
 import tempfile
 
-from ..classes.trajectory import _TRAJECTORY as _TRAJ
 # from ..write.coordinates import cpmdWriter
-from ..read.coordinates import cpmdReader
+# from ..read.coordinates import cpmdIterator
 from ..physics import constants
+from ..read.coordinates import cpmdIterator
 
 # SECTION > KEYWORD > ( <list of ARGUMENTS>, <next line (optional)> )
 # PLANNED: multiple line support via list as next-line argument
@@ -196,6 +196,42 @@ class ATOMS(_SECTION):
         out.__dict__.update(_C)
         return out
 
+
+def cpmdReader(FN, **kwargs):
+    '''Reads CPMD 4.3 files. Currently supported:
+         GEOMETRY
+         TRAJECTORY
+         MOMENTS
+      '''
+
+    if 'filetype' not in kwargs:
+        kwargs['filetype'] = FN
+    filetype = kwargs.get('filetype')
+
+    if filetype in ['GEOMETRY', 'TRAJECTORY', 'MOMENTS']:
+        if 'kinds' not in kwargs:
+            if ('symbols' in kwargs or 'numbers' in kwargs):
+                numbers = kwargs.get('numbers')
+                symbols = kwargs.get('symbols')
+                if symbols is None:
+                    symbols = constants.numbers_to_symbols(numbers)
+                kwargs.update({'kinds': symbols})
+            else:
+                raise TypeError("cpmdReader needs list of kinds, numbers or "
+                                "symbols.")
+
+        data = {}
+        _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
+        data['data'] = _load
+        data['symbols'] = kwargs.get('kinds')
+        data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
+
+        return data
+
+    else:
+        raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
+
+
 #    if pos_au.shape[0] != len(symbols):
 #        print('ERROR: symbols and positions are not consistent!')
 #        sys.exit(1)
@@ -219,58 +255,35 @@ class ATOMS(_SECTION):
 #            else: raise Exception("Element %s not found!" % sym)
 
 
-class TRAJECTORY(_TRAJ):
-    '''Convention: pos in a.a., vel in a.u.
-       Use keyword to switch between representations '''
-
-    def __init__(self, **kwargs):
-        for _i in kwargs:
-            setattr(self, _i, kwargs[_i])
-        self._sync_class()
-
-    @classmethod
-    def read(cls, fn, n_atoms, **kwargs):
-        '''Beta: needs symbols'''
-        data = np.array([_d for _d in cpmdReader(
-                                        fn,
-                                        n_atoms,
-                                        kwargs.get('type', 'TRAJECTORY')
-                                        )])
-        pos, vel = tuple(data.swapaxes(0, 1))
-        return cls(
-                pos_aa=pos*constants.l_au2aa,
-                vel_au=vel,
-                symbols=kwargs.get('symbols'),
-                )
+# class TRAJECTORY(_TRAJ):
+#     # --- DEPRECATED ?
+#     '''Convention: pos in a.a., vel in a.u.
+#        Use keyword to switch between representations '''
+#
+#     def __init__(self, **kwargs):
+#         for _i in kwargs:
+#             setattr(self, _i, kwargs[_i])
+#         self._sync_class()
+#
+#     @classmethod
+#     def read(cls, fn, n_atoms, **kwargs):
+#         '''Beta: needs symbols'''
+#         data = np.array([_d for _d in cpmdIterator(
+#                                         fn,
+#                                         n_atoms,
+#                                         kwargs.get('type', 'TRAJECTORY')
+#                                         )])
+#         pos, vel = tuple(data.swapaxes(0, 1))
+#         return cls(
+#                 pos_aa=pos*constants.l_au2aa,
+#                 vel_au=vel,
+#                 symbols=kwargs.get('symbols'),
+#                 )
 
 #    def write(self, fn, **kwargs): #Later: Use global write function of _TRAJ
 #        sym = ['X'] * self.pos.shape[1]
 #        # ToDo: updat..writers: symbols not needed for TRAJSAVED output
 #        cpmdWriter(fn, self.pos, sym, self.vel, write_atoms = False)
-
-
-def get_frame_traj_and_mom(TRAJ, MOMS, n_atoms, n_moms):
-    """Iterates over TRAJECTORY and MOMENTS files and
-    yields generator of positions, velocities and moments (in a.u.)"""
-
-    with open(TRAJ, 'r') as traj_f, open(MOMS, 'r') as moms_f:
-        traj_it = (list(map(float, line.strip().split()[1:]))
-                   for line in traj_f if 'NEW DATA' not in line)
-        moms_it = (list(map(float, line.strip().split()[1:]))
-                   for line in moms_f if 'NEW DATA' not in line)
-        try:
-            while traj_it and moms_it:
-                pos_au, vel_au = tuple(np.array(
-                    [next(traj_it) for i_atom in range(n_atoms)]
-                    ).reshape((n_atoms, 2, 3)).swapaxes(0, 1))
-                wc_au, c_au, m_au = tuple(np.array(
-                    [next(moms_it) for i_mom in range(n_moms)]
-                    ).reshape((n_moms, 3, 3)).swapaxes(0, 1))
-
-                yield pos_au, vel_au, wc_au, c_au, m_au
-
-        except StopIteration:
-            pass
 
 
 def extract_mtm_data_tmp(MTM_DATA_E0, MTM_DATA_R1, n_frames, n_states):

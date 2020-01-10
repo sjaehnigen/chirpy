@@ -15,7 +15,7 @@ import numpy as _np
 import warnings as _warnings
 
 from .core import _CORE
-from .trajectory import XYZIterator, VibrationalModes
+from .trajectory import XYZIterator, XYZFrame, VibrationalModes
 from ..snippets import tracked_update as _tracked_update
 from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
@@ -95,7 +95,7 @@ class _SYSTEM(_CORE):
         self.XYZ = self._XYZ(*args, **kwargs)
         fmt = self.XYZ._fmt
 
-        if fmt == 'xvibs':  # re-reads file
+        if fmt in ['xvibs', 'orca']:  # re-reads file
             self.Modes = VibrationalModes(*args, **kwargs)
 
         elif fmt == "pdb":
@@ -207,7 +207,7 @@ class _SYSTEM(_CORE):
 
 class Molecule(_SYSTEM):
     def _XYZ(self, *args, **kwargs):
-        return XYZIterator(*args, **kwargs)
+        return XYZFrame(*args, **kwargs)
 
 
 class Supercell(_SYSTEM):

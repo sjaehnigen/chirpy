@@ -19,11 +19,16 @@ import itertools as _itertools
 from .core import _CORE
 from ..snippets import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
-from ..read.coordinates import xyzReader, cpmdReader, pdbReader
+from ..read.coordinates import xyzReader, pdbReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
 from ..write.coordinates import cpmdWriter, xyzWriter, pdbWriter
+from ..write.modes import xvibsWriter
+
+from ..interface.orca import orcaReader
+from ..interface.cpmd import cpmdReader
+from ..interface.molden import WriteMoldenVibFile
 
 from ..topology.mapping import align_atoms as _align_atoms
 from ..topology.mapping import dec as _dec
@@ -232,8 +237,8 @@ class _MODES(_FRAME):
             raise TypeError('Please give a list of integers instead of %s!'
                             % modelist.__class__.__name__)
         self.data = self.data[modelist]
-        self.comments = self.comments[modelist]
-        self._sync_class()
+        self.comments = [self.comments[_m] for _m in modelist]
+        self._sync_class(check_orthonormality=False)
 
     def _modes(self):
         '''see _vel_au'''
@@ -345,6 +350,11 @@ class _XYZ():
                     n_modes, omega_cgs, modes = xvibsReader(fn, **kwargs)
                 comments = _np.array(omega_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
+                if kwargs.get('mw', False):
+                    _warnings.warn('Assuming mass-weighted coordinates in '
+                                   'XVIBS file!', stacklevel=2)
+                    modes /= _np.sqrt(constants.symbols_to_masses(
+                                                symbols))[None, :, None]
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
                            _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -354,25 +364,40 @@ class _XYZ():
                           )
 
             elif fmt == "cpmd":
-                # NB: CPMD writes XYZ files with vel_aa
-                if ('symbols' in kwargs or 'numbers' in kwargs):
-                    numbers = kwargs.get('numbers')
-                    symbols = kwargs.get('symbols')
-                    if symbols is None:
-                        symbols = constants.numbers_to_symbols(numbers)
-                else:
-                    raise TypeError("cpmdReader needs list of numbers or "
-                                    "symbols.")
+                data_dict = cpmdReader(fn, **kwargs)
 
-                data = _np.array(cpmdReader(fn,
-                                            **_extract_keys(kwargs,
-                                                            kinds=symbols,
-                                                            filetype=fn,
-                                                            range=_fr
-                                                            )
-                                            ))
-                comments = kwargs.get('comments', ['cpmd'] * data.shape[0])
-                data[:, :, :3] *= constants.l_au2aa
+                if 'symbols' in data_dict:
+                    symbols = data_dict['symbols']
+                    data = data_dict['data']
+                    data[:, :, :3] *= constants.l_au2aa
+
+                    comments = data_dict['comments']
+                else:
+                    raise ValueError('File %s does not contain atoms!' % fn)
+
+            elif fmt == "orca":
+                data_dict = orcaReader(fn)
+
+                if 'symbols' in data_dict:
+                    symbols = data_dict['symbols']
+                    if 'modes' in data_dict:
+                        modes = data_dict['modes']
+                        n_modes = modes.shape[0]
+                        pos_aa = data_dict['pos_au'] * constants.l_au2aa
+                        omega_cgs = data_dict['omega_cgs']
+                        comments = _np.array(omega_cgs).astype(str)
+                        data = _np.concatenate((
+                             _np.tile(pos_aa, (n_modes, 1, 1)),
+                             _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
+                             modes
+                            ),
+                            axis=-1
+                            )
+                    else:
+                        raise NotImplementedError('Cannot read file %s!' % fn)
+
+                else:
+                    raise ValueError('File %s does not contain atoms!' % fn)
 
             else:
                 raise ValueError('Unknown format: %s.' % fmt)
@@ -660,11 +685,16 @@ class _XYZ():
 
         loc_self = _copy.deepcopy(self)
         if self._type == "frame":
+            # --- This has to cleared out
+            #   (frame, traj should be recognised by writers)
             loc_self.data = loc_self.data.reshape((1,
                                                    self.n_atoms,
                                                    self.n_fields))
             loc_self.n_frames = 1
             _XYZ._sync_class(loc_self)
+
+        if self._type == "modes":
+            loc_self.n_frames = loc_self.n_modes
 
         fmt = kwargs.get('fmt', fn.split('.')[-1])
 
@@ -691,6 +721,26 @@ class _XYZ():
                                             loc_self.n_frames * ['passed']),
                           **_extract_keys(kwargs, append=False)
                           )
+
+        elif fmt == 'xvibs':
+            if not hasattr(self, 'modes'):
+                raise AttributeError('Cannot find modes for xvibs output!')
+            xvibsWriter(fn,
+                        len(loc_self.symbols),
+                        constants.symbols_to_numbers(loc_self.symbols),
+                        loc_self.pos_aa[1],
+                        loc_self.eival_cgs,
+                        loc_self.modes,
+                        )
+        elif fmt == 'molden':
+            if not hasattr(self, 'modes'):
+                raise AttributeError('Cannot find modes for molden output!')
+            WriteMoldenVibFile(fn,
+                               loc_self.symbols,
+                               loc_self.pos_aa[1] * constants.l_aa2au,
+                               loc_self.eival_cgs,
+                               loc_self.modes,
+                               )
 
         elif fmt == "pdb":
             mol_map = kwargs.get('mol_map')
@@ -969,6 +1019,8 @@ class XYZIterator(_XYZ, _FRAME):
             if _ts not in _timesteps:
                 _timesteps.append(_ts)
             else:
+                if verbose:
+                    print(obj._fr, ' doublet of ', _ts)
                 _skip.append(obj._fr)
             obj._kwargs.update({'_timesteps': _timesteps})
             obj._kwargs.update({'skip': _skip})
@@ -1087,10 +1139,11 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
 
 class VibrationalModes(_XYZ, _MODES):
-    def _sync_class(self):
+    def _sync_class(self, **kwargs):
         _MODES._sync_class(self)
         _XYZ._sync_class(self)
-        _MODES._check_orthonormality(self)
+        if kwargs.get('check_orthonormality', True):
+            _MODES._check_orthonormality(self)
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''Occupation can be single, average, or random.'''

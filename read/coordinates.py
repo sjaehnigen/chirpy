@@ -41,8 +41,7 @@ def _xyz(frame, **kwargs):
 
 
 def _cpmd(frame, **kwargs):
-    '''Kernel for processing cpmd frame.
-       Related to CPMD interface get_frame_traj_and_mom()'''
+    '''Kernel for processing cpmd frame.'''
 
     filetype = kwargs.get('filetype')
     # --- is this a python bug?
@@ -113,13 +112,6 @@ def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once'''
     data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
     return np.array(data), symbols[0], list(comments)
-
-
-def cpmdReader(FN, **kwargs):
-    '''Read complete CPMD file at once
-       Known types: GEOMETRY, TRAJECTORY, MOMENTS
-       Usually needs additional metadata of the system.'''
-    return np.array(tuple(cpmdIterator(FN, **kwargs)))
 
 
 # ------ external readers

@@ -26,6 +26,7 @@ from chirpy.write import modes as w_modes
 # from chirpy.write import coordinates as w_coordinates
 # from chirpy.write import grid as w_grid
 
+from chirpy.interface import cpmd
 # --- ToDo (change import path later after moving bin)
 # from .topology import
 # from .mathematics import
@@ -300,38 +301,6 @@ class TestReaders(unittest.TestCase):
                        '/data_traj_pos_pbc').reshape(3, 393, 3)[1:4:2]
          ))
 
-    def test_cpmdReader(self):
-        for _i, _n in zip(['GEOMETRY', 'MOMENTS', 'TRAJECTORY'],
-                          [(1, 208, 6), (5, 288, 9), (6, 208, 6)]):
-
-            data = r_coordinates.cpmdReader(self.dir + '/' + _i,
-                                            filetype=_i,
-                                            kinds=['X']*_n[1])
-
-            self.assertTrue(np.array_equal(
-                data,
-                np.genfromtxt(self.dir + '/data_' + _i).reshape(_n)
-                ))
-
-        # Some Negatives
-        with self.assertRaises(ValueError):
-            data = r_coordinates.cpmdReader(self.dir + '/MOMENTS_broken',
-                                            filetype='MOMENTS',
-                                            kinds=['X']*288)
-            data = r_coordinates.cpmdReader(self.dir + '/MOMENTS',
-                                            filetype='MOMENTS',
-                                            kinds=['X']*286)
-        # Test range
-        data = r_coordinates.cpmdReader(self.dir + '/' + _i,
-                                        filetype='TRAJECTORY',
-                                        kinds=['X']*_n[1],
-                                        range=(2, 3, 8),
-                                        )
-        self.assertTrue(np.array_equal(
-            data,
-            np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3]
-            ))
-
     def test_pdbReader(self):
         # not much testing of protein features as this is an external reader
         data, names, symbols, res, cell_aa_deg, title = \
@@ -504,10 +473,42 @@ class TestClasses(unittest.TestCase):
 class TestInterfaces(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.dir = _test_dir + '/read_write'
 
     def tearDown(self):
         pass
+
+    def test_cpmdReader(self):
+        for _i, _n in zip(['GEOMETRY', 'MOMENTS', 'TRAJECTORY'],
+                          [(1, 208, 6), (5, 288, 9), (6, 208, 6)]):
+
+            data = cpmd.cpmdReader(self.dir + '/' + _i,
+                                   filetype=_i,
+                                   kinds=['X']*_n[1])['data']
+
+            self.assertTrue(np.array_equal(
+                data,
+                np.genfromtxt(self.dir + '/data_' + _i).reshape(_n)
+                ))
+
+        # Some Negatives
+        with self.assertRaises(ValueError):
+            data = cpmd.cpmdReader(self.dir + '/MOMENTS_broken',
+                                   filetype='MOMENTS',
+                                   kinds=['X']*288)['data']
+            data = cpmd.cpmdReader(self.dir + '/MOMENTS',
+                                   filetype='MOMENTS',
+                                   kinds=['X']*286)['data']
+        # Test range
+        data = cpmd.cpmdReader(self.dir + '/' + _i,
+                               filetype='TRAJECTORY',
+                               kinds=['X']*_n[1],
+                               range=(2, 3, 8),
+                               )['data']
+        self.assertTrue(np.array_equal(
+            data,
+            np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3]
+            ))
 
 
 class TestGenerators(unittest.TestCase):
