@@ -19,6 +19,10 @@ from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..read.coordinates import pdbReader
 
 
+def fermi_cutoff_function(distance, R_cutoff, D):
+    return 1 / (1 + np.exp((distance - R_cutoff) / D))
+
+
 def _make_batches(MIN, MAX, nb, ov=None):
     '''Split the cartesian space into subsegments (batches).
        nb ... number of batches: tuple (nx, ny, nz)

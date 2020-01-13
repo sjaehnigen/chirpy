@@ -19,9 +19,9 @@ from chirpy.classes import system
 
 
 def main():
-    '''Convert any supported input into XYZ format'''
+    '''Convert and process trajectory'''
     parser = argparse.ArgumentParser(
-            description="Convert any supported input into XYZ format",
+            description="Convert and process trajectory",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument(

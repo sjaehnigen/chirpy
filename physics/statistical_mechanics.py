@@ -68,3 +68,95 @@ def maxwell_boltzmann_distribution(T_K, *args, **kwargs):
         return _options.get(kwargs.get('option', 'energy'))(T_K, x, *args)
 
     return PDF
+
+
+def signal_filter(n_frames, filter_length=None, filter_type='welch'):
+    if filter_length is None:
+        filter_length = n_frames
+    if filter_type == 'hanning':
+        return np.hanning(2 * filter_length)[n_frames:]
+    elif filter_type == 'welch':
+        return (np.arange(filter_length)[::-1]/(filter_length+1))**2
+    elif filter_type == 'triangular':
+        return np.ones(filter_length) - np.arange(filter_length)/n_frames
+    else:
+        raise Exception('Filter %s not supported!' % filter_type)
+
+
+def spectral_density(*args, **kwargs):
+    '''Calculate the spectral distribution of a signal (*aurgs) over frequency,
+       based on the Fourier transformed time-correlation function (TCF) of that
+       signal (Wiener-Khinchin theorem).
+       The method automatically decides on calculating auto- or cross-
+       correlation functions based on the number of arguments (max 2).
+       Signal filters and window functions are used by default.
+       Timestep (dt) in fs gives frequencies in GHz.
+       Returns:
+        1 - discrete sample frequencies
+        2 - spectral density (FT TCF)
+        3 - time-correlation function (timestep as in input)
+       '''
+
+    if len(args) == 1:
+        auto = True
+        val1 = args[0]
+
+    elif len(args) == 2:
+        auto = False
+        val1 = args[0]
+        val2 = args[1]
+
+    else:
+        raise TypeError('spectral_density takes at most 2 arguments, got %d'
+                        % len(args))
+
+    ts = kwargs.get('ts', 4)
+    dt = ts * 1E-15 * 1E9  # 4.0 fs --> GHz
+    flt_pow = kwargs.get('flt_pow', 1)
+    _fac = kwargs.get('factor', 1)
+    _cc_mode = kwargs.get('cc_mode', 'AB')
+
+    n_frames, three = val1.shape
+
+    if auto:
+        R = np.array([np.correlate(v1, v1, mode='full')[n_frames-1:]
+                      for v1 in val1.T]).T
+    else:
+        R = np.zeros_like(val1)
+        # AB = (Ra + Rb) / 2
+        # AC = Ra - Rb (benchmark)
+        # BC = 0
+        # ABC = A
+        # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
+
+        if 'A' in _cc_mode:
+            R += np.array([np.correlate(v1, v2, mode='full')[n_frames-1:]
+                           for v1, v2 in zip(val1.T, val2.T)]).T
+        if 'B' in _cc_mode:
+            R += np.array([np.correlate(v2, v1, mode='full')[n_frames-1:]
+                           for v1, v2 in zip(val1.T, val2.T)]).T
+
+        if 'C' in _cc_mode:
+            R -= np.array([np.correlate(v2, v1, mode='full')[n_frames-1:]
+                           for v1, v2 in zip(val1.T, val2.T)]).T
+
+        if _cc_mode == 'AB':
+            R /= 2
+
+    # --- enforce finite size
+    # R *= (n_frames * np.ones(n_frames) - np.arange(n_frames))[:, None]
+    R = R.sum(axis=1)
+
+    # --- filtering
+    _filter = signal_filter(n_frames, filter_type='welch') ** flt_pow
+    R *= _filter
+
+    # --- \ --> /\
+    final_cc = np.hstack((R, R[::-1]))
+    n = final_cc.shape[0]
+
+    S = np.fft.rfft(final_cc, n=n-1).real * ts * constants.t_fs2au * _fac
+    # S /= 2*np.pi
+    omega = np.fft.rfftfreq(n-1, d=dt)
+
+    return omega, S, R
