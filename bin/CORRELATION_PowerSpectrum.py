@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from scipy.ndimage.filters import gaussian_filter1d
 
 from chirpy.classes import system
-from chirpy.physics import spectroscopy
+from chirpy.physics import spectroscopy, constants
 
 
 def main():
@@ -34,8 +34,8 @@ def main():
                         )
     parser.add_argument(
             "--fn_vel",
-            help="Additional trajectory file with velocities (optional). "
-                 "Assumes atomic units. BETA",
+            help="External trajectory file with velocities (optional). "
+                 "Assumes atomic units. FN will not be used (dummy).",
             default=None,
             )
 
@@ -142,15 +142,14 @@ def main():
     _vel = np.array([_load.XYZ.vel_au[args.subset] for _fr in _load.XYZ])
     _pow = spectroscopy.get_power_spectrum(
                                 _vel,
+                                ts=args.ts * constants.femto,
                                 weights=_load.XYZ.masses_amu,
                                 flt_pow=args.filter_strength,
                                 return_tcf=args.return_tcf
                                 )
 
-    # --- GHz --> cm-1
-    f = 1E9/2.99792E8*1E-2
-    # ts, e
-    plt.plot(_pow['omega'] * f, gaussian_filter1d(_pow['power'], 2.0, axis=0))
+    plt.plot(_pow['omega'] * constants.E_Hz2cm_1,
+             gaussian_filter1d(_pow['power'], 2.0, axis=0))
     plt.xlim(2000, 500)
 
     plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
@@ -158,7 +157,11 @@ def main():
     plt.title('Power spectrum')
     plt.show()
     if args.save:
-        np.savetxt(args.f, np.array((_pow['omega'] * f, _pow['power'])).T)
+        np.savetxt(
+             args.f,
+             np.array((_pow['omega'] * constants.E_Hz2cm_1, _pow['power'])).T,
+             header='omega in cm-1, power spectral density'
+             )
 
     if args.return_tcf:
         plt.plot(np.arange(len(_pow['tcf_velocities'])) * args.ts / 1000,
@@ -168,12 +171,14 @@ def main():
         plt.title('Time-correlation function of atomic velocities')
         plt.show()
         if args.save:
-            np.savetxt('tcf_' + args.f,
-                       np.array((
-                           np.arange(len(_pow['tcf_velocities'])) * args.ts,
-                           _pow['tcf_velocities']
-                           )).T,
-                       )
+            np.savetxt(
+                  'tcf_' + args.f,
+                  np.array((
+                      np.arange(len(_pow['tcf_velocities'])) * args.ts,
+                      _pow['tcf_velocities']
+                      )).T,
+                  header='time in fs, time-correlation function of velocities'
+                  )
 
 
 if __name__ == "__main__":

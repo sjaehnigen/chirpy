@@ -14,6 +14,20 @@
 
 import numpy as np
 
+# metric prefixes
+peta = 1.E+15
+tera = 1.E+12
+giga = 1.E+9
+mega = 1.E+6
+kilo = 1.E+3
+dezi = 1.E-1
+centi = 1.E-2
+milli = 1.E-3
+micro = 1.E-6
+nano = 1.E-9
+pico = 1.E-12
+femto = 1.E-15
+
 # misc constants
 pi = np.pi  # pi
 avog = 6.02214129E+23  # Avogadro constant [mol-1]
@@ -21,7 +35,7 @@ avog = 6.02214129E+23  # Avogadro constant [mol-1]
 # S.I. constants
 c_si = 2.99792458E+08  # speed of light [m/s]
 h_si = 6.62606957E-34  # Planck's constant [Js]
-hbar_si = h_si/(2*pi)  # reduced planck constant [Js]
+hbar_si = h_si / (2*pi)  # reduced planck constant [Js]
 m_p_si = 1.67262177E-27  # mass protron [kg]
 m_e_si = 9.10938291E-31  # mass electron [kg]
 m_amu_si = 1.660538921E-27  # atomic mass unit [kg]
@@ -33,30 +47,51 @@ k_B_si = 1.3806488E-23  # Boltzmann constant [J/K]
 # A.U. conversion factors
 l_au = a0_si  # Bohr radius [m]
 E_au = 4.35974417E-18  # Hartree energy [J]
-t_au = hbar_si/E_au  # time in A.U. [s]
-m_p_au = m_p_si/m_e_si  # proton mass in A.U. [1] ?
-m_amu_au = m_amu_si/m_e_si  # atomic mass unit in A.U. [1] ?
-c_au = c_si/l_au*t_au  # speed of light in A.U. [1]
-k_B_au = k_B_si/E_au  # Boltzmann constant [E_h/K]
+t_au = hbar_si / E_au  # time in A.U. [s]
+m_p_au = m_p_si / m_e_si  # proton mass in A.U. [1] ?
+m_amu_au = m_amu_si / m_e_si  # atomic mass unit in A.U. [1] ?
+c_au = c_si / l_au * t_au  # speed of light in A.U. [1]
+k_B_au = k_B_si / E_au  # Boltzmann constant [E_h/K]
 
 # cgs units
-c_cgs = c_si*1E2  # speed of light [cm/s]
-e_cgs = e_si*c_si*1E1  # 4.80320427E-10 [esu]
-h_cgs = h_si*1E7  # Planck's constant [erg s]
-hbar_cgs = h_cgs/(2*pi)  # reduced Planck constant [erg s]
-a0_cgs = a0_si*1E2  # Bohr radius [cm]
-k_B_cgs = k_B_si*1E7  # Boltzmann constant [erg/K]
+c_cgs = c_si / centi  # speed of light [cm/s]
+e_cgs = e_si * c_si * 1E1  # 4.80320427E-10 [esu]
+h_cgs = h_si * kilo / centi**2  # Planck's constant [erg s]
+hbar_cgs = h_cgs / (2*pi)  # reduced Planck constant [erg s]
+a0_cgs = a0_si / centi  # Bohr radius [cm]
+k_B_cgs = k_B_si * kilo / centi**2  # Boltzmann constant [erg/K]
 
 # misc
-a_lat = 2*pi/l_au  # lattice constant
-finestr = 1/c_au  # finestructure constant
-l_au2aa = l_au*1E10  # convertion A.U. to Angstrom: x(in au)*l_au2aa = x(in aa)
-l_aa2au = 1/l_au2aa  # convertion Angstrom to A.U.: x(in aa)*l_aa2au = x(in au)
-t_au2fs = t_au*1E15
-t_fs2au = 1/t_au2fs
-v_au2si = 1E+5*l_au2aa/t_au2fs
-v_si2au = 1/v_au2si
-v_au2aaperfs = l_au2aa/t_au2fs
+a_lat = 2*pi / l_au  # lattice constant
+finestr = 1 / c_au  # finestructure constant
+l_au2aa = l_au * 1E10  # convertion A.U. to Angstrom
+l_aa2au = 1 / l_au2aa  # convertion Angstrom to A.U.
+t_au2fs = t_au / femto
+t_fs2au = 1 / t_au2fs
+v_au2si = 1E+5 * l_au2aa / t_au2fs
+v_si2au = 1 / v_au2si
+v_au2aaperfs = l_au2aa / t_au2fs
+
+# spectroscopic light energy conversion functions
+E_eV2J = e_si
+E_J2eV = 1 / e_si
+E_Hz2J = h_si
+E_J2Hz = 1 / E_Hz2J
+E_Hz2cm_1 = 1 / c_si * centi
+E_J2cm_1 = E_J2Hz * E_Hz2cm_1
+
+
+def E_J2nm(x):
+    return h_si * c_si / x / nano
+
+
+def E_nm2J(x):
+    return h_si * c_si / x * nano
+
+
+def E_Hz2nm(x):
+    return E_J2nm(x * E_Hz2J)
+
 
 # Comments for all non-PSE element symbols mandatory
 elements = np.array([
@@ -79,18 +114,19 @@ elements = np.array([
     ('S',  32.06,    16, 6, 180.0, ''),
     ('Cl', 35.45,    17, 7, 175.0, ''),
     ('Ar', 39.95,    18, 0, 188.0, ''),
-    # K
-    # ('Ca', 39.96259, 20, 2, 231.0),  # Unchecked
-    # Sc
-    # Ti
-    # V
-    # Cr
-    # Mn
-    # Fe
-    # Co
-    # Ni
-    # Cu
-    # Zn
+    # ('K', , , , ),
+    # ('Ca', 39.96259, 20, 2, 231.0),  # Unverified
+    # ('Sc', , , ,),
+    # ('Ti', , , ,),
+    # ('V', , , ,),
+    # ('Cr', , , ,),
+    # ('Mn', , , ,),
+    # ('Fe', , , ,),
+    # ('Co', , , ,),
+    # ('Ni', , , ,),
+    # ('Cu', , , ,),
+    # ('Zn', , , ,),
+    # ...
     ('X',   0.00000, 0, 0, 0.0, 'dummy'),
        ], dtype=[
            ('symbol', '<U2'),

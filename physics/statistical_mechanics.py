@@ -90,7 +90,6 @@ def spectral_density(*args, **kwargs):
        The method automatically decides on calculating auto- or cross-
        correlation functions based on the number of arguments (max 2).
        Signal filters and window functions are used by default.
-       Timestep (dt) in fs gives frequencies in GHz.
        Returns:
         1 - discrete sample frequencies
         2 - spectral density (FT TCF)
@@ -111,7 +110,6 @@ def spectral_density(*args, **kwargs):
                         % len(args))
 
     ts = kwargs.get('ts', 4)
-    dt = ts * 1E-15 * 1E9  # 4.0 fs --> GHz
     flt_pow = kwargs.get('flt_pow', 1)
     _fac = kwargs.get('factor', 1)
     _cc_mode = kwargs.get('cc_mode', 'AB')
@@ -123,10 +121,12 @@ def spectral_density(*args, **kwargs):
                       for v1 in val1.T]).T
     else:
         R = np.zeros_like(val1)
-        # AB = (Ra + Rb) / 2
-        # AC = Ra - Rb (benchmark)
-        # BC = 0
-        # ABC = A
+        # cc mode:
+        #   A or B = Ra or Rb
+        #   AB = (Ra + Rb) / 2
+        #   AC = Ra - Rb (benchmark)
+        #   BC = 0
+        #   ABC = A
         # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
 
         if 'A' in _cc_mode:
@@ -157,6 +157,6 @@ def spectral_density(*args, **kwargs):
 
     S = np.fft.rfft(final_cc, n=n-1).real * ts * constants.t_fs2au * _fac
     # S /= 2*np.pi
-    omega = np.fft.rfftfreq(n-1, d=dt)
+    omega = np.fft.rfftfreq(n-1, d=ts)
 
     return omega, S, R
