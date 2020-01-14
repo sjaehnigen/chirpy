@@ -11,7 +11,6 @@
 #
 # ------------------------------------------------------
 
-import sys as _sys
 import numpy as _np
 import copy as _copy
 
@@ -76,25 +75,12 @@ class CPMDjob():
     def write_input_file(self, *args):
         ''' CPMD 4 '''
 
-        _stdout = _sys.stdout
-        # _sys.__stdout__ is not Jupyter Output,
-        # so use this way to restore stdout
-        if len(args) == 1:
-            _sys.stdout = open(args[0], 'w')
-        elif len(args) > 1:
-            raise TypeError(self.write_input_file.__name__ +
-                            ' takes at most 1 argument.')
-
         # known sections and order
         _SEC = ['INFO', 'CPMD', 'RESP', 'DFT', 'SYSTEM', 'ATOMS']
 
         for _s in _SEC:
             if hasattr(self, _s):
-                getattr(self, _s).print_section()
-
-        _sys.stdout.flush()
-        # _sys.stdout = _sys.__stdout__
-        _sys.stdout = _stdout
+                getattr(self, _s).write_section(*args)
 
     def get_positions(self):
         ''' in a. u. ? '''

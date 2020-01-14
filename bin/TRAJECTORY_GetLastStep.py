@@ -49,7 +49,7 @@ def main():
         args.f = create_name(args.fn)
 
     _load = system.Molecule(**vars(args)).XYZ
-    _load._unwind(_load, lambda x: 0, {})
+    _load._unwind()
     _load._frame.write(args.f)
 
 

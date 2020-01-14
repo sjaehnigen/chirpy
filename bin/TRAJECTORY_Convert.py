@@ -26,15 +26,60 @@ def main():
             )
     parser.add_argument(
             "fn",
-            help="file (xyz.pdb,xvibs,...)"
+            help="Input trajectory file."
                         )
+    parser.add_argument(
+            "--input_format",
+            help="Input file format (e.g. xyz, pdb, cpmd; optional).",
+            default=None,
+            )
+    parser.add_argument(
+            "--range",
+            nargs=3,
+            help="Range of frames to read (start, step, stop)",
+            default=None,
+            type=int,
+            )
+    parser.add_argument(
+            "--mask_frames",
+            nargs='+',
+            help="If True: Check for duplicate frames (based on comment line) "
+                 "and skip them (may take some time).\n"
+                 "If list of arguments: Skip given frames without further "
+                 "checking (fast).",
+            default=None
+            )
+    parser.add_argument(
+            "--fn_topo",
+            help="Topology file containing metadata (cell, \
+                    molecules, ...).",
+            default=None,
+            )
     parser.add_argument(
             "--fn_vel",
             help="Additional trajectory file with velocities (optional). "
                  "Assumes atomic units. BETA",
             default=None,
             )
-
+    parser.add_argument(
+            "--cell_aa_deg",
+            nargs=6,
+            help="Use custom cell parametres a b c al be ga in \
+                    angstrom/degree",
+            default=None,
+            )
+    parser.add_argument(
+            "--wrap",
+            action='store_true',
+            help="Wrap atoms in cell.",
+            default=False
+            )
+    parser.add_argument(
+            "--wrap_molecules",
+            action='store_true',
+            help="Wrap molecules in cell (requires topology).",
+            default=False
+            )
     parser.add_argument(
             "--center_coords",
             nargs='+',
@@ -70,44 +115,12 @@ def main():
             default=False
             )
     parser.add_argument(
-            "--wrap",
-            action='store_true',
-            help="Wrap atoms in cell.",
-            default=False
-            )
-    parser.add_argument(
-            "--wrap_molecules",
-            action='store_true',
-            help="Wrap molecules in cell (requires topology).",
-            default=False
-            )
-    parser.add_argument(
             "--extract_molecules",
             nargs='+',
             help="Write only coordinates of given molecular ids starting from 0 \
                     (requires a topology file).",
             default=None,
             type=int,
-            )
-    parser.add_argument(
-            "--cell_aa_deg",
-            nargs=6,
-            help="Use custom cell parametres a b c al be ga in \
-                    angstrom/degree",
-            default=None,
-            )
-    parser.add_argument(
-            "--range",
-            nargs=3,
-            help="Range of frames to read (start, step, stop)",
-            default=None,
-            type=int,
-            )
-    parser.add_argument(
-            "--fn_topo",
-            help="Topology file containing metadata (cell, \
-                    molecules, ...).",
-            default=None,
             )
     parser.add_argument(
             "--sort",
@@ -119,6 +132,11 @@ def main():
             "-f",
             help="Output file name",
             default='out.xyz'
+            )
+    parser.add_argument(
+            "--output_format",
+            help="Output file format (e.g. xyz, pdb, cpmd; optional).",
+            default=None,
             )
     args = parser.parse_args()
 
@@ -132,8 +150,29 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
+    i_fmt = args.input_format
+    o_fmt = args.output_format
+    if i_fmt is None:
+        i_fmt = args.fn.split('.')[-1].lower()
+    if o_fmt is None:
+        o_fmt = args.f.split('.')[-1].lower()
+
+    # --- Caution when passing all arguments to object!
     largs = vars(args)
-    _load = system.Supercell(args.fn, **largs)
+
+    skip = largs.pop('mask_frames')
+    if skip is not None:
+        if skip[0] in ['True', 'False']:
+            skip = bool(skip[0])
+            _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+            skip = _load.XYZ.mask_duplicate_frames()
+            largs.update({'skip': skip})
+        else:
+            skip = [int(_a) for _a in skip]
+            largs.update({'skip': skip})
+            _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+    else:
+        _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
 
     if args.fn_vel is not None:
         warnings.warn("External velocity file not tested for all options!",
@@ -143,10 +182,11 @@ def main():
             'range',
             'fn_topo',
             'sort',
+            'skip',
                    ]:
             nargs[_a] = largs.get(_a)
 
-        _load_vel = system.Supercell(args.fn_vel, **nargs)
+        _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 
     # python3.8: use walrus
@@ -171,7 +211,8 @@ def main():
     if extract_molecules is not None:
         _load.extract_molecules(extract_molecules)
 
-    _load.write(args.f, fmt='xyz', rewind=False)
+    if args.f not in ['None', 'False']:
+        _load.write(args.f, fmt=o_fmt, rewind=False)
 
 
 if __name__ == "__main__":

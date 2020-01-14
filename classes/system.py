@@ -15,7 +15,7 @@ import numpy as _np
 import warnings as _warnings
 
 from .core import _CORE
-from .trajectory import XYZIterator, XYZFrame, VibrationalModes
+from .trajectory import XYZ, XYZFrame, VibrationalModes
 from ..snippets import tracked_update as _tracked_update
 from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
@@ -183,8 +183,6 @@ class _SYSTEM(_CORE):
         if fmt == 'xyz':
             nargs.update(kwargs)
         else:
-            _warnings.warn("Direct output disabled for format %s" % fmt,
-                           stacklevel=1)
             nargs.update(kwargs)
 
         return nargs
@@ -212,4 +210,4 @@ class Molecule(_SYSTEM):
 
 class Supercell(_SYSTEM):
     def _XYZ(self, *args, **kwargs):
-        return XYZIterator(*args, **kwargs)
+        return XYZ(*args, **kwargs)

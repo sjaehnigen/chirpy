@@ -14,20 +14,19 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
-import itertools as _itertools
 
-from .core import _CORE
+from .core import _CORE, _ITERATOR
 from ..snippets import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
-from ..write.coordinates import cpmdWriter, xyzWriter, pdbWriter
+from ..write.coordinates import xyzWriter, pdbWriter
 from ..write.modes import xvibsWriter
 
 from ..interface.orca import orcaReader
-from ..interface.cpmd import cpmdReader
+from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import WriteMoldenVibFile
 
 from ..topology.mapping import align_atoms as _align_atoms
@@ -363,7 +362,9 @@ class _XYZ():
                           axis=-1
                           )
 
-            elif fmt == "cpmd":
+            elif fmt == "cpmd" or fn in [
+                     'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']:
+                fmt = "cpmd"
                 data_dict = cpmdReader(fn, **kwargs)
 
                 if 'symbols' in data_dict:
@@ -373,7 +374,8 @@ class _XYZ():
 
                     comments = data_dict['comments']
                 else:
-                    raise ValueError('File %s does not contain atoms!' % fn)
+                    raise ValueError('File %s does not contain atom '
+                                     'information!' % fn)
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
@@ -685,8 +687,6 @@ class _XYZ():
 
         loc_self = _copy.deepcopy(self)
         if self._type == "frame":
-            # --- This has to cleared out
-            #   (frame, traj should be recognised by writers)
             loc_self.data = loc_self.data.reshape((1,
                                                    self.n_atoms,
                                                    self.n_fields))
@@ -765,12 +765,11 @@ class _XYZ():
 
         elif fmt == 'cpmd':
             _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
-            loc_self._sort()
+            kwargs.update({'symbols': loc_self.symbols})
             cpmdWriter(fn,
                        loc_self.pos_aa * constants.l_aa2au,
-                       loc_self.symbols,
                        loc_self.vel_au * factor,
-                       **kwargs)  # DEFAULTS pp='MT_BLYP', bs=''
+                       **kwargs)
 
         else:
             raise ValueError('Unknown format: %s.' % fmt)
@@ -791,6 +790,18 @@ class _XYZ():
                                     cell_aa_deg=self.cell_aa_deg
                                     ))
         print('Max distance:             %s' % round(amax, 4))
+
+
+class _MOMENTS():
+    '''Object that contains position and moment data very similar
+       to XYZ but simpler with unlimited data extension and no need of atomic
+       information.
+       Supports CPMD input only.
+       Everything in atomic units (including the positions and cell).
+       '''
+
+    def _sync_class(self):
+        self.cell_au_deg = _np.array(self.cell_au_deg)
 
 
 class XYZFrame(_XYZ, _FRAME):
@@ -815,7 +826,7 @@ class XYZFrame(_XYZ, _FRAME):
                              )
 
 
-class XYZIterator(_XYZ, _FRAME):
+class XYZ(_XYZ, _ITERATOR, _FRAME):
     '''A generator of XYZ frames (BETA).'''
     def __init__(self, *args, **kwargs):
         if len(args) != 1:
@@ -826,37 +837,22 @@ class XYZIterator(_XYZ, _FRAME):
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
 
+            self._topology = XYZFrame(fn, **kwargs)
+
             if self._fmt == "xyz":
-                self._topology = XYZFrame(fn, **kwargs)
-                self._gen = _xyzIterator(fn,
-                                         **kwargs
-                                         )
+                self._gen = _xyzIterator(fn, **kwargs)
 
             elif self._fmt == "pdb":
-                self._topology = XYZFrame(fn, **kwargs)
-                self._gen = _pdbIterator(fn,
-                                         # **kwargs
-                                         )
-            elif self._fmt == "cpmd":
-                if ('symbols' in kwargs or 'numbers' in kwargs):
-                    numbers = kwargs.get('numbers')
-                    symbols = kwargs.get('symbols',
-                                         [constants.symbols[z - 1]
-                                          for z in numbers]
-                                         )
-                    kwargs.update({'symbols': symbols})
-                else:
-                    raise TypeError("cpmdReader needs list of numbers or "
-                                    "symbols.")
-                # comments = kwargs.get('comments', [''])
+                self._gen = _pdbIterator(fn)  # **kwargs
 
-                self._topology = XYZFrame(fn,
-                                          **kwargs
-                                          )
-
-                self._gen = _cpmdIterator(fn,
-                                          **kwargs
-                                          )
+            elif self._fmt == "cpmd" or fn in [
+                     'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']:
+                self._fmt = "cpmd"
+                if not hasattr(kwargs, 'kinds'):
+                    kwargs.update({
+                        'kinds': cpmd_kinds_from_file(fn)
+                        })
+                self._gen = _cpmdIterator(fn, **kwargs)
 
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
@@ -874,9 +870,6 @@ class XYZIterator(_XYZ, _FRAME):
             self._fr -= self._st
             next(self)
             self._chaste = True
-
-    def __iter__(self):
-        return self
 
     def __next__(self):
         if hasattr(self, '_chaste'):
@@ -927,22 +920,6 @@ class XYZIterator(_XYZ, _FRAME):
 
         return self._fr
 
-    @classmethod
-    def _from_list(cls, LIST, **kwargs):
-        a = cls(LIST[0], **kwargs)
-        for _f in LIST[1:]:
-            b = cls(_f, **kwargs)
-            a += b
-        return a
-
-    def __add__(self, other):
-        new = self
-        if new._topology._is_similar(other._topology)[0] == 1:
-            new._gen = _itertools.chain(new._gen, other._gen)
-            return new
-        else:
-            raise ValueError('Cannot combine frames of different size!')
-
     def _to_trajectory(self):
         '''Perform iteration on remaining iterator
            (may take some time)'''
@@ -966,37 +943,10 @@ class XYZIterator(_XYZ, _FRAME):
         self._kwargs.update(out)
         return XYZTrajectory(**self._kwargs)
 
-    def rewind(self):
-        '''Reinitialises the Interator (BETA)'''
-        self._chaste = False
-        self.__init__(self._fn, **self._kwargs)
-
-    @staticmethod
-    def _unwind(obj, func, events, *args, **kwargs):
-        '''Unwinds the Iterator until it is exhausted constantly
-           executing the given frame-owned function and passing
-           through given arguments.
-           Events are dictionaries with (relative) frames
-           as keys and some action as argument that are only
-           executed when the Iterator reaches the value of the
-           key.
-           This can partially also be done with masks.'''
-        _fr = 0
-        for _ifr in obj:
-            if isinstance(func, str):
-                getattr(obj._frame, func)(*args, **kwargs)
-            elif callable(func):
-                func(obj, *args, **kwargs)
-            if _fr in events:
-                if isinstance(events[_fr], dict):
-                    kwargs.update(events[_fr])
-            _fr += 1
-
     def write(self, fn, **kwargs):
-        self._unwind(self,
-                     'write',
-                     {0: {'append': True}},
-                     fn,
+        self._unwind(fn,
+                     func='write',
+                     events={0: {'append': True}},
                      **kwargs
                      )
         if kwargs.get('rewind', True):
@@ -1025,30 +975,27 @@ class XYZIterator(_XYZ, _FRAME):
             obj._kwargs.update({'_timesteps': _timesteps})
             obj._kwargs.update({'skip': _skip})
 
-        self._kwargs['_timesteps'] = []
-        self._unwind(self, _func, {}, **kwargs)
-
+        _keep = self._kwargs['range']
         if self._kwargs['range'][1] != 1:
-            _warnings.warn('Setting range increment to 1!', stacklevel=2)
-            self._kwargs['range'][1] = 1
+            _warnings.warn('Setting range increment to 1 for doublet search!',
+                           stacklevel=2)
+            self._kwargs['range'] = (_keep[0], 1, _keep[2])
+            self.rewind()
+
+        self._kwargs['_timesteps'] = []
+        self._unwind(**kwargs)
 
         if verbose:
-            print('Duplicate frames in %s according to given range %s:' % (
+            print('Duplicate frames in %s according to range %s:' % (
                 self._fn,
                 self._kwargs['range']
                 ), self._kwargs['skip'])
 
-        self.rewind()
+        self._kwargs['range'] = _keep
+        if kwargs.get('rewind', True):
+            self.rewind()
 
-    @staticmethod
-    def _mask(obj, func, *args, **kwargs):
-        '''Adds a frame-owned function that is called with every __next__()
-           before returning.'''
-        obj._kwargs['_masks'].append(
-                (func, args, kwargs),
-                )
-        if len(obj._kwargs['_masks']) > 10:
-            _warnings.warn('Too many masks on iterator!', stacklevel=2)
+        return self._kwargs['skip']
 
     # These masks all follow the same logic (could be generalised, but python
     # does not support call of function name from within that function)
@@ -1119,8 +1066,50 @@ class XYZIterator(_XYZ, _FRAME):
         self._mask(self, _func, other, **kwargs)
 
 
+class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
+    '''A generator of MOMENT frames (BETA).'''
+    def __init__(self, *args, **kwargs):
+        if len(args) != 1:
+            raise TypeError("File reader of %s takes exactly 1 argument!"
+                            % self.__class__.__name__)
+        else:
+            fn = args[0]
+            self._fn = fn
+            self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+
+            # self._topology = XYZFrame(fn, **kwargs)
+            if self._fmt == "cpmd" or fn in ['MOMENTS']:
+                self._fmt = "cpmd"
+                if not hasattr(kwargs, 'kinds'):
+                    kwargs.update({
+                        'kinds': cpmd_kinds_from_file(fn)
+                        })
+                self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
+
+            else:
+                raise ValueError('Unknown format: %s.' % self._fmt)
+
+            self._kwargs = {}
+            # initialise list of masks
+            self._kwargs['_masks'] = []
+            # keep kwargs for iterations
+            self._kwargs.update(kwargs)
+
+            self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
+            self._fr, self._st, buf = self._kwargs['range']
+
+            # --- Load first frame w/o consuming it
+            self._fr -= self._st
+            next(self)
+            self._chaste = True
+
+
 class XYZTrajectory(_XYZ, _TRAJECTORY):
+    '''XYZ trajectory without using iterators'''
+
     def _sync_class(self):
+        # _warnings.warn("XYZTrajectory class will no longer be supported in "
+        #               "upcoming versions!", FutureWarning, stacklevel=2)
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
@@ -1142,6 +1131,7 @@ class VibrationalModes(_XYZ, _MODES):
     def _sync_class(self, **kwargs):
         _MODES._sync_class(self)
         _XYZ._sync_class(self)
+
         if kwargs.get('check_orthonormality', True):
             _MODES._check_orthonormality(self)
 

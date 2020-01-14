@@ -13,11 +13,14 @@
 
 import numpy as np
 import tempfile
+import warnings
+import sys
 
 # from ..write.coordinates import cpmdWriter
 # from ..read.coordinates import cpmdIterator
 from ..physics import constants
 from ..read.coordinates import cpmdIterator
+from ..write.coordinates import xyzWriter
 
 # SECTION > KEYWORD > ( <list of ARGUMENTS>, <next line (optional)> )
 # PLANNED: multiple line support via list as next-line argument
@@ -56,6 +59,7 @@ _cpmd_keyword_logic = {
         'SYMMETRY': ([''], str),
         'CELL': (['', 'ABSOLUTE'], float),  # list of floats
         'CUTOFF': ([''], float),
+        'ANGSTROM': ([''], None),
     },
     'ATOMS': {
     },
@@ -71,7 +75,24 @@ class _SECTION():
 #        for _i in kwargs:
 #            setattr(self, _i, kwargs[_i])
 
-    def print_section(self):
+    def write_section(self, *args, **kwargs):
+        _stdout = sys.stdout
+        # _sys.__stdout__ is not Jupyter Output,
+        # so use this way to restore stdout
+
+        if len(args) == 1:
+            sys.stdout = open(args[0], 'a')
+        elif len(args) > 1:
+            raise TypeError(self.write_section.__name__ +
+                            ' takes at most 1 argument.')
+
+        self.print_section(**kwargs)
+
+        sys.stdout.flush()
+        # _sys.stdout = _sys.__stdout__
+        sys.stdout = _stdout
+
+    def print_section(self, **kwargs):
         print("&%s" % self.__class__.__name__)
 
         for _o in self.options:
@@ -151,18 +172,24 @@ class SYSTEM(_SECTION):
 
 
 class ATOMS(_SECTION):
-    def print_section(self):
+    def print_section(self, **kwargs):
+        fmt = kwargs.get('fmt', 'angstrom')
         print("&%s" % self.__class__.__name__)
 
-        format = '%20.10f'*3
+        format = '%20.10f' * 3
         for _k, _ch, _n, _d in zip(self.kinds,
                                    self.channels,
                                    self.n_kinds,
                                    self.data):
             print("%s" % _k)
             print(" %s" % _ch)
-            print("%4d" % _n)
+            print("%6d" % _n)
             for _dd in _d:
+                if fmt == 'angstrom':
+                    warnings.warn('Atomic coordinates in angstrom. Do not '
+                                  'forget to set ANGSTROM keyword in the '
+                                  'SYSTEM section!', stacklevel=2)
+                    _dd *= constants.l_au2aa
                 print(format % tuple(_dd))
 
         print("&END")
@@ -179,8 +206,8 @@ class ATOMS(_SECTION):
         data = []
         for _l in section_input:
             if '*' in _l:
-                kinds.append(_l)
-                channels.append(next(section_input))
+                kinds.append(_l.strip())
+                channels.append(next(section_input).strip())
                 n = int(next(section_input))
                 n_kinds.append(n)
                 data.append(np.array([list(map(
@@ -195,6 +222,87 @@ class ATOMS(_SECTION):
         out = cls()
         out.__dict__.update(_C)
         return out
+
+    @classmethod
+    def from_data(cls, symbols, pos_au, **kwargs):
+        if not hasattr(kwargs, 'pp'):
+            warnings.warn('Setting pseudopotential in CPMD ATOMS output to '
+                          'default (Troullier-Martins)!',
+                          stacklevel=2)
+        pp = kwargs.get('pp', 'MT_BLYP')  # 'SG_BLYP KLEINMAN-BYLANDER'
+
+        elements = sorted(set(symbols))
+        symbols = np.array(symbols)
+
+        kinds = []
+        n_kinds = []
+        channels = []
+        data = []
+        for _e in elements:
+            kinds.append("*%s_%s" % (_e, pp))
+            data.append(pos_au[symbols == _e])
+            n_kinds.append(len(data[-1]))
+            if _e in ['C', 'O', 'N', 'P', 'Cl', 'F'] and 'AEC' not in pp:
+                # --- ToDo: replace manual tweaks by automatic pp analysis
+                channels.append("LMAX=P LOC=P")
+            else:
+                channels.append("LMAX=S LOC=S")
+
+        _C = {}
+        _C['kinds'] = kinds
+        _C['channels'] = channels
+        _C['n_kinds'] = n_kinds
+        _C['data'] = data
+
+        out = cls()
+        out.__dict__.update(_C)
+        return out
+
+
+#def _write_atoms_section(fn, symbols, pos_au, **kwargs):
+#    '''Only sorted data is comaptible with CPMD.'''
+#    if not hasattr(kwargs, 'pp'):
+#        warnings.warn('Setting pseudopotential in CPMD ATOMS output to default'
+#                      ' (Troullier-Martins)!',
+#                      stacklevel=2)
+#    pp = kwargs.get('pp', 'MT_BLYP')  # 'SG_BLYP KLEINMAN-BYLANDER'
+#    fmt = kwargs.get('fmt', 'angstrom')
+#    elems = dict()
+#    if pos_au.shape[0] != len(symbols):
+#        raise ValueError('symbols and positions are not consistent!')
+#
+#    pos = copy.deepcopy(pos_au)
+#    if fmt == 'angstrom':
+#        pos /= constants.l_aa2au
+#
+#    for i, sym in enumerate(symbols):
+#        if sym != sorted(symbols)[i]:
+#            raise ValueError('Atom list not sorted!')
+#        try:
+#            elems[sym]['n'] += 1
+#            elems[sym]['c'][elems[sym]['n']] = pos[i]
+#        except KeyError:
+#            elems[sym] = dict()
+#            elems[sym]['n'] = 1
+#            elems[sym]['c'] = {elems[sym]['n']: pos[i]}
+#
+#    with open(fn, 'w') as f:
+#        format = '%20.10f'*3 + '\n'
+#        f.write("&ATOMS\n")
+##        f.write(" ISOTOPE\n")
+##        for elem in elems:
+##            print("  %s" % elems[elem]['MASS'])
+#        for elem in elems:
+#            f.write("*%s_%s\n" % (elem, pp))
+#            # --- ToDo: replace manual tweaks by automatic pp analysis
+#            if elem in ['C', 'O', 'N', 'P', 'Cl', 'F'] and 'AEC' not in pp:
+#                f.write(" LMAX=P LOC=P\n")
+#            else:
+#                f.write(" LMAX=S LOC=S\n")
+#            f.write("   %s\n" % elems[elem]['n'])
+#            for i in elems[elem]['c']:
+#                f.write(format % tuple([c for c in elems[elem]['c'][i]]))
+#        f.write("&END\n")
 
 
 def cpmdReader(FN, **kwargs):
@@ -231,6 +339,47 @@ def cpmdReader(FN, **kwargs):
     else:
         raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
 
+
+def cpmdWriter(fn, pos_au, vel_au, **kwargs):
+    '''Expects pos_au / vel_au of shape (n_frames, n_atoms, three)'''
+
+    bool_atoms = kwargs.get('write_atoms', True)
+
+    with open(fn, 'w') as f:
+        format = ' %16.12f'*3
+        for fr in range(pos_au.shape[0]):
+            for at in range(pos_au.shape[1]):
+                line = '%06d  ' % fr + format % tuple(pos_au[fr, at])
+                line += '  ' + format % tuple(vel_au[fr, at])
+                f.write(line+'\n')
+
+    if bool_atoms:
+        symbols = kwargs.pop('symbols', ())
+        if pos_au.shape[1] != len(symbols):
+            raise ValueError('symbols and positions are not consistent!')
+
+        ATOMS.from_data(symbols,
+                        pos_au[0],
+                        **kwargs).write_section(fn+'_ATOMS')
+        xyzWriter(fn + '_ATOMS.xyz',
+                  [pos_au[0] / constants.l_aa2au],
+                  symbols,
+                  [fn])
+
+
+def cpmd_kinds_from_file(fn):
+    '''Accepts MOMENTS or TRAJECTORY file and returns the number
+       of lines per frame, based on analysis of the first frame'''
+
+    warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
+                  stacklevel=2)
+    with open(fn, 'r') as _f:
+        _i = 1
+        _fr = _f.readline().strip().split()[0]
+        while _f.readline().strip().split()[0] == _fr:
+            _i += 1
+
+    return tuple(range(_i))
 
 #    if pos_au.shape[0] != len(symbols):
 #        print('ERROR: symbols and positions are not consistent!')

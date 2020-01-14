@@ -44,17 +44,27 @@ def _get(_it, kernel, **kwargs):
             self.current_line = 0
             self._it = _it
             self._r = 0
+            self._skip = _sk
+            self._offset = 0
             while self._r < r0:
                 [next(_it) for _ik in range(n_lines)]
-                self._r += 1
+                if self._r + self._offset in _sk:
+                    self._skip.remove(self._r + self._offset)
+                    self._offset += 1
+                else:
+                    self._r += 1
 
         def __iter__(self):
             return self
 
         def __next__(self):
-            while (self._r - r0) % _ir != 0 or self._r in _sk:
+            while (self._r - r0) % _ir != 0 or self._r + self._offset in _sk:
                 [next(_it) for _ik in range(n_lines)]
-                self._r += 1
+                if self._r + self._offset in _sk:
+                    self._skip.remove(self._r + self._offset)
+                    self._offset += 1
+                else:
+                    self._r += 1
 
             self._r += 1
             if self._r > r1:

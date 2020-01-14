@@ -12,6 +12,8 @@
 # ------------------------------------------------------
 
 import argparse
+import warnings
+
 from chirpy.classes import system
 
 
@@ -24,16 +26,25 @@ def main():
     parser.add_argument("fn",
                         help="file (xyz.pdb,xvibs,...)"
                         )
-    parser.add_argument("-f",
-                        help="Output file name",
-                        default='out.xyz'
+    parser.add_argument("--rewrite",
+                        help="Write new file with cleaned data",
+                        action='store_true',
+                        default=False,
                         )
 
     args = parser.parse_args()
 
-    _system = system.Supercell(**vars(args)).XYZ
-    _system.mask_duplicate_frames(verbose=True)
-    _system.write(args.f, fmt='xyz')
+    _system = system.Supercell(**vars(args))
+    _system.print_info()
+    _system = _system.XYZ
+    print('Checking for duplicate frames...')
+    _system.mask_duplicate_frames(verbose=True, rewind=False)
+    print('Done.\n')
+
+    print('Total no. frames (inluding duplicates):', _system._fr)
+    if args.rewrite:
+        warnings.warn('Please use TRAJECTORY_Convert.py for rewriting data!',
+                      stacklevel=2)
 
 
 if __name__ == "__main__":

@@ -30,15 +30,14 @@ def main():
             )
     parser.add_argument(
             "fn",
-            help="file (xyz.pdb,xvibs,...)"
+            help="Input file (xyz.pdb,xvibs,...)"
                         )
     parser.add_argument(
             "--fn_vel",
             help="External trajectory file with velocities (optional). "
-                 "Assumes atomic units. FN will not be used (dummy).",
+                 "Less efficient. Assumes atomic units. BETA",
             default=None,
             )
-
     parser.add_argument(
             "--extract_molecules",
             nargs='+',
@@ -70,13 +69,15 @@ def main():
     parser.add_argument(
             "--subset",
             nargs='+',
-            help="Atom list (id starting from 0).",
+            help="Do use only subset of atoms. Expects list of indices "
+                 "(id starting from 0).",
             type=int,
             default=None,
             )
     parser.add_argument(
             "--ts",
-            help="Timestep in fs between used frames (depending on --range!).",
+            help="Timestep in fs between used frames (according to given "
+                 "--range!).",
             default=0.5,
             type=float,
             )
@@ -122,6 +123,9 @@ def main():
     _load = system.Supercell(args.fn, **largs)
 
     if args.fn_vel is not None:
+        # --- A little inefficient to load args.fn first as it will no
+        #     longer be used (but pos and vel should no be in extra files
+        #     anyway)
         nargs = {}
         for _a in [
             'range',

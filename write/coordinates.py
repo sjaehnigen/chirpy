@@ -12,81 +12,6 @@
 # ------------------------------------------------------
 
 
-import copy
-from collections import OrderedDict
-
-from ..physics import constants
-
-
-def _write_atoms_section(fn, symbols, pos_au, **kwargs):
-    '''Only sorted data is comaptible with CPMD.'''
-    pp = kwargs.get('pp', 'MT_BLYP')
-    bs = kwargs.get('bs', '')
-    fmt = kwargs.get('fmt', 'angstrom')
-    elems = OrderedDict()
-    if pos_au.shape[0] != len(symbols):
-        raise ValueError('symbols and positions are not consistent!')
-
-    pos = copy.deepcopy(pos_au)
-    if fmt == 'angstrom':
-        pos /= constants.l_aa2au
-
-    for i, sym in enumerate(symbols):
-        if sym != sorted(symbols)[i]:
-            raise ValueError('Atom list not sorted!')
-        try:
-            elems[sym]['n'] += 1
-            elems[sym]['c'][elems[sym]['n']] = pos[i]
-        except KeyError:
-            elems[sym] = OrderedDict()
-            elems[sym]['n'] = 1
-            elems[sym]['c'] = {elems[sym]['n']: pos[i]}
-
-    with open(fn, 'w') as f:
-        format = '%20.10f'*3 + '\n'
-        f.write("&ATOMS\n")
-#        f.write(" ISOTOPE\n")
-#        for elem in elems:
-#            print("  %s" % elems[elem]['MASS'])
-        for elem in elems:
-            f.write("*%s_%s %s\n" % (elem, pp, bs))
-            # --- ToDo: replace manual tweaks by automatic pp analysis
-            if elem in ['C', 'O', 'N', 'P', 'Cl', 'F'] and 'AEC' not in pp:
-                f.write(" LMAX=P LOC=P\n")
-            else:
-                f.write(" LMAX=S LOC=S\n")
-            f.write("   %s\n" % elems[elem]['n'])
-            for i in elems[elem]['c']:
-                f.write(format % tuple([c for c in elems[elem]['c'][i]]))
-        f.write("&END\n")
-
-
-def cpmdWriter(fn, pos_au, symbols, vel_au, **kwargs):
-    '''Expects pos_au / vel_au of shape (n_frames, n_atoms, three)'''
-    bool_atoms = kwargs.get('write_atoms', True)
-    pp = kwargs.get('pp', 'MT_BLYP')
-    bs = kwargs.get('bs', '')
-    if pos_au.shape[1] != len(symbols):
-        raise ValueError('symbols and positions are not consistent!')
-
-    with open(fn, 'w') as f:
-        format = ' %16.12f'*3
-        for fr in range(pos_au.shape[0]):
-            for at in range(pos_au.shape[1]):
-                line = '%06d  ' % fr + format % tuple(pos_au[fr, at])
-                line += '  ' + format % tuple(vel_au[fr, at])
-                f.write(line+'\n')
-
-    if bool_atoms:
-        _write_atoms_section(fn+'_ATOMS', symbols, pos_au[0], pp=pp, bs=bs)
-        xyzWriter(fn + '_ATOMS.xyz',
-                  [pos_au[0]/constants.l_aa2au],
-                  symbols,
-                  [fn])
-
-# OLD section to be integrated with xyzWriter
-
-
 def _write_frame(filename, data, symbols, comment, append=False):
     """WriteFrame(filename, data, symbols, comment, append=False)
     Input:
@@ -96,6 +21,7 @@ def _write_frame(filename, data, symbols, comment, append=False):
         4. comment line (string)
         5. append: Append to file (optional, default = False)
 Output: None"""
+    # OLD section to be integrated with xyzWriter
 
     format = '  %s'
     # print(data.shape, data.shape[1])

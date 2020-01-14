@@ -94,9 +94,12 @@ def xyzIterator(FN, **kwargs):
 def cpmdIterator(FN, **kwargs):
     '''Iterator for  cpmdReader
        Known types: GEOMETRY, TRAJECTORY, MOMENTS
-       Usually needs additional metadata of the system.'''
+       Usually expects additional metadata of the system
+       through kwargs.'''
     _kernel = _cpmd
     kinds = kwargs.pop('kinds', None)
+    if 'filetype' not in kwargs:
+       kwargs['filetype'] = FN
 
     if kinds is None:
         _nlines = 1
