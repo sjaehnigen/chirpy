@@ -983,6 +983,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self.rewind()
 
         self._kwargs['_timesteps'] = []
+        kwargs['func'] = _func
         self._unwind(**kwargs)
 
         if verbose:
