@@ -498,6 +498,7 @@ class _XYZ():
             self.vel_au = _np.zeros_like(self.pos_aa)
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
         if not isinstance(self.comments[0], str):
+            print(self.comments[0])
             raise AttributeError('Missing comments line! Contact support!')
 
     def _is_equal(self, other, atol=1e-08, noh=True):
@@ -892,7 +893,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             out = {
                     'data': frame[0],
                     'symbols': frame[2],
-                    'comments': [frame[-1]],
+                    'comments': str([frame[-1]]),  # if no title: 'None'
                     'cell_aa_deg': frame[-2],
                     # 'res':
                     }

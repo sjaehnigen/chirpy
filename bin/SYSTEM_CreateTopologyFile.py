@@ -27,12 +27,24 @@ def main():
         type=float,
         default=None
         )
+    parser.add_argument(
+        "--wrap_mols",
+        action='store_true',
+        help="Wrap molecules instead of atoms in cell.",
+        default=False
+        )
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
 
     #ToDo: Automatic molecule gauge ? (may be a problem for large system)
 
-    system.Supercell(wrap_mols=True, **vars(args)).write(args.f,fmt='pdb')
+    _load = system.Supercell(**vars(args))
+    _load.install_molecular_origin_gauge()
+    if args.wrap_mols:
+        _load.wrap_molecules()
+    else:
+        _load.wrap_atoms()
+    _load.write(args.f,fmt='pdb')
 
 
 if(__name__ == "__main__"):

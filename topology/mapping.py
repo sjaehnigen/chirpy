@@ -144,9 +144,15 @@ def distance_pbc(p0, p1, **kwargs):
     # actually it does not calculate a "distance"
     _d = p1 - p0
     try:
-        return _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
+        _d2 = _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
+        # _d3 = min(list(_d.flatten()),
+        #           list(_d2.flatten()),
+        #           key=abs)
+        # _d = np.array(_d3).reshape(_d.shape)
+        _d = _d2
     except TypeError:
-        return _d
+        pass
+    return _d
 
 
 def _pbc_shift(_d, cell_aa_deg):

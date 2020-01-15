@@ -65,7 +65,9 @@ def define_molecules(pos_aa, symbols, **kwargs):
     n_mol = 0
     fragment = np.zeros((noh.sum()))
 
-    if detect_lattice(cell_aa_deg) is not None:
+    _lattice = detect_lattice(cell_aa_deg)
+
+    if _lattice is not None:
         # --- change basis
         cell_vec_aa = get_cell_vec(cell_aa_deg)
         _p = ceb(_p, cell_vec_aa)
@@ -80,13 +82,15 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _n_b = tuple([int((_max - _min) / 12) + 1
                       for _max, _min in zip(MAX, MIN)])
 
-    # NB: do not wrap batch positions!
+    # --- use batches to create pair lists and neighbour counts
     _batch = _make_batches(MIN, MAX, _n_b)
 
     def _w(p):
         return wrap(p, _cell)
 
-    neigh_list = []
+    pair_list = []
+    neigh_count = np.zeros((n_atoms))
+
     for _ib, _b in enumerate(_batch):
         _ind = np.prod(
                 _w(_p - _b[0, None]) <= _b[1, None] - _b[0, None], axis=-1
@@ -95,58 +99,59 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _pp = _p[_ind, :]
 
         # --- return to original basis
-        if detect_lattice(cell_aa_deg) is not None:
+        if _lattice is not None:
             _pp = np.tensordot(_pp, cell_vec_aa, axes=1)
 
         dist_array = distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
+        np.set_printoptions(precision=2, linewidth=200)
         dist_array[dist_array == 0.0] = 'Inf'
         crit_aa = dist_crit_aa(symbols[_ind])
-
         neigh_map = dist_array <= crit_aa
-        neigh_list += [tuple(_ind2[_l]) for _l in np.argwhere(
+
+        # --- store batch info for assignment
+        #     Caution: neigh_count may lead to (uncritical) overcounting if
+        #              atom pairs are found in more than one batch
+
+        neigh_count[_ind] += neigh_map.sum(axis=1)
+        pair_list += [tuple(_ind2[_l]) for _l in np.argwhere(
                            neigh_map[noh[_ind]][:, noh[_ind]] == 1)]
 
-    neigh_list = [tuple(_i) for _i in np.unique(np.sort(neigh_list, axis=-1),
-                                                axis=0)]
+    # --- This is a little fussy after various changes and methodology updates
+
+    # pair_list = [tuple(_i) for _i in np.unique(np.sort(pair_list, axis=-1),
+    #                                             axis=0)]
 
     neigh_dict = {}
-    for v, k in neigh_list:
+    for v, k in pair_list:
         if v not in neigh_dict:
             neigh_dict[v] = [k]
         else:
             neigh_dict[v].append(k)
 
-    if detect_lattice(cell_aa_deg) is not None:
-        _p = np.tensordot(_p, cell_vec_aa, axes=1)
+    neigh_list = []
+    for _i in range(n_noh):
+        if _i in neigh_dict:
+            neigh_list.append(neigh_dict[_i])
+        else:
+            neigh_list.append([])
 
-    # --- ToDo: Still slow for large systems (but better with neigh_dict)
-    #           Sorted data can lead to errors in neigh_list
-    # def neigh_function(a, i):
-    #     if tuple(sorted((a, i))) in neigh_list:
-    #         return True
-    #     else:
-    #         return False
-    def neigh_function(a, i):
-        try:
-            if i in neigh_dict[a] or a in neigh_dict[i]:
-                return True
-            else:
-                return False
-        except KeyError:  # Arggh
-            return False
+    del neigh_dict, pair_list
+
+    if _lattice is not None:
+        _p = np.tensordot(_p, cell_vec_aa, axes=1)
 
     n_mol = 0
     fragment = np.zeros((n_noh))
     atom_count = n_noh
 
-    for atom in range(n_noh):
+    for atom in np.argsort(neigh_count[noh])[::-1]:
         if fragment[atom] == 0:
             n_mol += 1
             fragment, atom_count = assign_molecule(
                 fragment,
                 n_mol,
                 n_noh,
-                neigh_function,
+                neigh_list,
                 atom,
                 atom_count
                 )
@@ -156,7 +161,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
     ass = np.zeros((n_atoms)).astype(int)
     ass[noh] = fragment
 
-    # --- avoids accessing dist_array
+    # --- avoids accessing dist_array: choose closest heavy atom for H
     for _h in np.argwhere(h):
         _d = np.linalg.norm(distance_pbc(_p[_h],
                                          _p,
@@ -165,7 +170,6 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _i = np.argmin(_d)
         ass[_h] = ass[_i]
 
-    # return molecular centres of mass (and optionally wrap mols?)
     return ass
 
 
@@ -180,9 +184,8 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     '''
     molecule[atom] = n_mol
     atom_count -= 1
-    # for i in range(n_atoms):
-    for i in np.argwhere(molecule == 0)[:, 0]:
-        if neigh_map(atom, i):  # and molecule[i] == 0:
+    for i in neigh_map[atom]:
+        if molecule[i] == 0:
             molecule, atom_count = assign_molecule(
                 molecule,
                 n_mol,
