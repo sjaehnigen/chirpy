@@ -340,12 +340,15 @@ def cpmdReader(FN, **kwargs):
         raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
 
 
-def cpmdWriter(fn, pos_au, vel_au, **kwargs):
+def cpmdWriter(fn, pos_au, vel_au, append=False, **kwargs):
     '''Expects pos_au / vel_au of shape (n_frames, n_atoms, three)'''
 
     bool_atoms = kwargs.get('write_atoms', True)
 
-    with open(fn, 'w') as f:
+    fmt = 'w'
+    if append:
+        fmt = 'a'
+    with open(fn, fmt) as f:
         format = ' %16.12f'*3
         for fr in range(pos_au.shape[0]):
             for at in range(pos_au.shape[1]):
