@@ -75,10 +75,10 @@ class _SYSTEM(_CORE):
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
                     if _k is not None:
                         if not _equal(_v, self._topo[_k]):
-                            print(_v, self._topo[_k])
-                            raise ValueError('Topology file does not represent'
-                                             ' molecule in {}!'.format(_k)
-                                             )
+                            # print(_v, self._topo[_k])
+                            _warnings.warn('Topology file does not represent'
+                                           ' molecule in {}!'.format(_k),
+                                           stacklevel=2)
 
             # extract_mols = kwargs.get('extract_molecules')
             # if extract_mols is not None:
