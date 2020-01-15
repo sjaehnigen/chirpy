@@ -98,6 +98,14 @@ class _FRAME(_CORE):
     def sort(self, *args, **kwargs):
         _symbols = _np.array(self.symbols)
 
+        # --- scratch for in-depth sort that includes data
+        # def get_slist():
+        #     elem = {s: (lambda x: _np.lexsort((x[:, 0], x[:, 1], x[:, 2])))(
+        #                self.data.swapaxes(0, -2)[_np.where(_symbols == s)[0]]
+        #                ).tolist()
+        #             for s in _np.unique(_symbols)}
+        #     return [i for k in sorted(elem) for i in elem[k]]
+
         def get_slist():
             elem = {s: _np.where(_symbols == s)[0]
                     for s in _np.unique(_symbols)}
@@ -545,6 +553,7 @@ class _XYZ():
                     a = _distance_pbc(_s_pos[_ind],
                                       _o_pos[_ind],
                                       cell_aa_deg=self.cell_aa_deg)
+                    a = _np.linalg.norm(a, axis=-1)
                     _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
 
             return bool(_np.prod(_bool))
@@ -590,8 +599,11 @@ class _XYZ():
 
     def align_coordinates(self, align_coords, **kwargs):
         if not isinstance(align_coords, list):
-            if isinstance(align_coords, bool) and align_coords:
-                align_coords = slice(None)
+            if isinstance(align_coords, bool):
+                if align_coords:
+                    align_coords = slice(None)
+                else:
+                    return
             else:
                 raise TypeError('Expecting a bool or a list of atoms '
                                 'for alignment!')
@@ -639,8 +651,11 @@ class _XYZ():
 
     def center_coordinates(self, center_coords, **kwargs):
         if not isinstance(center_coords, list):
-            if isinstance(center_coords, bool) and center_coords:
-                center_coords = slice(None)
+            if isinstance(center_coords, bool):
+                if center_coords:
+                    center_coords = slice(None)
+                else:
+                    return
             else:
                 raise TypeError('Expecting a bool or a list of atoms '
                                 'for centering!')

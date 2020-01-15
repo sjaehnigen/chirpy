@@ -187,14 +187,14 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     '''
     molecule[atom] = n_mol
     atom_count -= 1
-    for i in neigh_map[atom]:
-        if molecule[i] == 0:
+    for _i in neigh_map[atom]:
+        if molecule[_i] == 0:
             molecule, atom_count = assign_molecule(
                 molecule,
                 n_mol,
                 n_atoms,
                 neigh_map,
-                i,
+                _i,
                 atom_count
                 )
             # print(atom_count)

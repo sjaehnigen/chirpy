@@ -23,7 +23,7 @@ from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.core import _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
-from ..classes.system import Supercell as _Supercell
+from ..classes.system import Molecule as _Molecule
 from ..physics import constants
 from ..mathematics.algebra import angle
 
@@ -62,7 +62,7 @@ class _BoxObject(_CORE):
             kwargs['wrap_mols'] = True
         else:
             kwargs['wrap'] = True
-        _load = _Supercell(*args, **kwargs)
+        _load = _Molecule(*args, **kwargs)
 
         nargs = {}
         nargs['cell_aa_deg'] = _load.cell_aa_deg
@@ -77,11 +77,11 @@ class _BoxObject(_CORE):
         if _load.mol_map is not None:
             return cls(
                     members=[(1, _s)
-                             for _s in _load.XYZ._frame._split(
+                             for _s in _load.XYZ.split(
                              _load.mol_map)],
                     **nargs)
         else:
-            return cls(members=[(1, _load.XYZ._frame)],
+            return cls(members=[(1, _load.XYZ)],
                        **nargs)
 
     def _cell_vec_aa(self, **kwargs):
@@ -123,9 +123,17 @@ class _BoxObject(_CORE):
         if self.n_members == 0:
             return None
         _eq = _np.zeros((self.n_members,) * 2)
+
+        for _i, _m in self.members:
+            _m.wrap_molecules(_np.ones((_m.n_atoms)).astype(int))
+
         for _ii, (_i, _m) in enumerate(self.members):
-            _eq[_ii, _ii:] = _np.array([bool(_m._is_equal(_n, noh=True)[0])
-                                       for _j, _n in self.members[_ii:]])
+            _eq[_ii, _ii:] = _np.array([
+                          bool(_m._is_equal(_n, noh=True, atol=2.)[0])
+                          for _j, _n in self.members[_ii:]
+                          ])
+
+        _eq = [_np.argwhere(_ee == 1.0).flatten().tolist() for _ee in _eq]
         _N = self.n_members
         _M = self.n_members
         _ass = _np.zeros((_N)).astype(int)
@@ -303,9 +311,9 @@ class MolecularCrystal(_BoxObject):
         multiply = kwargs.get('multiply', (1, 1, 1))
         _uc_mol_map = mol_map
         for _repeat in range(1, _np.prod(multiply)):
-            mol_map = _np.concatenate((mol_map, _uc_mol_map + _np.amax(mol_map)))
+            mol_map = _np.concatenate((mol_map, _uc_mol_map+_np.amax(mol_map)))
 
-        return _Supercell(XYZ=self.propagate(_SC, **kwargs), mol_map=mol_map)
+        return _Molecule(XYZ=self.propagate(_SC, **kwargs), mol_map=mol_map)
 
 
 _solvents = {}
@@ -454,14 +462,14 @@ density of %.2f!\n' % self.rho_g_cm3)
         # # this is a little awkward (quick and dirty)
         # read packmol output and centre residue
         if self.pbc:
-            _load = _Supercell(".simbox.xyz",
-                               cell_aa_deg=self._cell_aa_deg(),
-                               mol_map=self._mol_map(),
-                               center_residue=0)
+            _load = _Molecule(".simbox.xyz",
+                              cell_aa_deg=self._cell_aa_deg(),
+                              mol_map=self._mol_map(),
+                              center_residue=0)
         else:
-            _load = _Supercell(".simbox.xyz",
-                               cell_aa_deg=self._cell_aa_deg(),
-                               mol_map=self._mol_map())
+            _load = _Molecule(".simbox.xyz",
+                              cell_aa_deg=self._cell_aa_deg(),
+                              mol_map=self._mol_map())
 
         self.mol_map = self._mol_map()
         if kwargs.get('sort') is not None:
