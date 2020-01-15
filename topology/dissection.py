@@ -50,20 +50,25 @@ def _make_batches(MIN, MAX, nb, ov=None):
 
 
 def define_molecules(pos_aa, symbols, **kwargs):
-    '''Expects one System (Molecule, Supercell, ...) object.
-       Uses frame 0 of mol as reference.'''
+    '''Distance analysis in batches to create a neighbour list which is
+       further evaluated to obtain clusters/molecules.
+       Expects positions in angstrom of shape (n_atoms, three).
+       It returns a list with assignments.'''
 
     _p = pos_aa
+    if len(_p.shape) != 2:
+        raise TypeError('Positions not in shape (n_atoms, three)!')
+
     symbols = np.array(symbols)
     cell_aa_deg = kwargs.get("cell_aa_deg")
     n_atoms = len(symbols)
 
-    ass = np.zeros((n_atoms)).astype(int)
-
-    h, noh = np.array([symbols == 'H'])[0], np.array([symbols != 'H'])[0]
+    h = np.array([symbols == 'H'])[0]
+    noh = np.array([symbols != 'H'])[0]
     n_noh = noh.sum()
     n_mol = 0
     fragment = np.zeros((noh.sum()))
+    ass = np.zeros((n_atoms)).astype(int)
 
     _lattice = detect_lattice(cell_aa_deg)
 
@@ -141,7 +146,6 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _p = np.tensordot(_p, cell_vec_aa, axes=1)
 
     n_mol = 0
-    fragment = np.zeros((n_noh))
     atom_count = n_noh
 
     for atom in np.argsort(neigh_count[noh])[::-1]:
@@ -158,7 +162,6 @@ def define_molecules(pos_aa, symbols, **kwargs):
         if atom_count == 0:
             break
 
-    ass = np.zeros((n_atoms)).astype(int)
     ass[noh] = fragment
 
     # --- avoids accessing dist_array: choose closest heavy atom for H

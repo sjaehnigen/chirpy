@@ -38,7 +38,7 @@ def main():
 
     #ToDo: Automatic molecule gauge ? (may be a problem for large system)
 
-    _load = system.Supercell(**vars(args))
+    _load = system.Molecule(**vars(args))
     _load.install_molecular_origin_gauge()
     if args.wrap_mols:
         _load.wrap_molecules()

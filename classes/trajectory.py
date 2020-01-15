@@ -296,8 +296,8 @@ class _XYZ():
        attributes for changes.'''
 
     def _read_input(self, *args, **kwargs):
-        align_coords = kwargs.get('align_coords')
-        center_coords = kwargs.get('center_coords')
+        align_coords = kwargs.pop('align_coords', None)
+        center_coords = kwargs.pop('center_coords', None)
         wrap = kwargs.get('wrap', False)
         wrap_molecules = kwargs.get('wrap_molecules', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
@@ -442,6 +442,13 @@ class _XYZ():
         self.data = data
         self._sync_class()
 
+        if center_coords is not None:
+            if center_coords[0] in ['True', 'False']:
+                center_coords = bool(center_coords[0])
+            else:
+                center_coords = [int(_a) for _a in center_coords]
+            self.center_coordinates(center_coords, **kwargs)
+
         if wrap:
             self.wrap_atoms()
         if wrap_molecules:
@@ -452,6 +459,19 @@ class _XYZ():
                     _warnings.warn('Could not find mol_map for wrapping!',
                                    RuntimeWarning, stacklevel=2)
                 self.wrap_atoms()
+
+        if align_coords is not None:
+            if align_coords[0] in ['True', 'False']:
+                align_coords = bool(align_coords[0])
+            else:
+                align_coords = [int(_a) for _a in align_coords]
+            if wrap or wrap_molecules:
+                _warnings.warn('Disabling wrapping for atom alignment!',
+                               stacklevel=2)
+                # unnecessary here
+                wrap = False
+                wrap_molecules = False
+            self.align_coordinates(align_coords, **kwargs)
 
         self._sync_class()
 
@@ -909,6 +929,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._kwargs.update(out)
 
         self._frame = XYZFrame(**self._kwargs)
+
+        # ---check for memory (still a little awkward)
+        if hasattr(self._frame, '_align_ref'):
+            self._kwargs['align_ref'] = self._frame._align_ref
 
         # --- check for stored masks
         for _f, _f_args, _f_kwargs in self._kwargs['_masks']:

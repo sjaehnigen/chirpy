@@ -189,24 +189,7 @@ def main():
         _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 
-    # python3.8: use walrus
-    center_coords = largs.pop('center_coords')
-    align_coords = largs.pop('align_coords')
     extract_molecules = largs.pop('extract_molecules')
-
-    if center_coords is not None:
-        if center_coords[0] in ['True', 'False']:
-            center_coords = bool(center_coords[0])
-        else:
-            center_coords = [int(_a) for _a in center_coords]
-        _load.XYZ.center_coordinates(center_coords, **largs)
-
-    if align_coords is not None:
-        if align_coords[0] in ['True', 'False']:
-            align_coords = bool(align_coords[0])
-        else:
-            align_coords = [int(_a) for _a in align_coords]
-        _load.XYZ.align_coordinates(align_coords, **largs)
 
     if extract_molecules is not None:
         _load.extract_molecules(extract_molecules)
