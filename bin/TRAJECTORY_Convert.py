@@ -162,7 +162,7 @@ def main():
 
     skip = largs.pop('mask_frames')
     if skip is not None:
-        if skip[0] in ['True', 'False']:
+        if skip[0] in ['True']:
             skip = bool(skip[0])
             _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
             skip = _load.XYZ.mask_duplicate_frames()
