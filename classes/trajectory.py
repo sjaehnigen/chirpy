@@ -443,10 +443,11 @@ class _XYZ():
         self._sync_class()
 
         if center_coords is not None:
-            if center_coords[0] in ['True', 'False']:
-                center_coords = bool(center_coords[0])
-            else:
-                center_coords = [int(_a) for _a in center_coords]
+            if isinstance(center_coords, list):
+                if center_coords[0] in ['True', 'False']:
+                    center_coords = bool(center_coords[0])
+                else:
+                    center_coords = [int(_a) for _a in center_coords]
             self.center_coordinates(center_coords, **kwargs)
 
         if wrap:
@@ -461,10 +462,11 @@ class _XYZ():
                 self.wrap_atoms()
 
         if align_coords is not None:
-            if align_coords[0] in ['True', 'False']:
-                align_coords = bool(align_coords[0])
-            else:
-                align_coords = [int(_a) for _a in align_coords]
+            if isinstance(align_coords, list):
+                if align_coords[0] in ['True', 'False']:
+                    align_coords = bool(align_coords[0])
+                else:
+                    align_coords = [int(_a) for _a in align_coords]
             if wrap or wrap_molecules:
                 _warnings.warn('Disabling wrapping for atom alignment!',
                                stacklevel=2)
@@ -647,9 +649,22 @@ class _XYZ():
         if kwargs.get('use_com', False):
             wt = self.masses_amu
 
-        _ref = _cowt(self.pos_aa,
-                     wt,
-                     subset=center_coords,
+        _p = self.pos_aa[center_coords]
+
+        # ---join subset (only for frame)
+        if kwargs.get('wrap', False) and isinstance(center_coords, list):
+            if self._type == 'frame':
+                _p = _np.array([_p])
+            _p = _join_molecules(
+                    _p,
+                    _np.ones((_p.shape[1])).astype(int),
+                    self.cell_aa_deg,
+                    )[0]
+            if self._type == 'frame':
+                _p = _p[0]
+
+        _ref = _cowt(_p,
+                     wt[center_coords],
                      axis=self.axis_pointer)
 
         self.center_position(_ref, self.cell_aa_deg)
