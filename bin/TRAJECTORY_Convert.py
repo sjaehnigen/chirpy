@@ -163,17 +163,21 @@ def main():
     skip = largs.pop('mask_frames')
     if skip is not None:
         if skip[0] in ['True', 'False']:
-            skip = bool(skip[0])
-            if skip:
+            if skip[0] == 'True':
+                skip = bool(skip[0])
                 _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
-                skip = _load.XYZ.mask_duplicate_frames()
+                skip = _load.XYZ.mask_duplicate_frames(verbose=False)
                 largs.update({'skip': skip})
+            else:
+                _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+                largs.update({'skip': []})
         else:
             skip = [int(_a) for _a in skip]
             largs.update({'skip': skip})
             _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
     else:
         _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+        largs.update({'skip': []})
 
     if args.fn_vel is not None:
         warnings.warn("External velocity file not tested for all options!",
