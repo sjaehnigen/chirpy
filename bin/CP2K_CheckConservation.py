@@ -13,6 +13,9 @@
 
 import sys
 import argparse
+import numpy as np
+import warnings
+
 from chirpy.interface import cp2k
 from chirpy.visualise import timeline
 
@@ -64,6 +67,11 @@ def main(*args):
         print('temperature ', temp)
         print('conserved quantity ', cqty)
 
+    delta_t = np.diff(time)
+    if not len(np.unique(delta_t)) == 1:
+        warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
+    timeline.show_and_interpolate_array(
+            step_n[1:], np.diff(time), 'timestep', 'step', 'time in fs', plot)
     timeline.show_and_interpolate_array(
             step_n, time, 'time', 'step', 'time in fs', plot)
     timeline.show_and_interpolate_array(

@@ -1039,7 +1039,14 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         self._kwargs['_timesteps'] = []
         kwargs['func'] = _func
-        self._unwind(**kwargs)
+        try:
+            self._unwind(**kwargs)
+        except ValueError:
+            raise ValueError('Broken trajectory! Stopped at frame %s (%s)'
+                             % (self._fr, self.comments[0]))
+
+        if len(_np.unique(_np.diff(self._kwargs['_timesteps']))) != 1:
+            _warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
 
         print('Duplicate frames in %s according to range %s:' % (
                 self._fn,
