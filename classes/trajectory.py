@@ -1041,8 +1041,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         kwargs['func'] = _func
         self._unwind(**kwargs)
 
-        if verbose:
-            print('Duplicate frames in %s according to range %s:' % (
+        print('Duplicate frames in %s according to range %s:' % (
                 self._fn,
                 self._kwargs['range']
                 ), self._kwargs['skip'])

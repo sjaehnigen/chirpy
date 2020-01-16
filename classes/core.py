@@ -138,6 +138,7 @@ class _ITERATOR():
         events = kwargs.pop('events', {})
         _fr = 0
         for _ifr in self:
+            kwargs['frame'] = _ifr
             if isinstance(func, str):
                 getattr(self._frame, func)(*args, **kwargs)
             elif callable(func):

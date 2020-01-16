@@ -346,14 +346,23 @@ def cpmdWriter(fn, pos_au, vel_au, append=False, **kwargs):
     bool_atoms = kwargs.get('write_atoms', True)
 
     fmt = 'w'
+    frames = kwargs.get('frames', range(pos_au.shape[0]))
+
     if append:
         fmt = 'a'
+        frame = kwargs.get('frame')
+        if frame is None:
+            warnings.warn('Writing CPMD trajectory without frame info!',
+                          stacklevel=2)
+            frame = 0
+        frames = [frame]
+
     with open(fn, fmt) as f:
         format = ' %16.12f'*3
-        for fr in range(pos_au.shape[0]):
-            for at in range(pos_au.shape[1]):
-                line = '%06d  ' % fr + format % tuple(pos_au[fr, at])
-                line += '  ' + format % tuple(vel_au[fr, at])
+        for fr, _p, _v in zip(frames, pos_au, vel_au):
+            for _pp, _vv in zip(_p, _v):
+                line = '%06d  ' % fr + format % tuple(_pp)
+                line += '  ' + format % tuple(_vv)
                 f.write(line+'\n')
 
     if bool_atoms:
