@@ -56,10 +56,10 @@ def _cpmd(frame, **kwargs):
     if len(data) != kwargs.get("n_lines"):
         raise ValueError('Tried to read broken or incomplete file!')
 
-    if filetype == 'GEOMETRY':
+    if 'GEOMETRY' in filetype:
         return np.array(data).astype(float)
 
-    elif filetype in ['TRAJECTORY', 'MOMENTS']:
+    elif any([f in filetype for f in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']]):
         return np.array(data).astype(float)[:, 1:]
 
     else:
@@ -99,7 +99,7 @@ def cpmdIterator(FN, **kwargs):
     _kernel = _cpmd
     kinds = kwargs.pop('kinds', None)
     if 'filetype' not in kwargs:
-       kwargs['filetype'] = FN
+        kwargs['filetype'] = FN
 
     if kinds is None:
         _nlines = 1
@@ -162,8 +162,8 @@ def pdbReader(FN, **kwargs):
         cell_aa_deg[0], list(title)
 
 
-def cifReader(fn):
-    ReadCif(fn)
+# def cifReader(fn):
+#    ReadCif(fn)
 
 # ------ old readers (no trajectory support)
 

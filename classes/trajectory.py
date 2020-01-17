@@ -952,8 +952,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             frame[:, :3] *= constants.l_au2aa
             out = {
                     'data': frame,
-                    'symbols': self._symbols,
-                    'comments': self._comments,
+                    'symbols': self._topology.symbols,
+                    'comments': self._topology.comments,
                     }
         self._fr += self._st
         self._kwargs.update(out)

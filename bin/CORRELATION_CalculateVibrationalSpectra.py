@@ -16,7 +16,6 @@ import argparse
 import warnings
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.ndimage.filters import gaussian_filter1d
 
 from chirpy.classes import trajectory
 from chirpy.physics import spectroscopy, constants
@@ -75,7 +74,7 @@ def main():
     parser.add_argument(
             "--subset",
             nargs='+',
-            help="Use only subset of kinds. List of kinds "
+            help="Use only a subset of kinds. Expects ist of indices "
                  "(id starting from 0).",
             type=int,
             default=None,
@@ -88,8 +87,17 @@ def main():
             type=float,
             )
     parser.add_argument(
+            "--cutoff",
+            help="Cutoff in angstrom to scale neighbouring moments "
+                 "surrounding each molecular origin.",
+            default=0.,
+            type=float,
+            )
+    parser.add_argument(
             "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing.",
+            help="Strength of signal filter (welch) for TCF pre-processing."
+                 "Give -1 to remove the implicit size-dependent triangular "
+                 "filter",
             default=0,
             type=int,
             )
@@ -105,7 +113,14 @@ def main():
             action='store_true',
             default=False,
             )
-
+    parser.add_argument(
+            "--xrange",
+            nargs=2,
+            help="Plotted range of frequencies (in 1/cm; "
+                 "does not effect --save).",
+            default=[2000., 500.],
+            type=float,
+            )
     parser.add_argument(
             "-f",
             help="Output file name",
@@ -123,7 +138,7 @@ def main():
     _load = trajectory.MOMENTS(args.fn, **largs)
 
     if not any([args.va, args.vcd]):
-        warnings.warn("Neither --VA nor --VCD argument set! Did nothing.",
+        warnings.warn("Neither --va nor --vcd argument set! Did nothing.",
                       RuntimeWarning, stacklevel=2)
         sys.exit(0)
 
@@ -134,7 +149,7 @@ def main():
                       axis=-1
                       )
 
-    # cutoff = cutoff_aa * constants.l_aa2au
+    _cutoff = args.cutoff * constants.l_aa2au
     _voa = spectroscopy.get_vibrational_spectrum(
                                 _c, _m, _p,
                                 ts=args.ts * constants.femto,
@@ -142,17 +157,17 @@ def main():
                                 return_tcf=args.return_tcf,
                                 # --- example
                                 origins=_p.swapaxes(0, 1),
-                                cutoff=6 * constants.l_aa2au,
+                                cutoff=_cutoff,
                                 )
 
+    # --- plot
     labels = {
        'va': ('Vibrational absorption spectrum', 'A in ...'),
        'vcd': ('Vibrational circular dichroism spectrum', r'$\Delta$A in ...'),
     }
     for _i in filter(args.__dict__.get, ['va', 'vcd']):
-        plt.plot(_voa['omega'] * constants.E_Hz2cm_1,
-                 gaussian_filter1d(_voa[_i], 2.0, axis=0))
-        plt.xlim(2000, 500)
+        plt.plot(_voa['omega'] * constants.E_Hz2cm_1, _voa[_i])
+        plt.xlim(*args.xrange)
         plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
         plt.title(labels[_i][0])
         plt.ylabel(labels[_i][1])

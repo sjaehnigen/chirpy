@@ -14,7 +14,6 @@
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.ndimage.filters import gaussian_filter1d
 
 from chirpy.classes import system
 from chirpy.physics import spectroscopy, constants
@@ -69,7 +68,7 @@ def main():
     parser.add_argument(
             "--subset",
             nargs='+',
-            help="Do use only subset of atoms. Expects list of indices "
+            help="Use only a subset of atoms. Expects list of indices "
                  "(id starting from 0).",
             type=int,
             default=None,
@@ -83,7 +82,9 @@ def main():
             )
     parser.add_argument(
             "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing.",
+            help="Strength of signal filter (welch) for TCF pre-processing."
+                 "Give -1 to remove the implicit size-dependent triangular "
+                 "filter",
             default=0,
             type=int,
             )
@@ -99,7 +100,14 @@ def main():
             action='store_true',
             default=False,
             )
-
+    parser.add_argument(
+            "--xrange",
+            nargs=2,
+            help="Plotted range of frequencies (in 1/cm; "
+                 "does not effect --save).",
+            default=[2000., 500.],
+            type=float,
+            )
     parser.add_argument(
             "-f",
             help="Output file name",
@@ -152,9 +160,8 @@ def main():
                                 return_tcf=args.return_tcf
                                 )
 
-    plt.plot(_pow['omega'] * constants.E_Hz2cm_1,
-             gaussian_filter1d(_pow['power'], 2.0, axis=0))
-    plt.xlim(2000, 500)
+    plt.plot(_pow['omega'] * constants.E_Hz2cm_1, _pow['power'])
+    plt.xlim(*args.xrange)
 
     plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
     plt.ylabel('Power in ...')

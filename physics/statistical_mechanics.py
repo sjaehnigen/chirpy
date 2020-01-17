@@ -13,6 +13,7 @@
 
 
 import numpy as np
+from scipy import signal
 from ..physics import constants
 
 
@@ -86,10 +87,11 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
 def spectral_density(*args, **kwargs):
     '''Calculate the spectral distribution of a signal (*aurgs) over frequency,
        based on the Fourier transformed time-correlation function (TCF) of that
-       signal (Wiener-Khinchin theorem).
-       The method automatically decides on calculating auto- or cross-
+       signal and the Wiener-Khinchin theorem (fftconvolve).
+       The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
-       Signal filters and window functions are used by default.
+       Adding signal filters may be enabled; use flt_pow=-1 to remove the
+       implicit triangular filter due to finite size.
        Returns:
         1 - discrete sample frequencies
         2 - spectral density (FT TCF)
@@ -110,15 +112,23 @@ def spectral_density(*args, **kwargs):
                         % len(args))
 
     ts = kwargs.get('ts', 4)
-    flt_pow = kwargs.get('flt_pow', 1)
+    flt_pow = kwargs.get('flt_pow', 0)
     _fac = kwargs.get('factor', 1)
     _cc_mode = kwargs.get('cc_mode', 'AB')
 
     n_frames, three = val1.shape
 
+    def _corr(_val1, _val2, mode='full'):
+        return np.array([signal.fftconvolve(
+                                  v1,
+                                  v2[::-1],
+                                  mode=mode
+                                  )[n_frames-1:]
+                         for v1, v2 in zip(_val1.T, _val2.T)]).T
+
     if auto:
-        R = np.array([np.correlate(v1, v1, mode='full')[n_frames-1:]
-                      for v1 in val1.T]).T
+        R = _corr(val1, val1)
+
     else:
         R = np.zeros_like(val1)
         # cc mode:
@@ -130,26 +140,30 @@ def spectral_density(*args, **kwargs):
         # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
 
         if 'A' in _cc_mode:
-            R += np.array([np.correlate(v1, v2, mode='full')[n_frames-1:]
-                           for v1, v2 in zip(val1.T, val2.T)]).T
+            R += _corr(val1, val2)
+
         if 'B' in _cc_mode:
-            R += np.array([np.correlate(v2, v1, mode='full')[n_frames-1:]
-                           for v1, v2 in zip(val1.T, val2.T)]).T
+            R += _corr(val2, val1)
+            # R += np.array([signal.fftconvolve(
+            #                v2, v1[::-1], mode='full')[n_frames-1:]
+            #                for v1, v2 in zip(val1.T, val2.T)]).T
 
         if 'C' in _cc_mode:
-            R -= np.array([np.correlate(v2, v1, mode='full')[n_frames-1:]
-                           for v1, v2 in zip(val1.T, val2.T)]).T
+            R -= _corr(val2, val1)
 
         if _cc_mode == 'AB':
             R /= 2
 
-    # --- enforce finite size
-    # R *= (n_frames * np.ones(n_frames) - np.arange(n_frames))[:, None]
     R = R.sum(axis=1)
 
     # --- filtering
-    _filter = signal_filter(n_frames, filter_type='welch') ** flt_pow
-    R *= _filter
+    if flt_pow > 0:
+        _filter = signal_filter(n_frames, filter_type='welch') ** flt_pow
+        R *= _filter
+
+    elif flt_pow == -1:
+        # --- remove implicit size-dependent triangular filter
+        R /= (n_frames * np.ones(n_frames) - (np.arange(n_frames)-1))
 
     # --- \ --> /\
     final_cc = np.hstack((R, R[::-1]))

@@ -470,7 +470,12 @@ def cpmdReader(FN, **kwargs):
         kwargs['filetype'] = FN
     filetype = kwargs.get('filetype')
 
-    if filetype in ['GEOMETRY', 'TRAJECTORY', 'MOMENTS']:
+    if any([_f in filetype for _f in [
+                            'TRAJSAVED',
+                            'GEOMETRY',
+                            'TRAJECTORY',
+                            'MOMENTS'
+                            ]]):
         if 'kinds' not in kwargs:
             if ('symbols' in kwargs or 'numbers' in kwargs):
                 numbers = kwargs.get('numbers')
@@ -519,14 +524,14 @@ def cpmdWriter(fn, pos_au, vel_au, append=False, **kwargs):
                 line += '  ' + format % tuple(_vv)
                 f.write(line+'\n')
 
-    if bool_atoms:
+    if bool_atoms and fmt != 'a':
         symbols = kwargs.pop('symbols', ())
         if pos_au.shape[1] != len(symbols):
             raise ValueError('symbols and positions are not consistent!')
 
-        CPMDjob.ATOMS.from_data(symbols,
-                                pos_au[0],
-                                **kwargs).write_section(fn+'_ATOMS')
+        CPMDinput.ATOMS.from_data(symbols,
+                                  pos_au[0],
+                                  **kwargs).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
                   [pos_au[0] / constants.l_aa2au],
                   symbols,
