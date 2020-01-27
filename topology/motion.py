@@ -16,6 +16,9 @@ import numpy as np
 
 
 def linear_momenta(velocities, wt, **kwargs):
+    '''sum(velocities * wt)
+       Use subset= to select atoms
+       '''
     _sub = kwargs.get('subset', slice(None))
     _axis = kwargs.get("axis", -2)
     _wt = np.array(wt)[_sub]
@@ -30,6 +33,9 @@ def linear_momenta(velocities, wt, **kwargs):
 
 
 def angular_momenta(positions, velocities, wt, **kwargs):
+    '''sum(positions x velocities * wt)
+       Use subset= to select atoms
+       '''
     _sub = kwargs.get('subset', slice(None))
     _axis = kwargs.get("axis", -2)
     _o = np.array(kwargs.get("origin", 3 * [0]))

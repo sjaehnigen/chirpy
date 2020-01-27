@@ -14,100 +14,21 @@
 import unittest
 import os
 import numpy as np
-import importlib
-import pkgutil
+import warnings
 
 # --- Done
-from chirpy.read import modes as r_modes
-from chirpy.read import coordinates as r_coordinates
-from chirpy.read import grid as r_grid
+from ..read import modes as r_modes
+from ..read import coordinates as r_coordinates
+from ..read import grid as r_grid
 
-from chirpy.write import modes as w_modes
-# from chirpy.write import coordinates as w_coordinates
-# from chirpy.write import grid as w_grid
+from ..physics import constants
 
-from chirpy.interface import cpmd
-# --- ToDo (change import path later after moving bin)
-# from .topology import
-# from .mathematics import
-# from .statistics import
-# from .physics import
-# from .classes import
-# classes: also insert true negatives (such as wrong or unknown format)
-# from .interface import
-# from .create import
-# from .visualisation import
-# from .mdanalysis import
-# read iterators
-
-# --- NOT tested
-#
-# snippets
-# bin
-# external
-# visualisation
-# hidden methods in general
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
 
 
-# logger = debug.logger
-
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
-
-
-class TestImports(unittest.TestCase):
-
-    @staticmethod
-    def import_submodules(package, recursive=True):
-        '''https://stackoverflow.com/a/25562415'''
-        if isinstance(package, str):
-            package = importlib.import_module(package)
-        results = {}
-        for loader, name, is_pkg in pkgutil.walk_packages(package.__path__):
-            full_name = package.__name__ + '.' + name
-            results[full_name] = importlib.import_module(full_name)
-            if recursive and is_pkg:
-                results.update(TestImports.import_submodules(full_name))
-        return results
-
-    def test_import_00_read(self):
-        self.import_submodules('chirpy.read')
-
-    def test_import_00_write(self):
-        self.import_submodules('chirpy.write')
-
-    def test_import_00_topology(self):
-        self.import_submodules('chirpy.topology')
-
-    def test_import_00_mathematics(self):
-        self.import_submodules('chirpy.mathematics')
-
-    def test_import_00_physics(self):
-        self.import_submodules('chirpy.physics')
-
-    def test_import_01_interface(self):
-        # numpy warning for scipy.interpolate import UnivariateSpline in vmd
-        self.import_submodules('chirpy.interface')
-
-    def test_import_01_mdanalysis(self):
-        self.import_submodules('chirpy.mdanalysis')
-
-    def test_import_02_classes(self):
-        self.import_submodules('chirpy.classes')
-
-    def test_import_03_create(self):
-        self.import_submodules('chirpy.create')
-
-    def test_import_10_visualise(self):
-        self.import_submodules('chirpy.visualise')
-
-    def test_import_10_external(self):
-        self.import_submodules('chirpy.external')
-
-
-class TestReaders(unittest.TestCase):
+class TestModes(unittest.TestCase):
 
     def setUp(self):
-        # Change paths after moving file
         self.dir = _test_dir + '/read_write'
 
     def tearDown(self):
@@ -152,9 +73,37 @@ class TestReaders(unittest.TestCase):
             np.genfromtxt(self.dir + '/vec').reshape(39, 13, 3)
             ))
 
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            n_atoms, numbers, pos_aa, n_modes, freqs, modes_mw = \
+                r_modes.xvibsReader(self.dir + '/test.xvibs', mw=True)
+            self.assertTrue(np.allclose(
+                modes_mw * np.sqrt(constants.numbers_to_masses(
+                                   numbers))[None, :, None],
+                modes,
+                ))
+
+
+class TestCoordinates(unittest.TestCase):
+
+    def setUp(self):
+        # Change paths after moving file
+        self.dir = _test_dir + '/read_write'
+
+    def tearDown(self):
+        pass
+
     def test_xyzReader(self):
+        # --- general iterator test (also valid for cpmd, cube, etc.)
         data, symbols, comments = \
-                r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
+                r_coordinates.xyzReader(self.dir + '/test_traj_w_doublets.xyz',
+                                        skip=[9, 10, 11, 12], range=(0, 3, 12))
+        self.assertTupleEqual(data.shape, (4, 1, 3))
+        self.assertTrue(all(['doublet' not in _c for _c in comments]))
+
+        # --- xyz
+        data, symbols, comments = \
+            r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
         self.assertIsInstance(data, np.ndarray)
         self.assertTrue(np.array_equal(
             data,
@@ -346,6 +295,16 @@ class TestReaders(unittest.TestCase):
                     r_coordinates.pdbReader(
                           self.dir + '/test_simple_nodims.pdb')
 
+
+class TestGrid(unittest.TestCase):
+
+    def setUp(self):
+        # Change paths after moving file
+        self.dir = _test_dir + '/read_write'
+
+    def tearDown(self):
+        pass
+
     def test_cubeReader(self):
         data, origin_au, cell_vec_au, pos_au, numbers, comments = \
                 r_grid.cubeReader(self.dir + '/test-1.cube')
@@ -354,7 +313,7 @@ class TestReaders(unittest.TestCase):
         self.assertIsInstance(cell_vec_au, np.ndarray)
         self.assertIsInstance(pos_au, np.ndarray)
         self.assertIsInstance(comments, list)
-        [self.assertIsInstance(_c, str) for _c in comments]
+        [self.assertIsInstance(_c, tuple) for _c in comments]
         self.assertTupleEqual(
                 numbers,
                 (6, 6, 6, 6, 6, 7, 1, 1, 1, 1, 1)
@@ -375,183 +334,3 @@ class TestReaders(unittest.TestCase):
         with self.assertRaises(ValueError):
             data, origin_au, cell_vec_au, pos_au, numbers, comments = \
                     r_grid.cubeReader(self.dir + '/test-3.cube')
-
-
-class TestWriters(unittest.TestCase):
-
-    def setUp(self):
-        # Change paths after moving file
-        self.dir = _test_dir + '/read_write'
-
-    def tearDown(self):
-        pass
-
-    def test_xvibsWriter(self):
-        n_atoms, numbers, pos_aa, n_modes, freqs, modes = \
-                r_modes.xvibsReader(self.dir + '/test.xvibs')
-        w_modes.xvibsWriter(self.dir + '/out.xvibs',
-                            n_atoms,
-                            numbers,
-                            pos_aa,
-                            freqs,
-                            modes)
-        n_atoms2, numbers2, pos_aa2, n_modes2, freqs2, modes2 = \
-            r_modes.xvibsReader(self.dir + '/out.xvibs')
-        self.assertEqual(n_atoms2, n_atoms)
-        self.assertEqual(n_modes2, n_modes)
-        self.assertListEqual(numbers2, numbers)
-        self.assertListEqual(freqs2, freqs)
-        self.assertTrue(np.array_equal(pos_aa2, pos_aa))
-        self.assertTrue(np.array_equal(modes2, modes))
-
-    # def test_xyzWriter(self):
-    #     pass
-
-    # def test_cpmdWriter(self):
-    #     pass
-
-    # def test_pdbWriter(self):
-    #     pass
-
-    # def test_cubeWriter(self):
-    #     pass
-
-
-class TestTopology(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestMathematics(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestStatistics(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestPhysics(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestClasses(unittest.TestCase):
-    # Later for trajectory class: load vels, find unknown elements
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-# also test the Iterators (important if they return correct shapes, especially
-# CPMD)
-
-#    @unittest.expectedFailure
-#    def test_fail(self):
-#        self.assertEqual(1, 0, "broken")
-
-
-class TestInterfaces(unittest.TestCase):
-
-    def setUp(self):
-        self.dir = _test_dir + '/read_write'
-
-    def tearDown(self):
-        pass
-
-    def test_cpmdReader(self):
-        for _i, _n in zip(['GEOMETRY', 'MOMENTS', 'TRAJECTORY'],
-                          [(1, 208, 6), (5, 288, 9), (6, 208, 6)]):
-
-            data = cpmd.cpmdReader(self.dir + '/' + _i,
-                                   filetype=_i,
-                                   kinds=['X']*_n[1])['data']
-
-            self.assertTrue(np.array_equal(
-                data,
-                np.genfromtxt(self.dir + '/data_' + _i).reshape(_n)
-                ))
-
-        # Some Negatives
-        with self.assertRaises(ValueError):
-            data = cpmd.cpmdReader(self.dir + '/MOMENTS_broken',
-                                   filetype='MOMENTS',
-                                   kinds=['X']*288)['data']
-            data = cpmd.cpmdReader(self.dir + '/MOMENTS',
-                                   filetype='MOMENTS',
-                                   kinds=['X']*286)['data']
-        # Test range
-        data = cpmd.cpmdReader(self.dir + '/' + _i,
-                               filetype='TRAJECTORY',
-                               kinds=['X']*_n[1],
-                               range=(2, 3, 8),
-                               )['data']
-        self.assertTrue(np.array_equal(
-            data,
-            np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3]
-            ))
-
-
-class TestGenerators(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-# Test the binaries (all arguments)
-
-class TestVisualisation(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestMdanalysis(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
-class TestTest:
-    def setUp(self):
-        # Change paths after moving file
-        self.dir = _test_dir
-
-    def tearDown(self):
-        pass
-
-    def test_test(self):
-        pass
-
-
-if __name__ == '__main__':
-    # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
-    unittest.main()

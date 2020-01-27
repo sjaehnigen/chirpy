@@ -18,7 +18,7 @@ from .generators import _reader
 
 def _cube(frame, **kwargs):
     '''Kernel for processing cube frame.'''
-    comments = next(frame) + next(frame)
+    comments = (next(frame).strip(), next(frame).strip())
 
     _cellinfo = list(zip(*[_l.strip().split() for _l in islice(frame, 4)]))
     cell_vec_au = np.zeros((3,3))

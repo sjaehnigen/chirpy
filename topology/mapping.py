@@ -244,6 +244,7 @@ def align_atoms(pos_mobile, w, **kwargs):
        reference. Kinds and order of atoms (usually) have to
        be equal.'''
 
+    w = np.array(w)
     _sub = kwargs.get('subset', slice(None))
 
     pos_mob = copy.deepcopy(pos_mobile)

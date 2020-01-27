@@ -16,7 +16,7 @@ import numpy as np
 from ..topology.mapping import dist_crit_aa, distance_matrix, distance_pbc, \
         wrap, get_cell_vec, detect_lattice
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..read.coordinates import pdbReader
+from ..read.coordinates import pdbReader, xyzReader
 
 
 def fermi_cutoff_function(distance, R_cutoff, D):
@@ -181,8 +181,8 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     molecule … assignment
     n_mol … species counter
     n_atoms … total number of entries
-    neigh_map … partner matrix FUNCTION (!)
-    atom … current line in partner matrix
+    neigh_map … list of neighbour atoms per atom
+    atom … current line in reading neighbour map
     atom_count … starts with n_atoms until zero
     '''
     molecule[atom] = n_mol
@@ -220,11 +220,16 @@ def read_topology_file(fn, **kwargs):
         #                        enumerate(kwargs.get('extract_mols',
         #                                             range(n_mols))) if a==m])
         if n_mols != max(mol_map)+1:
-            raise ValueError('STH is wrong')
+            raise ValueError('Something is wrong with the list of residues!')
 
         return {'mol_map': mol_map,
                 'symbols': symbols,
                 'cell_aa_deg': cell_aa_deg}
+
+    elif fmt == 'xyz':
+        data, symbols, comments = xyzReader(fn)
+
+        return {'symbols': symbols}
 
     else:
         raise ValueError('Unknown format: %s.' % fmt)

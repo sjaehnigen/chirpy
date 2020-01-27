@@ -48,15 +48,12 @@ def xvibsReader(fn, **kwargs):
         modes[i] = np.array([float(e) for e in tmp])
     modes = modes.reshape((n_modes, n_atoms, 3))
 
-    # --- DEBUG corner
-    # manually switch mw ON/OFF (it should be clear from the file format)
+    # --- mw should be convention be False!
     mw = kwargs.get('mw', False)
     if mw:
         _warnings.warn('Assuming mass-weighted coordinates in XVIBS.',
                        stacklevel=2)
         masses_amu = constants.numbers_to_masses(numbers)
-        modes /= np.sqrt(masses_amu)[None, :, None] *\
-            np.sqrt(constants.m_amu_au)
-    # ---
+        modes /= np.sqrt(masses_amu)[None, :, None]
 
     return n_atoms, numbers, pos_aa, n_modes, freqs_cgs, modes

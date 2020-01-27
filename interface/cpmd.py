@@ -29,6 +29,107 @@ from ..write.coordinates import xyzWriter
 # 2.0D-7); missing options: number of 2nd-line arguments
 
 
+def cpmdReader(FN, **kwargs):
+    '''Reads CPMD 4.3 files. Currently supported:
+         GEOMETRY
+         TRAJECTORY
+         MOMENTS
+      '''
+
+    if 'filetype' not in kwargs:
+        kwargs['filetype'] = FN
+    filetype = kwargs.get('filetype')
+
+    if any([_f in filetype for _f in [
+                            'TRAJSAVED',
+                            'GEOMETRY',
+                            'TRAJECTORY',
+                            'MOMENTS'
+                            ]]):
+        if ('symbols' in kwargs or 'numbers' in kwargs):
+            numbers = kwargs.get('numbers')
+            symbols = kwargs.get('symbols')
+            if symbols is None:
+                symbols = constants.numbers_to_symbols(numbers)
+            kwargs.update({'symbols': symbols})
+        else:
+            raise TypeError("cpmdReader needs list of numbers or "
+                            "symbols.")
+
+        data = {}
+        _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
+        data['data'] = _load
+        data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
+
+        return data
+
+    else:
+        raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
+
+
+def cpmdWriter(fn, data, append=False, **kwargs):
+    '''Writes a CPMD TRAJECTORY or MOMENTS file including the frame column.
+       Expects data of shape (n_frames, n_atoms, n_fields)
+
+       Accepts frame=<int> or frames=<list> as optional frame info.
+
+       write_atoms=True additionally writes an xyz file, containing data and
+       symbols, as well as the ATOMS section for a CPMD input file
+       (only append=False).
+       '''
+
+    bool_atoms = kwargs.get('write_atoms', True)
+
+    fmt = 'w'
+    frame = kwargs.get('frame')
+    frames = [frame]
+    if frame is None:
+        frames = kwargs.get('frames', range(data.shape[0]))
+        if append:
+            warnings.warn('Writing CPMD trajectory without frame info!',
+                          stacklevel=2)
+
+    if append:
+        fmt = 'a'
+
+    with open(fn, fmt) as f:
+        for fr, _d in zip(frames, data):
+            for _dd in _d:
+                line = '%7d  ' % fr + '  '.join(map('{:22.14f}'.format, _dd))
+                f.write(line+'\n')
+
+    if bool_atoms and fmt != 'a':
+        symbols = kwargs.pop('symbols', ())
+        if data.shape[1] != len(symbols):
+            raise ValueError('symbols and positions are not consistent!')
+
+        CPMDinput.ATOMS.from_data(symbols,
+                                  data[0, :3],
+                                  **kwargs).write_section(fn+'_ATOMS')
+        xyzWriter(fn + '_ATOMS.xyz',
+                  [pos_au[0, :3] / constants.l_aa2au],
+                  symbols,
+                  [fn])
+
+
+def cpmd_kinds_from_file(fn):
+    '''Accepts MOMENTS or TRAJECTORY file and returns the number
+       of lines per frame, based on analysis of the first frame'''
+
+    warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
+                  stacklevel=2)
+    with open(fn, 'r') as _f:
+        _i = 1
+        _fr = _f.readline().strip().split()[0]
+        try:
+            while _f.readline().strip().split()[0] == _fr:
+                _i += 1
+        except IndexError:
+            pass
+
+    return tuple(range(_i))
+
+
 def fortran_float(a):
     '''Work in progress ...
        1.E-7 --> 1.0D-07'''
@@ -458,99 +559,6 @@ class CPMDjob():
 
         return _L
 
-
-def cpmdReader(FN, **kwargs):
-    '''Reads CPMD 4.3 files. Currently supported:
-         GEOMETRY
-         TRAJECTORY
-         MOMENTS
-      '''
-
-    if 'filetype' not in kwargs:
-        kwargs['filetype'] = FN
-    filetype = kwargs.get('filetype')
-
-    if any([_f in filetype for _f in [
-                            'TRAJSAVED',
-                            'GEOMETRY',
-                            'TRAJECTORY',
-                            'MOMENTS'
-                            ]]):
-        if 'kinds' not in kwargs:
-            if ('symbols' in kwargs or 'numbers' in kwargs):
-                numbers = kwargs.get('numbers')
-                symbols = kwargs.get('symbols')
-                if symbols is None:
-                    symbols = constants.numbers_to_symbols(numbers)
-                kwargs.update({'kinds': symbols})
-            else:
-                raise TypeError("cpmdReader needs list of kinds, numbers or "
-                                "symbols.")
-
-        data = {}
-        _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
-        data['data'] = _load
-        data['symbols'] = kwargs.get('kinds')
-        data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
-
-        return data
-
-    else:
-        raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
-
-
-def cpmdWriter(fn, pos_au, vel_au, append=False, **kwargs):
-    '''Expects pos_au / vel_au of shape (n_frames, n_atoms, three)'''
-
-    bool_atoms = kwargs.get('write_atoms', True)
-
-    fmt = 'w'
-    frames = kwargs.get('frames', range(pos_au.shape[0]))
-
-    if append:
-        fmt = 'a'
-        frame = kwargs.get('frame')
-        if frame is None:
-            warnings.warn('Writing CPMD trajectory without frame info!',
-                          stacklevel=2)
-            frame = 0
-        frames = [frame]
-
-    with open(fn, fmt) as f:
-        format = ' %16.12f'*3
-        for fr, _p, _v in zip(frames, pos_au, vel_au):
-            for _pp, _vv in zip(_p, _v):
-                line = '%06d  ' % fr + format % tuple(_pp)
-                line += '  ' + format % tuple(_vv)
-                f.write(line+'\n')
-
-    if bool_atoms and fmt != 'a':
-        symbols = kwargs.pop('symbols', ())
-        if pos_au.shape[1] != len(symbols):
-            raise ValueError('symbols and positions are not consistent!')
-
-        CPMDinput.ATOMS.from_data(symbols,
-                                  pos_au[0],
-                                  **kwargs).write_section(fn+'_ATOMS')
-        xyzWriter(fn + '_ATOMS.xyz',
-                  [pos_au[0] / constants.l_aa2au],
-                  symbols,
-                  [fn])
-
-
-def cpmd_kinds_from_file(fn):
-    '''Accepts MOMENTS or TRAJECTORY file and returns the number
-       of lines per frame, based on analysis of the first frame'''
-
-    warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
-                  stacklevel=2)
-    with open(fn, 'r') as _f:
-        _i = 1
-        _fr = _f.readline().strip().split()[0]
-        while _f.readline().strip().split()[0] == _fr:
-            _i += 1
-
-    return tuple(range(_i))
 
 #    if pos_au.shape[0] != len(symbols):
 #        print('ERROR: symbols and positions are not consistent!')

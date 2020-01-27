@@ -13,6 +13,7 @@
 
 
 import numpy as np
+import warnings as _warnings
 
 # metric prefixes
 peta = 1.E+15
@@ -100,15 +101,15 @@ elements = np.array([
     ('He',  4.00260,  2, 2, 140.0, ''),
     ('Li',  6.93900,  3, 3, 182.0, ''),
     ('Be',  9.01220,  4, 4, 153.0, ''),
-    ('B',   0.0,      5, 0,   0.0, ''),
+    ('B',   0.0,      5, 0,   1.0, ''),
     ('C',  12.01115,  6, 4, 170.0, ''),
     ('N',  14.00670,  7, 5, 155.0, ''),
     ('O',  15.99940,  8, 6, 152.0, ''),
     ('F',  18.99840,  9, 7, 147.0, ''),
     ('Ne', 20.17976, 10, 0, 154.0, ''),
     ('Na', 22.98980, 11, 1, 227.0, ''),
-    ('Mg',  0.0,     12, 2,   0.0, ''),
-    ('Al',  0.0,     13, 0,   0.0, ''),
+    ('Mg',  0.0,     12, 2,   1.0, ''),
+    ('Al',  0.0,     13, 0,   1.0, ''),
     ('Si', 28.085,   14, 4, 210.0, ''),
     ('P',  30.97376, 15, 5, 180.0, ''),
     ('S',  32.06,    16, 6, 180.0, ''),
@@ -153,11 +154,34 @@ def numbers_to_masses(numbers):
 
 
 def symbols_to_numbers(symbols):
-    return [atomic_numbers[_z.title()] for _z in symbols]
+    try:
+        return [atomic_numbers[_z.title()] for _z in symbols]
+
+    except KeyError:
+        _warnings.warn('Could not find all elements! '
+                       'Numbers cannot be used.',
+                       RuntimeWarning, stacklevel=2)
+
+    except AttributeError:
+        _warnings.warn('Got wrong format for symbols! '
+                       'Numbers cannot be used.',
+                       RuntimeWarning, stacklevel=2)
 
 
 def symbols_to_masses(symbols):
-    return [masses_amu[_z.title()] for _z in symbols]
+    try:
+        return [masses_amu[_z.title()] for _z in symbols]
+
+    except KeyError:
+        _warnings.warn('Could not find masses for all elements! '
+                       'Centre of mass cannot be used.',
+                       RuntimeWarning, stacklevel=2)
+
+    except AttributeError:
+        _warnings.warn('Got wrong format for symbols! '
+                       'Centre of mass cannot be used.',
+                       RuntimeWarning, stacklevel=2)
+
 
 
 def symbols_to_rvdw(symbols):

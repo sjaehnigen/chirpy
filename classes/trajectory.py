@@ -357,11 +357,6 @@ class _XYZ():
                     n_modes, omega_cgs, modes = xvibsReader(fn, **kwargs)
                 comments = _np.array(omega_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
-                if kwargs.get('mw', False):
-                    _warnings.warn('Assuming mass-weighted coordinates in '
-                                   'XVIBS file!', stacklevel=2)
-                    modes /= _np.sqrt(constants.symbols_to_masses(
-                                                symbols))[None, :, None]
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
                            _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -815,7 +810,8 @@ class _XYZ():
                       )
 
         elif fmt == 'cpmd':
-            _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
+            if sorted(symbols) != list(symbols):
+                _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
             kwargs.update({'symbols': loc_self.symbols})
             cpmdWriter(fn,
                        loc_self.pos_aa * constants.l_aa2au,
@@ -888,8 +884,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
 
-            self._topology = XYZFrame(fn, **kwargs)
-
             if self._fmt == "xyz":
                 self._gen = _xyzIterator(fn, **kwargs)
 
@@ -899,14 +893,16 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             elif self._fmt == "cpmd" or fn in [
                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']:
                 self._fmt = "cpmd"
-                if not hasattr(kwargs, 'kinds'):
+                if 'symbols' not in kwargs:
                     kwargs.update({
-                        'kinds': cpmd_kinds_from_file(fn)
+                        'symbols': cpmd_kinds_from_file(fn)
                         })
                 self._gen = _cpmdIterator(fn, **kwargs)
 
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
+
+            self._topology = XYZFrame(fn, **kwargs)
 
             self._kwargs = {}
             # initialise list of masks
@@ -1142,9 +1138,9 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or fn in ['MOMENTS']:
                 self._fmt = "cpmd"
-                if not hasattr(kwargs, 'kinds'):
+                if 'symbols' not in kwargs:
                     kwargs.update({
-                        'kinds': cpmd_kinds_from_file(fn)
+                        'symbols': cpmd_kinds_from_file(fn)
                         })
                 self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
 
