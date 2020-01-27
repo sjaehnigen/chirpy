@@ -18,12 +18,10 @@ import warnings
 
 from ..interface import cpmd
 
-# from .interface import other than cpmd
-
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
 
 
-class TestInterfaces(unittest.TestCase):
+class TestCPMD(unittest.TestCase):
 
     def setUp(self):
         self.dir = _test_dir + '/read_write'

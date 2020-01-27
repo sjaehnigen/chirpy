@@ -47,12 +47,12 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
 
     # add tests to the test suite
-    suite.addTests(loader.loadTestsFromModule(imports))
-    suite.addTests(loader.loadTestsFromModule(read))
-    suite.addTests(loader.loadTestsFromModule(write))
-    suite.addTests(loader.loadTestsFromModule(interface))
+    # suite.addTests(loader.loadTestsFromModule(imports))
+    # suite.addTests(loader.loadTestsFromModule(read))
+    # suite.addTests(loader.loadTestsFromModule(write))
+    # suite.addTests(loader.loadTestsFromModule(interface))
     suite.addTests(loader.loadTestsFromModule(mathematics))
-    suite.addTests(loader.loadTestsFromModule(topology))
+    # suite.addTests(loader.loadTestsFromModule(topology))
 
     # initialize a runner, pass it your suite and run it
     runner = unittest.TextTestRunner(verbosity=4)
