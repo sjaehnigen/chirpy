@@ -11,32 +11,28 @@
 #
 # ------------------------------------------------------
 
-# import os
 import unittest
 
-# import your test modules
-# import import
 from chirpy.test import \
     imports,\
     read,\
     write,\
     interface,\
     mathematics,\
-    topology  # ,\
-    # physics,\
-    # classes,\
-    # create,\
-    # visualise,\
+    topology,\
+    physics,\
+    classes
 
-# --- ToDo (change import path later after moving bin)
-# import mdanalysis import
-# read iterators
+# --- INSUFFICIENT tests for
+# physics
+# classes
 
 # --- NOT (yet) tested
 # snippets
 # bin
 # external
-# visualisation
+# create
+# visualise
 
 
 if __name__ == '__main__':
@@ -47,14 +43,16 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
 
     # add tests to the test suite
-    # suite.addTests(loader.loadTestsFromModule(imports))
-    # suite.addTests(loader.loadTestsFromModule(read))
-    # suite.addTests(loader.loadTestsFromModule(write))
-    # suite.addTests(loader.loadTestsFromModule(interface))
+    suite.addTests(loader.loadTestsFromModule(imports))
+    suite.addTests(loader.loadTestsFromModule(read))
+    suite.addTests(loader.loadTestsFromModule(write))
+    suite.addTests(loader.loadTestsFromModule(interface))
     suite.addTests(loader.loadTestsFromModule(mathematics))
-    # suite.addTests(loader.loadTestsFromModule(topology))
+    suite.addTests(loader.loadTestsFromModule(topology))
+    suite.addTests(loader.loadTestsFromModule(physics))
+    suite.addTests(loader.loadTestsFromModule(classes))
 
     # initialize a runner, pass it your suite and run it
-    runner = unittest.TextTestRunner(verbosity=4)
+    runner = unittest.TextTestRunner(verbosity=1)
 
     result = runner.run(suite)

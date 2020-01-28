@@ -50,9 +50,6 @@ class TestImports(unittest.TestCase):
         # numpy warning for scipy.interpolate import UnivariateSpline in vmd
         self.import_submodules('chirpy.interface')
 
-    def test_import_01_mdanalysis(self):
-        self.import_submodules('chirpy.mdanalysis')
-
     def test_import_02_classes(self):
         self.import_submodules('chirpy.classes')
 

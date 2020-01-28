@@ -49,12 +49,9 @@ class WannierFunction(_ScalarField):
         eroded_background = binary_erosion(background,
                                            structure=neighborhood,
                                            border_value=1)
-        # detected_max_peaks = local_max * eroded_background
-        # detected_min_peaks = local_min * eroded_background
         local_extreme = (local_max + local_min) * eroded_background
         return self.pos_grid()[:, local_extreme].swapaxes(0, 1)
 
-#
 #    @classmethod
 #    def centre(cls,fn,**kwargs):
 #        wfn = cls(fn=fn,**kwargs)
@@ -67,8 +64,7 @@ class ElectronDensity(_ScalarField):
         self.n_electrons = self.voxel*self.data.sum()
         self.threshold = 1.E-3
 
-    # export this method to grid class
-    def aim(self):
+    def aim(self, verbose=True):
         '''Min Yu and Dallas R. Trinkle, Accurate and efficient algorithm for \
 Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
         def pbc(a, dim):
@@ -124,7 +120,7 @@ Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
 
         gain = R.sum(axis=0)
         for i in range(n_points):
-            if (100*i/n_points) % 1 == 0:
+            if (100*i/n_points) % 1 == 0 and verbose:
                 print('Scanning point %d/%d' % (i, n_points))
             ix = test[0][i]
             iy = test[1][i]
@@ -137,8 +133,9 @@ Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
                 else:
                     iatom = next(atoms)
                     basin[ix, iy, iz, iatom] = 1.0
-        print('AIM analysis done.                                              \
-                ')
+        if verbose:
+            print('AIM analysis done.                                              \
+                    ')
 
         aim_atoms = list()
         pos_grid = self.pos_grid()
@@ -151,9 +148,9 @@ Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
                             axis=0)), self.data.shape)
             jatom = _np.argmax(basin[ind])
             transfer = (self.comments,
-                        self.numbers[iatom].reshape((1)),
+                        [self.numbers[iatom]],
                         self.pos_au[iatom].reshape((1, 3)),
-                        self.cell_au, self.origin_au)
+                        self.cell_vec_au, self.origin_au)
             # outer class won't be accessible even with inheritance
             aim_atoms.append(AIMAtom(basin[:, :, :, jatom], transfer))
         self.aim_atoms = _np.array(aim_atoms)
@@ -169,7 +166,7 @@ class AIMAtom(_Domain3D):
         self.comments,\
             self.numbers,\
             self.pos_au,\
-            self.cell_au,\
+            self.cell_vec_au,\
             self.origin_au = transfer
         self.grid_shape = basin.shape
         self.indices = _np.where(basin != 0)
@@ -219,18 +216,6 @@ Current Data are not consistent!')
         self.psi.integral()
         self.j.crop(r)
 
-    # def auto_crop(self, **kwargs):
-    #     '''crop after threshold (default: ...)'''
-    #     thresh=kwargs.get('thresh',self.rho.threshold)
-#   #      isstate=kwargs.get('state',False)
-#   #      if isstate: scale = 2*self.rho.data**2
-    #     scale = self.rho.data
-    #     a=_np.amin(_np.array(self.rho.data.shape)-_np.argwhere(scale>thresh))
-    #     b=_np.amin(_np.argwhere(scale > thresh))
-    #     self.crop( min( a, b ) )
-
-    #     return min( a, b )
-
     def calculate_velocity_field(self, rho, **kwargs):
         '''Requires total density rho'''
         self.v = _VectorField.from_object(self.j)
@@ -262,8 +247,6 @@ Current Data are not consistent!')
     def auto_crop(self, **kwargs):
         '''crop after threshold (default: ...)'''
         thresh = kwargs.get('thresh', self.rho.threshold)
-#        isstate=kwargs.get('state',False)
-#        if isstate: scale = 2*self.rho.data**2
         scale = self.rho.data
         a = _np.amin(_np.array(self.rho.data.shape)
                      - _np.argwhere(scale > thresh))
@@ -292,7 +275,6 @@ Current Data are not consistent!')
         self.nuc_vel_au,\
             self.nuc_symbols,\
             self.nuc_vel_comments = _xyzReader(fn)
-#        self.nuc_vel_au = self.nuc_vel_au[0] #only first frame?
         if list(self.nuc_symbols) != \
                 constants.numbers_to_symbols(self.rho.numbers):
             raise Exception('ERROR: Nuclear velocity file does not match \
@@ -420,16 +402,3 @@ balance matrix) vanishes (n_thresh)'''
         # keep also a copy of all dt's aim atoms and the latest rho
         # does not write into class but returns traj
         pass
-
-
-#    def integrate_dt(self):
-#        dt  = kwargs.get('dt_au',8)
-#        iaf = kwargs.get('ia_flux',False)
-#        aim = kwargs.get('aim',iaf)
-#        self.rho_dt = self.propagate_density(dt=dt)
-#        if aim: self.rho_dt.aim()
-
-# class dividing surface
-# class time evolution of surface
-# class finite differences
-# class SDF():

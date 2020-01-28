@@ -85,13 +85,14 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
 
 
 def spectral_density(*args, **kwargs):
-    '''Calculate the spectral distribution of a signal (*aurgs) over frequency,
-       based on the Fourier transformed time-correlation function (TCF) of that
-       signal and the Wiener-Khinchin theorem (fftconvolve).
+    '''Calculate the spectral distribution of a vector signal (*aurgs) over
+       frequency, based on the Fourier transformed time-correlation function
+       (TCF) of that signal and the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
        Adding signal filters may be enabled; use flt_pow=-1 to remove the
        implicit triangular filter due to finite size.
+       Expects signal of shape (n_frames, n_dim)
        Returns:
         1 - discrete sample frequencies
         2 - spectral density (FT TCF)

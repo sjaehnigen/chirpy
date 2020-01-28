@@ -145,7 +145,9 @@ def _get_property_dict(key):
 
 
 def numbers_to_symbols(numbers):
-    return [elements.symbol[elements.comment == ''][_n-1] for _n in numbers]
+    return tuple(
+            [elements.symbol[elements.comment == ''][_n-1] for _n in numbers]
+            )
 
 
 def numbers_to_masses(numbers):
@@ -181,7 +183,6 @@ def symbols_to_masses(symbols):
         _warnings.warn('Got wrong format for symbols! '
                        'Centre of mass cannot be used.',
                        RuntimeWarning, stacklevel=2)
-
 
 
 def symbols_to_rvdw(symbols):

@@ -20,7 +20,7 @@ from ..topology import mapping, dissection, motion, grid  # , distribution
 from ..read import coordinates
 from ..physics import constants
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestMapping(unittest.TestCase):

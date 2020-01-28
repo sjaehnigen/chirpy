@@ -1044,10 +1044,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         if len(_np.unique(_np.diff(self._kwargs['_timesteps']))) != 1:
             _warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
 
-        print('Duplicate frames in %s according to range %s:' % (
-                self._fn,
-                self._kwargs['range']
-                ), self._kwargs['skip'])
+        if verbose:
+            print('Duplicate frames in %s according to range %s:' % (
+                    self._fn,
+                    self._kwargs['range']
+                    ), self._kwargs['skip'])
 
         self._kwargs['range'] = _keep
         if kwargs.get('rewind', True):

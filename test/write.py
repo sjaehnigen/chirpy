@@ -24,7 +24,7 @@ from ..write import coordinates as w_coordinates
 from ..write import grid as w_grid
 
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestModes(unittest.TestCase):

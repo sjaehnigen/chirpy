@@ -12,15 +12,6 @@
 # ------------------------------------------------------
 
 
-class TestPhysics(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-
 class TestInterfaces(unittest.TestCase):
 
     def setUp(self):
@@ -34,6 +25,8 @@ class TestInterfaces(unittest.TestCase):
 
 # Rather than checking the next two, check if they still have methods that should not be in class
 # Test core classes
+
+# test constants?
 
 class TestClasses(unittest.TestCase):
     # Later for trajectory class: load vels, find unknown elements

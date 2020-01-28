@@ -18,7 +18,7 @@ import warnings
 
 from ..interface import cpmd
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestCPMD(unittest.TestCase):

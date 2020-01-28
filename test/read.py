@@ -23,7 +23,7 @@ from ..read import grid as r_grid
 
 from ..physics import constants
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/../.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestModes(unittest.TestCase):
