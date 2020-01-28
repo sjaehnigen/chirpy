@@ -14,6 +14,8 @@
 import numpy as _np
 import copy as _copy
 from scipy.interpolate import griddata as _griddata
+from scipy.interpolate import RegularGridInterpolator\
+    as _RegularGridInterpolator
 from scipy.integrate import simps as _simps
 import warnings as _warnings
 
@@ -124,9 +126,9 @@ cell_vec_au and data!')
         obj = cls()
         # quick workaround to find out if vectorfield
         if data.shape[0] == 3:
-            obj.comments = 3*['no_comment\nno_comment']
+            obj.comments = 3 * [('no_comment', 'no_comment')]
         else:
-            obj.comments = 'no_comment\nno_comment'
+            obj.comments = ('no_comment', 'no_comment')
         obj.origin_au = kwargs.get('origin_au', _np.zeros((3)))
         obj.pos_au = kwargs.get('pos_au', _np.zeros((0, 3)))
         obj.numbers = kwargs.get('numbers', _np.zeros((0, )))
@@ -290,6 +292,42 @@ cell_vec_au and data!')
 
         return min(a, b)
 
+    def rotate(self, R, rotate_grid=False, **kwargs):
+        '''Rotate entire object including atomic positions either by
+           interpolation of data keeping grid points and cell vectors
+           unchanged (default: rotate_grid=False), or by rotating cell
+           vectors and origin (rotate_grid=True).
+           R ... rotation matrix of shape (3, 3)
+           '''
+        _o = kwargs.get('rot_origin_au', self.origin_au)
+        _new_p = _np.einsum('ji, mi -> mj', R, self.pos_au - _o) + _o
+        self.pos_au = _new_p
+
+        if not rotate_grid:
+            _p_grid = self.pos_grid() - _o[:, None, None, None]
+            _f = _RegularGridInterpolator(
+                      (_p_grid[0, :, 0, 0],
+                       _p_grid[1, 0, :, 0],
+                       _p_grid[2, 0, 0, :]),
+                      self.data,
+                      bounds_error=False,
+                      fill_value=0.0
+                      )
+            # --- unclear why it has to be the other way round (ij)
+            _new_p_grid = _np.einsum('ij, imno -> mnoj',
+                                     R,
+                                     _p_grid)
+            _new_data = _f(_new_p_grid)
+            self.data = _new_data
+
+        else:
+            _warnings.warn('Rotating grid may lead to problems with the '
+                           'Gaussian Cube format convention!', stacklevel=2)
+            _new_or = _np.einsum('ji, i -> j', R, self.origin_au - _o) + _o
+            _new_vec = _np.einsum('ji, mi -> mj', R, self.cell_vec_au)
+            self.cell_vec_au = _new_vec
+            self.origin_au = _new_or
+
     def write(self, fn, **kwargs):
         '''Generalise this routine with autodetection for scalar and velfield,
         since div j is a scalar field, but attr of vec field class.'''
@@ -301,8 +339,7 @@ cell_vec_au and data!')
                     'ERROR: Attribute %s not (yet) part of object!'
                     % attr)
         if fmt == "cube":
-            comment1 = kwargs.get('comment1', self.comments.split('\n')[0])
-            comment2 = kwargs.get('comment2', self.comments.split('\n')[1])
+            comments = kwargs.get('comments', self.comments)
             pos_au = kwargs.get('pos_au', self.pos_au)
             n_atoms = pos_au.shape[0]
             numbers = kwargs.get('numbers', self.numbers)
@@ -315,13 +352,12 @@ cell_vec_au and data!')
             origin_au = kwargs.get('origin_au', self.origin_au)
             data = getattr(self, attr)
             cubeWriter(fn,
-                       comment1,
-                       comment2,
+                       comments,
                        numbers,
                        pos_au,
                        cell_vec_au,
                        data,
-                       origin=origin_au)
+                       origin_au=origin_au)
         else:
             raise ValueError('Unknown format (Not implemented).')
 
@@ -373,6 +409,10 @@ class VectorField(ScalarField):
         _slc = (slice(None), ) \
                + tuple([_i for _i in VectorField._ip2ind(ip, F)])
         F[_slc] = V
+
+    def rotate(self, *args, **kwargs):
+        raise NotImplementedError(
+                'Use the ScalarField method for each component!')
 
     def streamlines(self, p0, **kwargs):
         '''pn...starting points of shape (n_points, 3)'''
@@ -515,38 +555,32 @@ class VectorField(ScalarField):
         fmt = kwargs.get('fmt', fn1.split('.')[-1])
         attr = kwargs.get('attribute', 'data')
         if fmt == "cube":
-            comment1 = kwargs.get('comment1',
-                                  [c.split('\n')[0] for c in self.comments])
-            comment2 = kwargs.get('comment2',
-                                  [c.split('\n')[1] for c in self.comments])
+            comments = kwargs.get('comments', self.comments)
             pos_au = kwargs.get('pos_au', self.pos_au)
             numbers = kwargs.get('numbers', self.numbers)
             cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
             origin_au = kwargs.get('origin_au', self.origin_au)
             data = getattr(self, attr)
             cubeWriter(fn1,
-                       comment1[0],
-                       comment2[0],
+                       comments[0],
                        numbers,
                        pos_au,
                        cell_vec_au,
                        data[0],
-                       origin=origin_au)
+                       origin_au=origin_au)
             cubeWriter(fn2,
-                       comment1[1],
-                       comment2[1],
+                       comments[1],
                        numbers,
                        pos_au,
                        cell_vec_au,
                        data[1],
-                       origin=origin_au)
+                       origin_au=origin_au)
             cubeWriter(fn3,
-                       comment1[2],
-                       comment2[2],
+                       comments[2],
                        numbers,
                        pos_au,
                        cell_vec_au,
                        data[2],
-                       origin=origin_au)
+                       origin_au=origin_au)
         else:
             raise ValueError('Unknown format (Not implemented).')
