@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-
-from chirpy.create.supercell import Solution
-
-
-sys = Solution( 
-                solvent = 'ACN-d3.xyz',
-                solutes = [ 'S-MPAA.xyz' ],
-                c_mol_L = [ 0.3 ],
-                rho_g_cm3 = 0.844,
-              )
-
+# ------------------------------------------------------
+#
+#  ChirPy 0.9.0
+#
+#  https://hartree.chimie.ens.fr/sjaehnigen/ChirPy.git
+#
+#  2010-2016 Arne Scherrer
+#  2014-2020 Sascha Jähnigen
+#
+#
+# ------------------------------------------------------
 sys._fill_box(sort=True)
 #mv topology.pdb S-MPAA_ACN-d3_03M_topology.pdb
