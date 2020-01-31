@@ -27,7 +27,7 @@ def main():
     parser.add_argument(
             "fn",
             help="Input trajectory file."
-                        )
+            )
     parser.add_argument(
             "--input_format",
             help="Input file format (e.g. xyz, pdb, cpmd; optional).",

@@ -18,9 +18,7 @@ import warnings as _warnings
 from .core import _CORE
 from .volume import ScalarField as _ScalarField
 
-eijk = _np.zeros((3,  3,  3))
-eijk[0,  1,  2] = eijk[1,  2,  0] = eijk[2,  0,  1] = 1
-eijk[0,  2,  1] = eijk[2,  1,  0] = eijk[1,  0,  2] = -1
+# ToDo: clean up
 
 
 class Domain3D(_CORE):
@@ -117,7 +115,7 @@ class FD_Domain():
             # print(issubclass(type(d1).__bases__[0], classes.domain.Domain3D))
             # if not all([issubclass(type(d1).__bases__[0], (Domain3D)), issubclass(type(d2).__bases__[0], (Domain3D))]): raise Exception('ERROR: Lists contain unknown domain types!', type(d1), type(d2))
             if d1.grid_shape != d2.grid_shape:
-                raise ValueError('ERROR: Domain differ in their respective grid shapes!')
+                raise ValueError('Domain differ in their respective grid shapes!')
             tmp1, tmp2 = d1.expand(), d2.expand()
             # this is a gradient
             self.fd[i_d, 0] = _np.roll(tmp2, -1, axis=0) - tmp1

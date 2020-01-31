@@ -60,6 +60,7 @@ def cpmdReader(FN, **kwargs):
         _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
         data['data'] = _load
         data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
+        data['symbols'] = symbols
 
         return data
 
@@ -69,7 +70,8 @@ def cpmdReader(FN, **kwargs):
 
 def cpmdWriter(fn, data, append=False, **kwargs):
     '''Writes a CPMD TRAJECTORY or MOMENTS file including the frame column.
-       Expects data of shape (n_frames, n_atoms, n_fields)
+       Expects data of shape (n_frames, n_atoms, n_fields) in
+       atomic units.
 
        Accepts frame=<int> or frames=<list> as optional frame info.
 
@@ -101,13 +103,14 @@ def cpmdWriter(fn, data, append=False, **kwargs):
     if bool_atoms and fmt != 'a':
         symbols = kwargs.pop('symbols', ())
         if data.shape[1] != len(symbols):
-            raise ValueError('symbols and positions are not consistent!')
+            raise ValueError('symbols and positions are not consistent!',
+                             data.shape[1], symbols)
 
         CPMDinput.ATOMS.from_data(symbols,
-                                  data[0, :3],
+                                  data[0, :, :3],
                                   **kwargs).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
-                  [pos_au[0, :3] / constants.l_aa2au],
+                  [data[0, :, :3] / constants.l_aa2au],
                   symbols,
                   [fn])
 
@@ -150,7 +153,7 @@ _cpmd_keyword_logic = {
         'RESTART': (['LATEST', 'WAVEFUNCTION', 'GEOFILE'], None),
         'LINEAR RESPONSE': ([], None),  # if set ask for RESP section
         'OPTIMIZE WAVEFUNCTION': ([], None),
-        'MOLECULAR DYNAMICS': (['', 'FILE'], None),
+        'MOLECULAR DYNAMICS': (['', 'FILE', 'NSKIP=-1'], None),
         'MIRROR': ([], None),
     },
     'RESP': {
@@ -166,7 +169,7 @@ _cpmd_keyword_logic = {
     },
     'SYSTEM': {
         'SYMMETRY': ([''], str),
-        'CELL': (['', 'ABSOLUTE'], float),  # list of floats
+        'CELL': (['', 'ABSOLUTE', 'DEGREE'], float),  # list of floats
         'CUTOFF': ([], float),
         'ANGSTROM': ([], None),
         'POISSON SOLVER': (['TUCKERMAN'], None),
@@ -282,13 +285,14 @@ class CPMDinput():
             for _line in section_input:
                 _key, _arg, _next = cls._parse_keyword_input(cls.__name__,
                                                              _line)
+                _nl = None
                 if _next is not None:
                     if _next.__class__ is not list:
                         _nl = list(map(_next, next(section_input).split()))
                     else:
                         raise NotImplementedError(
                              'Multiple line keywords not supported: %s' % _key)
-                    options.update({_key: (_arg, _nl)})
+                options.update({_key: (_arg, _nl)})
             _C['options'] = options
 
             out = cls()
@@ -302,6 +306,10 @@ class CPMDinput():
 
         def set_name(self, name):
             self.options = {str(name): ([], None)}
+
+        @staticmethod
+        def _parse_keyword_input(section, line):
+            return line.strip(), [], None
 
     class CPMD(_SECTION):
         pass
@@ -408,6 +416,7 @@ class CPMDjob():
 
     def __init__(self, **kwargs):
         # mandatory
+        self.INFO = CPMDinput.INFO(options={'CPMD DEFAULT JOB': ([], None)})
         for _sec in [
                 'INFO',
                 'CPMD',
@@ -416,7 +425,6 @@ class CPMDjob():
                 'ATOMS',
                 ]:
             setattr(self, _sec, kwargs.get(_sec, getattr(CPMDinput, _sec)()))
-        self.INFO = CPMDinput.INFO(options={'CPMD DEFAULT JOB': ([], None)})
 
         # optional
         for _sec in [
@@ -457,7 +465,7 @@ class CPMDjob():
 
         return cls(**CONTENT)
 
-    def write_input_file(self, *args):
+    def write_input_file(self, *args, **kwargs):
         ''' CPMD 4 '''
 
         # known sections and order

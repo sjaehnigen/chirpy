@@ -94,7 +94,7 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
        Does not care of axis order priority.
        (Beta)'''
     if cell_aa_deg is None or np.any(cell_aa_deg == 0.):
-        _warnings.warn("Got empty cell!", stacklevel=2)
+        _warnings.warn("Got empty cell!", RuntimeWarning, stacklevel=2)
         return None
 
     abc, albega = cell_aa_deg[:3], cell_aa_deg[3:]
@@ -140,7 +140,12 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
 
 
 def distance_pbc(p0, p1, **kwargs):
-    '''p1 – p0, accepts cell_aa_deg argument'''
+    '''p1 – p0 with or without periodic boundaries
+       accepts cell_aa_deg argument
+       length units need not be in angstrom, but
+       have to be consistent between p0, p1, and
+       cell.
+       '''
     # actually it does not calculate a "distance"
     _d = p1 - p0
     try:
@@ -157,6 +162,7 @@ def distance_pbc(p0, p1, **kwargs):
 
 def _pbc_shift(_d, cell_aa_deg):
     '''_d in aa of shape ...'''
+
     if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
         if not all([_a == 90.0 for _a in cell_aa_deg[3:]]):
             cell_vec_aa = get_cell_vec(cell_aa_deg)
@@ -171,6 +177,8 @@ def _pbc_shift(_d, cell_aa_deg):
 def distance_matrix(*args, **kwargs):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
+
+       Supports periodic boundaries (give cell_aa_deg).
        '''
     # ToDo: the following lines explode memory for many atoms
     #   ==> do coarse mapping beforehand
@@ -188,7 +196,7 @@ def distance_matrix(*args, **kwargs):
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>1000 atom support in a future version)!'
                           )
-    dist_array = distance_pbc(_p0[None, :, :], _p1[:, None, :], **kwargs)
+    dist_array = distance_pbc(_p0[:, None], _p1[None, :], **kwargs)
 
     if kwargs.get("cartesian") is not None:
         return dist_array

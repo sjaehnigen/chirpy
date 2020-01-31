@@ -11,14 +11,12 @@
 #
 # ------------------------------------------------------
 
-import sys as _sys
 import os as _os
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
 
 from ..topology.dissection import assign_molecule as _assign_molecule
-# from ..topology.mapping import get_atom_spread as _get_atom_spread
 from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.core import _CORE
@@ -67,12 +65,8 @@ class _BoxObject(_CORE):
         nargs = {}
         nargs['cell_aa_deg'] = _load.cell_aa_deg
         if _np.any(_load.cell_aa_deg == 0.):
-            _warnings.warn('Cannot detect cell dimensions!',  # Guessing.',
+            _warnings.warn('Cannot detect cell dimensions!',
                            stacklevel=2)
-#             nargs['cell_aa_deg'] = _np.concatenate((
-#                                   _np.array(_get_atom_spread(_load.XYZ.data)),
-#                                   _np.ones(3) * 90.
-#                                   ))
 
         if _load.mol_map is not None:
             return cls(
@@ -151,14 +145,15 @@ class _BoxObject(_CORE):
 
     def __add__(self, other):
         if not isinstance(other, _BoxObject):
-            raise TypeError('unsupported operand type(s) for +: \
-\'%s\' and \'%s\'' % (type(self).__name__, type(other).__name__))
+            raise TypeError('unsupported operand type(s) for +: '
+                            '\'%s\' and \'%s\''
+                            % (type(self).__name__, type(other).__name__))
         new = _copy.deepcopy(self)
         if _np.allclose(self.cell_vec_aa, other.cell_vec_aa):
             new.members += other.members
         else:
-            raise AttributeError('The two objects have different \
-cell attributes!')
+            raise AttributeError('The two objects have different '
+                                 'cell attributes!')
         new._sync_class()
         new._clean_members()
         return new
@@ -180,8 +175,9 @@ cell attributes!')
         _warnings.warn('Power in beta state. Proceed with care!',
                        stacklevel=2)
         if not isinstance(other, int):
-            raise TypeError('unsupported operand type(s) for *: \
-\'%s\' and \'%s\'' % (type(self).__name__, type(other).__name__))
+            raise TypeError('unsupported operand type(s) for *: '
+                            '\'%s\' and \'%s\''
+                            % (type(self).__name__, type(other).__name__))
         new = _copy.deepcopy(self)
         new.members *= other
         new._cell_vec_aa = lambda: other ** (1/3) * self._cell_vec_aa()
@@ -190,24 +186,6 @@ cell attributes!')
         new._sync_class()
         new._clean_members()
         return new
-
-    # def __radd__(self, other):
-    #     return self.__add__(other)
-
-    # def __iadd__(self, other):
-    #     self = self.__add__(other)
-    #     return self
-
-    # def __rmul__(self, other):
-    #     return self.__mul__(other)
-
-    # def __imul__(self, other):
-    #     self = self.__mul__(other)
-    #     return self
-
-    # def __ipow__(self, other):
-    #     self = self.__pow__(other)
-    #     return self
 
     def _mol_map(self):
         _imol = 0
@@ -259,7 +237,6 @@ class MolecularCrystal(_BoxObject):
         self.lattice = _get_symmetry(self.cell_aa_deg)
         _BoxObject._sync_class(self)
 
-    # CPMD priority (monoclinic): (2, 0, 1)
     def propagate(self, frame, multiply=(1, 1, 1), priority=(0, 1, 2)):
         '''Convolute FRAME object with unitcell.'''
         multiply = _np.array(multiply)
@@ -321,7 +298,6 @@ _solvents = {}
 
 class Solution(_BoxObject):
     def __init__(self, *args, **kwargs):
-        self.symmetry = 'orthorhombic'  # by definition
         self.solvent = kwargs.get("solvent")
         self.rho_g_cm3 = kwargs.get("rho_g_cm3", 1.0)
         self.solutes = kwargs.get("solutes", [])
@@ -331,30 +307,26 @@ class Solution(_BoxObject):
         # to get simulation cell ready
 
         if self.solvent is None:
-            print('\nERROR: You have to specify a solvent as coordinate file \
-or select one from the library!')
-            _sys.exit(1)
+            raise AttributeError('You have to specify a solvent as coordinate '
+                                 'file or select one from the library!')
         if self.solvent in _solvents:
             self.solvent = _solvents[self.solvent]
         if 0. in self.c_mol_L:
-            print('\nERROR: You have to specify non-zero values of \
-concentration!')
-            _sys.exit(1)
+            raise ValueError('You have to specify non-zero values of '
+                             'concentration!')
 
-        # TMP vars
         _slt = [_XYZFrame(_s) for _s in self.solutes]
         _slv = _XYZFrame(self.solvent)
 
         # --- CALCULATE INTENSIVE PROPERTIES (per 1L)
-        # solvent concentration (externalise?)
         _c_slv_mol_L = (1000 * self.rho_g_cm3 -
                         sum([_c * _o.masses_amu.sum()
                              for _c, _o in zip(self.c_mol_L, _slt)])
                         ) / _slv.masses_amu.sum()
 
         if _c_slv_mol_L <= _np.amax(self.c_mol_L):
-            raise ValueError('The given solutes\' concentrations exceed \
-density of %.2f!\n' % self.rho_g_cm3)
+            raise ValueError('The given solutes\' concentrations exceed '
+                             'density of %.2f!\n' % self.rho_g_cm3)
 
         _c_min_mol_L = _np.amin(self.c_mol_L)
 
@@ -383,19 +355,20 @@ density of %.2f!\n' % self.rho_g_cm3)
                         "member_set",
                         ]}
 
-        _BoxObject.__init__(
-                self,
-                members_set=[(int(round(_in)), _is)
-                             for _in, _is in zip(_n, _slt + [_slv])],
-                **nargs)  # by definition solvent is the last member
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings('ignore', category=RuntimeWarning)
+            _BoxObject.__init__(
+                        self,
+                        symmetry='orthorhombic',
+                        members=[(int(round(_in)), _is)
+                                 for _in, _is in zip(_n, _slt + [_slv])],
+                        **nargs)  # by definition solvent is the last member
 
         del _slt, _slv, _c_slv_mol_L, _n, _c_min_mol_L, _dev_warning
 
     @classmethod
     def read(cls, fn, **kwargs):
         _tmp = _BoxObject.read(fn, **kwargs)
-        # this is unpythonic but used only temporary until __init__()
-        # routine has been adapted for read
         _out = cls.__new__(cls)
         for _key in _tmp.__dict__:
             setattr(_out, _key, getattr(_tmp, _key))
@@ -403,7 +376,7 @@ density of %.2f!\n' % self.rho_g_cm3)
         return _out
 
     def _cell_vec_aa(self, **kwargs):
-        # what to do if cell_aa argument given here??
+        # ToDo: what to do if cell_aa argument given here?
         # ==> check if total volume is the same;
         # if yes use the given cell values, otherwise raise Exception
         if self.symmetry == 'orthorhombic':  # should be cubic
@@ -431,12 +404,12 @@ density of %.2f!\n' % self.rho_g_cm3)
     def create(self, **kwargs):
         return self._fill_box(**kwargs)
 
-    def _fill_box(self, **kwargs):
+    def _fill_box(self, verbose=False, **kwargs):
         '''requires packmol'''
-        # calculate packmol box
+        # --- calculate packmol box
         _box_aa = _np.concatenate((self.origin_aa, _np.dot(_np.ones((3)),
                                   self.cell_vec_aa)))
-        # if periodic: add vacuum edges
+        # --- if periodic: add vacuum edges
         if self.pbc:
             _box_aa += _np.array([1., 1., 1., -1., -1., -1.])
 
@@ -456,11 +429,12 @@ density of %.2f!\n' % self.rho_g_cm3)
                                                    _box_aa)) + '\n')
                 f.write('end structure' + '\n')
 
-        print("Calling packmol ... (see packmol.log)")
+        if verbose:
+            print("Calling packmol ... (see packmol.log)")
         _os.system("packmol < packmol.inp > packmol.log")
-        print("Done.")
-        # # this is a little awkward (quick and dirty)
-        # read packmol output and centre residue
+        if verbose:
+            print("Done.")
+
         if self.pbc:
             _load = _Molecule(".simbox.xyz",
                               cell_aa_deg=self._cell_aa_deg(),
@@ -474,14 +448,13 @@ density of %.2f!\n' % self.rho_g_cm3)
         self.mol_map = self._mol_map()
         if kwargs.get('sort') is not None:
             _load.sort_atoms()
-        # if kwargs.get('write_PDB', True):
-        #    _load.write("topology.pdb")
+        if kwargs.get('write_PDB', True):
+            _load.write("topology.pdb")
 
-        # clean files
+        # --- clean files
         # _os.remove(".tmp_packmol.inp")
         for _im, _m in enumerate(self.member_set):
             _os.remove(".member-%03d.xyz" % _im)
         _os.remove(".simbox.xyz")
 
         return _load
-# class Mixture, MolecularCrystal, IonicCrystal, GasPhase(Mixture)

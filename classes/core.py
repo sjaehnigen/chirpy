@@ -19,6 +19,7 @@ import warnings
 class _CORE():
     def __init__(self, *args, **kwargs):
         self.data = kwargs.get("data")
+        self._sync_class()
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -37,6 +38,9 @@ class _CORE():
     def __ipow__(self, other):
         self = self.__pow__(other)
         return self
+
+    def _sync_class(self):
+        self.n_fields = self.data.shape[-1]
 
     def dump(self, FN):
         with open(FN, "wb") as f:
@@ -61,11 +65,12 @@ class _CORE():
 
 class _ITERATOR():
     def __init__(self, *args, **kwargs):
+        self._kernel = _CORE
         self._gen = iter([])
         self._kwargs = {}
-        # initialise list of masks
+        # --- initialise list of masks
         self._kwargs['_masks'] = []
-        # keep kwargs for iterations
+        # --- keep kwargs for iterations
         self._kwargs.update(kwargs)
 
         # --- Load first frame w/o consuming it
@@ -78,7 +83,7 @@ class _ITERATOR():
 
     def __next__(self):
         if hasattr(self, '_chaste'):
-            # repeat first step of next() after __init__
+            # --- repeat first step of next() after __init__
             # --- do nothing
             if self._chaste:
                 self._chaste = False
@@ -91,7 +96,7 @@ class _ITERATOR():
         self._fr += self._st
         self._kwargs.update(out)
 
-        self._frame = _CORE(**self._kwargs)
+        self._frame = self._kernel(**self._kwargs)
 
         # --- check for stored masks
         for _f, _f_args, _f_kwargs in self._kwargs['_masks']:

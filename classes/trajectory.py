@@ -41,6 +41,8 @@ from ..topology.mapping import distance_pbc as _distance_pbc
 from ..physics import constants
 from ..physics.statistical_mechanics import kinetic_energies as \
         _kinetic_energies
+from ..physics.classical_electrodynamics import current_dipole_moment as \
+        _current_dipole_moment
 
 from ..mathematics import algebra as _algebra
 
@@ -61,7 +63,6 @@ class _FRAME(_CORE):
         self._sync_class()
 
     def _read_input(self,  *args, **kwargs):
-        self.comments = kwargs.get('comments', [])
         self.symbols = kwargs.get('symbols', ())
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
@@ -71,7 +72,9 @@ class _FRAME(_CORE):
         self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent '
-                             'with symbols attribute!\n')
+                             'with symbols attribute! '
+                             '{} {}'.format(self.data.shape,
+                                            self.symbols))
 
     def __add__(self, other):
         new = _copy.deepcopy(self)
@@ -95,7 +98,7 @@ class _FRAME(_CORE):
         new._sync_class()
         return new
 
-    def sort(self, *args, **kwargs):
+    def sort(self, *args):
         _symbols = _np.array(self.symbols)
 
         # --- scratch for in-depth sort that includes data
@@ -114,7 +117,7 @@ class _FRAME(_CORE):
         if len(args) == 1:
             _slist = list(args[0])
         else:
-            _slist = kwargs.get('order', get_slist())
+            _slist = get_slist()
 
         self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
         self.symbols = tuple(_symbols[_slist])
@@ -582,6 +585,7 @@ class _XYZ():
                                 )
             self._pos_aa(_p[0])
             del _p
+            self.mol_c_aa = mol_c_aa[0]
         else:
             _p, mol_c_aa = _join_molecules(
                                 self.pos_aa,
@@ -590,7 +594,7 @@ class _XYZ():
                                 weights=w,
                                 )
             self._pos_aa(_p)
-        return mol_c_aa
+            self.mol_c_aa = mol_c_aa
 
     def align_coordinates(self, align_coords, **kwargs):
         if not isinstance(align_coords, list):
@@ -727,9 +731,8 @@ class _XYZ():
         self._vel_au(_vel)
 
     def write(self, fn, **kwargs):
-        attr = kwargs.get('attr', 'data')
+        attr = kwargs.get('attr', 'data')  # not supported for all formats
         factor = kwargs.get('factor', 1.0)  # for velocities
-        separate_files = kwargs.get('separate_files', False)
 
         loc_self = _copy.deepcopy(self)
         if self._type == "frame":
@@ -745,28 +748,13 @@ class _XYZ():
         fmt = kwargs.get('fmt', fn.split('.')[-1])
 
         if fmt == "xyz":
-
-            if separate_files:
-                frame_list = kwargs.get('frames', range(loc_self.n_frames))
-                [xyzWriter(''.join(fn.split('.')[:-1])
-                           + '%03d' % fr
-                           + '.'
-                           + fn.split('.')[-1],
-                           [getattr(loc_self, attr)[fr]],
-                           loc_self.symbols,
-                           [loc_self.comments[fr]],
-                           **_extract_keys(kwargs, append=False)
-                           )
-                 for fr in frame_list]
-
-            else:
-                xyzWriter(fn,
-                          getattr(loc_self, attr),
-                          loc_self.symbols,
-                          getattr(loc_self, 'comments',
-                                            loc_self.n_frames * ['passed']),
-                          **_extract_keys(kwargs, append=False)
-                          )
+            xyzWriter(fn,
+                      getattr(loc_self, attr),
+                      loc_self.symbols,
+                      getattr(loc_self, 'comments',
+                                        loc_self.n_frames * ['passed']),
+                      **_extract_keys(kwargs, append=False)
+                      )
 
         elif fmt == 'xvibs':
             if not hasattr(self, 'modes'):
@@ -778,6 +766,7 @@ class _XYZ():
                         loc_self.eival_cgs,
                         loc_self.modes,
                         )
+
         elif fmt == 'molden':
             if not hasattr(self, 'modes'):
                 raise AttributeError('Cannot find modes for molden output!')
@@ -810,12 +799,14 @@ class _XYZ():
                       )
 
         elif fmt == 'cpmd':
-            if sorted(symbols) != list(symbols):
+            if sorted(loc_self.symbols) != list(loc_self.symbols):
                 _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
             kwargs.update({'symbols': loc_self.symbols})
+            loc_self.data = loc_self.data.swapaxes(0, -1)
+            loc_self.data[:3] *= constants.l_aa2au
+            loc_self.data[3:] *= factor
             cpmdWriter(fn,
-                       loc_self.pos_aa * constants.l_aa2au,
-                       loc_self.vel_au * factor,
+                       loc_self.data.swapaxes(0, -1),
                        **kwargs)
 
         else:
@@ -841,14 +832,49 @@ class _XYZ():
 
 class _MOMENTS():
     '''Object that contains position and moment data very similar
-       to XYZ but simpler with unlimited data extension and no need of atomic
-       information.
+       to _XYZ but more general.
        Supports CPMD input only.
        Everything in atomic units (including the positions and cell).
+       (BETA)
+       WORK IN PROGRESS...
        '''
-
     def _sync_class(self):
-        self.cell_au_deg = _np.array(self.cell_au_deg)
+        pass
+
+    def write(self, fn, **kwargs):
+        attr = kwargs.get('attr', 'data')
+        # loc_self = _copy.deepcopy(self)
+        fmt = kwargs.get('fmt', fn.split('.')[-1])
+
+        if fmt == 'cpmd':
+            kwargs.update({'symbols': self.symbols})
+            cpmdWriter(fn,
+                       [getattr(self, attr)],
+                       **kwargs)
+
+        else:
+            raise ValueError('Unknown format: %s.' % fmt)
+
+
+class MOMENTSFrame(_MOMENTS, _FRAME):
+    def _sync_class(self):
+        _FRAME._sync_class(self)
+        _MOMENTS._sync_class(self)
+
+    @classmethod
+    def from_classical_nuclei(cls, obj, **kwargs):
+        '''Convert XYZFrame into _MOMENTS'''
+        _pos = obj.data[:, :3] * constants.l_aa2au
+        _vel = obj.data[:, 3:6]
+        ZV = _np.array(constants.symbols_to_valence_charges(obj.symbols))
+        _c = _current_dipole_moment(_vel, ZV)
+        _m = _np.zeros_like(_c)
+
+        return cls(
+                data=_np.concatenate((_pos, _c, _m), axis=-1),
+                symbols=obj.symbols,
+                **kwargs
+                )
 
 
 class XYZFrame(_XYZ, _FRAME):
@@ -876,10 +902,15 @@ class XYZFrame(_XYZ, _FRAME):
 class XYZ(_XYZ, _ITERATOR, _FRAME):
     '''A generator of XYZ frames (BETA).'''
     def __init__(self, *args, **kwargs):
-        if len(args) != 1:
-            raise TypeError("File reader of %s takes exactly 1 argument!"
-                            % self.__class__.__name__)
-        else:
+        self._kernel = XYZFrame
+        self._kwargs = {}
+        # --- initialise list of masks
+        self._kwargs['_masks'] = []
+
+        if len(args) == 0:
+            pass
+
+        elif len(args) == 1:
             fn = args[0]
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
@@ -904,9 +935,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             self._topology = XYZFrame(fn, **kwargs)
 
-            self._kwargs = {}
-            # initialise list of masks
-            self._kwargs['_masks'] = []
             # keep kwargs for iterations
             self._kwargs.update(kwargs)
 
@@ -917,6 +945,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fr -= self._st
             next(self)
             self._chaste = True
+
+        else:
+            raise TypeError("File reader of %s takes exactly 1 argument!"
+                            % self.__class__.__name__)
 
     def __next__(self):
         if hasattr(self, '_chaste'):
@@ -954,7 +986,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._fr += self._st
         self._kwargs.update(out)
 
-        self._frame = XYZFrame(**self._kwargs)
+        self._frame = self._kernel(**self._kwargs)
 
         # ---check for memory (still a little awkward)
         if hasattr(self._frame, '_align_ref'):
@@ -1128,10 +1160,16 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
     '''A generator of MOMENT frames (BETA).'''
     def __init__(self, *args, **kwargs):
-        if len(args) != 1:
-            raise TypeError("File reader of %s takes exactly 1 argument!"
-                            % self.__class__.__name__)
-        else:
+        self._kernel = MOMENTSFrame
+
+        self._kwargs = {}
+        # --- initialise list of masks
+        self._kwargs['_masks'] = []
+
+        if len(args) == 0:
+            pass
+
+        elif len(args) == 1:
             fn = args[0]
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
@@ -1140,18 +1178,18 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             if self._fmt == "cpmd" or fn in ['MOMENTS']:
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
-                    kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
-                        })
+                    with _warnings.catch_warnings():
+                        _warnings.filterwarnings('ignore',
+                                                 category=UserWarning)
+                        kwargs.update({
+                            'symbols': cpmd_kinds_from_file(fn)
+                            })
                 self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
 
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
 
-            self._kwargs = {}
-            # initialise list of masks
-            self._kwargs['_masks'] = []
-            # keep kwargs for iterations
+            # --- keep kwargs for iterations
             self._kwargs.update(kwargs)
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
@@ -1161,6 +1199,10 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             self._fr -= self._st
             next(self)
             self._chaste = True
+
+        else:
+            raise TypeError("File reader of %s takes exactly 1 argument!"
+                            % self.__class__.__name__)
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):
@@ -1211,7 +1253,6 @@ class VibrationalModes(_XYZ, _MODES):
             e_kin_au = _kinetic_energies(_VEL, self.masses_amu)
             scale = temperature / (_np.sum(e_kin_au) / constants.k_B_au /
                                    self.n_modes) / 2
-            print(scale)
             _VEL *= scale
 
         elif occupation == 'average':

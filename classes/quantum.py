@@ -65,8 +65,8 @@ class ElectronDensity(_ScalarField):
         self.threshold = 1.E-3
 
     def aim(self, verbose=True):
-        '''Min Yu and Dallas R. Trinkle, Accurate and efficient algorithm for \
-Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
+        '''Min Yu and Dallas R. Trinkle, Accurate and efficient algorithm for
+           Bader charge integration, J. Chem. Phys. 134, 064111 (2011)'''
         def pbc(a, dim):
             return _np.remainder(a, self.data.shape[dim])
 
@@ -202,8 +202,7 @@ class ElectronicState(_CORE):
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
         self.psi.integral()
         if not self.psi._is_similar(self.j, strict=2, return_false=True):
-            raise ValueError('ERROR: Wavefunction and \
-Current Data are not consistent!')
+            raise ValueError('Wavefunction and Current are not consistent!')
 
     def grid(self):
         return self.psi.grid()
@@ -230,8 +229,7 @@ class ElectronicSystem(_CORE):
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
         self.rho.integral()
         if not self.rho._is_similar(self.j, strict=2, return_false=True):
-            raise ValueError('ERROR: Density and \
-Current Data are not consistent!')
+            raise ValueError('Density and Current are not consistent!')
 
     def grid(self):
         return self.rho.grid()
@@ -277,8 +275,8 @@ Current Data are not consistent!')
             self.nuc_vel_comments = _xyzReader(fn)
         if list(self.nuc_symbols) != \
                 constants.numbers_to_symbols(self.rho.numbers):
-            raise Exception('ERROR: Nuclear velocity file does not match \
-Electronic System!')
+            raise Exception('Nuclear velocity file does not match '
+                            'Electronic System!')
 
     def calculate_aim_differential_current(self):
         '''Map vector of nuclear velocity on atom domain'''
@@ -395,10 +393,10 @@ Electronic System!')
 
     @staticmethod
     def time_integral(dt, n='auto', n_thresh=0.1):
-        '''propagates rho by dt n times and calculates gain,loss,and balance \
-between atoms at each step
-           n=auto ... propagate until interatomic flux (i.e., the norm of the \
-balance matrix) vanishes (n_thresh)'''
+        '''propagates rho by dt n times and calculates gain,loss,and balance
+           between atoms at each step
+           n=auto ... propagate until interatomic flux (i.e., the norm of the
+           balance matrix) vanishes (n_thresh)'''
         # keep also a copy of all dt's aim atoms and the latest rho
         # does not write into class but returns traj
         pass

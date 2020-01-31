@@ -62,6 +62,12 @@ def main():
             default=1,
             )
     parser.add_argument(
+            "--T",
+            help="Temperature for calculation of nuclear velocities (xyz output only).",
+            type=float,
+            default=300,
+            )
+    parser.add_argument(
             "--mw",
             action="store_true",
             help="Assume modes as mass-weighted displacements "
@@ -92,7 +98,7 @@ def main():
         _load.Modes.write(args.f, fmt=o_fmt)
 
     else:
-        _load.Modes.calculate_nuclear_velocities()
+        _load.Modes.calculate_nuclear_velocities(temperature=args.T)
 
         if o_fmt in ['xyz', 'posvel']:
             if args.modelist is not None:

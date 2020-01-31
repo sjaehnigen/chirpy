@@ -172,7 +172,7 @@ def symbols_to_numbers(symbols):
 
 def symbols_to_masses(symbols):
     try:
-        return [masses_amu[_z.title()] for _z in symbols]
+        return np.array([masses_amu[_z.title()] for _z in symbols])
 
     except KeyError:
         _warnings.warn('Could not find masses for all elements! '
@@ -185,8 +185,23 @@ def symbols_to_masses(symbols):
                        RuntimeWarning, stacklevel=2)
 
 
+def symbols_to_valence_charges(symbols):
+    try:
+        return np.array([valence_charges[_z.title()] for _z in symbols])
+
+    except KeyError:
+        _warnings.warn('Could not find all elements! '
+                       'Numbers cannot be used.',
+                       RuntimeWarning, stacklevel=2)
+
+    except AttributeError:
+        _warnings.warn('Got wrong format for symbols! '
+                       'Numbers cannot be used.',
+                       RuntimeWarning, stacklevel=2)
+
+
 def symbols_to_rvdw(symbols):
-    return [rvdw[_z.title()] for _z in symbols]
+    return np.array([rvdw[_z.title()] for _z in symbols])
 
 
 atomic_numbers = _get_property_dict("atomic_number")

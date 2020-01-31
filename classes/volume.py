@@ -77,8 +77,8 @@ class ScalarField(_CORE):
         try:
             self.n_atoms = self.pos_au.shape[0]
             if self.n_atoms != len(self.numbers):
-                raise ValueError('ERROR: List of atom numbers and atom \
-                                 positions do not match!')
+                raise ValueError('List of atom numbers and atom positions do '
+                                 'not match!')
 
             self.voxel = _np.dot(self.cell_vec_au[0],
                                  _np.cross(self.cell_vec_au[1],
@@ -121,8 +121,7 @@ class ScalarField(_CORE):
         cell_vec_au = kwargs.get('cell_vec_au', _np.empty((0)))
         data = kwargs.get('data', _np.empty((0)))
         if any([cell_vec_au.size == 0, data.size == 0]):
-            raise TypeError('ERROR: Please give both, \
-cell_vec_au and data!')
+            raise TypeError('Please give both, cell_vec_au and data!')
         obj = cls()
         # quick workaround to find out if vectorfield
         if data.shape[0] == 3:
@@ -180,7 +179,7 @@ cell_vec_au and data!')
             if return_false:
                 return False
             raise ValueError('\n'.join(
-                'ERROR: objects dissimilar in %s!'
+                'Objects dissimilar in %s!'
                 % _e for (_e, _B) in zip(err_keys, _ERR) if _B)
                )
 
@@ -196,7 +195,7 @@ cell_vec_au and data!')
                 if return_false:
                     return False
                 raise ValueError('\n'.join(
-                    'ERROR: objects dissimilar in %s!'
+                    'Objects dissimilar in %s!'
                     % _e for (_e, _B) in zip(wrn_keys, _WRN) if _B)
                    )
 
@@ -204,7 +203,7 @@ cell_vec_au and data!')
             if return_false:
                 return False
             raise ValueError('\n'.join(
-                'ERROR: objects differing in %s!'
+                'Objects differing in %s!'
                 % _e for (_e, _B) in zip(equ_keys, _EQU) if _B)
                )
 
@@ -336,8 +335,7 @@ cell_vec_au and data!')
         attr = kwargs.get('attribute', 'data')
         if not hasattr(self, attr):
             raise AttributeError(
-                    'ERROR: Attribute %s not (yet) part of object!'
-                    % attr)
+                              'Attribute %s not (yet) part of object!' % attr)
         if fmt == "cube":
             comments = kwargs.get('comments', self.comments)
             pos_au = kwargs.get('pos_au', self.pos_au)
@@ -346,8 +344,7 @@ cell_vec_au and data!')
             # insert routine to get numbers from symbols: in derived class
             # constants.symbols_to_numbers(symbols)
             if len(numbers) != n_atoms:
-                raise ValueError('ERROR: Given numbers inconsistent \
-                                with positions')
+                raise ValueError('Given numbers inconsistent with positions')
             cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
             origin_au = kwargs.get('origin_au', self.origin_au)
             data = getattr(self, attr)
@@ -432,13 +429,15 @@ class VectorField(ScalarField):
             ext_p0, ext_v = kwargs.get('ext_p'), kwargs.get('ext_v')
 
             if any([ext_p0 is None, ext_v is None]):
-                print('WARNING: Missing external object for set keyword! \
-                       Please give ext_p and ext_v.')
+                _warnings.warn('Missing external object for set keyword! '
+                               'Please give ext_p and ext_v.',
+                               RuntimeWarning, stacklevel=2)
                 ext = False
 
             if ext_p0.shape != ext_v.shape:
-                print('WARNING: External object with inconsistent \
-                       ext_p and ext_v! Skippping.')
+                _warnings.warn('External object with inconsistent ext_p and '
+                               'ext_v! Skippping.',
+                               RuntimeWarning, stacklevel=2)
                 ext = False
 
         pos_grid = self.pos_grid()[:, ::sparse, ::sparse, ::sparse]

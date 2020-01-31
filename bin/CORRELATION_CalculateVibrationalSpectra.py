@@ -39,13 +39,14 @@ def main():
             default='cpmd',
             )
 
-    # parser.add_argument(
-    #         "--cell_au_deg",
-    #         nargs=6,
-    #         help="Use custom cell parametres a b c al be ga in \
-    #                 angstrom/degree",
-    #         default=None,
-    #         )
+    parser.add_argument(
+            "--cell_aa_deg",
+            nargs=6,
+            help="Use custom cell parametres a b c al be ga in \
+                    angstrom/degree",
+            default=None,
+            type=float,
+            )
     parser.add_argument(
             "--va",
             action='store_true',
@@ -150,6 +151,12 @@ def main():
                       )
 
     _cutoff = args.cutoff * constants.l_aa2au
+    if args.cell_aa_deg is not None:
+        _cell = np.array(args.cell_aa_deg)
+        _cell[:3] *= constants.l_aa2au
+    else:
+        _cell = None
+
     _voa = spectroscopy.get_vibrational_spectrum(
                                 _c, _m, _p,
                                 ts=args.ts * constants.femto,
@@ -158,6 +165,7 @@ def main():
                                 # --- example
                                 origins=_p.swapaxes(0, 1),
                                 cutoff=_cutoff,
+                                cell=_cell
                                 )
 
     # --- plot

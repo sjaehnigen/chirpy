@@ -20,6 +20,7 @@ Angstrom2Bohr = 1.8897261247828971
 
 
 # NEEDS Routine to include arrow tip in total vector length
+# ToDo clean up
 
 
 def VMDTube(fn, pos_aa, **kwargs):

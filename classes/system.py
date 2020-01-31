@@ -48,6 +48,7 @@ class _SYSTEM(_CORE):
                 else:
                     self.XYZ = kwargs.pop('XYZ')
             self.cell_aa_deg = self.XYZ.cell_aa_deg
+            self.symbols = self.XYZ.symbols
 
             if kwargs.get('sort', False):
                 self.sort_atoms()
@@ -80,11 +81,6 @@ class _SYSTEM(_CORE):
                                            ' molecule in {}!'.format(_k),
                                            stacklevel=2)
 
-            # extract_mols = kwargs.get('extract_molecules')
-            # if extract_mols is not None:
-            #     # if python 3.8: use walrus
-            #     self.extract_molecules(extract_mols)
-
         except KeyError:
             with _warnings.catch_warnings():
                 _warnings.warn('Initialised void %s!'
@@ -108,7 +104,7 @@ class _SYSTEM(_CORE):
             raise AttributeError('Wrap molecules requires a topology '
                                  '(mol_map)!')
 
-        self.mol_c_aa = self.XYZ.wrap_molecules(self.mol_map)
+        self.XYZ.wrap_molecules(self.mol_map)
 
     def wrap_atoms(self):
         self.XYZ.wrap_atoms()
@@ -132,40 +128,37 @@ class _SYSTEM(_CORE):
                                         cell_aa_deg=self.cell_aa_deg)-1)
         self.mol_map = n_map
 
-    def sort_atoms(self, **kwargs):
+    def sort_atoms(self, *args):
         '''Sort atoms alphabetically (default)'''
-        ind = self.XYZ.sort(**kwargs)
+        ind = self.XYZ.sort(*args)
+
         if hasattr(self, 'Modes'):
-            self.Modes.sort(ind, **kwargs)
+            self.Modes.sort(ind, *args)
+
         if self.mol_map is not None:
-            self.mol_map = list(*map(list, _np.array(self.mol_map)[ind]))
+            self.mol_map = _np.array(self.mol_map)[ind].flatten().tolist()
+
         if self._topo is not None:
-            self._topo['mol_map'] = list(*map(list,
-                                         _np.array(self._topo['mol_map'])[ind]
-                                              ))
-            self._topo['symbols'] = tuple(*map(tuple,
-                                          _np.array(self._topo['symbols'])[ind]
-                                               ))
+            self._topo['mol_map'] = _np.array(
+                                 self._topo['mol_map'])[ind].flatten().tolist()
+            self._topo['symbols'] = tuple(_np.array(
+                                 self._topo['symbols'])[ind].flatten())
 
     def print_info(self):
         print(77 * '–')
         print('%-12s' % self.__class__.__name__)
         print(77 * '–')
-        # print('%-12s %s' % ('Periodic', self.pbc))
-        # print('%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %
-        #       (self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3))
-        # print(77 * '–')
-        # print('CELL ' + ' '.join(map('{:10.5f}'.format, self.cell_aa_deg)))
+        print('%12d Atoms\n%12s' %
+              (self.XYZ.n_atoms, self.XYZ.symbols))
+        if self.mol_map is not None:
+            print('Molecular Map:\n%12s' % self.mol_map)
+        print(77 * '–')
+        print('CELL ' + ' '.join(map('{:10.5f}'.format, self.cell_aa_deg)))
         # print(77 * '-')
         # print(' A   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[0])))
         # print(' B   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[1])))
         # print(' C   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[2])))
         # print(77 * '–')
-        # print('%45s %8s %12s' % ('File', 'No.', 'Molar Mass'))
-        # print(77 * '-')
-        # print('\n'.join(['%45s %8d %12.4f' %
-        #                  (_m[1].fn, _m[0], _m[1].masses_amu.sum())
-        #                  for _m in self.members]))
         print(77 * '–')
 
     def _parse_write_args(self, fn, **kwargs):
