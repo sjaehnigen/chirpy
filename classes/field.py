@@ -27,7 +27,7 @@ from ..physics.classical_electrodynamics import coulomb as _coulomb
 from ..physics.classical_electrodynamics import coulomb_grid as _coulomb_grid
 from ..physics.classical_electrodynamics import coulomb_kspace \
         as _coulomb_kspace
-from ..topology.grid import map_on_posgrid as _map_on_posgrid
+from ..topology.grid import regularisation as _regularisation
 
 
 class MagneticField(_VectorField):
@@ -145,17 +145,13 @@ class MagneticField(_VectorField):
             if verbose:
                 print(' (using smeared point charges.)')
             # No pbc support for now (cell_aa_deg=None)
-            _tmp = _np.sum([
-                    _v[:, None, None, None] * _map_on_posgrid(
-                                                _p,
-                                                R,
-                                                smear_sigma,
-                                                cell_aa_deg=None,
-                                                mode="gaussian",
-                                                dim=3
-                                                ) * _q
-                    for _p, _v, _q in zip(P_au, V_au, Q)
-                    ], axis=0)
+            _tmp = _np.sum(
+                    V_au[:, :, None, None, None]
+                    * _regularisation(P_au, R, smear_sigma,
+                                      mode="gaussian")[:, None]
+                    * Q[:, None, None, None, None],
+                    axis=0)
+
             _j = _VectorField.from_data(
                                 data=_tmp,
                                 cell_vec_au=_cell,
@@ -236,7 +232,7 @@ class ElectricField(_VectorField):
     def from_point_charges(cls, P_au, Q, **kwargs):
         '''
         P_au...positions velocities (N,3)
-        Q...charge (in e)
+        Q...charges (N) (in e)
         R...of shape (3, n_positions)
         '''
         charge = kwargs.get('charge', +1)
@@ -269,16 +265,11 @@ class ElectricField(_VectorField):
             if verbose:
                 print(' (using smeared point charges.)')
             # No pbc support for now (cell_aa_deg=None)
-            _tmp = _np.sum([_map_on_posgrid(
-                                _p,
-                                R,
-                                smear_sigma,
-                                cell_aa_deg=None,
-                                mode="gaussian",
-                                dim=3
-                                ) * _q
-                            for _p, _q in zip(P_au, Q)
-                            ], axis=0)
+            _tmp = _np.sum(
+                    _regularisation(P_au, R, smear_sigma, mode="gaussian")
+                    * Q[:, None, None, None],
+                    axis=0
+                    )
 
             _rho = _ScalarField.from_data(data=_tmp,
                                           cell_vec_au=_cell,

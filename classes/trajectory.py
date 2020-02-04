@@ -242,6 +242,36 @@ class _MODES(_FRAME):
         self.modes = self.data[:, :, 6:9]
         self.eival_cgs = _np.array(self.comments).astype(float)
 
+        if not hasattr(self, 'etdm_au'):
+            self.etdm_au = _np.zeros((self.n_modes, 3))
+
+        if not hasattr(self, 'mtdm_au'):
+            self.mtdm_au = _np.zeros((self.n_modes, 3))
+
+        if not hasattr(self, 'IR_kmpmol'):
+            # --- in km/mol
+            self.IR_kmpmol = _np.zeros((self.n_modes))
+
+        if hasattr(self, 'APT_au'):
+            # --- first step to generate eivec
+            self._check_orthonormality()
+            self.etdm_au = (
+                    self.APT_au[None, :, :, :]
+                    * (
+                     self.eivec
+                     / _np.sqrt(self.masses_amu)[None, :, None])[:, :, :, None]
+                    ).sum(axis=(1, 2))
+
+        if hasattr(self, 'AAT_au'):
+            # --- first step to generate eivec
+            self._check_orthonormality()
+            self.mtdm_au = (
+                    self.AAT_au[None, :, :, :]
+                    * (
+                     self.eivec
+                     / _np.sqrt(self.masses_amu)[None, :, None])[:, :, :, None]
+                    ).sum(axis=(1, 2))
+
     def _modelist(self, modelist):
         if not isinstance(modelist, list):
             raise TypeError('Please give a list of integers instead of %s!'
@@ -298,6 +328,43 @@ class _MODES(_FRAME):
             print(a)
             print(_np.amax(_np.abs(a-_np.identity(self.n_modes))))
             raise ValueError('The eigenvectors are not orthonormal!')
+
+    def _source_APT(self, fn):
+        '''Requires file of APT in atomic units.
+           BETA
+           '''
+        self.APT_au = _np.loadtxt(fn).astype(float).reshape(self.n_atoms, 3, 3)
+
+        # ToDo: this into check_sumrules / sunc_class
+        sumrule = constants.e_si**2 * constants.avog * _np.pi\
+            * _np.sum(self.APT**2 / self.masses_amu[:, None, None])\
+            / (3 * constants.c_si**2) / constants.m_amu_si
+        print(sumrule)
+
+        self._sync_class()
+
+    def _source_AAT(self, fn):
+        '''Requires file of AAT in atomic units.
+           BETA
+           '''
+        self.AAT_au = _np.loadtxt(fn).astype(float).reshape(self.n_atoms, 3, 3)
+
+        # ToDo: this into check_sumrules / sunc_class
+        # sumrule = ? --> see old code
+        # print(sumrule)
+
+        self._sync_class()
+
+    def _calculate_spectral_intensities(self):
+        '''Calculate IR and VCD intensities from electronic and magnetic
+           transition dipole moments.
+           '''
+
+        self.IR_kmpmol = (self.etdm_au ** 2).sum(axis=-1) \
+            * constants.IR_au2kmpmol
+
+        # units?
+        # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
 
 class _XYZ():
@@ -372,6 +439,7 @@ class _XYZ():
                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']:
                 fmt = "cpmd"
                 data_dict = cpmdReader(fn, **kwargs)
+                self._data_dict = data_dict
 
                 if 'symbols' in data_dict:
                     symbols = data_dict['symbols']
@@ -385,6 +453,7 @@ class _XYZ():
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
+                self._data_dict = data_dict
 
                 if 'symbols' in data_dict:
                     symbols = data_dict['symbols']
@@ -401,6 +470,8 @@ class _XYZ():
                             ),
                             axis=-1
                             )
+                        self.IR_kmpmol = data_dict['T**2']
+                        self.APT_au = data_dict['APT_au']
                     else:
                         raise NotImplementedError('Cannot read file %s!' % fn)
 
@@ -1230,8 +1301,9 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
 class VibrationalModes(_XYZ, _MODES):
     def _sync_class(self, **kwargs):
-        _MODES._sync_class(self)
+        # --- keep order for APT/AAT calculation
         _XYZ._sync_class(self)
+        _MODES._sync_class(self)
 
         if kwargs.get('check_orthonormality', True):
             _MODES._check_orthonormality(self)

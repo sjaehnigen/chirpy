@@ -215,6 +215,9 @@ eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 
+IR_au2kmpmol = (avog * e_si**2) / (12 * eps0_si * c_si**2 * m_amu_si * kilo)
+
+
 def _dipole_dipole_prefactor(T_K):
     beta_cgs = 1./(T_K * k_B_cgs)
     prefactor_cgs = (2 * np.pi * avog * beta_cgs * finestr * hbar_cgs) / 3

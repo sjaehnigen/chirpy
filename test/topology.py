@@ -333,13 +333,32 @@ class TestGrid(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_map_on_posgrid(self):
+    def test_regularisation(self):
         # --- Insufficiently tested
         _grid = np.linspace(-32.0, 32.0, 6400)
         _p = np.array([0.])
-        _reg1 = grid.map_on_posgrid(_p, _grid,
-                                    mode="gaussian", sigma=1./8, dim=1)
-        _reg2 = grid.map_on_posgrid(_p, _grid,
-                                    mode="lorentzian", gamma=1./8, dim=1)
+        _reg1 = grid.regularisation(_p, _grid, 1./8, mode="gaussian")
+        _reg2 = grid.regularisation(_p, _grid, 1./8, mode="lorentzian")
         self.assertEqual(100., round(_reg1.sum()))
         self.assertEqual(100., round(_reg2.sum()))
+
+        _w = 0.1
+        X = np.linspace(0, 1, 101)
+        P = np.array([[0.5]])
+        _reg1 = grid.regularisation(P, X, _w, mode="lorentzian_std")[0]
+        _reg2 = grid.regularisation(P, X, _w, mode="gaussian_std")[0]
+        self.assertAlmostEqual(float(_reg1[X == 0.5]), 1.0)
+        self.assertAlmostEqual(float(_reg1[X == _w/2 + 0.5]), 0.5)
+        self.assertAlmostEqual(float(_reg2[X == 0.5]), 1.0)
+        self.assertAlmostEqual(float(_reg2[X == _w/2 + 0.5]), 0.5)
+
+        # --- 3D Gaussian
+        X = np.linspace(0, 1, 100)
+        _grid = np.array(np.meshgrid(X, X, X, indexing='ij'))
+        _P = np.array([
+            [0.5, 0.5, 0.5],
+        ])
+
+        _reg1 = grid.regularisation(_P, _grid, 0.05, mode="gaussian")
+
+        self.assertAlmostEqual(0.97, _reg1.sum()/100**3, delta=0.03)

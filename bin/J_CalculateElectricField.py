@@ -176,7 +176,7 @@ def main():
                 _key = "valence_charges"
             else:
                 _key = "atomic_numbers"
-            Q = [getattr(constants.elements, _key)[_s] for _s in nuc.symbols]
+            Q = np.array([getattr(constants, _key)[_s] for _s in nuc.symbols])
             print('Nuclear Positions/Charges')
             print(77 * '–')
             print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['p_x', 'p_y', 'p_z', 'Q']))
