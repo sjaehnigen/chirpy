@@ -31,7 +31,7 @@ def main():
             )
     parser.add_argument(
             "fn",
-            help="Input file (in CPMD format)"
+            help="Input MOMENTS file (in CPMD format)"
             )
     parser.add_argument(
             "--input_format",

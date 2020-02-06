@@ -17,6 +17,8 @@ import warnings
 
 from .mapping import distance_pbc
 
+# def _voigt():
+#    pass
 
 def _gaussian(r, sigma, dim=1):
     '''Convolution with a normalised Gaussian function. Integrates to one.'''

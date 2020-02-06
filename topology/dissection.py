@@ -13,8 +13,8 @@
 
 
 import numpy as np
-from ..topology.mapping import dist_crit_aa, distance_matrix, distance_pbc, \
-        wrap, get_cell_vec, detect_lattice
+from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
+    detect_lattice, neighbour_matrix
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..read.coordinates import pdbReader, xyzReader
 
@@ -107,11 +107,9 @@ def define_molecules(pos_aa, symbols, **kwargs):
         if _lattice is not None:
             _pp = np.tensordot(_pp, cell_vec_aa, axes=1)
 
-        dist_array = distance_matrix(_pp, cell_aa_deg=cell_aa_deg)
-        np.set_printoptions(precision=2, linewidth=200)
-        dist_array[dist_array == 0.0] = 'Inf'
-        crit_aa = dist_crit_aa(symbols[_ind])
-        neigh_map = dist_array <= crit_aa
+        neigh_map = neighbour_matrix(_pp,
+                                     symbols[_ind],
+                                     cell_aa_deg=cell_aa_deg)
 
         # --- store batch info for assignment
         #     Caution: neigh_count may lead to (uncritical) overcounting if

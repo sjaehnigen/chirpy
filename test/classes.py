@@ -87,7 +87,7 @@ class TestQuantum(unittest.TestCase):
         fn3 = self.dir + "/CURRENT-000001-3-SPARSE.cube"
 
         thresh = 5.E-3
-        system = quantum.ElectronicSystem(fn, fn1, fn2, fn3)
+        system = quantum.TimeDependentElectronDensity(fn, fn1, fn2, fn3)
         system.auto_crop(thresh=thresh)
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=RuntimeWarning)

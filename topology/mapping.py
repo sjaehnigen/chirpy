@@ -204,6 +204,19 @@ def distance_matrix(*args, **kwargs):
         return np.linalg.norm(dist_array, axis=-1)
 
 
+def neighbour_matrix(pos_aa, symbols, **kwargs):
+    '''Create sparse matrix with entries 1 for neighbouring atoms.
+       Expects positions in angstrom of shape (n_atoms, three).
+       '''
+    symbols = np.array(symbols)
+    cell_aa_deg = kwargs.get("cell_aa_deg")
+    dist_array = distance_matrix(pos_aa, cell_aa_deg=cell_aa_deg)
+    dist_array[dist_array == 0.0] = 'Inf'
+    crit_aa = dist_crit_aa(symbols)
+
+    return dist_array <= crit_aa
+
+
 def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     '''DEPRECATED, use join_molecules()'''
     join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)

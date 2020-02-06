@@ -218,10 +218,14 @@ class _TRAJECTORY(_FRAME):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent with '
-                             'symbols attribute!\n')
+                             'symbols attribute!'
+                             '{} {}'.format(self.data.shape,
+                                            self.symbols))
         if self.n_frames != len(self.comments):
             raise ValueError('Data shape inconsistent with '
-                             'comments attribute!\n')
+                             'comments attribute!'
+                             '{} {}'.format(self.data.shape,
+                                            self.comments))
         self.axis_pointer = -2
 
 
@@ -230,7 +234,7 @@ class _MODES(_FRAME):
         self._type = 'modes'
         self._labels = ('comments', 'symbols', None)
 
-    def _sync_class(self):
+    def _sync_class(self, **kwargs):
         self.n_modes, self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent with '
@@ -241,6 +245,7 @@ class _MODES(_FRAME):
         self.axis_pointer = -2
         self.modes = self.data[:, :, 6:9]
         self.eival_cgs = _np.array(self.comments).astype(float)
+        self._eivec()
 
         if not hasattr(self, 'etdm_au'):
             self.etdm_au = _np.zeros((self.n_modes, 3))
@@ -254,7 +259,7 @@ class _MODES(_FRAME):
 
         if hasattr(self, 'APT_au'):
             # --- first step to generate eivec
-            self._check_orthonormality()
+            self._eivec()
             self.etdm_au = (
                     self.APT_au[None, :, :, :]
                     * (
@@ -264,13 +269,16 @@ class _MODES(_FRAME):
 
         if hasattr(self, 'AAT_au'):
             # --- first step to generate eivec
-            self._check_orthonormality()
+            self._eivec()
             self.mtdm_au = (
                     self.AAT_au[None, :, :, :]
                     * (
                      self.eivec
                      / _np.sqrt(self.masses_amu)[None, :, None])[:, :, :, None]
                     ).sum(axis=(1, 2))
+
+        if kwargs.get('check_orthonormality', True):
+            self._check_orthonormality()
 
     def _modelist(self, modelist):
         if not isinstance(modelist, list):
@@ -280,11 +288,23 @@ class _MODES(_FRAME):
         self.comments = [self.comments[_m] for _m in modelist]
         self._sync_class(check_orthonormality=False)
 
-    def _modes(self):
-        '''see _vel_au'''
-        pass
+    def _modes(self, *args):
+        if len(args) == 0:
+            self.modes = self.data.swapaxes(0, -1)[6:9].swapaxes(0, -1)
+            self._eivec()
+        elif len(args) == 1:
+            if args[0].shape != self.modes.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[6:9] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._modes()
+        else:
+            raise TypeError('Too many arguments for %s!'
+                            % self._modes.__name__)
 
-    def _check_orthonormality(self):
+    def _eivec(self):
         self.eivec = self.modes * _np.sqrt(self.masses_amu)[None, :, None]
         norm = _np.linalg.norm(self.eivec, axis=(1, 2))
 
@@ -293,6 +313,7 @@ class _MODES(_FRAME):
         # ---
         self.eivec /= norm[:, None, None]
 
+    def _check_orthonormality(self):
         atol = 5.E-5
         com_motion = _np.linalg.norm(_cowt(self.modes,
                                            self.masses_amu,
@@ -503,10 +524,11 @@ class _XYZ():
         if self.cell_aa_deg is None:
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
+        comments = list(comments)
         if self._type == 'frame':
             _f = kwargs.get("frame", 0)
             data = data[_f]
-            comments = [comments[_f]]
+            comments = comments[_f]
 
         if self._type == 'modes':
             if 'omega_cgs' not in locals():
@@ -515,7 +537,7 @@ class _XYZ():
             comments = _np.array(omega_cgs).astype(str)
 
         self.symbols = tuple(symbols)
-        self.comments = list(comments)
+        self.comments = comments
         self.data = data
         self._sync_class()
 
@@ -798,32 +820,37 @@ class _XYZ():
             _pos = _np.array(_pos) + self.pos_aa[:, i0, None]
             _vel = _np.array(_vel)
 
+        if self._type == 'modes':
+            _mod = []
+            for _p, _m in zip(
+                    self.pos_aa - self.pos_aa[:, i0, None],
+                    self.modes
+                    ):
+                _R = _algebra.rotation_matrix(_p[i1], vec)
+                _mod.append(_np.tensordot(_R,
+                                          _m,
+                                          axes=([1], [1])).swapaxes(0, 1))
+            _mod = _np.array(_mod)
+            self._modes(_mod)
+
         self._pos_aa(_pos)
         self._vel_au(_vel)
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')  # not supported for all formats
         factor = kwargs.get('factor', 1.0)  # for velocities
+        fmt = kwargs.get('fmt', fn.split('.')[-1])
 
         loc_self = _copy.deepcopy(self)
-        if self._type == "frame":
-            loc_self.data = loc_self.data.reshape((1,
-                                                   self.n_atoms,
-                                                   self.n_fields))
-            loc_self.n_frames = 1
-            _XYZ._sync_class(loc_self)
 
         if self._type == "modes":
             loc_self.n_frames = loc_self.n_modes
-
-        fmt = kwargs.get('fmt', fn.split('.')[-1])
 
         if fmt == "xyz":
             xyzWriter(fn,
                       getattr(loc_self, attr),
                       loc_self.symbols,
-                      getattr(loc_self, 'comments',
-                                        loc_self.n_frames * ['passed']),
+                      getattr(loc_self, 'comments'),
                       **_extract_keys(kwargs, append=False)
                       )
 
@@ -858,7 +885,7 @@ class _XYZ():
                                RuntimeWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
             pdbWriter(fn,
-                      loc_self.pos_aa[0],  # only frame 0, vels are not written
+                      loc_self.pos_aa,
                       types=loc_self.symbols,  # types not supported
                       symbols=loc_self.symbols,
                       residues=_np.vstack((
@@ -872,6 +899,7 @@ class _XYZ():
         elif fmt == 'cpmd':
             if sorted(loc_self.symbols) != list(loc_self.symbols):
                 _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
+                loc_self.sort()
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)
             loc_self.data[:3] *= constants.l_aa2au
@@ -965,7 +993,7 @@ class XYZFrame(_XYZ, _FRAME):
 
         return XYZTrajectory(data=_np.dstack((_pos_aa, _vel_aa)),
                              symbols=self.symbols,
-                             comments=[self.comments[0] + ' im ' + str(m)
+                             comments=[self.comments + ' im ' + str(m)
                                        for m in _img]
                              )
 
@@ -1075,10 +1103,15 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         return self._fr
 
     def _to_trajectory(self):
-        '''Perform iteration on remaining iterator
-           (may take some time)'''
+        '''Perform iteration on remaining iterator and load
+           entire trajectory
+           (may take some time)
+           '''
+        self._chaste = True
         if self._fmt == 'xyz':
-            data, symbols, comments = zip(*self._gen)
+            data, symbols, comments = zip(*[(self.data,
+                                             self.symbols,
+                                             self.comments) for _fr in self])
             out = {
                     'data': _np.array(data),
                     'symbols': symbols[0],
@@ -1086,12 +1119,12 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     }
 
         if self._fmt == 'cpmd':
-            data = _np.array(tuple(self._gen))
+            data = _np.array([self.data for _fr in self])
             data[:, :, :3] *= constants.l_au2aa
             out = {
                     'data': data,
-                    'symbols': self._symbols,
-                    'comments': [self._comments] * data.shape[0],
+                    'symbols': self.symbols,
+                    'comments': [self.comments] * data.shape[0],
                     }
 
         self._kwargs.update(out)
@@ -1119,7 +1152,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         def _func(obj, **kwargs):
             _skip = obj._kwargs.get('skip', [])
             _timesteps = obj._kwargs.get('_timesteps', [])
-            _ts = split_comment(obj._frame.comments[0])
+            _ts = split_comment(obj._frame.comments)
             if _ts not in _timesteps:
                 _timesteps.append(_ts)
             else:
@@ -1142,7 +1175,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._unwind(**kwargs)
         except ValueError:
             raise ValueError('Broken trajectory! Stopped at frame %s (%s)'
-                             % (self._fr, self.comments[0]))
+                             % (self._fr, self.comments))
 
         if len(_np.unique(_np.diff(self._kwargs['_timesteps']))) != 1:
             _warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
@@ -1303,10 +1336,7 @@ class VibrationalModes(_XYZ, _MODES):
     def _sync_class(self, **kwargs):
         # --- keep order for APT/AAT calculation
         _XYZ._sync_class(self)
-        _MODES._sync_class(self)
-
-        if kwargs.get('check_orthonormality', True):
-            _MODES._check_orthonormality(self)
+        _MODES._sync_class(self, **kwargs)
 
     def calculate_nuclear_velocities(self, **kwargs):
         '''Occupation can be single, average, or random.'''
@@ -1359,7 +1389,7 @@ class VibrationalModes(_XYZ, _MODES):
 
         return XYZFrame(data=self.data[mode],
                         symbols=self.symbols,
-                        comments=[self.comments[mode]],
+                        comments=self.comments[mode],
                         **kwargs
                         )
 

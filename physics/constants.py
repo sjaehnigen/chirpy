@@ -80,6 +80,7 @@ E_Hz2J = h_si
 E_J2Hz = 1 / E_Hz2J
 E_Hz2cm_1 = 1 / c_si * centi
 E_J2cm_1 = E_J2Hz * E_Hz2cm_1
+E_eV2cm_1 = E_eV2J * E_J2cm_1
 
 
 def E_J2nm(x):

@@ -76,9 +76,8 @@ def main():
             )
     parser.add_argument(
             "-f",
-            help="Output file name (the format is read from file extension "
-                 "*.xvibs, *.molden)",
-            default='output.xvibs'
+            help="Output file name",
+            default='output'
             )
     args = parser.parse_args()
 
@@ -93,17 +92,21 @@ def main():
 
     if o_fmt is None:
         o_fmt = args.f.split('.')[-1].lower()
+    else:
+        if o_fmt == 'posvel':
+            o_fmt = 'xyz'
+        if args.f == 'output':
+            args.f += '.' + o_fmt
 
-    if o_fmt not in ['xyz', 'posvel', 'traj']:
+    if o_fmt not in ['cpmd', 'xyz', 'traj']:
         _load.Modes.write(args.f, fmt=o_fmt)
 
     else:
         _load.Modes.calculate_nuclear_velocities(temperature=args.T)
-
-        if o_fmt in ['xyz', 'posvel']:
+        if o_fmt in ['xyz', 'cpmd']:
             if args.modelist is not None:
                 _load.Modes._modelist(args.modelist)
-            _load.Modes.write(args.f, fmt='xyz', factor=args.factor)
+            _load.Modes.write(args.f, fmt=o_fmt, factor=args.factor)
 
         elif o_fmt == 'traj':
             if args.modelist is None:

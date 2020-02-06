@@ -131,12 +131,12 @@ def main():
     parser.add_argument(
             "-f",
             help="Output file name",
-            default='out.xyz'
+            default='out'
             )
     parser.add_argument(
             "--output_format",
             help="Output file format (e.g. xyz, pdb, cpmd; optional).",
-            default=None,
+            default='xyz',
             )
     args = parser.parse_args()
 
@@ -156,6 +156,8 @@ def main():
         i_fmt = args.fn.split('.')[-1].lower()
     if o_fmt is None:
         o_fmt = args.f.split('.')[-1].lower()
+    elif args.f == 'out':
+        args.f += '.' + o_fmt
 
     # --- Caution when passing all arguments to object!
     largs = vars(args)

@@ -67,6 +67,10 @@ class TestCPMD(unittest.TestCase):
                                symbols=['X']*208)['data']
 
         cpmd.cpmdWriter(self.dir + '/OUT', data, write_atoms=False)
+        with self.assertRaises(ValueError):
+            # --- sorted data
+            cpmd.cpmdWriter(self.dir + '/OUT', data, symbols=['X', 'Y']*104, write_atoms=True)
+
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
             data2 = cpmd.cpmdReader(self.dir + '/OUT',

@@ -82,6 +82,10 @@ def cpmdWriter(fn, data, append=False, **kwargs):
 
     bool_atoms = kwargs.get('write_atoms', True)
 
+    if len(data.shape) == 2:
+        # --- frame
+        data = np.array([data])
+
     fmt = 'w'
     frame = kwargs.get('frame')
     frames = [frame]
@@ -105,14 +109,16 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         if data.shape[1] != len(symbols):
             raise ValueError('symbols and positions are not consistent!',
                              data.shape[1], symbols)
+        if sorted(symbols) != list(symbols):
+            raise ValueError('CPMD requires sorted data!')
 
         CPMDinput.ATOMS.from_data(symbols,
                                   data[0, :, :3],
                                   **kwargs).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
-                  [data[0, :, :3] / constants.l_aa2au],
+                  data[0, :, :3] / constants.l_aa2au,
                   symbols,
-                  [fn])
+                  fn)
 
 
 def cpmd_kinds_from_file(fn):
@@ -379,7 +385,7 @@ class CPMDinput():
         def from_data(cls, symbols, pos_au, **kwargs):
             if not hasattr(kwargs, 'pp'):
                 warnings.warn('Setting pseudopotential in CPMD ATOMS output to'
-                              ' default (Troullier-Martins)!',
+                              ' default (Troullier-Martins, BLYP)!',
                               stacklevel=2)
             pp = kwargs.get('pp', 'MT_BLYP')  # 'SG_BLYP KLEINMAN-BYLANDER'
 

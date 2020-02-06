@@ -219,7 +219,7 @@ class ScalarField(_CORE):
         _N = kwargs.pop("norm")
         if _N is None:
             _N = _np.linalg.norm(self.data, **kwargs)
-        thresh = kwargs.pop("tresh", 1.E-8)
+        thresh = kwargs.pop("thresh", 1.E-8)
 
         with _np.errstate(divide='ignore'):
             _N_inv = _np.where(_N < thresh, 0.0, _np.divide(1.0, _N))
