@@ -65,7 +65,7 @@ def get_power_spectrum(velocities, **kwargs):
     return data
 
 
-def get_vibrational_spectrum(cur_dipoles, mag_dipoles, positions, **kwargs):
+def get_vibrational_spectrum(positions, cur_dipoles, mag_dipoles, **kwargs):
     '''Expects dipole data of shape (n_frames, n_kinds, three)
        No support of trajectory iterators.
        The output is averaged over the no. of origins

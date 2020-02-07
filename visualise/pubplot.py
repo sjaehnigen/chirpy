@@ -102,7 +102,7 @@ def make_nice_ax(p):
 
 
 def multiplot(ax, x_a, y_a, **kwargs):
-    global _shift #unique variable used by pub_label class
+    global _shift  # unique variable used by pub_label class
     try:
         n_plots = len(y_a)
     except TypeError:
@@ -110,7 +110,7 @@ def multiplot(ax, x_a, y_a, **kwargs):
     fill = kwargs.get('fill',  False) # ToDo: Rename argument since it refers to std error (new name sth like "fill_std")
     bool_a = kwargs.get('bool_a' ,  n_plots * [True]) #list of bools which spectra to unhide
     std_a = kwargs.get('std_a')
-    _exp = kwargs.get('exp') #, np.array([np.linspace(0, 4000, 100), np.zeros((100))]).T) #cheap workaround
+    _exp = kwargs.get('exp')  # , np.array([np.linspace(0, 4000, 100), np.zeros((100))]).T) #cheap workaround
     if _exp is not None:
         e,  xe = _exp[:,  1],  _exp[: ,  0]
     xlim = kwargs.get('xlim',  (np.amin(np.array(np.hstack(x_a))),  np.amax(np.array(np.hstack(x_a)))))

@@ -673,25 +673,23 @@ class _XYZ():
         if mode == 'com':
             w = self.masses_amu
 
-        if self._type == 'frame':
-            _p, mol_c_aa = _join_molecules(
-                                self.pos_aa.reshape(1, self.n_atoms, 3),
-                                mol_map,
-                                self.cell_aa_deg,
-                                weights=w,
-                                )
-            self._pos_aa(_p[0])
-            del _p
-            self.mol_c_aa = mol_c_aa[0]
+        if self._type == 'trajectory':
+            _p, mol_com_aa = _np.array([_join_molecules(
+                                               _pp,
+                                               mol_map,
+                                               self.cell_aa_deg,
+                                               weights=w
+                                               )
+                                        for _pp in self.pos_aa])
         else:
-            _p, mol_c_aa = _join_molecules(
+            _p, mol_com_aa = _join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 self.cell_aa_deg,
                                 weights=w,
                                 )
             self._pos_aa(_p)
-            self.mol_c_aa = mol_c_aa
+            self.mol_com_aa = mol_com_aa
 
     def align_coordinates(self, align_coords, **kwargs):
         if not isinstance(align_coords, list):
@@ -942,7 +940,12 @@ class _MOMENTS():
        WORK IN PROGRESS...
        '''
     def _sync_class(self):
-        pass
+        self._pos_au()
+        self._c_au()
+        self._m_au()
+        if self.m_au.size == 0:
+            self.m_au = _np.zeros_like(self.pos_au)
+        # self.cell_au_deg = _np.array(self.cell_au_deg)
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')
@@ -957,6 +960,53 @@ class _MOMENTS():
 
         else:
             raise ValueError('Unknown format: %s.' % fmt)
+
+    def _pos_au(self, *args):
+        if len(args) == 0:
+            self.pos_au = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+        elif len(args) == 1:
+            if args[0].shape != self.pos_au.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[:3] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._pos_au()
+        else:
+            raise TypeError('Too many arguments for %s!'
+                            % self._pos_au.__name__)
+
+    def _c_au(self, *args):
+        '''Current dipole moments'''
+        if len(args) == 0:
+            self.c_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
+        elif len(args) == 1:
+            if args[0].shape != self.c_au.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[3:6] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._c_au()
+        else:
+            raise TypeError('Too many arguments for %s!'
+                            % self._c_au.__name__)
+
+    def _m_au(self, *args):
+        '''Magnetic dipole moments'''
+        if len(args) == 0:
+            self.m_au = self.data.swapaxes(0, -1)[6:9].swapaxes(0, -1)
+        elif len(args) == 1:
+            if args[0].shape != self.m_au.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
+            _tmp = self.data.swapaxes(0, -1)
+            _tmp[6:9] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._m_au()
+        else:
+            raise TypeError('Too many arguments for %s!'
+                            % self._m_au.__name__)
 
 
 class MOMENTSFrame(_MOMENTS, _FRAME):

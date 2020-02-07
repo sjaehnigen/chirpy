@@ -161,8 +161,9 @@ def main():
     else:
         _cell = None
 
+    print('Calculating spectra...')
     _voa = spectroscopy.get_vibrational_spectrum(
-                                _c, _m, _p,
+                                _p, _c, _m,
                                 ts=args.ts * constants.femto,
                                 flt_pow=args.filter_strength,
                                 return_tcf=args.return_tcf,
@@ -171,6 +172,7 @@ def main():
                                 cutoff=_cutoff,
                                 cell=_cell
                                 )
+    print('Done')
 
     # --- plot
     labels = {

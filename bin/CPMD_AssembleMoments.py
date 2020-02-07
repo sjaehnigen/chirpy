@@ -108,7 +108,7 @@ def main():
         e_map = n_map[np.argmin(_dists, axis=1)]
 
         # --- decompose data into molecular contributions
-        mol_com = _traj.XYZ.mol_c_aa * constants.l_aa2au
+        mol_com = _traj.XYZ.mol_com_aa * constants.l_aa2au
         _r_n, _c_n, _m_n = map(lambda x: mp.dec(x, n_map), [_r_n, _c_n, _m_n])
         _r_e, _c_e, _m_e = map(lambda x: mp.dec(x, e_map), [_r_e, _c_e, _m_e])
 

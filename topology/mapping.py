@@ -221,42 +221,32 @@ def neighbour_matrix(pos_aa, symbols, **kwargs):
     return dist_array <= crit_aa
 
 
-def wrap_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
-    '''DEPRECATED, use join_molecules()'''
-    join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs)
-
-
 def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
-    '''pos_aa (in angstrom) with shape ( n_frames, n_atoms, three )
+    '''pos_aa (in angstrom) with shape (n_atoms, three)
     Has still problems with cell-spanning molecules'''
-    n_frames, n_atoms, three = pos_aa.shape
+    n_atoms, three = pos_aa.shape
     w = kwargs.get('weights', np.ones((n_atoms)))
     w = dec(w, mol_map)
 
     _pos_aa = copy.deepcopy(pos_aa)
-    mol_c_aa = []
+    mol_com_aa = []
     for i_mol in set(mol_map):
         ind = np.array(mol_map) == i_mol
-        _p = _pos_aa[:, ind]
-        # reference atom: 0 (this may lead to problems, say, for large,
-        # cell-spanning molecules)
-        # _r = [0]*sum(ind)
-        # choose as reference atom the one with smallest distances to all atoms
-        # (works better but still not perfect; needs an adaptive scheme)
+        _p = _pos_aa[ind]
         # actually: needs connectivity pattern to wrap everything correctly
 
         _r = np.argmin(np.linalg.norm(distance_matrix(
-                                                    _p[0],
+                                                    _p,
                                                     cell_aa_deg=cell_aa_deg,
                                                     ),
                                       axis=1))
         _r = [_r]*sum(ind)
-        _p -= _pbc_shift(_p - _p[:, _r, :], cell_aa_deg)
+        _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
         c_aa = cowt(_p, w[i_mol])
-        mol_c_aa.append(wrap(c_aa, cell_aa_deg))
-        _pos_aa[:, ind] = _p - (c_aa - mol_c_aa[-1])[:, None, :]
+        mol_com_aa.append(wrap(c_aa, cell_aa_deg))
+        _pos_aa[ind] = _p - (c_aa - mol_com_aa[-1])[None, :]
 
-    return _pos_aa, mol_c_aa
+    return _pos_aa, np.array(mol_com_aa)
 
 
 def get_atom_spread(pos):

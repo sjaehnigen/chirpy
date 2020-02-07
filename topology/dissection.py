@@ -175,6 +175,17 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _i = np.argmin(_d)
         ass[_h] = ass[_i]
 
+    # --- create ascending indices
+    _n = -1
+    _o = -1
+    ass_n = []
+    for _a in ass:
+        if _a != _o:
+            _o = _a
+            _n += 1
+        ass_n.append(_n)
+    ass = np.array(ass_n)
+
     return ass
 
 

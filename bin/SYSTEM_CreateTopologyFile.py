@@ -31,12 +31,19 @@ def main():
             help="Input structure file (xyz.pdb,xvibs,...)"
             )
     parser.add_argument(
-        "--center_coords",
-        action='store_true',
-        help="Center coordinates in cell centre or at origin "
-             "(default: false; box_aa parametre overrides default origin).",
-        default=False,
-        )
+            "--center_coords",
+            nargs='+',
+            help="Center atom list (id starting from 0) in cell \
+                    and wrap or \'True\' for selecting all atoms.",
+            default=None,
+            )
+    parser.add_argument(
+            "--use_com",
+            action='store_true',
+            help="Use centre of mass instead of centre of geometry \
+                    as reference",
+            default=False
+            )
     parser.add_argument(
         "--cell_aa_deg",
         nargs=6,
@@ -60,7 +67,7 @@ def main():
         _load.wrap_molecules()
     else:
         _load.wrap_atoms()
-    _load.write(args.f, fmt='pdb')
+    _load.write(args.f)
 
 
 if(__name__ == "__main__"):
