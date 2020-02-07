@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 # ------------------------------------------------------
 #
-#  ChirPy 0.9.0
+#  ChirPy
 #
-#  https://hartree.chimie.ens.fr/sjaehnigen/ChirPy.git
+#    A buoyant python package for analysing supramolecular
+#    and electronic structure, chirality and dynamics.
 #
-#  2010-2016 Arne Scherrer
-#  2014-2020 Sascha Jähnigen
 #
+#  Developers:
+#    2010-2016  Arne Scherrer
+#    since 2014 Sascha Jähnigen
+#
+#  https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
 # ------------------------------------------------------
 
