@@ -81,9 +81,9 @@ def _assemble_cube_file(comment1,
     for i_x in range(dim[0]):
         for i_y in range(dim[1]):
             for i_z in range(dim[2]):
-                obuffer += '%13.5E' % data[i_x][i_y][i_z]
-                if i_z % 5 == 0 and i_z != 0:
+                if i_z % 6 == 0 and i_z != 0:
                     obuffer += '\n'
+                obuffer += '%13.5E' % data[i_x][i_y][i_z]
             obuffer += '\n'
 
     return obuffer

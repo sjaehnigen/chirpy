@@ -50,7 +50,7 @@ def main():
     args = parser.parse_args()
 
     _load = system.Molecule(**vars(args))
-    _load.install_molecular_origin_gauge()
+    _load.define_molecules()
 
     if args.wrap_mols:
         _load.wrap_molecules()

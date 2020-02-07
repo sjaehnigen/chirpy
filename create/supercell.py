@@ -56,7 +56,7 @@ class _BoxObject(_CORE):
 
     @classmethod
     def read(cls, *args, **kwargs):
-        if kwargs.get('install_mol_gauge') is not None:
+        if kwargs.get('define_molecules') is not None:
             kwargs['wrap_mols'] = True
         else:
             kwargs['wrap'] = True

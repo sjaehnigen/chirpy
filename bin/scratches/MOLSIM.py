@@ -27,7 +27,7 @@ def main():
 #    nargs[ 'cell_aa_deg' ] = args.cell_aa
 #    nargs[ 'fn_topo' ] = args.fn_topo
 #    if args.get_mols:
-#        nargs['install_mol_gauge'] =  args.get_mols
+#        nargs['define_molecules'] =  args.get_mols
 #
 #    b = Solution.read( args.fn, **nargs )
 #    b.print_info()

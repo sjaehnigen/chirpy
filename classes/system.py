@@ -55,7 +55,7 @@ class _SYSTEM(_CORE):
 
             if kwargs.get('wrap_mols', False):
                 if self.mol_map is None:
-                    self.install_molecular_origin_gauge()
+                    self.define_molecules()
                 self.wrap_molecules()
 
             center_mol = kwargs.get('center_molecule')
@@ -118,8 +118,7 @@ class _SYSTEM(_CORE):
 
         self.XYZ.split(self.mol_map, select=mols)
 
-    def install_molecular_origin_gauge(self, **kwargs):
-        # iterator: keyword: do it anew or keep existing mol_map
+    def define_molecules(self, **kwargs):
         if self.mol_map is not None:
             _warnings.warn('Overwriting existing mol_map!', stacklevel=2)
 
