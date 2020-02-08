@@ -162,8 +162,11 @@ def main():
         _cell = None
 
     print('Calculating spectra...')
-    _voa = spectroscopy.get_vibrational_spectrum(
-                                _p, _c, _m,
+    # --- ToDo: differ mode according to args
+    _voa = spectroscopy._spectrum_from_tcf(
+                                _c, _m,
+                                positions=_p,
+                                mode='abs_cd',
                                 ts=args.ts * constants.femto,
                                 flt_pow=args.filter_strength,
                                 return_tcf=args.return_tcf,
@@ -173,6 +176,11 @@ def main():
                                 cell=_cell
                                 )
     print('Done')
+    # --- pointer
+    _voa['va'] = _voa['abs']
+    _voa['vcd'] = _voa['cd']
+    _voa['tcf_va'] = _voa['tcf_abs']
+    _voa['tcf_vcd'] = _voa['tcf_cd']
 
     # --- plot
     labels = {

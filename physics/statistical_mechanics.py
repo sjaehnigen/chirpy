@@ -88,19 +88,16 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
         raise Exception('Filter %s not supported!' % filter_type)
 
 
-def spectral_density(*args, **kwargs):
-    '''Calculate the spectral distribution of a vector signal (*aurgs) over
-       frequency, based on the Fourier transformed time-correlation function
-       (TCF) of that signal and the Wiener-Khinchin theorem (fftconvolve).
+def time_correlation_function(*args, **kwargs):
+    '''Calculate the time-correlation function (TCF) of a signal and
+       using the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
        Adding signal filters may be enabled; use flt_pow=-1 to remove the
        implicit triangular filter due to finite size.
        Expects signal of shape (n_frames, n_dim)
        Returns:
-        1 - discrete sample frequencies
-        2 - spectral density (FT TCF)
-        3 - time-correlation function (timestep as in input)
+        1 - time-correlation function (timestep as in input)
        '''
 
     if len(args) == 1:
@@ -113,12 +110,10 @@ def spectral_density(*args, **kwargs):
         val2 = args[1]
 
     else:
-        raise TypeError('spectral_density takes at most 2 arguments, got %d'
+        raise TypeError('TCF takes at most 2 arguments, got %d'
                         % len(args))
 
-    ts = kwargs.get('ts', 4)
     flt_pow = kwargs.get('flt_pow', 0)
-    _fac = kwargs.get('factor', 1)
     _cc_mode = kwargs.get('cc_mode', 'AB')
 
     n_frames, three = val1.shape
@@ -170,12 +165,34 @@ def spectral_density(*args, **kwargs):
         # --- remove implicit size-dependent triangular filter
         R /= (n_frames * np.ones(n_frames) - (np.arange(n_frames)-1))
 
+    return R
+
+
+def spectral_density(*args, **kwargs):
+    '''Calculate the spectral distribution as the Fourier transformed
+       time-correlation function (TCF) of a vector signal (*args).
+       The method automatically chooses to calculate auto- or cross-
+       correlation functions based on the number of arguments (max 2).
+       Adding signal filters may be enabled; use flt_pow=-1 to remove the
+       implicit triangular filter due to finite size.
+       Expects signal of shape (n_frames, n_dim)
+       Returns:
+        1 - discrete sample frequencies
+        2 - spectral density (FT TCF)
+        3 - time-correlation function (timestep as in input)
+       '''
+
+    ts = kwargs.get('ts', 4)
+    _fac = kwargs.get('factor', 1)
+
+    R = time_correlation_function(*args, **kwargs)
+
     # --- \ --> /\
     final_cc = np.hstack((R, R[::-1]))
     n = final_cc.shape[0]
 
     S = np.fft.rfft(final_cc, n=n-1).real * ts * constants.t_fs2au * _fac
-    # S /= 2*np.pi
+    S /= 2 * np.pi  # omega
     omega = np.fft.rfftfreq(n-1, d=ts)
 
     return omega, S, R

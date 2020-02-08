@@ -156,7 +156,7 @@ def main():
 
     # --- expand iterator
     _vel = np.array([_load.XYZ.vel_au[args.subset] for _fr in _load.XYZ])
-    _pow = spectroscopy.get_power_spectrum(
+    _pow = spectroscopy.power_from_tcf(
                                 _vel,
                                 ts=args.ts * constants.femto,
                                 weights=_load.XYZ.masses_amu,

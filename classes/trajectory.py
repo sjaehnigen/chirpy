@@ -47,6 +47,8 @@ from ..physics.statistical_mechanics import kinetic_energies as \
         _kinetic_energies
 from ..physics.classical_electrodynamics import current_dipole_moment as \
         _current_dipole_moment
+from ..physics.spectroscopy import absorption_from_transition_moments as \
+        _absorption_from_transition_moments
 
 from ..mathematics import algebra as _algebra
 
@@ -385,9 +387,7 @@ class _MODES(_FRAME):
            transition dipole moments.
            '''
 
-        self.IR_kmpmol = (self.etdm_au ** 2).sum(axis=-1) \
-            * constants.IR_au2kmpmol
-
+        self.IR_kmpmol = _absorption_from_transition_moments(self.etdm)
         # units?
         # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
