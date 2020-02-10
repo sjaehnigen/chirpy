@@ -19,6 +19,7 @@ import unittest
 import os
 import numpy as np
 import warnings
+import filecmp
 
 from ..interface import cpmd
 
@@ -73,7 +74,8 @@ class TestCPMD(unittest.TestCase):
         cpmd.cpmdWriter(self.dir + '/OUT', data, write_atoms=False)
         with self.assertRaises(ValueError):
             # --- sorted data
-            cpmd.cpmdWriter(self.dir + '/OUT', data, symbols=['X', 'Y']*104, write_atoms=True)
+            cpmd.cpmdWriter(self.dir + '/OUT', data, symbols=['X', 'Y']*104,
+                            write_atoms=True)
 
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
@@ -84,3 +86,27 @@ class TestCPMD(unittest.TestCase):
                                     )['data']
         self.assertTrue(np.array_equal(data, data2))
         os.remove(self.dir + "/OUT")
+
+    def test_cpmdjob(self):
+        # --- insufficiently tested
+        #     needs also test for correct append behaviour
+        for fn in ['cpmd_job_1.inp', 'cpmd_job_2.inp', 'cpmd_job_3.inp']:
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=UserWarning)
+                _cpmd = cpmd.CPMDjob.read_input_file(self.dir + '/' + fn)
+                _cpmd.write_input_file("test.inp", fmt='angstrom')
+                self.assertTrue(filecmp.cmp("test.inp",
+                                            self.dir + '/' + fn,
+                                            shallow=False),
+                                'CPMDjob does not reproduce reference file: %s'
+                                ' (see test.inp)'
+                                % fn
+                                )
+                data = cpmd.cpmdReader(self.dir + '/TRAJECTORY',
+                                       filetype='TRAJECTORY',
+                                       symbols=['X']*208)
+                _cpmd.ATOMS = _cpmd.ATOMS.from_data(data['symbols'][:6],
+                                                    data['data'][0, :6, :3],
+                                                    pp=_cpmd.ATOMS.pp)
+                _cpmd.write_input_file("test.inp", fmt='angstrom')
+                os.remove("test.inp")

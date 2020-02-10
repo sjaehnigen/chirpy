@@ -174,7 +174,8 @@ _cpmd_keyword_logic = {
         'CONVERGENCE': (['ORBITALS', 'GEOMETRY', 'CELL'], str),
         'HAMILTONIAN CUTOFF': ([], float),
         'WANNIER PARAMETER': ([], str),  # 4 next-line arguments
-        'RESTART': (['LATEST', 'WAVEFUNCTION', 'GEOFILE', 'DENSITY', 'ALL'],
+        'RESTART': (['LATEST', 'WAVEFUNCTION', 'GEOFILE', 'DENSITY', 'ALL',
+                     'COORDINATES'],
                     None),
         'LINEAR RESPONSE': ([], None),  # if set ask for RESP section
         'OPTIMIZE WAVEFUNCTION': ([], None),
@@ -193,8 +194,9 @@ _cpmd_keyword_logic = {
         'CG-FACTOR': ([], float),
         'NMR': (['NOVIRT', 'PSI0', 'CURRENT'], None),
         'MAGNETIC': (['VERBOSE'], None),
-        'VOA': (['MD', 'CURRENT', 'ORBITALS'], None),
+        'VOA': (['MD', 'CURRENT', 'ORBITALS', 'DENSITY', 'HALFMESH'], None),
         'EPR': ([], [str, str]),
+        'POLAK': ([], None),
     },
     'DFT': {
         'NEWCODE': ([], None),
@@ -301,7 +303,7 @@ class CPMDinput():
 
             if len(_key) == 0:
                 raise AttributeError('Unknown keyword for section %s: %s!'
-                                     % (section, _key))
+                                     % (section, line))
             elif len(_key) > 1:
                 print('WARNING: Found multiple keywords in line %s' % _key)
             else:
