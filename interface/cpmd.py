@@ -156,8 +156,8 @@ def fortran_float(a):
 def _nextline_parser(SEC, KEY, ARG, section_input):
     if SEC == 'SYSTEM':
         if KEY == 'CELL':
+            _fmt = lambda s: '%10.5f' % float(s)
             if 'VECTORS' in ARG:
-                _fmt = lambda s: '%10.5f' % float(s)
                 _out = [tuple(map(_fmt, _s.split()))
                         for _iv, _s in zip(range(3), section_input)]
             else:
@@ -529,11 +529,12 @@ class CPMDjob():
 
         if os.path.exists(fn):
             os.remove(fn)
-        kwargs.update({'append': True})
 
         for _s in _SEC:
             if hasattr(self, _s):
-                getattr(self, _s).write_section(fn, **kwargs)
+                getattr(self, _s).write_section(fn,
+                                                append=True,
+                                                fmt=kwargs.get('fmt', 'angstrom'))
 
     # ToDo: into atoms
 
