@@ -207,9 +207,14 @@ class CPMDinput():
             _stdout = sys.stdout
             # _sys.__stdout__ is not Jupyter Output,
             # so use this way to restore stdout
+            append = kwargs.get('append', False)
+            if append:
+                _a = 'a'
+            else:
+                _a = 'w'
 
             if len(args) == 1:
-                sys.stdout = open(args[0], 'a')
+                sys.stdout = open(args[0], _a)
             elif len(args) > 1:
                 raise TypeError(self.write_section.__name__ +
                                 ' takes at most 1 argument.')
@@ -387,7 +392,7 @@ class CPMDinput():
 
         @classmethod
         def from_data(cls, symbols, pos_au, **kwargs):
-            if not hasattr(kwargs, 'pp'):
+            if 'pp' not in kwargs:
                 warnings.warn('Setting pseudopotential in CPMD ATOMS output to'
                               ' default (Troullier-Martins, BLYP)!',
                               stacklevel=2)
@@ -481,9 +486,11 @@ class CPMDjob():
         # known sections and order
         _SEC = ['INFO', 'CPMD', 'RESP', 'DFT', 'SYSTEM', 'ATOMS']
 
+        # ToDo: remove exsting file (to endless append)
+
         for _s in _SEC:
             if hasattr(self, _s):
-                getattr(self, _s).write_section(*args)
+                getattr(self, _s).write_section(*args, append=True)
 
     # ToDo: into atoms
 

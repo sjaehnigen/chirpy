@@ -142,10 +142,18 @@ def main():
             help="Output file format (e.g. xyz, pdb, cpmd; optional).",
             default='xyz',
             )
+    parser.add_argument(
+            "--pp",
+            help="Pseudopotential, e.g. MT_BLYP (CPMD ATOMS SECTION only).",
+            default=None,
+            )
     args = parser.parse_args()
 
     if args.fn_topo is None:
         del args.fn_topo
+
+    if args.pp is None:
+        del args.pp
 
     if args.cell_aa_deg is None:
         del args.cell_aa_deg
@@ -206,7 +214,10 @@ def main():
         _load.extract_molecules(extract_molecules)
 
     if args.f not in ['None', 'False']:
-        _load.write(args.f, fmt=o_fmt, rewind=False)
+        largs = {}
+        if 'pp' in args:
+            largs = {'pp': args.pp}
+        _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
 
 
 if __name__ == "__main__":
