@@ -119,7 +119,8 @@ def cpmdWriter(fn, data, append=False, **kwargs):
 
         CPMDinput.ATOMS.from_data(symbols,
                                   data[0, :, :3],
-                                  **kwargs).write_section(fn+'_ATOMS')
+                                  pp=kwargs.get('pp'),
+                                  ).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
                   data[0, :, :3] / constants.l_aa2au,
                   symbols,
@@ -410,6 +411,9 @@ class CPMDinput():
                                             float,
                                             next(section_input).split()
                                             )) for _i in range(n)]))
+
+            # --- simple solution for pp
+            _C['pp'] = '_'.join(kinds[0].split('_')[1:])
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
@@ -423,8 +427,8 @@ class CPMDinput():
             return out
 
         @classmethod
-        def from_data(cls, symbols, pos_au, pp=None, fmt='angstrom'):
-            if 'pp' is None:
+        def from_data(cls, symbols, pos_au, pp=None):
+            if pp is None:
                 pp = 'MT_BLYP'
                 warnings.warn('Setting pseudopotential in CPMD ATOMS output to'
                               ' default (Troullier-Martins, BLYP)!',
@@ -442,20 +446,18 @@ class CPMDinput():
                 kinds.append("*%s_%s" % (_e, pp))
                 data.append(pos_au[symbols == _e])
                 n_kinds.append(len(data[-1]))
-                if _e in ['C', 'O', 'N', 'P', 'Cl', 'F'] and 'AEC' not in pp:
+                if _e in ['C', 'O', 'N', 'P', 'Cl', 'F', 'S'] and 'AEC' not in pp:
                     # --- ToDo: replace manual tweaks by automatic pp analysis
                     channels.append("LMAX=P LOC=P")
                 else:
                     channels.append("LMAX=S LOC=S")
 
             _C = {}
+            _C['pp'] = pp
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
-            _f = 1
-            if fmt == 'angstrom':
-                _f = constants.l_aa2au
-            _C['data'] = data * _f
+            _C['data'] = np.array(data)
 
             out = cls()
             out.__dict__.update(_C)
