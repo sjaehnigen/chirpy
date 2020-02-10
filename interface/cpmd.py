@@ -157,25 +157,36 @@ _cpmd_keyword_logic = {
     },
     'CPMD': {
         'CENTER MOLECULE': (['', 'OFF'], None),
-        'CONVERGENCE ORBITALS': ([], str),
+        'CONVERGENCE': (['ORBITALS', 'GEOMETRY', 'CELL'], str),
         'HAMILTONIAN CUTOFF': ([], float),
         'WANNIER PARAMETER': ([], str),  # 4 next-line arguments
-        'RESTART': (['LATEST', 'WAVEFUNCTION', 'GEOFILE'], None),
+        'RESTART': (['LATEST', 'WAVEFUNCTION', 'GEOFILE', 'DENSITY', 'ALL'],
+                    None),
         'LINEAR RESPONSE': ([], None),  # if set ask for RESP section
         'OPTIMIZE WAVEFUNCTION': ([], None),
-        'MOLECULAR DYNAMICS': (['', 'FILE', 'NSKIP=-1'], None),
+        'OPTIMIZE GEOMETRY': (['XYZ', 'SAMPLE'], None),
+        'MOLECULAR DYNAMICS': (
+            ['BO', 'CP', 'EH', 'PT', 'CLASSICAL', 'FILE', 'XYZ', 'NSKIP=-1'],
+            None
+            ),
         'MIRROR': ([], None),
+        'RHOOUT': (['BANDS', 'SAMPLE'], [int, float]),
+        'TIMESTEP': ([], float),
     },
     'RESP': {
         'CONVERGENCE': ([], str),
         'CG-ANALYTIC': ([], int),
+        'CG-FACTOR': ([], float),
         'NMR': (['NOVIRT', 'PSI0', 'CURRENT'], None),
         'MAGNETIC': (['VERBOSE'], None),
         'VOA': (['MD', 'CURRENT', 'ORBITALS'], None),
+        'EPR': ([], [str, str]),
     },
     'DFT': {
         'NEWCODE': ([], None),
-        'FUNCTIONAL': (['BLYP', 'PBE', 'PBE0'], None),
+        'FUNCTIONAL': (['NONE', 'LDA', 'PADE', 'GGA', 'PW91', 'BP', 'BLYP',
+                        'B1LYP', 'B3LYP', 'HSE06', 'OLYP', 'PBE', 'PBES',
+                        'PBE0', 'REVPBE'], None),
     },
     'SYSTEM': {
         'SYMMETRY': ([''], str),
@@ -303,6 +314,7 @@ class CPMDinput():
                 _nl = None
                 if _next is not None:
                     if _next.__class__ is not list:
+                        # ToDo: put a function here
                         _nl = list(map(_next, next(section_input).split()))
                     else:
                         raise NotImplementedError(
@@ -427,7 +439,9 @@ class CPMDinput():
 
 
 class CPMDjob():
-    '''An actual representative of CPMDinput'''
+    '''An actual representative of CPMDinput
+       BETA (work in progress...)
+       '''
 
     def __init__(self, **kwargs):
         # mandatory
