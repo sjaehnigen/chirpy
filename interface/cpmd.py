@@ -15,6 +15,7 @@
 #
 # ------------------------------------------------------
 
+import os
 import numpy as np
 import tempfile
 import warnings
@@ -151,6 +152,18 @@ def fortran_float(a):
     return
 
 
+def _nextline_parser(SEC, KEY, ARG, section_input):
+    if SEC == 'SYSTEM':
+        if KEY == 'CELL':
+            if 'VECTORS' in ARG:
+                _fmt = lambda s: '%10.5f' % float(s)
+                _out = [tuple(map(_fmt, _s.split()))
+                        for _iv, _s in zip(range(3), section_input)]
+            else:
+                _out = tuple(map(_fmt, next(section_input).split()))
+            return _out, section_input
+
+
 _cpmd_keyword_logic = {
     'INFO': {
         '': ([''], None),
@@ -190,7 +203,7 @@ _cpmd_keyword_logic = {
     },
     'SYSTEM': {
         'SYMMETRY': ([''], str),
-        'CELL': (['', 'ABSOLUTE', 'DEGREE'], float),  # list of floats
+        'CELL': (['', 'ABSOLUTE', 'DEGREE', 'VECTORS'], _nextline_parser),
         'CUTOFF': ([], float),
         'ANGSTROM': ([], None),
         'POISSON SOLVER': (['TUCKERMAN'], None),
@@ -214,40 +227,42 @@ class CPMDinput():
     #        for _i in kwargs:
     #            setattr(self, _i, kwargs[_i])
 
-        def write_section(self, *args, **kwargs):
+        def write_section(self, *args, fmt='angstrom', append=False):
             _stdout = sys.stdout
             # _sys.__stdout__ is not Jupyter Output,
             # so use this way to restore stdout
-            append = kwargs.get('append', False)
-            if append:
-                _a = 'a'
-            else:
-                _a = 'w'
-
             if len(args) == 1:
-                sys.stdout = open(args[0], _a)
-            elif len(args) > 1:
+                fmt = 'w'
+                if append:
+                    fmt = 'a'
+                _outstream = open(args[0], fmt)
+
+            if len(args) > 1:
                 raise TypeError(self.write_section.__name__ +
                                 ' takes at most 1 argument.')
 
-            self.print_section(**kwargs)
+            self.print_section(file=_outstream)
 
-            sys.stdout.flush()
-            # _sys.stdout = _sys.__stdout__
-            sys.stdout = _stdout
+            # sys.stdout.flush()
+            # # _sys.stdout = _sys.__stdout__
+            # sys.stdout = _stdout
 
-        def print_section(self, **kwargs):
-            print("&%s" % self.__class__.__name__)
+        def print_section(self, file=sys.stdout):
+            print("&%s" % self.__class__.__name__, file=file)
 
             for _o in self.options:
-                print(" "+" ".join([_o] + [_a for _a in self.options[_o][0]]))
+                print(" "+" ".join([_o] + [_a for _a in self.options[_o][0]]),
+                      file=file)
 
-                # print next-line argument
+                # --- print next-line argument
                 if self.options[_o][1] is not None:
-                    print("  "+" ".join([str(_a)
-                                         for _a in self.options[_o][1]]))
+                    _nl = self.options[_o][1]
+                    if not isinstance(_nl, list):
+                        _nl = [_nl]
+                    for _l in _nl:
+                        print("  "+" ".join([str(_a) for _a in _l]), file=file)
 
-            print("&END")
+            print("&END", file=file)
 
         def print_options(self):
             for _k in self._dict:
@@ -284,7 +299,8 @@ class CPMDinput():
             _key = [_k for _k in _section_keys if _k in line[:len(_k)]]
 
             if len(_key) == 0:
-                raise AttributeError('Unknown keyword %s!' % _key)
+                raise AttributeError('Unknown keyword for section %s: %s!'
+                                     % (section, _key))
             elif len(_key) > 1:
                 print('WARNING: Found multiple keywords in line %s' % _key)
             else:
@@ -301,7 +317,7 @@ class CPMDinput():
             return _key, _arg, _nextline
 
         @classmethod
-        def _parse_section_input(cls, section_input):
+        def _parse_section_input(cls, section_input, fmt='angstrom'):
             '''Default minimal parser.
                Takes unprocessed lines from section without &<SECTION> and
                "&END" lines as section_input.'''
@@ -313,12 +329,14 @@ class CPMDinput():
                                                              _line)
                 _nl = None
                 if _next is not None:
-                    if _next.__class__ is not list:
+                    if _next.__name__ in ('str', 'float', 'int'):
                         # ToDo: put a function here
-                        _nl = list(map(_next, next(section_input).split()))
+                        _nl = tuple(map(_next, next(section_input).split()))
+                    elif callable(_next):
+                        _nl, section_input = _next(cls.__name__, _key, _arg, section_input)
                     else:
-                        raise NotImplementedError(
-                             'Multiple line keywords not supported: %s' % _key)
+                        raise TypeError(
+                             'CPMD input lines not understood for %s' % _key)
                 options.update({_key: (_arg, _nl)})
             _C['options'] = options
 
@@ -351,30 +369,29 @@ class CPMDinput():
         pass
 
     class ATOMS(_SECTION):
-        def print_section(self, **kwargs):
-            fmt = kwargs.get('fmt', 'angstrom')
-            print("&%s" % self.__class__.__name__)
+        def print_section(self, fmt='angstrom', file=sys.stdout):
+            print("&%s" % self.__class__.__name__, file=file)
 
             format = '%20.10f' * 3
             for _k, _ch, _n, _d in zip(self.kinds,
                                        self.channels,
                                        self.n_kinds,
                                        self.data):
-                print("%s" % _k)
-                print(" %s" % _ch)
-                print("%6d" % _n)
+                print("%s" % _k, file=file)
+                print(" %s" % _ch, file=file)
+                print("%6d" % _n, file=file)
                 for _dd in _d:
                     if fmt == 'angstrom':
                         warnings.warn('Atomic coordinates in angstrom. Do not '
                                       'forget to set ANGSTROM keyword in the '
                                       'SYSTEM section!', stacklevel=2)
                         _dd *= constants.l_au2aa
-                    print(format % tuple(_dd))
+                    print(format % tuple(_dd), file=file)
 
-            print("&END")
+            print("&END", file=file)
 
         @classmethod
-        def _parse_section_input(cls, section_input):
+        def _parse_section_input(cls, section_input, fmt='angstrom'):
             '''Takes unprocessed lines from section without &<SECTION> and
                "&END" lines as section_input.
                Beta: Limited LOC/LMAX support.'''
@@ -396,19 +413,23 @@ class CPMDinput():
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
-            _C['data'] = data
+            _f = 1
+            if fmt == 'angstrom':
+                _f = constants.l_aa2au
+            _C['data'] = np.array(data) * _f
 
             out = cls()
             out.__dict__.update(_C)
             return out
 
         @classmethod
-        def from_data(cls, symbols, pos_au, **kwargs):
-            if 'pp' not in kwargs:
+        def from_data(cls, symbols, pos_au, pp=None, fmt='angstrom'):
+            if 'pp' is None:
+                pp = 'MT_BLYP'
                 warnings.warn('Setting pseudopotential in CPMD ATOMS output to'
                               ' default (Troullier-Martins, BLYP)!',
                               stacklevel=2)
-            pp = kwargs.get('pp', 'MT_BLYP')  # 'SG_BLYP KLEINMAN-BYLANDER'
+            # 'SG_BLYP KLEINMAN-BYLANDER'
 
             elements = sorted(set(symbols))
             symbols = np.array(symbols)
@@ -431,7 +452,10 @@ class CPMDinput():
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
-            _C['data'] = data
+            _f = 1
+            if fmt == 'angstrom':
+                _f = constants.l_aa2au
+            _C['data'] = data * _f
 
             out = cls()
             out.__dict__.update(_C)
@@ -473,7 +497,7 @@ class CPMDjob():
         pass
 
     @classmethod
-    def read_input_file(cls, fn):
+    def read_input_file(cls, fn, **kwargs):
         '''CPMD 4'''
 
         def _parse_file(_iter):
@@ -489,22 +513,25 @@ class CPMDjob():
             CONTENT = {_l[1:].upper(): _parse_file(_iter)
                        for _l in _iter if "&" in _l}
 
-        CONTENT = {_C: getattr(CPMDinput, _C)._parse_section_input(CONTENT[_C])
+        CONTENT = {_C: getattr(CPMDinput, _C)._parse_section_input(CONTENT[_C],
+                                                                   **kwargs)
                    for _C in CONTENT}
 
         return cls(**CONTENT)
 
-    def write_input_file(self, *args, **kwargs):
+    def write_input_file(self, fn, **kwargs):
         ''' CPMD 4 '''
 
         # known sections and order
         _SEC = ['INFO', 'CPMD', 'RESP', 'DFT', 'SYSTEM', 'ATOMS']
 
-        # ToDo: remove exsting file (to endless append)
+        if os.path.exists(fn):
+            os.remove(fn)
+        kwargs.update({'append': True})
 
         for _s in _SEC:
             if hasattr(self, _s):
-                getattr(self, _s).write_section(*args, append=True)
+                getattr(self, _s).write_section(fn, **kwargs)
 
     # ToDo: into atoms
 
