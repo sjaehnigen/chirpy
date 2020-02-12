@@ -56,26 +56,25 @@ def magnetic_dipole_shift_origin(c_au, trans_au, **kwargs):
                             axis=(2, 3))  # sum over mols (axis 1) done later
 
 
-def switch_origin_gauge(c_au, m_au, origin_a_au, origin_b_au, **kwargs):
+def switch_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
     '''Apply (distrubuted) origin gauge on magnetic dipole moments shifting
        from origin A to origin B.
        Accepts cell_au_deg argument to account for periodic boundaries.
+       Expects atomic units.
 
        c_au ... current dipole moment
        m_au ... magnetic dipole moment (before the gauge transformation)
        Both of shape (N, 3) with N being the number of kinds/atoms/states.
 
-       origin_a_au ... old origin(s) of shape (N, 3) or (3)
-       origin_b_au ... new origin(s) of shape (N, 3) or (3)
+       o_a_au ... old origin(s) of shape (N, 3) or (3)
+       o_b_au ... new origin(s) of shape (N, 3) or (3)
 
        Returns: An updated array of m_au
        '''
-    _cell = kwargs.get('cell_au_deg', np.array([0., 0., 0., 90., 90., 90.]))
-    if len(origin_a_au.shape) == 1:
-        origin_a_au = np.tile(origin_a_au.shape, (c_au.shape[0], 1))
+    if len(o_a_au.shape) == 1:
+        o_a_au = np.tile(o_a_au.shape, (c_au.shape[0], 1))
 
-    # --- keyword cell_aa_deg misleading: using atomic units here!
-    _trans = mapping.distance_pbc(origin_b_au, origin_a_au, cell_aa_deg=_cell)
+    _trans = mapping.distance_pbc(o_b_au, o_a_au, cell=cell_au_deg)
 
     return m_au + magnetic_dipole_shift_origin(c_au, _trans)
 

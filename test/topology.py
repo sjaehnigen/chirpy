@@ -119,13 +119,13 @@ class TestMapping(unittest.TestCase):
         cell_aa_deg = np.array([1., 2., np.sqrt(2), 90., 135., 90.])
         _d = np.around(mapping.distance_pbc(np.array([0.99, 1., 0.5]),
                                             np.array([1.1, 2.1, 1.1]),
-                                            cell_aa_deg=cell_aa_deg),
+                                            cell=cell_aa_deg),
                        decimals=3)
         self.assertListEqual(_d.tolist(), [0.11, -0.9, -0.4])
 
         _d = np.around(mapping.distance_pbc(np.array([0.15, 1.0, 0.5]),
                                             np.array([0.85, 1.0, 0.5]),
-                                            cell_aa_deg=cell_aa_deg),
+                                            cell=cell_aa_deg),
                        decimals=3)
         self.assertListEqual(_d.tolist(), [-0.3, 0., 0.])
 

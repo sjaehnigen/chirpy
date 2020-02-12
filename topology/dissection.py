@@ -170,7 +170,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
     for _h in np.argwhere(h):
         _d = np.linalg.norm(distance_pbc(_p[_h],
                                          _p,
-                                         cell_aa_deg=cell_aa_deg), axis=-1)
+                                         cell=cell_aa_deg), axis=-1)
         _d[_d == 0.0] = 'Inf'
         _i = np.argmin(_d)
         ass[_h] = ass[_i]

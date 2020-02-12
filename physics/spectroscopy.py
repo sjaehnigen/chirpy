@@ -16,31 +16,18 @@
 # ------------------------------------------------------
 
 import copy
-import warnings
 import numpy as np
 from functools import partial
 
-from ..topology.dissection import fermi_cutoff_function
-from ..topology.mapping import distance_pbc
-from .classical_electrodynamics import magnetic_dipole_shift_origin
+from .classical_electrodynamics import switch_origin_gauge
 from .statistical_mechanics import spectral_density
 from ..physics import constants
+from ..classes.object import Sphere
 
 
-def _apply_cutoff(_x, _pos, _cutoff, _cut_type):
-    _d = np.linalg.norm(_pos, axis=2)
-
-    if _cut_type == 'soft':  # for larger cutoffs
-        _D = 0.125 * constants.l_aa2au
-        warnings.warn("Still using angstrom here!", stacklevel=2)
-        _scal = fermi_cutoff_function(_d, _cutoff, _D)
-        _x *= _scal[:, :, None]
-
-    elif _cut_type == 'hard':  # cutoff <2 aa
-        _ind = _d > _cutoff
-        _x[_ind, :] = np.array([0.0, 0.0, 0.0])
-
-    return _x
+def absorption_from_transition_moments(etdm_au):
+    '''absorption in km/mol'''
+    return (etdm_au ** 2).sum(axis=-1) * constants.IR_au2kmpmol
 
 
 def power_from_tcf(velocities, **kwargs):
@@ -65,9 +52,206 @@ def power_from_tcf(velocities, **kwargs):
     return data
 
 
-def absorption_from_transition_moments(etdm_au):
-    '''absorption in km/mol'''
-    return (etdm_au ** 2).sum(axis=-1) * constants.IR_au2kmpmol
+def absorption_from_tcf(*args, **kwargs):
+    '''Expects
+           1 - current (electric) dipole moments of shape
+               (n_frames[, nkinds], three) (mode=abs)
+
+       When specifying multiple kinds (2nd dimension), an
+       additional named argument ("positions") containing
+       the positions of kinds of the same shape is required.
+       No support of trajectory iterators.
+
+       Expects atomic units (but it is not mandatory).
+
+       ts ... timestep
+
+       Returns dictionary with:
+         "omega"       - discrete sample frequencies
+         "abs"         - spectral density (FT TCF)
+         "tcf_abs"     - time-correlation function (TCF)
+       '''
+    kwargs.update({'mode': 'abs'})
+    return _spectrum_from_tcf(*args, **kwargs)
+
+
+def circular_dichroism_from_tcf(*args, **kwargs):
+    '''Expects
+           1 - current (electric) dipole moments of shape
+               (n_frames[, nkinds], three) (mode=abs)
+           2 - magnetic dipole moments of shape
+                (n_frames[, nkinds], three) (mode=cd).
+
+       When specifying multiple kinds (2nd dimension), an
+       additional named argument ("positions") containing
+       the positions of kinds of the same shape is required.
+       No support of trajectory iterators.
+
+       Expects atomic units (but it is not mandatory).
+
+       ts ... timestep
+
+       Returns dictionary with:
+         "omega"      - discrete sample frequencies
+         "cd"         - spectral density (FT TCF)
+         "tcf_cd"     - time-correlation function (TCF)
+       '''
+    kwargs.update({'mode': 'cd'})
+    return _spectrum_from_tcf(*args, **kwargs)
+
+
+def _spectrum_from_tcf(*args, **kwargs):
+    '''Choose between modes: abs, cd, abs_cd
+       Expects
+           1 - current (electric) dipole moments of shape
+               (n_frames[, nkinds], three) (mode=abs)
+           2 - magnetic dipole moments of shape
+                (n_frames[, nkinds], three) (mode=cd).
+
+       When specifying multiple kinds (2nd dimension), an
+       additional named argument ("positions") containing
+       the positions of kinds of the same shape is required.
+       Specify the gauge origin with origin= (optional)
+       No support of trajectory iterators.
+
+       Expects atomic units (but it is not mandatory).
+
+       ts ... timestep
+
+       Returns dictionary with:
+         "omega"            - discrete sample frequencies
+         "abs"/"cd"         - spectral density (FT TCF)
+         "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
+       '''
+    mode = kwargs.get('mode', 'abs_cd')
+    if mode not in ['abs', 'cd', 'abs_cd']:
+        raise ValueError('Unknown mode', mode)
+    _z = len(args)
+
+    def _err(_s, _z):
+        raise TypeError('tcf expected %d argument, got %d' % (_s, _z))
+    if mode == 'abs':
+        _s = 1
+    else:
+        _s = 2
+    if _z != _s:
+        _err(_s, _z)
+
+    cur_dipoles = args[0]
+    if 'cd' in mode:
+        mag_dipoles = args[1]
+        if mag_dipoles.shape != cur_dipoles.shape:
+            raise ValueError('shapes of given data do not agree',
+                             cur_dipoles.shape, mag_dipoles.shape)
+    data = {}
+
+    if len(cur_dipoles.shape) == 2:
+        omega, _abs, C_abs = spectral_density(
+                                cur_dipoles,
+                                cur_dipoles,
+                                **kwargs
+                                )
+        # _cc = constants.current_current_prefactor(300)
+        _cc = 1.
+
+        data['omega'] = omega
+        data['abs'] = _abs * _cc
+        data['tcf_abs'] = C_abs
+
+    elif len(cur_dipoles.shape) == 3:
+        pos = kwargs.get('positions')
+        if pos is None:
+            raise TypeError('Please give positions arguments for moments of '
+                            'shape %s' % cur_dipoles.shape)
+        cell = kwargs.get('cell_au_deg')
+        origin = kwargs.get('origin', np.zeros((1, 3)))
+
+        # --- cutoff spheres --------------------------------------------------
+        def _parse_clip(ss):
+            tmp = kwargs.get('clip_sphere'+ss, [])
+            if not isinstance(tmp, list):
+                raise TypeError('expected list for keyword "clip_sphere%s"!'
+                                % ss)
+            # --- automatically add global cutoff if applicable
+            cutoff = kwargs.get('cutoff'+ss)
+            if cutoff is not None:
+                ct = 'soft'
+                if 'bg' in ss:
+                    ct = 'hard'
+                tmp.append(Sphere(origin, cutoff,
+                                  edge=kwargs.get('cut_type'+ss, ct)))
+            return tmp
+
+        _clip = _parse_clip('')
+        _clip_bg = _parse_clip('_bg')
+        # ---------------------------------------------------------------------
+
+        def _cut(x, pos, clip, inverse=False):
+            y = np.zeros_like(x)
+            for _tr in clip:
+                if not isinstance(_tr, Sphere):
+                    raise TypeError('expected a list of Sphere objects as '
+                                    'clip spheres!')
+                y += _tr.clip_section_observable(x, pos, cell=cell,
+                                                 inverse=inverse)
+            return y
+
+        _c = copy.deepcopy(cur_dipoles)
+        _c = _cut(_c, pos, _clip)
+        if 'cd' in mode:
+            _m = copy.deepcopy(mag_dipoles)
+            # --- gauge-transport
+            _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
+                                     cell_au_deg=cell)
+            _m = _cut(_m, pos, _clip)
+
+        if len(_clip_bg) != 0:
+            _c_bg = copy.deepcopy(_c)
+            _c_bg = _cut(_c_bg, pos, _clip_bg, inverse=True)
+            if 'cd' in mode:
+                _m_bg = copy.deepcopy(_m)
+                _m_bg = _cut(_m_bg, pos, _clip_bg, inverse=True)
+
+        # --- get spectra
+        # ToDo: sort out prefactors!
+        _result = []
+        if 'abs' in mode:
+            omega, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
+            if len(_clip_bg) != 0:
+                _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
+                _abs -= _tmp[1]
+                C_abs -= _tmp[2]
+            # _cc = constants.current_current_prefactor(300)
+            _cc = 1.
+            _result += [_abs*_cc, C_abs]
+
+        if 'cd' in mode:
+            omega, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
+            if len(_clip_bg) != 0:
+                _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
+                _cd -= _tmp[1]
+                C_cd -= _tmp[2]
+            # _cm = constants.current_magnetic_prefactor(omega, 300)
+            _cm = 4. * omega
+            _result += [_cd*_cm, C_cd]
+        _result += [omega]
+
+        data['omega'] = _result.pop()
+
+        if 'cd' in mode:
+            data['tcf_cd'] = _result.pop()
+            data['cd'] = _result.pop()
+
+        if 'abs' in mode:
+            data['tcf_abs'] = _result.pop()
+            data['abs'] = _result.pop()
+
+        # ToDo: warnings.warn("Return tcf incomplete!", stacklevel=2)
+    else:
+        raise TypeError('data with wrong shape!',
+                        cur_dipoles.shape)
+
+    return data
 
 
 def _get_tcf_spectrum(*args, **kwargs):
@@ -159,186 +343,3 @@ def _get_tcf_spectrum(*args, **kwargs):
         _get = _get_spectra
 
     return _get(a, b, cross, **kwargs)
-
-
-def _spectrum_from_tcf(*args, **kwargs):
-    '''Choose between modes: abs, cd, abs_cd
-       Expects
-           1 - current (electric) dipole moments of shape
-               (n_frames[, nkinds], three) (mode=abs)
-           2 - magnetic dipole moments of shape
-                (n_frames[, nkinds], three) (mode=cd).
-
-       When specifying multiple kinds (2nd dimension), an
-       additional named argument ("positions") containing
-       the positions of kinds of the same shape is required.
-       No support of trajectory iterators.
-
-       Expects atomic units (but it is not mandatory).
-
-       ts ... timestep
-
-       Returns dictionary with:
-         "omega"            - discrete sample frequencies
-         "abs"/"cd"         - spectral density (FT TCF)
-         "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
-       '''
-    mode = kwargs.get('mode', 'abs_cd')
-    if mode not in ['abs', 'cd', 'abs_cd']:
-        raise ValueError('Unknown mode', mode)
-    _z = len(args)
-
-    def _err(_s, _z):
-        raise TypeError('tcf expected %d argument, got %d' % (_s, _z))
-    if mode == 'abs':
-        _s = 1
-    else:
-        _s = 2
-    if _z != _s:
-        _err(_s, _z)
-
-    cur_dipoles = args[0]
-    if 'cd' in mode:
-        mag_dipoles = args[1]
-        if mag_dipoles.shape != cur_dipoles.shape:
-            raise ValueError('shapes of given data do not agree',
-                             cur_dipoles.shape, mag_dipoles.shape)
-    data = {}
-
-    if len(cur_dipoles.shape) == 2:
-        omega, _abs, C_abs = spectral_density(
-                                cur_dipoles,
-                                cur_dipoles,
-                                **kwargs
-                                )
-        # _cc = constants.current_current_prefactor(300)
-        _cc = 1.
-
-        data['omega'] = omega
-        data['abs'] = _abs * _cc
-        data['tcf_abs'] = C_abs
-
-    elif len(cur_dipoles.shape) == 3:
-        positions = kwargs.get('positions')
-        if positions is None:
-            raise TypeError('Please give positions arguments for moments of '
-                            'shape %s' % cur_dipoles.shape)
-        origins = kwargs.get('origins', np.zeros((1, 1, 3)))
-        cell = kwargs.get('cell')
-        cutoff = kwargs.get('cutoff', 0)
-        cut_type = kwargs.get('cut_type', 'soft')
-        # BETA: remove direct correlation between background
-        cutoff_bg = kwargs.get('background_correction_cutoff')
-
-        spectrum = list()
-
-        for _i, _o in enumerate(origins):
-            _trans = distance_pbc(_o[:, None], positions, cell_aa_deg=cell)
-            _c = copy.deepcopy(cur_dipoles)
-            _c = _apply_cutoff(_c, _trans, cutoff, cut_type)
-            if cutoff_bg is not None:
-                _c_bg = copy.deepcopy(_c)
-                _c_bg = _apply_cutoff(_c_bg, _trans, cutoff_bg, 'hard')
-
-            if 'cd' in mode:
-                _m = copy.deepcopy(mag_dipoles)
-                # --- gauge-transport
-                _m += magnetic_dipole_shift_origin(_c, _trans)
-                _m = _apply_cutoff(_m, _trans, cutoff, cut_type)
-                if cutoff_bg is not None:
-                    _m_bg = copy.deepcopy(_m)
-                    _m_bg = _apply_cutoff(_m_bg, _trans, cutoff_bg, 'hard')
-
-            # --- get spectra
-            # ToDo: sort out prefactors!
-            _result = []
-            if 'abs' in mode:
-                omega, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
-                if cutoff_bg is not None:
-                    _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
-                    _abs -= _tmp[1]
-                    C_abs -= _tmp[2]
-                # _cc = constants.current_current_prefactor(300)
-                _cc = 1.
-                _result += [_abs*_cc, C_abs]
-
-            if 'cd' in mode:
-                omega, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
-                if cutoff_bg is not None:
-                    _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
-                    _cd -= _tmp[1]
-                    C_cd -= _tmp[2]
-                # _cm = constants.current_magnetic_prefactor(omega, 300)
-                _cm = 4. * omega
-                _result += [_cd*_cm, C_cd]
-            _result += [omega]
-
-            spectrum.append(_result[::-1])
-
-        # --- average over origins
-        spectrum = np.array(spectrum).sum(axis=0) / origins.shape[0]
-
-        data['omega'] = _result.pop()
-
-        if 'cd' in mode:
-            data['tcf_cd'] = _result.pop()
-            data['cd'] = _result.pop()
-
-        if 'abs' in mode:
-            data['tcf_abs'] = _result.pop()
-            data['abs'] = _result.pop()
-
-        # ToDo: warnings.warn("Return tcf incomplete!", stacklevel=2)
-    else:
-        raise TypeError('data with wrong shape!',
-                        cur_dipoles.shape)
-
-    return data
-
-
-def absorption_from_tcf(*args, **kwargs):
-    '''Expects
-           1 - current (electric) dipole moments of shape
-               (n_frames[, nkinds], three) (mode=abs)
-
-       When specifying multiple kinds (2nd dimension), an
-       additional named argument ("positions") containing
-       the positions of kinds of the same shape is required.
-       No support of trajectory iterators.
-
-       Expects atomic units (but it is not mandatory).
-
-       ts ... timestep
-
-       Returns dictionary with:
-         "omega"       - discrete sample frequencies
-         "abs"         - spectral density (FT TCF)
-         "tcf_abs"     - time-correlation function (TCF)
-       '''
-    kwargs.update({'mode': 'abs'})
-    return _spectrum_from_tcf(*args, **kwargs)
-
-
-def circular_dichroism_from_tcf(*args, **kwargs):
-    '''Expects
-           1 - current (electric) dipole moments of shape
-               (n_frames[, nkinds], three) (mode=abs)
-           2 - magnetic dipole moments of shape
-                (n_frames[, nkinds], three) (mode=cd).
-
-       When specifying multiple kinds (2nd dimension), an
-       additional named argument ("positions") containing
-       the positions of kinds of the same shape is required.
-       No support of trajectory iterators.
-
-       Expects atomic units (but it is not mandatory).
-
-       ts ... timestep
-
-       Returns dictionary with:
-         "omega"      - discrete sample frequencies
-         "cd"         - spectral density (FT TCF)
-         "tcf_cd"     - time-correlation function (TCF)
-       '''
-    kwargs.update({'mode': 'cd'})
-    return _spectrum_from_tcf(*args, **kwargs)

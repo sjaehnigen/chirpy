@@ -163,6 +163,7 @@ def main():
 
     print('Calculating spectra...')
     # --- ToDo: differ mode according to args
+    origin = _p.swapaxes(0, 1)[0]
     _voa = spectroscopy._spectrum_from_tcf(
                                 _c, _m,
                                 positions=_p,
@@ -171,7 +172,7 @@ def main():
                                 flt_pow=args.filter_strength,
                                 return_tcf=args.return_tcf,
                                 # --- example
-                                origins=_p.swapaxes(0, 1),
+                                origin=origin,
                                 cutoff=_cutoff,
                                 cell=_cell
                                 )

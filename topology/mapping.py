@@ -63,8 +63,8 @@ def cowt(pos, wt, **kwargs):
     return np.sum(_p[_sub] * _wt[_slc], axis=0) / _wt[_sub].sum()
 
 
-def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
-    '''cell_aa_deg as np.array/list of: a b c al be ga
+def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
+    '''cell as np.array/list of: a b c al be ga
        n_fields: usually 3
 
        Priority defines the alignment of non-rectangular objects in cartesian
@@ -79,18 +79,18 @@ def get_cell_vec(cell_aa_deg, n_fields=3, priority=(0, 1, 2)):
        to be >90° but this is wrong and CELL VECTORS should be used instead)
        '''
 
-    abc, albega = cell_aa_deg[:3], cell_aa_deg[3:] * np.pi / 180.
-    cell_vec_aa = np.zeros((3, n_fields))
+    abc, albega = cell[:3], cell[3:] * np.pi / 180.
+    cell_vec = np.zeros((3, n_fields))
     v0, v1, v2 = priority
-    cell_vec_aa[v0, v0] = abc[v0]
-    cell_vec_aa[v1, v1] = abc[v1] * np.sin(albega[(3 - v0 - v1)])
-    cell_vec_aa[v1, v0] = abc[v1] * np.cos(albega[(3 - v0 - v1)])
-    cell_vec_aa[v2, v2] = abc[v2] * np.sin(albega[(3 - v0 - v2)]) \
+    cell_vec[v0, v0] = abc[v0]
+    cell_vec[v1, v1] = abc[v1] * np.sin(albega[(3 - v0 - v1)])
+    cell_vec[v1, v0] = abc[v1] * np.cos(albega[(3 - v0 - v1)])
+    cell_vec[v2, v2] = abc[v2] * np.sin(albega[(3 - v0 - v2)]) \
         * np.sin(albega[(3 - v1 - v2)])
-    cell_vec_aa[v2, v0] = abc[v2] * np.cos(albega[(3 - v0 - v2)])
-    cell_vec_aa[v2, v1] = abc[v2] * np.cos(albega[(3 - v1 - v2)])
+    cell_vec[v2, v0] = abc[v2] * np.cos(albega[(3 - v0 - v2)])
+    cell_vec[v2, v1] = abc[v2] * np.cos(albega[(3 - v1 - v2)])
 
-    return cell_vec_aa
+    return cell_vec
 
 
 def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
@@ -143,7 +143,7 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
         return pos_aa
 
 
-def distance_pbc(p0, p1, **kwargs):
+def distance_pbc(p0, p1, cell=None, **kwargs):
     '''p1 – p0 with or without periodic boundaries
        accepts cell_aa_deg argument
        length units need not be in angstrom, but
@@ -152,57 +152,53 @@ def distance_pbc(p0, p1, **kwargs):
        '''
     # actually it does not calculate a "distance"
     _d = p1 - p0
-    try:
-        _d2 = _d - _pbc_shift(_d, kwargs.get("cell_aa_deg"))
+    if cell is not None:
+        _d2 = _d - _pbc_shift(_d, cell)
         # _d3 = min(list(_d.flatten()),
         #           list(_d2.flatten()),
         #           key=abs)
         # _d = np.array(_d3).reshape(_d.shape)
         _d = _d2
-    except TypeError:
-        pass
     return _d
 
 
-def _pbc_shift(_d, cell_aa_deg):
-    '''_d in aa of shape ...'''
+def _pbc_shift(_d, cell):
+    '''_d in aa of shape ...
+       cell: [ a b c al be ga ]'''
 
-    if not any([_a <= 0.0 for _a in cell_aa_deg[:3]]):
-        if not all([_a == 90.0 for _a in cell_aa_deg[3:]]):
-            cell_vec_aa = get_cell_vec(cell_aa_deg)
-            _c = ceb(_d, cell_vec_aa)
-            return np.tensordot(np.around(_c), cell_vec_aa, axes=1)
+    if not any([_a <= 0.0 for _a in cell[:3]]):
+        if not all([_a == 90.0 for _a in cell[3:]]):
+            cell_vec = get_cell_vec(cell)
+            _c = ceb(_d, cell_vec)
+            return np.tensordot(np.around(_c), cell_vec, axes=1)
         else:
-            return np.around(_d/cell_aa_deg[:3]) * cell_aa_deg[:3]
+            return np.around(_d/cell[:3]) * cell[:3]
     else:
         return np.zeros_like(_d)
 
 
-def distance_matrix(*args, **kwargs):
+def distance_matrix(p0, p1=None, cell=None, cartesian=None):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
 
-       Supports periodic boundaries (give cell_aa_deg).
+       Supports periodic boundaries (give cell as [x, y, z, al, be, ga];
+                                     angles in degrees).
        '''
     # ToDo: the following lines explode memory for many atoms
     #   ==> do coarse mapping beforehand
     # (overlapping batches) or set a max limit for n_atoms
-    if len(args) == 1:
-        _p0 = _p1 = args[0]
-    elif len(args) == 2:
-        _p0, _p1 = args
-    else:
-        raise TypeError('More than two arguments given!')
+    if p1 is None:
+        p1 = p0
 
-    if max(_p0.shape[0], _p1.shape[0]) > 1000:
+    if max(p0.shape[0], p1.shape[0]) > 1000:
         # python3.8: use walrus
-        print(max(_p0.shape[0], _p1.shape[0]))
+        print(max(p0.shape[0], p1.shape[0]))
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>1000 atom support in a future version)!'
                           )
-    dist_array = distance_pbc(_p0[:, None], _p1[None, :], **kwargs)
+    dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
 
-    if kwargs.get("cartesian") is not None:
+    if cartesian is not None:
         return dist_array
     else:
         return np.linalg.norm(dist_array, axis=-1)
@@ -214,7 +210,7 @@ def neighbour_matrix(pos_aa, symbols, **kwargs):
        '''
     symbols = np.array(symbols)
     cell_aa_deg = kwargs.get("cell_aa_deg")
-    dist_array = distance_matrix(pos_aa, cell_aa_deg=cell_aa_deg)
+    dist_array = distance_matrix(pos_aa, cell=cell_aa_deg)
     dist_array[dist_array == 0.0] = 'Inf'
     crit_aa = dist_crit_aa(symbols)
 
@@ -237,7 +233,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
 
         _r = np.argmin(np.linalg.norm(distance_matrix(
                                                     _p,
-                                                    cell_aa_deg=cell_aa_deg,
+                                                    cell=cell_aa_deg,
                                                     ),
                                       axis=1))
         _r = [_r]*sum(ind)
@@ -292,7 +288,7 @@ def align_atoms(pos_mobile, w, **kwargs):
 def find_methyl_groups(pos, symbols, hetatm=False, **kwargs):
     '''pos of shape (n_atoms, n_fields) (FRAME)
        Outformat is C H H H'''
-    dist_array = distance_matrix(pos, **kwargs)
+    dist_array = distance_matrix(pos, cell=kwargs.get("cell_aa_deg"))
     n_atoms = len(symbols)
     symbols = np.array(symbols)
 

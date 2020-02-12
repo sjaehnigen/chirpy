@@ -100,7 +100,7 @@ def regularisation(p, grid, *args, **kwargs):
                 distance_pbc(
                         _p[_slc],
                         grid,
-                        **kwargs
+                        cell=kwargs.get("cell_aa_deg")
                         ),
                 axis=0
                 ),

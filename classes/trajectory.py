@@ -193,7 +193,7 @@ class _FRAME(_CORE):
             ass = _np.argmin(_distance_matrix(
                                 obj1.data[i1, :3] - com1[None],
                                 obj2.data[i2, :3] - com2[None],
-                                **kwargs
+                                cell=self.cell_aa_deg
                                 ),
                              axis=0)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
@@ -647,7 +647,7 @@ class _XYZ():
                 if _s != 'H' or not noh:
                     a = _distance_pbc(_s_pos[_ind],
                                       _o_pos[_ind],
-                                      cell_aa_deg=self.cell_aa_deg)
+                                      cell=self.cell_aa_deg)
                     a = _np.linalg.norm(a, axis=-1)
                     _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
 
@@ -926,7 +926,7 @@ class _XYZ():
         if self._type == 'frame':
             amax = _np.amax(_distance_matrix(
                                     self.data[:, :3],
-                                    cell_aa_deg=self.cell_aa_deg
+                                    cell=self.cell_aa_deg
                                     ))
         print('Max distance:             %s' % round(amax, 4))
 
