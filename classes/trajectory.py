@@ -193,7 +193,7 @@ class _FRAME(_CORE):
             ass = _np.argmin(_distance_matrix(
                                 obj1.data[i1, :3] - com1[None],
                                 obj2.data[i2, :3] - com2[None],
-                                cell=self.cell_aa_deg
+                                cell=obj1.cell_aa_deg
                                 ),
                              axis=0)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
@@ -668,19 +668,20 @@ class _XYZ():
             self._pos_aa(_wrap(self.pos_aa, self.cell_aa_deg))
 
     def wrap_molecules(self, mol_map, **kwargs):
-        mode = kwargs.get('mode', 'cog')
+        mode = kwargs.get('mode', 'com')
         w = _np.ones((self.n_atoms))
         if mode == 'com':
             w = self.masses_amu
 
         if self._type == 'trajectory':
-            _p, mol_com_aa = _np.array([_join_molecules(
-                                               _pp,
-                                               mol_map,
-                                               self.cell_aa_deg,
-                                               weights=w
-                                               )
-                                        for _pp in self.pos_aa])
+            _p, mol_com_aa = _join_molecules(
+                                self.pos_aa,
+                                mol_map,
+                                self.cell_aa_deg,
+                                weights=w,
+                                )
+            self._pos_aa(_p)
+            self.mol_com_aa = mol_com_aa
         else:
             _p, mol_com_aa = _join_molecules(
                                 self.pos_aa,
@@ -1162,26 +1163,17 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
            (may take some time)
            '''
         self._chaste = True
-        if self._fmt == 'xyz':
-            data, symbols, comments = zip(*[(self.data,
-                                             self.symbols,
-                                             self.comments) for _fr in self])
-            out = {
-                    'data': _np.array(data),
-                    'symbols': symbols[0],
-                    'comments': list(comments)
-                    }
-
-        if self._fmt == 'cpmd':
-            data = _np.array([self.data for _fr in self])
-            data[:, :, :3] *= constants.l_au2aa
-            out = {
-                    'data': data,
-                    'symbols': self.symbols,
-                    'comments': [self.comments] * data.shape[0],
-                    }
+        data, symbols, comments = zip(*[(self.data,
+                                         self.symbols,
+                                         self.comments) for _fr in self])
+        out = {
+                'data': _np.array(data),
+                'symbols': symbols[0],
+                'comments': list(comments)
+                 }
 
         self._kwargs.update(out)
+
         return XYZTrajectory(**self._kwargs)
 
     def write(self, fn, **kwargs):

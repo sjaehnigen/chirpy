@@ -176,17 +176,17 @@ def define_molecules(pos_aa, symbols, **kwargs):
         ass[_h] = ass[_i]
 
     # --- create ascending indices
-    _n = -1
-    _o = -1
+    _n = 0
+    _o = {}
     ass_n = []
     for _a in ass:
-        if _a != _o:
-            _o = _a
+        if _a not in _o:
             _n += 1
-        ass_n.append(_n)
+            _o[_a] = _n
+        ass_n.append(_o[_a])
     ass = np.array(ass_n)
 
-    return ass
+    return ass - 1
 
 
 def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):

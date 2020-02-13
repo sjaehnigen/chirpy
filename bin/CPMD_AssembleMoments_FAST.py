@@ -30,7 +30,9 @@ def main():
             description="Process CPMD MOMENTS output of electronic (Wannier)\
                          states and add (classical) nuclear contributions to\
                          generate molecular moments based on a given\
-                         topology.",
+                         topology.\
+                         FAST: The entire data is loaded into memory before\
+                         being processed.",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument(
@@ -72,8 +74,7 @@ def main():
                              fmt='cpmd',
                              range=args.range,
                              fn_topo=args.TOPOLOGY,
-                             # --- this is costly depending on no of mols
-                             wrap_mols=True,
+                             wrap_mols=False,
                              )
 
     _moms_e = trajectory.MOMENTS(args.MOMENTS,
@@ -84,20 +85,32 @@ def main():
     n_map = np.array(_traj.mol_map)
     n_mols = len(set(_traj.mol_map))
 
+    # --- load data into memory
+    _traj = _traj.XYZ
+    e_data = np.array([_moms_e.data for _m_fr in _moms_e])
+    _traj = _traj._to_trajectory()
+    # --- wrap molecules for all frames at once
+    _traj.wrap_molecules(n_map)
+    n_data = _traj.data
+
+    ZV = np.array(constants.symbols_to_valence_charges(_traj.symbols))
+
     _cell = _traj.cell_aa_deg
     _cell[:3] *= constants.l_aa2au
 
-    for _iframe, (_p_fr, _m_fr) in enumerate(zip(_traj.XYZ, _moms_e)):
-        _moms_n = trajectory.MOMENTSFrame.from_classical_nuclei(
-                                                      _traj.XYZ._frame)
+    print('Finished loading data.')
+    print('Start assembling moments...')
+    for _iframe, (_n_data, _e_data) in enumerate(zip(n_data, e_data)):
+        #
+        #
 
-        _r_n = _moms_n.data[:, :3]
-        _c_n = _moms_n.data[:, 3:6]
-        _m_n = _moms_n.data[:, 6:9]
+        _r_n = _n_data[:, :3] * constants.l_aa2au
+        _c_n = ed.current_dipole_moment(_n_data[:, 3:6], ZV)
+        _m_n = np.zeros_like(_c_n)
 
-        _r_e = _moms_e.data[:, :3]
-        _c_e = _moms_e.data[:, 3:6]
-        _m_e = _moms_e.data[:, 6:9]
+        _r_e = _e_data[:, :3]
+        _c_e = _e_data[:, 3:6]
+        _m_e = _e_data[:, 6:9]
 
         # --- assign Wannier centers to atoms
         _dists = mp.distance_matrix(_r_e, _r_n, cell=_cell)
@@ -109,7 +122,7 @@ def main():
         e_map = n_map[np.argmin(_dists, axis=1)]
 
         # --- decompose data into molecular contributions
-        mol_com = _traj.XYZ.mol_com_aa * constants.l_aa2au
+        mol_com = _traj.mol_com_aa[_iframe] * constants.l_aa2au
         _r_n, _c_n, _m_n = map(lambda x: mp.dec(x, n_map), [_r_n, _c_n, _m_n])
         _r_e, _c_e, _m_e = map(lambda x: mp.dec(x, e_map, n_ind=n_mols),
                                [_r_e, _c_e, _m_e])
@@ -147,6 +160,7 @@ def main():
                   frame=_iframe,
                   append=append,
                   write_atoms=False)
+    print('Done')
 
 
 if __name__ == "__main__":

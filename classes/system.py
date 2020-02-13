@@ -128,7 +128,7 @@ class _SYSTEM(_CORE):
 
         n_map = tuple(_define_molecules(self.XYZ.pos_aa,
                                         self.XYZ.symbols,
-                                        cell_aa_deg=self.cell_aa_deg)-1)
+                                        cell_aa_deg=self.cell_aa_deg))
         self.mol_map = n_map
 
     def sort_atoms(self, *args):

@@ -26,16 +26,17 @@ from chirpy.test import \
     topology,\
     physics,\
     classes,\
-    create
+    create,\
+    bin
 
 # --- INSUFFICIENT tests for
 # physics
 # create
 # classes
+# bin
 
 # --- NOT (yet) tested
 # snippets
-# bin
 # external
 # visualise
 
@@ -57,6 +58,7 @@ if __name__ == '__main__':
     suite.addTests(loader.loadTestsFromModule(physics))
     suite.addTests(loader.loadTestsFromModule(classes))
     suite.addTests(loader.loadTestsFromModule(create))
+    suite.addTests(loader.loadTestsFromModule(bin))
 
     # initialize a runner, pass it your suite and run it
     runner = unittest.TextTestRunner(verbosity=1)

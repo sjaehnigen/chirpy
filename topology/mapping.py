@@ -41,12 +41,15 @@ def dist_crit_aa(symbols):
     return crit_aa
 
 
-def dec(prop, indices):
-    """decompose prop according to indices"""
+def dec(prop, indices, n_ind=None):
+    """decompose prop according to indices
+       n_ind: if number of pieces cannot be retrieved from indices"""
+    if n_ind is None:
+        n_ind = max(indices)+1
     return [
         np.array([
             prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
-            ]) for i_mol in range(max(indices)+1)
+            ]) for i_mol in range(n_ind)
         ]
 
 
@@ -133,12 +136,20 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
     '''pos_aa: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
-    if detect_lattice(cell_aa_deg) is not None:
-        cell_vec_aa = get_cell_vec(cell_aa_deg)
-        return pos_aa - np.tensordot(np.floor(ceb(pos_aa, cell_vec_aa)),
-                                     cell_vec_aa,
-                                     axes=1
-                                     )
+    lattice = detect_lattice(cell_aa_deg)
+    if lattice is not None:
+        # python3.8: use walrus
+        if lattice in ['cubic', 'orthorhombic', 'tetragonal']:
+            # --- fast
+            return pos_aa - np.floor(pos_aa/cell_aa_deg[:3]) * cell_aa_deg[:3]
+
+        else:
+            # --- more expensive (ToDo: optimise tensordot, ceb; has np.cross)
+            cell_vec_aa = get_cell_vec(cell_aa_deg)  # checked: inexpensive
+            return pos_aa - np.tensordot(np.floor(ceb(pos_aa, cell_vec_aa)),
+                                         cell_vec_aa,
+                                         axes=1
+                                         )
     else:
         return pos_aa
 
@@ -218,31 +229,52 @@ def neighbour_matrix(pos_aa, symbols, **kwargs):
 
 
 def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
-    '''pos_aa (in angstrom) with shape (n_atoms, three)
-    Has still problems with cell-spanning molecules'''
-    n_atoms, three = pos_aa.shape
+    '''pos_aa (in angstrom) with shape ([n_frames,] n_atoms, three)
+    Has still problems with cell-spanning molecules
+    Molecules have to be numbered starting with 0!'''
+    if 0 not in mol_map:
+        raise TypeError('Given mol_map not an enumeration of indices!',
+                        mol_map)
+    pos_aa = np.moveaxis(pos_aa, -2, 0)
+    _shape = pos_aa.shape
+    n_atoms = _shape[0]
     w = kwargs.get('weights', np.ones((n_atoms)))
     w = dec(w, mol_map)
 
-    _pos_aa = copy.deepcopy(pos_aa)
+    _pos_aa = dec(pos_aa, mol_map)
     mol_com_aa = []
-    for i_mol in set(mol_map):
-        ind = np.array(mol_map) == i_mol
-        _p = _pos_aa[ind]
+    for _i, (_w, _p) in enumerate(zip(w, _pos_aa)):
         # actually: needs connectivity pattern to wrap everything correctly
+        # the slightly expensive matrix analysis improves the result
 
+        # --- ToDo: awkward check if _p has frames (frame 0 as reference)
+        if len(_p.shape) == 3:
+            _p_ref = _p[:, 0]
+        else:
+            _p_ref = _p
+        # --- find atom that is closest to its counterparts
         _r = np.argmin(np.linalg.norm(distance_matrix(
-                                                    _p,
-                                                    cell=cell_aa_deg,
-                                                    ),
+                                                      _p_ref,
+                                                      cell=cell_aa_deg,
+                                                      ),
                                       axis=1))
-        _r = [_r]*sum(ind)
-        _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
-        c_aa = cowt(_p, w[i_mol])
-        mol_com_aa.append(wrap(c_aa, cell_aa_deg))
-        _pos_aa[ind] = _p - (c_aa - mol_com_aa[-1])[None, :]
 
-    return _pos_aa, np.array(mol_com_aa)
+        # --- complete mols
+        _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
+        c_aa = cowt(_p, _w, axis=0)
+        mol_com_aa.append(c_aa)
+        _p -= c_aa[None, :]
+
+    # --- wrap = performance bottleneck? --> definitely for non-tetragonal lat
+    mol_com_aa = wrap(np.array(mol_com_aa), cell_aa_deg)
+
+    # --- wrap set of pos
+    for _i, _com in enumerate(mol_com_aa):
+        # --- in-loop to retain order (np.argsort=unreliable)
+        ind = np.array(mol_map) == _i
+        pos_aa[ind] = _pos_aa[_i] + _com[None, :]
+
+    return np.moveaxis(pos_aa, 0, -2), np.moveaxis(np.array(mol_com_aa), 0, -2)
 
 
 def get_atom_spread(pos):
