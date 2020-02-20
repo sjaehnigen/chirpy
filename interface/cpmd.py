@@ -448,9 +448,11 @@ class CPMDinput():
                 kinds.append("*%s_%s" % (_e, pp))
                 data.append(pos_au[symbols == _e])
                 n_kinds.append(len(data[-1]))
-                if _e in ['C', 'O', 'N', 'P', 'Cl', 'F', 'S'] and 'AEC' not in pp:
+                if _e in ['C', 'O', 'N', 'Cl', 'F', 'S'] and 'AEC' not in pp:
                     # --- ToDo: replace manual tweaks by automatic pp analysis
                     channels.append("LMAX=P LOC=P")
+                elif _e in ['P'] and 'AEC' not in pp:
+                    channels.append("LMAX=D LOC=D")
                 else:
                     channels.append("LMAX=S LOC=S")
 
