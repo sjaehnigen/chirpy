@@ -167,57 +167,69 @@ def _spectrum_from_tcf(*args, **kwargs):
         origin = kwargs.get('origin', np.zeros((1, 3)))
 
         # --- cutoff spheres --------------------------------------------------
-        def _parse_clip(ss):
-            tmp = kwargs.get('clip_sphere'+ss, [])
-            if not isinstance(tmp, list):
-                raise TypeError('expected list for keyword "clip_sphere%s"!'
-                                % ss)
-            # --- automatically add global cutoff if applicable
-            cutoff = kwargs.get('cutoff'+ss)
-            if cutoff is not None:
-                ct = 'soft'
-                if 'bg' in ss:
-                    ct = 'hard'
-                tmp.append(Sphere(origin, cutoff,
-                                  edge=kwargs.get('cut_type'+ss, ct)))
-            return tmp
+        _clip = kwargs.get('clip_sphere', [])
+        if not isinstance(_clip, list):
+            raise TypeError('expected list for keyword "clip_sphere%s"!')
 
-        _clip = _parse_clip('')
-        _clip_bg = _parse_clip('_bg')
+        # --- master sphere (cutoff) ==> applied ON TOP OF clip spheres
+        _cut_sphere = []
+        cutoff = kwargs.get('cutoff')
+        if cutoff is not None:
+            _cut_sphere.append(Sphere(
+                                 origin,
+                                 cutoff,
+                                 edge=kwargs.get('cut_type', 'soft')
+                                 ))
+
+        _cut_sphere_bg = []
+        cutoff_bg = kwargs.get('cutoff_bg')
+        if cutoff_bg is not None:
+            _cut_sphere_bg.append(Sphere(
+                                    origin,
+                                    cutoff_bg,
+                                    edge=kwargs.get('cut_type_bg', 'hard')
+                                    ))
         # ---------------------------------------------------------------------
 
         def _cut(x, pos, clip, inverse=False):
-            y = np.zeros_like(x)
-            for _tr in clip:
-                if not isinstance(_tr, Sphere):
-                    raise TypeError('expected a list of Sphere objects as '
-                                    'clip spheres!')
-                y += _tr.clip_section_observable(x, pos, cell=cell,
-                                                 inverse=inverse)
-            return y
+            if len(clip) != 0:
+                y = np.zeros_like(x)
+                for _tr in clip:
+                    if not isinstance(_tr, Sphere):
+                        raise TypeError('expected a list of Sphere objects as '
+                                        'clip spheres!')
+                    y += _tr.clip_section_observable(np.ones_like(x),
+                                                     pos,
+                                                     cell=cell,
+                                                     inverse=inverse)
+            else:
+                y = np.ones_like(x)
+            return np.clip(y, 0, 1) * x
 
         _c = copy.deepcopy(cur_dipoles)
         _c = _cut(_c, pos, _clip)
+        _c = _cut(_c, pos, _cut_sphere)
         if 'cd' in mode:
             _m = copy.deepcopy(mag_dipoles)
+            _m = _cut(_m, pos, _clip)
+            _m = _cut(_m, pos, _cut_sphere)
             # --- gauge-transport
             _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
                                      cell_au_deg=cell)
-            _m = _cut(_m, pos, _clip)
 
-        if len(_clip_bg) != 0:
+        if len(_cut_sphere_bg) != 0:
             _c_bg = copy.deepcopy(_c)
-            _c_bg = _cut(_c_bg, pos, _clip_bg, inverse=True)
+            _c_bg = _cut(_c_bg, pos, _cut_sphere_bg, inverse=True)
             if 'cd' in mode:
                 _m_bg = copy.deepcopy(_m)
-                _m_bg = _cut(_m_bg, pos, _clip_bg, inverse=True)
+                _m_bg = _cut(_m_bg, pos, _cut_sphere_bg, inverse=True)
 
         # --- get spectra
         # ToDo: sort out prefactors!
         _result = []
         if 'abs' in mode:
             omega, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
-            if len(_clip_bg) != 0:
+            if len(_cut_sphere_bg) != 0:
                 _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
                 _abs -= _tmp[1]
                 C_abs -= _tmp[2]
@@ -227,7 +239,7 @@ def _spectrum_from_tcf(*args, **kwargs):
 
         if 'cd' in mode:
             omega, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
-            if len(_clip_bg) != 0:
+            if len(_cut_sphere_bg) != 0:
                 _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
                 _cd -= _tmp[1]
                 C_cd -= _tmp[2]

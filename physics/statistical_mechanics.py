@@ -101,11 +101,12 @@ def time_correlation_function(*args, **kwargs):
        '''
 
     if len(args) == 1:
-        auto = True
+        # --- auto-correlation
         val1 = args[0]
+        val2 = args[0]
 
     elif len(args) == 2:
-        auto = False
+        # --- cross-correlation
         val1 = args[0]
         val2 = args[1]
 
@@ -118,41 +119,34 @@ def time_correlation_function(*args, **kwargs):
 
     n_frames, three = val1.shape
 
-    def _corr(_val1, _val2, mode='full'):
-        return np.array([signal.fftconvolve(
+    def _corr(_val1, _val2, _cc_mode='AB'):
+        _sig = np.array([signal.fftconvolve(
                                   v1,
                                   v2[::-1],
-                                  mode=mode
-                                  )[n_frames-1:]
+                                  mode='full'
+                                  )
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
 
-    if auto:
-        R = _corr(val1, val1)
-
-    else:
-        R = np.zeros_like(val1)
-        # cc mode:
-        #   A or B = Ra or Rb
-        #   AB = (Ra + Rb) / 2
-        #   AC = Ra - Rb (benchmark)
-        #   BC = 0
-        #   ABC = A
-        # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
-
+        R = np.zeros_like(_val1)
         if 'A' in _cc_mode:
-            R += _corr(val1, val2)
-
+            R += _sig[n_frames-1:]
         if 'B' in _cc_mode:
-            R += _corr(val2, val1)
-            # R += np.array([signal.fftconvolve(
-            #                v2, v1[::-1], mode='full')[n_frames-1:]
-            #                for v1, v2 in zip(val1.T, val2.T)]).T
-
+            R += _sig[:n_frames][::-1]
         if 'C' in _cc_mode:
-            R -= _corr(val2, val1)
-
+            R -= _sig[:n_frames][::-1]
         if _cc_mode == 'AB':
             R /= 2
+
+        return R
+
+    # cc mode:
+    #   A or B = Ra or Rb
+    #   AB = (Ra + Rb) / 2
+    #   AC = Ra - Rb (benchmark)
+    #   BC = 0
+    #   ABC = A
+    # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
+    R = _corr(val1, val2, _cc_mode)
 
     R = R.sum(axis=1)
 

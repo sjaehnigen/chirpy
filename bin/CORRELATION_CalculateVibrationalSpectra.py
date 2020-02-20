@@ -19,6 +19,7 @@ import sys
 import argparse
 import warnings
 import numpy as np
+import copy
 from matplotlib import pyplot as plt
 
 from chirpy.classes import trajectory
@@ -161,27 +162,40 @@ def main():
     else:
         _cell = None
 
+    _voa = {}
+    _voa['va'] = []
+    _voa['vcd'] = []
+    _voa['tcf_va'] = []
+    _voa['tcf_vcd'] = []
     print('Calculating spectra...')
     # --- ToDo: differ mode according to args
-    origin = _p.swapaxes(0, 1)[0]
-    _voa = spectroscopy._spectrum_from_tcf(
-                                _c, _m,
-                                positions=_p,
-                                mode='abs_cd',
-                                ts=args.ts * constants.femto,
-                                flt_pow=args.filter_strength,
-                                return_tcf=args.return_tcf,
-                                # --- example
-                                origin=origin,
-                                cutoff=_cutoff,
-                                cell=_cell
-                                )
+    origins = _p.swapaxes(0, 1)
+    for origin in origins:
+        _tmp = spectroscopy._spectrum_from_tcf(
+                                    _c, _m,
+                                    positions=_p,
+                                    mode='abs_cd',
+                                    ts=args.ts * constants.femto,
+                                    flt_pow=args.filter_strength,
+                                    return_tcf=args.return_tcf,
+                                    # --- example
+                                    origin=origin,
+                                    cutoff=_cutoff,
+                                    cell=_cell
+                                    )
+
+        _voa['va'].append(_tmp['abs'])
+        _voa['vcd'].append(_tmp['cd'])
+        _voa['tcf_va'].append(_tmp['tcf_abs'])
+        _voa['tcf_vcd'].append(_tmp['tcf_cd'])
+
+    _voa['omega'] = _tmp['omega']
+    _voa['va'] = np.array(_voa['va']).sum(axis=0) / len(origins)
+    _voa['vcd'] = np.array(_voa['vcd']).sum(axis=0) / len(origins)
+    _voa['tcf_va'] = np.array(_voa['tcf_va']).sum(axis=0) / len(origins)
+    _voa['tcf_vcd'] = np.array(_voa['tcf_vcd']).sum(axis=0) / len(origins)
+
     print('Done')
-    # --- pointer
-    _voa['va'] = _voa['abs']
-    _voa['vcd'] = _voa['cd']
-    _voa['tcf_va'] = _voa['tcf_abs']
-    _voa['tcf_vcd'] = _voa['tcf_cd']
 
     # --- plot
     labels = {
