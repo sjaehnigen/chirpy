@@ -28,6 +28,7 @@ from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
+from ..physics import constants
 
 
 class ScalarField(_CORE):
@@ -84,6 +85,7 @@ class ScalarField(_CORE):
                 raise ValueError('List of atom numbers and atom positions do '
                                  'not match!')
 
+            self.symbols = constants.numbers_to_symbols(self.numbers)
             self.voxel = _np.dot(self.cell_vec_au[0],
                                  _np.cross(self.cell_vec_au[1],
                                            self.cell_vec_au[2]))

@@ -200,7 +200,7 @@ class CurrentDensity(_VectorField):
     pass
 
 
-class TimeDependentElectronicState(_CORE):
+class TDElectronicState(_CORE):
     def __init__(self, fn, fn1, fn2, fn3, **kwargs):
         self.psi = WaveFunction(fn, **kwargs)
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
@@ -227,7 +227,7 @@ class TimeDependentElectronicState(_CORE):
         self.v.__class__.__name__ = "VelocityField"
 
 
-class TimeDependentElectronDensity(_CORE):
+class TDElectronDensity(_CORE):
     def __init__(self, fn, fn1, fn2, fn3, **kwargs):
         self.rho = ElectronDensity(fn, **kwargs)
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)

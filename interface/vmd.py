@@ -94,6 +94,7 @@ def VMDLine(fn, pos_aa, **kwargs):
     sparse = kwargs.get('sparse', 5)  # sparsity of iconification (NOT of streamline production)
     factor = kwargs.get('factor', 1)
     cut = kwargs.get('cutoff_aa', 0)  # min length of tube in AA to be iconified
+    rgb = kwargs.get('rgb', (0.5, 0.5, 0.5))  # rhrad times radius ... chnage it soon
 
     n_points, n_tubes, three = pos_aa.shape
 
@@ -111,11 +112,10 @@ def VMDLine(fn, pos_aa, **kwargs):
     pos_aa = np.array([spline(points) for points in pos_aa[:, ind, :].swapaxes(0, 1)]).swapaxes(0, 1)[::sparse][::factor]
     print(pos_aa.shape)
     with open(fn, 'w') as f:
-        # f.write("color change rgb tan 0.0 0.4 0.0\n")
-        # f.write("draw color tan\n")
-        f.write("draw color black\n")
-        # f.write("draw materials off\n")
-        f.write("draw materials on\n")
+        f.write("color change rgb tan %f %f %f\n" % rgb)
+        f.write("draw color tan\n")
+        f.write("draw materials off\n")
+        # f.write("draw materials on\n")
 #        f.write("draw material AOShiny\n")
         p0 = None
         for ip, p1 in enumerate(pos_aa):
