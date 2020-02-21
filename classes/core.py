@@ -145,8 +145,9 @@ class _ITERATOR():
            This can partially also be done with masks.'''
         func = kwargs.pop('func', None)
         events = kwargs.pop('events', {})
+        length = kwargs.pop('length', None)
         _fr = 0
-        for _ifr in self:
+        for _ifr in itertools.islice(self, length):
             kwargs['frame'] = _ifr
             if isinstance(func, str):
                 getattr(self._frame, func)(*args, **kwargs)
@@ -156,6 +157,10 @@ class _ITERATOR():
                 if isinstance(events[_fr], dict):
                     kwargs.update(events[_fr])
             _fr += 1
+
+        if length is not None:
+            next(self)
+            self._chaste = True
 
     @staticmethod
     def _mask(obj, func, *args, **kwargs):

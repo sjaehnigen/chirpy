@@ -91,7 +91,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         # --- frame
         data = np.array([data])
 
-    fmt = 'w'
+    mode = 'w'
     frame = kwargs.get('frame')
     frames = [frame]
     if frame is None:
@@ -101,15 +101,15 @@ def cpmdWriter(fn, data, append=False, **kwargs):
                           stacklevel=2)
 
     if append:
-        fmt = 'a'
+        mode = 'a'
 
-    with open(fn, fmt) as f:
+    with open(fn, mode) as f:
         for fr, _d in zip(frames, data):
             for _dd in _d:
                 line = '%7d  ' % fr + '  '.join(map('{:22.14f}'.format, _dd))
                 f.write(line+'\n')
 
-    if bool_atoms and fmt != 'a':
+    if bool_atoms and mode != 'a':
         symbols = kwargs.pop('symbols', ())
         if data.shape[1] != len(symbols):
             raise ValueError('symbols and positions are not consistent!',
@@ -154,9 +154,10 @@ def fortran_float(a):
 
 
 def _nextline_parser(SEC, KEY, ARG, section_input):
+    def _fmt(s):
+        return '%10.5f' % float(s)
     if SEC == 'SYSTEM':
         if KEY == 'CELL':
-            _fmt = lambda s: '%10.5f' % float(s)
             if 'VECTORS' in ARG:
                 _out = [tuple(map(_fmt, _s.split()))
                         for _iv, _s in zip(range(3), section_input)]
@@ -230,27 +231,23 @@ class CPMDinput():
     #        for _i in kwargs:
     #            setattr(self, _i, kwargs[_i])
 
-        def write_section(self, *args, fmt='angstrom', append=False):
-            _stdout = sys.stdout
-            # _sys.__stdout__ is not Jupyter Output,
-            # so use this way to restore stdout
+        def write_section(self, *args, **kwargs):
+            fmt = kwargs.get('fmt', 'angstrom')
+            append = kwargs.get('append', False)
+
             if len(args) == 1:
-                fmt = 'w'
+                mode = 'w'
                 if append:
-                    fmt = 'a'
-                _outstream = open(args[0], fmt)
+                    mode = 'a'
+                _outstream = open(args[0], mode)
 
             if len(args) > 1:
                 raise TypeError(self.write_section.__name__ +
                                 ' takes at most 1 argument.')
 
-            self.print_section(file=_outstream)
+            self.print_section(file=_outstream, fmt=fmt)
 
-            # sys.stdout.flush()
-            # # _sys.stdout = _sys.__stdout__
-            # sys.stdout = _stdout
-
-        def print_section(self, file=sys.stdout):
+        def print_section(self, file=sys.stdout, **kwargs):
             print("&%s" % self.__class__.__name__, file=file)
 
             for _o in self.options:
@@ -336,7 +333,8 @@ class CPMDinput():
                         # ToDo: put a function here
                         _nl = tuple(map(_next, next(section_input).split()))
                     elif callable(_next):
-                        _nl, section_input = _next(cls.__name__, _key, _arg, section_input)
+                        _nl, section_input = _next(cls.__name__, _key, _arg,
+                                                   section_input)
                     else:
                         raise TypeError(
                              'CPMD input lines not understood for %s' % _key)
@@ -536,9 +534,10 @@ class CPMDjob():
 
         for _s in _SEC:
             if hasattr(self, _s):
-                getattr(self, _s).write_section(fn,
-                                                append=True,
-                                                fmt=kwargs.get('fmt', 'angstrom'))
+                getattr(self, _s).write_section(
+                                            fn,
+                                            append=True,
+                                            fmt=kwargs.get('fmt', 'angstrom'))
 
     # ToDo: into atoms
 
