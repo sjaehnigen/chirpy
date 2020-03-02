@@ -1075,7 +1075,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             elif self._fmt == "pdb":
                 self._gen = _pdbIterator(fn)  # **kwargs
 
-            elif self.fmt == "cpmd" or any([_t in fn for _t in [
+            elif self._fmt == "cpmd" or any([_t in fn for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
