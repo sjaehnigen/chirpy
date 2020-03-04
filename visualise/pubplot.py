@@ -31,7 +31,7 @@ class pub_label():
         self.sep = kwargs.get('sep',  0.0)
         self.alpha = kwargs.get('alpha',  1.0)
 
-    def printd(self,  string,  **kwargs):
+    def print(self,  string,  **kwargs):
         for _key in self.__dict__.keys():
             setattr(self,  _key,  kwargs.get(_key,  getattr(self,  _key)))
             try:
@@ -105,6 +105,8 @@ def multiplot(ax, x_a, y_a, **kwargs):
     bool_a = kwargs.get('bool_a',  n_plots * [True])
     std_a = kwargs.get('std_a')
     _exp = kwargs.get('exp')
+    _sty_exp = kwargs.get('style_exp', '-')
+    _alpha_exp = kwargs.get('alpha_exp', 1.0)
     if _exp is not None:
         e,  xe = _exp[:,  1],  _exp[:,  0]
     xlim = kwargs.get('xlim',  (np.amin(np.array(np.hstack(x_a))),
@@ -188,7 +190,8 @@ def multiplot(ax, x_a, y_a, **kwargs):
 
     # --- plot reference (experiment)
     if _exp is not None:
-        ax.plot(xe, _e, '-', lw=3, color='black', label='exp.')
+        ax.plot(xe, _e, _sty_exp, alpha=_alpha_exp, lw=3, color='black',
+                label='exp.')
 
     # --- plot data
     if fill:

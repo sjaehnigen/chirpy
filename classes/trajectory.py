@@ -328,21 +328,28 @@ class _MODES(_FRAME):
 
         with _warnings.catch_warnings():
             if _np.amax(com_motion) > atol:
-                _warnings.warn('Significant motion of COM for certain modes!',
+                _warnings.warn('Significant motion of COM for certain modes! '
+                               'Are the eigenvectors orthonormal? '
+                               'Try enabling/disabling the --mw flag!',
                                RuntimeWarning,
                                stacklevel=2)
 
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
+        _np.set_printoptions(precision=2)
         if any([_np.allclose(a,
                              _np.identity(self.n_modes),
                              atol=atol),
                 _np.allclose(a[6:, 6:],
                              _np.identity(self.n_modes-6),
                              atol=atol)]):
-            raise ValueError('The given cartesian displacements are '
-                             'orthonormal! Please try enabling/disabling '
-                             'the -mw flag!')
+            # print(a[6:, 6:])
+            _warnings.warn('The given cartesian displacements are '
+                           'orthonormal! Please try enabling/disabling '
+                           'the --mw flag!',
+                           RuntimeWarning,
+                           stacklevel=2)
+            print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
         if not any([_np.allclose(a,
@@ -352,9 +359,14 @@ class _MODES(_FRAME):
                                  _np.identity(self.n_modes-6),
                                  atol=atol)
                     ]):
-            print(a)
-            print(_np.amax(_np.abs(a-_np.identity(self.n_modes))))
-            raise ValueError('The eigenvectors are not orthonormal!')
+            # print(a[6:, 6:])
+            _warnings.warn('The eigenvectors are not '
+                           'orthonormal! Please try enabling/disabling '
+                           'the --mw flag!',
+                           RuntimeWarning,
+                           stacklevel=2)
+            print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
+        _np.set_printoptions(precision=8)
 
     def _source_APT(self, fn):
         '''Requires file of APT in atomic units.
@@ -368,7 +380,7 @@ class _MODES(_FRAME):
             / (3 * constants.c_si**2) / constants.m_amu_si
         print(sumrule)
 
-        self._sync_class()
+        self._sync_class(check_orthonormality=False)
 
     def _source_AAT(self, fn):
         '''Requires file of AAT in atomic units.
@@ -380,7 +392,7 @@ class _MODES(_FRAME):
         # sumrule = ? --> see old code
         # print(sumrule)
 
-        self._sync_class()
+        self._sync_class(check_orthonormality=False)
 
     def _calculate_spectral_intensities(self):
         '''Calculate IR and VCD intensities from electronic and magnetic
@@ -543,7 +555,7 @@ class _XYZ():
         self.symbols = tuple(symbols)
         self.comments = comments
         self.data = data
-        self._sync_class()
+        self._sync_class(check_orthonormality=False)
 
         if center_coords is not None:
             if isinstance(center_coords, list):
@@ -578,7 +590,7 @@ class _XYZ():
                 wrap_molecules = False
             self.align_coordinates(align_coords, **kwargs)
 
-        self._sync_class()
+        self._sync_class(check_orthonormality=False)
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -611,6 +623,7 @@ class _XYZ():
                             % self._vel_au.__name__)
 
     def _sync_class(self):
+        # kwargs only for consistency with Modes
         try:
             self.masses_amu = constants.symbols_to_masses(self.symbols)
         except KeyError:
@@ -896,7 +909,7 @@ class _XYZ():
                                     _np.array(['MOL'] * loc_self.n_atoms)
                                     )).swapaxes(0, 1),
                       box=cell_aa_deg,
-                      title='Generated from %s with Molecule Class' % self.fn
+                      title='Generated from %s with ChirPy' % self.fn
                       )
 
         elif fmt == 'cpmd':
@@ -1032,7 +1045,7 @@ class MOMENTSFrame(_MOMENTS, _FRAME):
 
 
 class XYZFrame(_XYZ, _FRAME):
-    def _sync_class(self):
+    def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
         _XYZ._sync_class(self)
 
@@ -1125,7 +1138,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             out = {
                     'data': frame[0],
                     'symbols': frame[2],
-                    'comments': str([frame[-1]]),  # if no title: 'None'
+                    'comments': str(frame[-1]),  # if no title: 'None'
                     'cell_aa_deg': frame[-2],
                     # 'res':
                     }
@@ -1358,7 +1371,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
 class XYZTrajectory(_XYZ, _TRAJECTORY):
     '''XYZ trajectory without using iterators'''
 
-    def _sync_class(self):
+    def _sync_class(self, **kwargs):
         # _warnings.warn("XYZTrajectory class will no longer be supported in "
         #               "upcoming versions!", FutureWarning, stacklevel=2)
         _TRAJECTORY._sync_class(self)

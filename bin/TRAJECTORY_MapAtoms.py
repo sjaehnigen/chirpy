@@ -44,7 +44,7 @@ def main():
         print('Frame:', _fr)
         assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ)
 
-        mol2.sort_atoms(order=assign)
+        mol2.sort_atoms(assign)
         if args.sort:
             mol2.write_frame('sorted_frame-%06d_file2.' % _fr
                              + mol2.XYZ._fmt)

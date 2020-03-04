@@ -74,7 +74,14 @@ def main():
     parser.add_argument(
             "--mw",
             action="store_true",
-            help="Assume modes as mass-weighted displacements "
+            help="Assume modes as mass-weighted displacements."
+                 "(xvibs input only; convention: False)",
+            default=False
+            )
+    parser.add_argument(
+            "--au",
+            action="store_true",
+            help="Assume atomic units in file."
                  "(xvibs input only; convention: False)",
             default=False
             )
@@ -92,7 +99,7 @@ def main():
         if i_fmt == 'hess':
             # --- assuming ORCA format
             i_fmt = 'orca'
-    _load = system.Molecule(args.fn, fmt=i_fmt)
+    _load = system.Molecule(args.fn, fmt=i_fmt, mw=args.mw, au=args.au)
 
     if o_fmt is None:
         o_fmt = args.f.split('.')[-1].lower()

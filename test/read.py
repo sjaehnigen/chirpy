@@ -78,7 +78,7 @@ class TestModes(unittest.TestCase):
             ))
 
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=UserWarning)
+            warnings.filterwarnings('ignore', category=RuntimeWarning)
             n_atoms, numbers, pos_aa, n_modes, freqs, modes_mw = \
                 r_modes.xvibsReader(self.dir + '/test.xvibs', mw=True)
             self.assertTrue(np.allclose(

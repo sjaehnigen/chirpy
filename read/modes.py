@@ -54,10 +54,21 @@ def xvibsReader(fn, **kwargs):
 
     # --- mw should be convention be False!
     mw = kwargs.get('mw', False)
+    # --- assume atomic units in file (should be False!)
+    au = kwargs.get('au', False)
     if mw:
-        _warnings.warn('Assuming mass-weighted coordinates in XVIBS.',
+        _warnings.warn('Convention violation: '
+                       'Assuming mass-weighted coordinates.',
+                       RuntimeWarning,
                        stacklevel=2)
         masses_amu = constants.numbers_to_masses(numbers)
         modes /= np.sqrt(masses_amu)[None, :, None]
+
+    if au:
+        _warnings.warn('Convention violation: '
+                       'Assuming atomic unit coordinates.',
+                       RuntimeWarning,
+                       stacklevel=2)
+        pos_aa *= constants.l_au2aa
 
     return n_atoms, numbers, pos_aa, n_modes, freqs_cgs, modes
