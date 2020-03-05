@@ -19,7 +19,6 @@ import sys
 import argparse
 import warnings
 import numpy as np
-import copy
 from matplotlib import pyplot as plt
 
 from chirpy.classes import trajectory
@@ -71,12 +70,12 @@ def main():
             default=None,
             type=int,
             )
-    parser.add_argument(
-            "--kinds",
-            nargs='+',
-            help="List of kinds per frame.",
-            default=[1],
-            )
+    # parser.add_argument(
+    #         "--kinds",
+    #         nargs='+',
+    #         help="List of kinds per frame.",
+    #         default=[1],
+    #         )
     parser.add_argument(
             "--subset",
             nargs='+',
@@ -91,6 +90,15 @@ def main():
                  "--range!).",
             default=0.5,
             type=float,
+            )
+    parser.add_argument(
+            "--origin_id",
+            nargs='+',
+            help="IDs of kinds whose positions to be sampled in the "
+                 "distributed gauge (default: all kinds) "
+                 "(id starting from 0).",
+            type=int,
+            default=None,
             )
     parser.add_argument(
             "--cutoff",
@@ -136,6 +144,9 @@ def main():
     if args.subset is None:
         args.subset = slice(None)
 
+    if args.origin_id is None:
+        args.origin_id = slice(None)
+
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
@@ -169,7 +180,7 @@ def main():
     _voa['tcf_vcd'] = []
     print('Calculating spectra...')
     # --- ToDo: differ mode according to args
-    origins = _p.swapaxes(0, 1)
+    origins = _p.swapaxes(0, 1)[args.origin_id]
     for origin in origins:
         _tmp = spectroscopy._spectrum_from_tcf(
                                     _c, _m,

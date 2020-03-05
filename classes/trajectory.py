@@ -635,9 +635,6 @@ class _XYZ():
         if self.vel_au.size == 0:
             self.vel_au = _np.zeros_like(self.pos_aa)
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
-        if not isinstance(self.comments[0], str):
-            print(self.comments[0])
-            raise AttributeError('Missing comments line! Contact support!')
 
     def _is_equal(self, other, atol=1e-08, noh=True):
         '''atol adds up to dist_crit_aa from vdw radii'''
