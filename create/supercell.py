@@ -226,10 +226,14 @@ class _BoxObject(_CORE):
         # work in progress... # creates a system object (Supercell)
         pass
 
-    def write(self, **kwargs):
+    def write(self, fn, **kwargs):
+        wrap_molecules = kwargs.pop("wrap_molecules", False)
         _SC = self.create(**kwargs)
-        _SC.write('supercell.xyz')
-#        _SC.write('supercell.pdb')
+        _SC.wrap_atoms()
+        if wrap_molecules:
+            _SC.define_molecules()
+            _SC.wrap_molecules()
+        _SC.write(fn)
 
 
 class MolecularCrystal(_BoxObject):
@@ -289,12 +293,15 @@ class MolecularCrystal(_BoxObject):
                 _mol += 1
                 mol_map += [_mol] * len(self.members[0][1].symbols)
 
+        # ToDO: mol_map somehow broken, can be recovered by define_molecules()
         multiply = kwargs.get('multiply', (1, 1, 1))
         _uc_mol_map = mol_map
         for _repeat in range(1, _np.prod(multiply)):
             mol_map = _np.concatenate((mol_map, _uc_mol_map+_np.amax(mol_map)))
 
-        return _Molecule(XYZ=self.propagate(_SC, **kwargs), mol_map=mol_map)
+        return _Molecule(XYZ=self.propagate(_SC, **kwargs),
+                         mol_map=mol_map,
+                         cell_aa_deg=self.cell_aa_deg)
 
 
 _solvents = {}

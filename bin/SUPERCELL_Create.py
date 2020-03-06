@@ -39,6 +39,13 @@ def main():
             type=float
             )
     parser.add_argument(
+            "--multiply",
+            nargs=3,
+            help="Multilee unit cells in X, Y, Z.",
+            default=[1, 1, 1],
+            type=int
+            )
+    parser.add_argument(
             "--fn_topo",
             help="Topology pdb file (optional)",
             default=None
@@ -47,6 +54,17 @@ def main():
             "--get_mols",
             action="store_true",
             help="Find molecules in cell (slow for medium/large systems)"
+            )
+    parser.add_argument(
+            "--wrap_molecules",
+            action='store_true',
+            help="Wrap molecules instead of atoms in cell.",
+            default=False
+            )
+    parser.add_argument(
+            "-f",
+            help="Output file name",
+            default='supercell.pdb'
             )
     args = parser.parse_args()
 
@@ -63,10 +81,10 @@ def main():
     b = MolecularCrystal.read(args.fn, **nargs)
     b.print_info()
 
-    c = MolecularCrystal()
-    c.print_info()
-
-    b.write(multiply=(1, 2, 1))
+    b.write(args.f,
+            multiply=tuple(args.multiply),
+            wrap_molecules=args.wrap_molecules
+            )
 
 
 if __name__ == "__main__":
