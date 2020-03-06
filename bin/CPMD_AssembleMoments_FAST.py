@@ -74,7 +74,7 @@ def main():
                              fmt='cpmd',
                              range=args.range,
                              fn_topo=args.TOPOLOGY,
-                             wrap_mols=False,
+                             wrap_molecules=False,
                              )
 
     _moms_e = trajectory.MOMENTS(args.MOMENTS,

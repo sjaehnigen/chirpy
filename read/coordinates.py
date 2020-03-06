@@ -18,10 +18,11 @@
 
 import numpy as np
 import MDAnalysis as mda
-# from CifFile import ReadCif
+from CifFile import ReadCif as _ReadCif
 import warnings
 
 from .generators import _reader
+from ..topology.mapping import detect_lattice, get_cell_vec
 
 
 # --- kernels
@@ -172,5 +173,60 @@ def pdbReader(FN, **kwargs):
         cell_aa_deg[0], list(title)
 
 
-# def cifReader(fn):
-#    ReadCif(fn)
+def cifReader(fn):
+    '''Read CIF file and return a filled unit cell.
+       BETA'''
+    def _measurement2float(number):
+        def _convert(st):
+            return float(st.replace('(', '').replace(')', ''))
+        if isinstance(number, str):
+            return _convert(number)
+        elif isinstance(number, list):
+            return [_convert(_st) for _st in number]
+
+    _read = _ReadCif(fn)
+    title = _read.keys()[0]
+    _load = _read[title]
+    cell_aa_deg = np.array([_measurement2float(_load[_k]) for _k in [
+                                                          '_cell_length_a',
+                                                          '_cell_length_b',
+                                                          '_cell_length_c',
+                                                          '_cell_angle_alpha',
+                                                          '_cell_angle_beta',
+                                                          '_cell_angle_gamma'
+                                                          ]])
+#     data = np.array([_measurement2float(_load[_k]) for _k in [
+#                                                           '_atom_site_fract_x',
+#                                                           '_atom_site_fract_y',
+#                                                           '_atom_site_fract_z'
+#                                                           ]]).T
+    x = np.array(_measurement2float(_load['_atom_site_fract_x']))
+    y = np.array(_measurement2float(_load['_atom_site_fract_y']))
+    z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+
+    symbols = tuple(_load['_atom_site_type_symbol'])
+    names = tuple(_load['_atom_site_label'])
+    if detect_lattice(cell_aa_deg) != _load['_space_group_crystal_system']:
+        warnings.warn('The given space group and cell parametres do not match!'
+                      ' %s != %s' % (_load['_space_group_crystal_system'],
+                                     detect_lattice(cell_aa_deg)),
+                      RuntimeWarning,
+                      stacklevel=2)
+
+        # -- apply given symmetry operations
+        #    (assumes first operation to be the identity: 'x, y, z')
+    for op in _load['_space_group_symop_operation_xyz'][1:]:
+        _op = [__op.strip() for __op in op.split(',')]
+        x = np.concatenate((x, eval(_op[0])), axis=0)
+        y = np.concatenate((y, eval(_op[1])), axis=0)
+        z = np.concatenate((z, eval(_op[2])), axis=0)
+        symbols += symbols
+
+    data = np.array([x, y, z]).T
+
+    # -- change to cell vector base
+    cell_vec_aa = get_cell_vec(cell_aa_deg)
+    data = np.tensordot(data, cell_vec_aa, axes=1)
+
+    # --- add frames dimension (no support of cif trajectories)
+    return np.array([data]), names, symbols, cell_aa_deg, [title]

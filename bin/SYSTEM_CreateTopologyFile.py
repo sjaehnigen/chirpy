@@ -52,7 +52,7 @@ def main():
         default=None
         )
     parser.add_argument(
-        "--wrap_mols",
+        "--wrap_molecules",
         action='store_true',
         help="Wrap molecules instead of atoms in cell.",
         default=False
@@ -63,7 +63,7 @@ def main():
     _load = system.Molecule(**vars(args))
     _load.define_molecules()
 
-    if args.wrap_mols:
+    if args.wrap_molecules:
         _load.wrap_molecules()
     else:
         _load.wrap_atoms()

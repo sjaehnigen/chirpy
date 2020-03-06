@@ -299,6 +299,26 @@ class TestCoordinates(unittest.TestCase):
                     r_coordinates.pdbReader(
                           self.dir + '/test_simple_nodims.pdb')
 
+    def test_cifReader(self):
+        # ToDo: insufficient testing: needs test on symmetry
+        data, names, symbols, cell_aa_deg, title = \
+                r_coordinates.cifReader(self.dir + '/indanol.cif')
+        self.assertTupleEqual(data.shape, (1, 40, 3))
+        self.assertIsInstance(title, list)
+        self.assertTupleEqual(
+                symbols,
+                ('C', 'H', 'C', 'H', 'H', 'C', 'H', 'H', 'C', 'C', 'C', 'H',
+                 'C', 'H', 'C', 'H', 'C', 'H', 'O', 'H', 'C', 'H', 'C', 'H',
+                 'H', 'C', 'H', 'H', 'C', 'C', 'C', 'H', 'C', 'H', 'C', 'H',
+                 'C', 'H', 'O', 'H')
+                )
+        [self.assertIsInstance(_c, str) for _c in title]
+
+        self.assertTrue(np.array_equal(
+          data,
+          np.genfromtxt(self.dir + '/indanol_ref').reshape(1, 40, 3)
+          ))
+
 
 class TestGrid(unittest.TestCase):
 

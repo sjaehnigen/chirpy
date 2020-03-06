@@ -253,6 +253,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
         else:
             _p_ref = _p
         # --- find atom that is closest to its counterparts
+        # --- ToDo: NOT WORKING well for cell-spanning molecules
         _r = np.argmin(np.linalg.norm(distance_matrix(
                                                       _p_ref,
                                                       cell=cell_aa_deg,

@@ -61,7 +61,7 @@ class _BoxObject(_CORE):
     @classmethod
     def read(cls, *args, **kwargs):
         if kwargs.get('define_molecules') is not None:
-            kwargs['wrap_mols'] = True
+            kwargs['wrap_molecules'] = True
         else:
             kwargs['wrap'] = True
         _load = _Molecule(*args, **kwargs)

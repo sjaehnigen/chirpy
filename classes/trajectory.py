@@ -22,7 +22,7 @@ import warnings as _warnings
 from .core import _CORE, _ITERATOR
 from ..snippets import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
-from ..read.coordinates import xyzReader, pdbReader
+from ..read.coordinates import xyzReader, pdbReader, cifReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
@@ -414,7 +414,7 @@ class _XYZ():
         align_coords = kwargs.pop('align_coords', None)
         center_coords = kwargs.pop('center_coords', None)
         wrap = kwargs.get('wrap', False)
-        wrap_molecules = kwargs.get('wrap_molecules', False)
+        # wrap_molecules = kwargs.get('wrap_molecules', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
         if len(args) > 1:
@@ -445,7 +445,7 @@ class _XYZ():
                 data, types, symbols, residues, cell_aa_deg, title = \
                         pdbReader(fn)
                 n_atoms = len(symbols)
-                comments = kwargs.get('comments', ['pdb'] * data.shape[0])
+                comments = kwargs.get('comments', title)
 
                 if cell_aa_deg is not None:
                     if self.cell_aa_deg is None:
@@ -458,6 +458,21 @@ class _XYZ():
                                        'Ignoring the latter.',
                                        RuntimeWarning,
                                        stacklevel=2)
+
+            elif fmt == "cif":
+                data, types, symbols, cell_aa_deg, title = cifReader(fn)
+                comments = kwargs.get('comments', title)
+
+                if self.cell_aa_deg is None:
+                    self.cell_aa_deg = cell_aa_deg
+
+                elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
+                    _warnings.warn('The given cell parametres are '
+                                   'different from those of the '
+                                   'CIF file! '
+                                   'Ignoring the latter.',
+                                   RuntimeWarning,
+                                   stacklevel=2)
 
             elif fmt == "xvibs":
                 n_atoms, numbers, pos_aa, \
@@ -475,6 +490,10 @@ class _XYZ():
             elif fmt == "cpmd" or any([_t in fn for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
                 fmt = "cpmd"
+                if 'symbols' not in kwargs:
+                    kwargs.update({
+                        'symbols': cpmd_kinds_from_file(fn)
+                        })
                 data_dict = cpmdReader(fn, **kwargs)
                 self._data_dict = data_dict
 
@@ -567,14 +586,14 @@ class _XYZ():
 
         if wrap:
             self.wrap_atoms()
-        if wrap_molecules:
-            try:
-                self.wrap_molecules(kwargs['mol_map'])
-            except KeyError:
-                with _warnings.catch_warnings():
-                    _warnings.warn('Could not find mol_map for wrapping!',
-                                   RuntimeWarning, stacklevel=2)
-                self.wrap_atoms()
+        # if wrap_molecules:
+        #     try:
+        #         self.wrap_molecules(kwargs['mol_map'])
+        #     except KeyError:
+        #         with _warnings.catch_warnings():
+        #             _warnings.warn('Could not find mol_map for wrapping!',
+        #                            RuntimeWarning, stacklevel=2)
+        #         self.wrap_atoms()
 
         if align_coords is not None:
             if isinstance(align_coords, list):
@@ -582,7 +601,7 @@ class _XYZ():
                     align_coords = bool(align_coords[0])
                 else:
                     align_coords = [int(_a) for _a in align_coords]
-            if wrap or wrap_molecules:
+            if wrap:  # or wrap_molecules:
                 _warnings.warn('Disabling wrapping for atom alignment!',
                                stacklevel=2)
                 # unnecessary here

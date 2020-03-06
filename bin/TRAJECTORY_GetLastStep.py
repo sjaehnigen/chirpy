@@ -52,7 +52,7 @@ def main():
     if args.f is create_name:
         args.f = create_name(args.fn)
 
-    _load = system.Molecule(**vars(args)).XYZ
+    _load = system.Supercell(**vars(args)).XYZ
     _load._unwind()
     _load._frame.write(args.f)
 

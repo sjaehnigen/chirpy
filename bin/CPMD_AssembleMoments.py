@@ -73,7 +73,7 @@ def main():
                              range=args.range,
                              fn_topo=args.TOPOLOGY,
                              # --- this is costly depending on no of mols
-                             wrap_mols=True,
+                             wrap_molecules=True,
                              )
 
     _moms_e = trajectory.MOMENTS(args.MOMENTS,
