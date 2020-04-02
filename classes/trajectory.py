@@ -796,7 +796,7 @@ class _XYZ():
                 _p = _np.array([_p])
             _p = _join_molecules(
                     _p,
-                    _np.ones((_p.shape[1])).astype(int),
+                    _np.zeros((_p.shape[1])).astype(int),
                     self.cell_aa_deg,
                     )[0]
             if self._type == 'frame':
@@ -969,6 +969,86 @@ class _MOMENTS():
        (BETA)
        WORK IN PROGRESS...
        '''
+    def _read_input(self, *args, **kwargs):
+        self.cell_au_deg = kwargs.get('cell_au_deg')
+
+        if len(args) > 1:
+            raise TypeError("File reader of %s takes at most 1 argument!"
+                            % self.__class__.__name__)
+
+        elif len(args) == 1:
+            fn = args[0]
+            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            self._fmt = fmt
+            self._fn = fn
+            if self._type == 'frame':
+                _fr = kwargs.get('frame', 0)
+                _fr = _fr, 1, _fr+1
+                kwargs.update({'range': _fr})
+            elif self._type == 'trajectory':
+                _fr = kwargs.get('range', (0, 1, float('inf')))
+            self.fn = fn
+
+            if fmt == "xyz":
+                _warnings.warn("XYZ format not tested for MOMENTS!",
+                               stacklevel=2)
+                data, symbols, comments = xyzReader(fn,
+                                                    **_extract_keys(kwargs,
+                                                                    range=_fr,
+                                                                    )
+                                                    )
+
+            elif fmt == "cpmd" or any([_t in fn for _t in [
+                                     'MOMENTS']]):
+                fmt = "cpmd"
+                if 'symbols' not in kwargs:
+                    kwargs.update({
+                        'symbols': cpmd_kinds_from_file(fn)
+                        })
+                data_dict = cpmdReader(fn, **kwargs)
+                self._data_dict = data_dict
+
+                symbols = data_dict['symbols']
+                data = data_dict['data']
+                data[:, :, :3] *= constants.l_au2aa
+
+                comments = data_dict['comments']
+
+            else:
+                raise ValueError('Unknown format: %s.' % fmt)
+
+        elif len(args) == 0:
+            if 'data' in kwargs:
+                self.fn = ''
+                numbers = kwargs.get('numbers', (1,))
+                symbols = kwargs.get('symbols')
+                if symbols is None:
+                    symbols = [constants.symbols[z - 1] for z in numbers]
+                data = kwargs.get('data')
+                _sh = data.shape
+                if len(_sh) == 2:
+                    data = data.reshape((1, ) + _sh)
+                comments = _np.array([kwargs.get('comments',
+                                                 data.shape[0] * ['passed'])
+                                      ]).flatten()
+            else:
+                raise TypeError('%s needs file or data argument!' %
+                                self.__class__.__name__)
+
+        if self.cell_au_deg is None:
+            self.cell_au_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+
+        comments = list(comments)
+        if self._type == 'frame':
+            _f = kwargs.get("frame", 0)
+            data = data[_f]
+            comments = comments[_f]
+
+        self.symbols = tuple(symbols)
+        self.comments = comments
+        self.data = data
+        self._sync_class()
+
     def _sync_class(self):
         self._pos_au()
         self._c_au()
@@ -980,12 +1060,14 @@ class _MOMENTS():
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')
         # loc_self = _copy.deepcopy(self)
-        fmt = kwargs.get('fmt', fn.split('.')[-1])
+        # fmt = kwargs.get('fmt', fn.split('.')[-1])
+        fmt = kwargs.get('fmt', 'cpmd')
 
         if fmt == 'cpmd':
             kwargs.update({'symbols': self.symbols})
             cpmdWriter(fn,
-                       [getattr(self, attr)],
+                       getattr(self, attr),
+                       write_atoms=False,
                        **kwargs)
 
         else:
@@ -1039,27 +1121,6 @@ class _MOMENTS():
                             % self._m_au.__name__)
 
 
-class MOMENTSFrame(_MOMENTS, _FRAME):
-    def _sync_class(self):
-        _FRAME._sync_class(self)
-        _MOMENTS._sync_class(self)
-
-    @classmethod
-    def from_classical_nuclei(cls, obj, **kwargs):
-        '''Convert XYZFrame into _MOMENTS'''
-        _pos = obj.data[:, :3] * constants.l_aa2au
-        _vel = obj.data[:, 3:6]
-        ZV = _np.array(constants.symbols_to_valence_charges(obj.symbols))
-        _c = _current_dipole_moment(_vel, ZV)
-        _m = _np.zeros_like(_c)
-
-        return cls(
-                data=_np.concatenate((_pos, _c, _m), axis=-1),
-                symbols=obj.symbols,
-                **kwargs
-                )
-
-
 class XYZFrame(_XYZ, _FRAME):
     def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
@@ -1080,6 +1141,27 @@ class XYZFrame(_XYZ, _FRAME):
                              comments=[self.comments + ' im ' + str(m)
                                        for m in _img]
                              )
+
+
+class MOMENTSFrame(_MOMENTS, _FRAME):
+    def _sync_class(self):
+        _FRAME._sync_class(self)
+        _MOMENTS._sync_class(self)
+
+    @classmethod
+    def from_classical_nuclei(cls, obj, **kwargs):
+        '''Convert XYZFrame into _MOMENTS'''
+        _pos = obj.data[:, :3] * constants.l_aa2au
+        _vel = obj.data[:, 3:6]
+        ZV = _np.array(constants.symbols_to_valence_charges(obj.symbols))
+        _c = _current_dipole_moment(_vel, ZV)
+        _m = _np.zeros_like(_c)
+
+        return cls(
+                data=_np.concatenate((_pos, _c, _m), axis=-1),
+                symbols=obj.symbols,
+                **kwargs
+                )
 
 
 class XYZ(_XYZ, _ITERATOR, _FRAME):
@@ -1214,59 +1296,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         if kwargs.get('rewind', True):
             self.rewind()
 
-    def mask_duplicate_frames(self, verbose=True, **kwargs):
-        def split_comment(comment):
-            # --- ToDo: Could be a staticmethod of XYZ
-            if 'i = ' in comment:
-                return int(comment.split()[2].rstrip(','))
-            elif 'Iteration:' in comment:
-                return int(comment.split('_')[1].rstrip())
-            else:
-                raise ValueError('Cannot get frame info from comments!')
-
-        def _func(obj, **kwargs):
-            _skip = obj._kwargs.get('skip', [])
-            _timesteps = obj._kwargs.get('_timesteps', [])
-            _ts = split_comment(obj._frame.comments)
-            if _ts not in _timesteps:
-                _timesteps.append(_ts)
-            else:
-                if verbose:
-                    print(obj._fr, ' doublet of ', _ts)
-                _skip.append(obj._fr)
-            obj._kwargs.update({'_timesteps': _timesteps})
-            obj._kwargs.update({'skip': _skip})
-
-        _keep = self._kwargs['range']
-        if self._kwargs['range'][1] != 1:
-            _warnings.warn('Setting range increment to 1 for doublet search!',
-                           stacklevel=2)
-            self._kwargs['range'] = (_keep[0], 1, _keep[2])
-            self.rewind()
-
-        self._kwargs['_timesteps'] = []
-        kwargs['func'] = _func
-        try:
-            self._unwind(**kwargs)
-        except ValueError:
-            raise ValueError('Broken trajectory! Stopped at frame %s (%s)'
-                             % (self._fr, self.comments))
-
-        if len(_np.unique(_np.diff(self._kwargs['_timesteps']))) != 1:
-            _warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
-
-        if verbose:
-            print('Duplicate frames in %s according to range %s:' % (
-                    self._fn,
-                    self._kwargs['range']
-                    ), self._kwargs['skip'])
-
-        self._kwargs['range'] = _keep
-        if kwargs.get('rewind', True):
-            self.rewind()
-
-        return self._kwargs['skip']
-
     # These masks all follow the same logic (could be generalised, but python
     # does not support call of function name from within that function)
     def sort(self, *args, **kwargs):
@@ -1354,7 +1383,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
 
             # self._topology = XYZFrame(fn, **kwargs)
-            if self._fmt == "cpmd" or fn in ['MOMENTS']:
+            if self._fmt == "cpmd" or 'MOMENTS' in fn:
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     with _warnings.catch_warnings():
@@ -1382,6 +1411,15 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         else:
             raise TypeError("File reader of %s takes exactly 1 argument!"
                             % self.__class__.__name__)
+
+    def write(self, fn, **kwargs):
+        self._unwind(fn,
+                     func='write',
+                     events={0: {'append': True}},
+                     **kwargs
+                     )
+        if kwargs.get('rewind', True):
+            self.rewind()
 
 
 class XYZTrajectory(_XYZ, _TRAJECTORY):

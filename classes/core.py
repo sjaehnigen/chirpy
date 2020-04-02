@@ -18,6 +18,7 @@
 import pickle
 import itertools
 import warnings
+import numpy as np
 
 
 class _CORE():
@@ -198,3 +199,65 @@ class _ITERATOR():
         other._chaste = False
 
         self._mask(self, _func, other, **kwargs)
+
+    def mask_duplicate_frames(self, verbose=True, **kwargs):
+        # ToDo: Generalise this function for all kinds of ITERATORS
+        def split_comment(comment):
+            if 'i = ' in comment:
+                return int(comment.split()[2].rstrip(','))
+            elif 'Iteration:' in comment:
+                return int(comment.split('_')[1].rstrip())
+            else:
+                raise TypeError('Cannot get frame info from comments!')
+
+        def _func(obj, **kwargs):
+            _skip = obj._kwargs.get('skip', [])
+            _timesteps = obj._kwargs.get('_timesteps', [])
+            _ts = split_comment(obj._frame.comments)
+            if _ts not in _timesteps:
+                _timesteps.append(_ts)
+            else:
+                if verbose:
+                    print(obj._fr, ' doublet of ', _ts)
+                _skip.append(obj._fr)
+            obj._kwargs.update({'_timesteps': _timesteps})
+            obj._kwargs.update({'skip': _skip})
+
+        _keep = self._kwargs['range']
+        _masks = self._kwargs['_masks']
+
+        if self._kwargs['range'][1] != 1:
+            warnings.warn('Setting range increment to 1 for doublet search!',
+                          stacklevel=2)
+            self._kwargs['range'] = (_keep[0], 1, _keep[2])
+            self.rewind()
+
+        if len(self._kwargs['_masks']) > 0:
+            warnings.warn('Disabling masks for doublet search! %s' % _masks,
+                          stacklevel=2)
+            self._kwargs['_masks'] = []
+
+        self._kwargs['_timesteps'] = []
+        kwargs['func'] = _func
+        try:
+            self._unwind(**kwargs)
+        except ValueError:
+            raise ValueError('Broken trajectory! Stopped at frame %s (%s)'
+                             % (self._fr, self.comments))
+
+        # ToDo: re-add this warning without using numpy
+        if len(np.unique(np.diff(self._kwargs['_timesteps']))) != 1:
+            warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
+
+        if verbose:
+            print('Duplicate frames in %s according to range %s:' % (
+                    self._fn,
+                    self._kwargs['range']
+                    ), self._kwargs['skip'])
+
+        self._kwargs['_masks'] = _masks
+        self._kwargs['range'] = _keep
+        if kwargs.get('rewind', True):
+            self.rewind()
+
+        return self._kwargs['skip']
