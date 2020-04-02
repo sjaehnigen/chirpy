@@ -3,17 +3,16 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - ipykernel=5.2.*
+  - pip=20.0.*
+  - python=3.7.*
   - ipython=7.13.*
   - jupyter=1.0.*
   - jupyter_core=4.6.*
-  - matplotlib=3.2.*
   - numpy=1.18.*
-  - packmol=18.169
-  - pip=20.0.*
-  - python=3.7.*
   - scipy=1.4.*
+  - matplotlib=3.2.*
   - mdanalysis=0.19.* 
+  - packmol=18.169
   - pycifrw=4.4.*
   - pip:
     - mayavi==4.7.*
