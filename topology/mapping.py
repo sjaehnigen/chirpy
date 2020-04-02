@@ -233,7 +233,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     Has still problems with cell-spanning molecules
     Molecules have to be numbered starting with 0!'''
     if 0 not in mol_map:
-        raise TypeError('Given mol_map not an enumeration of indices!',
+        raise TypeError('Given mol_map not an enumeration of indices!' %
                         mol_map)
     pos_aa = np.moveaxis(pos_aa, -2, 0)
     _shape = pos_aa.shape
