@@ -26,7 +26,7 @@ def extract_keys(dict1, **defaults):
     return {_s: dict1.get(_s, defaults[_s]) for _s in defaults}
 
 
-def tracked_update(dict1, dict2):
+def tracked_update(dict1, dict2, msg='in dict1!'):
     '''Update dict1 with dict2 but warn if existing data is changed'''
     for _k2 in dict2:
         # python3.8: use walrus
@@ -35,8 +35,8 @@ def tracked_update(dict1, dict2):
         if _v1 is not None:
             if not equal(_v1, _v2):
                 with warnings.catch_warnings():
-                    warnings.warn('Overwriting existing key \'{}\' in '
-                                  'dictionary!'.format(_k2),
+                    warnings.warn('Overwriting existing key '
+                                  '\'{}\' '.format(_k2) + msg,
                                   RuntimeWarning,
                                   stacklevel=2)
     dict1.update(dict2)
