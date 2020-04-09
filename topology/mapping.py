@@ -22,7 +22,7 @@ import warnings as _warnings
 
 from ..physics import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..mathematics.algebra import kabsch_algorithm
+from ..mathematics.algebra import kabsch_algorithm, rotate_vector
 
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
@@ -286,36 +286,50 @@ def get_atom_spread(pos):
 def align_atoms(pos_mobile, w, **kwargs):
     '''Align atoms within trajectory or towards an external
        reference. Kinds and order of atoms (usually) have to
-       be equal.'''
+       be equal.
+       Specify additional atom data (e.g., velocities),
+       which has to be parallel transformed, listed through the keyword
+       data=... (shape has to be according to positions).
+       '''
 
     w = np.array(w)
     _sub = kwargs.get('subset', slice(None))
+    _data = kwargs.get('data')
 
     pos_mob = copy.deepcopy(pos_mobile)
+    # --- get subset data sets
+    # --- default reference: frame 0
     _s_pos_ref = copy.deepcopy(kwargs.get('ref', pos_mobile[0])[_sub])
     _s_pos_mob = pos_mob[:, _sub]
 
+    # --- get com of data sets
     com_ref = cowt(_s_pos_ref, w[_sub], axis=-2)
     com_mob = cowt(_s_pos_mob, w[_sub], axis=-2)
 
-    # DEVEL: reference can be frame or trajectory
+    # --- apply com (reference can be frame or trajectory)
     _i_s_pos_ref = np.moveaxis(_s_pos_ref, -2, 0)
     _s_pos_ref = np.moveaxis(_i_s_pos_ref - com_ref[(None,)], 0, -2)
-
     _i_pos_mob = np.moveaxis(pos_mob, -2, 0)
     pos_mob = np.moveaxis(_i_pos_mob - com_mob[(None,)], 0, -2)
-    # pos_mob -= com_mob[:, None, :]
+    del _i_s_pos_ref, _i_pos_mob
 
     for frame, P in enumerate(_s_pos_mob):
-        U = kabsch_algorithm(P*w[_sub, None], _s_pos_ref*w[_sub, None])
-        pos_mob[frame] = np.tensordot(U, pos_mob[frame],
-                                      axes=([1], [1])).swapaxes(0, 1)
+        U = kabsch_algorithm(P * w[_sub, None], _s_pos_ref * w[_sub, None])
+        pos_mob[frame] = rotate_vector(pos_mob[frame], U)
+        if _data is not None:
+            for _d in _data:
+                _d[frame] = rotate_vector(_d[frame], U)
 
+    # --- define return shift
     com_return = com_ref
+
     _slc = (len(pos_mob.shape) - len(com_return.shape)) * (None,)
     pos_mob += com_return[_slc]
 
-    return pos_mob
+    if _data is not None:
+        return pos_mob, _data
+    else:
+        return pos_mob
 
 
 def find_methyl_groups(pos, symbols, hetatm=False, **kwargs):

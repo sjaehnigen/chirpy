@@ -629,6 +629,12 @@ class _XYZ():
     def _vel_au(self, *args):
         if len(args) == 0:
             self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
+            if self.vel_au.size == 0:
+                # --- vel_au has to be set!
+                self.data = _np.concatenate((self.pos_aa,
+                                             _np.zeros_like(self.pos_aa)),
+                                            axis=-1)
+                self._vel_au()
         elif len(args) == 1:
             if args[0].shape != self.vel_au.shape:
                 raise ValueError(
@@ -642,7 +648,7 @@ class _XYZ():
                             % self._vel_au.__name__)
 
     def _sync_class(self):
-        # kwargs only for consistency with Modes
+        # ToDo: kwargs for consistency with Modes
         try:
             self.masses_amu = constants.symbols_to_masses(self.symbols)
         except KeyError:
@@ -651,8 +657,6 @@ class _XYZ():
                            RuntimeWarning, stacklevel=2)
         self._pos_aa()
         self._vel_au()
-        if self.vel_au.size == 0:
-            self.vel_au = _np.zeros_like(self.pos_aa)
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
     def _is_equal(self, other, atol=1e-08, noh=True):
@@ -664,7 +668,7 @@ class _XYZ():
                 raise TypeError('Trajectories cannot be tested for equality '
                                 '(only similarity)!')
             _o_pos = _copy.deepcopy(getattr(other, a).reshape(
-                                        (1, ) + other.data.shape
+                                        (1, ) + other.pos_aa.shape
                                         ))
             _s_pos = getattr(self, a)
 
@@ -683,7 +687,7 @@ class _XYZ():
             return bool(_np.prod(_bool))
 
         if _p == 1:
-            ie += list(map(f, ['data']))
+            ie += list(map(f, ['pos_aa']))
 
         self._sync_class()
         return _np.prod(ie), ie
@@ -722,6 +726,9 @@ class _XYZ():
             self.mol_com_aa = mol_com_aa
 
     def align_coordinates(self, align_coords, **kwargs):
+        '''Aligns positions and rotates (but does not correct)
+           velocities.
+           '''
         if not isinstance(align_coords, list):
             if isinstance(align_coords, bool):
                 if align_coords:
@@ -737,15 +744,29 @@ class _XYZ():
         if kwargs.get('use_com', False):
             wt = self.masses_amu
 
-        if self._type == 'trajectory':
-            self._align_ref = kwargs.get('align_ref', self.pos_aa[0])
-        else:
-            self._align_ref = kwargs.get('align_ref', self.pos_aa)
+        if self._type == 'frame':
+            _p = self.pos_aa.reshape((1, ) + self.pos_aa.shape)
+            _v = self.vel_au.reshape((1, ) + self.vel_au.shape)
+        elif self._type == 'trajectory':
+            _p = self.pos_aa
+            _v = self.vel_au
 
-        self.align(weights=wt,
-                   ref=self._align_ref,
-                   subset=align_coords,
-                   )
+        self._align_ref = kwargs.get('align_ref', _p[0])
+
+        _p, _data = _align_atoms(_p,
+                                 wt,
+                                 ref=self._align_ref,
+                                 subset=align_coords,
+                                 data=[_v],
+                                 )
+
+        if self._type == 'frame':
+            self._pos_aa(_p[0])
+            self._vel_au(_data[0][0])
+
+        if self._type == 'trajectory':
+            self._pos_aa(_p)
+            self._vel_au(_data[0])
 
         if hasattr(self, '_centered_coords') and kwargs.get(
                 'force_centre', False):
@@ -754,24 +775,6 @@ class _XYZ():
                          subset=self._centered_coords,
                          axis=self.axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
-
-    def align(self, **kwargs):
-        _wt = kwargs.get('weights', _np.ones(self.n_atoms))
-
-        if self._type == 'trajectory':
-            self._pos_aa(_align_atoms(
-                            self.pos_aa,
-                            _wt,
-                            **kwargs
-                            )
-                         )
-        elif self._type == 'frame':
-            self._pos_aa(_align_atoms(
-                            self.pos_aa.reshape((1, ) + self.pos_aa.shape),
-                            _wt,
-                            **kwargs
-                            )[0]
-                         )
 
     def center_coordinates(self, center_coords, **kwargs):
         if not isinstance(center_coords, list):
@@ -828,12 +831,9 @@ class _XYZ():
         if self._type == 'frame':
             _ref = self.pos_aa - self.pos_aa[i0, None]
             _R = _algebra.rotation_matrix(_ref[i1], vec)
-            _pos = _np.tensordot(_R,
-                                 _ref,
-                                 axes=([1], [1])) + self.pos_aa[i0, None]
-            _vel = _np.tensordot(_R,
-                                 self.vel_au,
-                                 axes=([1], [1])) * constants.l_aa2au
+            _pos = _algebra.rotate_vector(self.pos_aa, _R,
+                                          origin=self.pos_aa[i0, None])
+            _vel = _algebra.rotate_vector(self.vel_au, _R)
 
         else:
             _pos = []
@@ -843,12 +843,9 @@ class _XYZ():
                     self.vel_au
                     ):
                 _R = _algebra.rotation_matrix(_p[i1], vec)
-                _pos.append(_np.tensordot(_R,
-                                          _p,
-                                          axes=([1], [1])).swapaxes(0, 1))
-                _vel.append(_np.tensordot(_R,
-                                          _v,
-                                          axes=([1], [1])).swapaxes(0, 1))
+                _pos.append(_algebra.rotate_vector(_p, _R))
+                _vel.append(_algebra.rotate_vector(_v, _R))
+
             _pos = _np.array(_pos) + self.pos_aa[:, i0, None]
             _vel = _np.array(_vel)
 
@@ -859,9 +856,7 @@ class _XYZ():
                     self.modes
                     ):
                 _R = _algebra.rotation_matrix(_p[i1], vec)
-                _mod.append(_np.tensordot(_R,
-                                          _m,
-                                          axes=([1], [1])).swapaxes(0, 1))
+                _mod.append(_algebra.rotate_vector(_m, _R))
             _mod = _np.array(_mod)
             self._modes(_mod)
 
@@ -1335,14 +1330,22 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
            along principal axis (use "+") for that.
            Specify axis 0 or 1 to combine atoms or data, respectively
            (default: 0).
-           Other iterator should not be used anymore!
+           Specify cartesian dimensions to be used from data by dim1/dim2
+           (default: [0, 1, 2]).
+           <Other> iterator must not be used anymore!
            BETA'''
 
         def _add(obj1, obj2, **kwargs):
             '''combine two frames'''
             axis = kwargs.get("axis", -1)
+            dim1 = kwargs.get("dim1", [0, 1, 2])
+            dim2 = kwargs.get("dim2", [0, 1, 2])
             obj1.axis_pointer = axis
             obj2.axis_pointer = axis
+
+            obj1.data = obj1.data[:, dim1]
+            obj2.data = obj2.data[:, dim2]
+
             obj1 += obj2
             return obj1
 

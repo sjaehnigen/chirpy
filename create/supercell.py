@@ -250,7 +250,7 @@ class MolecularCrystal(_BoxObject):
         multiply = _np.array(multiply)
 
         cart_vec_aa = _get_cell_vec(self.cell_aa_deg,
-                                    n_fields=frame.n_fields,
+                                    n_fields=3,
                                     priority=priority)
         frame.axis_pointer = -2
         new = _copy.deepcopy(frame)

@@ -20,7 +20,7 @@ import warnings as _warnings
 
 from .core import _CORE
 from .trajectory import XYZ, XYZFrame, VibrationalModes
-from ..snippets import tracked_update as _tracked_update
+from ..snippets import tracked_extract_keys as _tracked_extract_keys
 from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
@@ -37,7 +37,8 @@ class _SYSTEM(_CORE):
         if self._topo is not None:
             # python 3.8: use walrus
             self._topo = _read_topology_file(self._topo)
-            _tracked_update(self._topo, kwargs, msg='of topology file!')
+            _tracked_extract_keys(kwargs, msg='of topology file!',
+                                  **self._topo)
             kwargs.update(self._topo)
 
         self.mol_map = kwargs.get("mol_map")

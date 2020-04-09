@@ -26,8 +26,19 @@ def extract_keys(dict1, **defaults):
     return {_s: dict1.get(_s, defaults[_s]) for _s in defaults}
 
 
+def tracked_extract_keys(dict1, **defaults):
+    '''Updates the key/value pairs of defaults with those of dict1.
+       Similar to defaults.update(dict1), but it does not ADD any new keys to
+       defaults.
+       Warns if existing data is changed.'''
+    msg = defaults.pop('msg', 'in dict1!')
+    new_dict = {_s: dict1.get(_s, defaults[_s]) for _s in defaults}
+
+    return tracked_update(defaults, new_dict, msg=msg)
+
+
 def tracked_update(dict1, dict2, msg='in dict1!'):
-    '''Update dict1 with dict2 but warn if existing data is changed'''
+    '''Update dict1 with dict2 but warns if existing data is changed'''
     for _k2 in dict2:
         # python3.8: use walrus
         _v1 = dict1.get(_k2)

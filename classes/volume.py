@@ -18,8 +18,6 @@
 import numpy as _np
 import copy as _copy
 from scipy.interpolate import griddata as _griddata
-from scipy.interpolate import RegularGridInterpolator\
-    as _RegularGridInterpolator
 from scipy.integrate import simps as _simps
 import warnings as _warnings
 
@@ -29,6 +27,7 @@ from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics.classical_electrodynamics import _get_divrot
 from ..physics import constants
+from ..mathematics.algebra import rotate_griddata, rotate_vector
 
 
 class ScalarField(_CORE):
@@ -305,33 +304,18 @@ class ScalarField(_CORE):
            R ... rotation matrix of shape (3, 3)
            '''
         _o = kwargs.get('rot_origin_au', self.origin_au)
-        _new_p = _np.einsum('ji, mi -> mj', R, self.pos_au - _o) + _o
-        self.pos_au = _new_p
+
+        self.pos_au = rotate_vector(self.pos_au, R, origin=_o)
 
         if not rotate_grid:
-            _p_grid = self.pos_grid() - _o[:, None, None, None]
-            _f = _RegularGridInterpolator(
-                      (_p_grid[0, :, 0, 0],
-                       _p_grid[1, 0, :, 0],
-                       _p_grid[2, 0, 0, :]),
-                      self.data,
-                      bounds_error=False,
-                      fill_value=0.0
-                      )
-            # --- unclear why it has to be the other way round (ij)
-            _new_p_grid = _np.einsum('ij, imno -> mnoj',
-                                     R,
-                                     _p_grid)
-            _new_data = _f(_new_p_grid)
-            self.data = _new_data
+            self.data = rotate_griddata(self.pos_grid(), self.data, R,
+                                        origin=_o)
 
         else:
             _warnings.warn('Rotating grid may lead to problems with the '
                            'Gaussian Cube format convention!', stacklevel=2)
-            _new_or = _np.einsum('ji, i -> j', R, self.origin_au - _o) + _o
-            _new_vec = _np.einsum('ji, mi -> mj', R, self.cell_vec_au)
-            self.cell_vec_au = _new_vec
-            self.origin_au = _new_or
+            self.cell_vec_au = rotate_vector(self.cell_vec_au, R)
+            self.origin_au = rotate_vector(self.origin_au, R, origin=_o)
 
     def write(self, fn, **kwargs):
         '''Generalise this routine with autodetection for scalar and velfield,

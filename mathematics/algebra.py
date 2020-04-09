@@ -17,6 +17,7 @@
 
 
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
 
 def vector(p1, p2):
@@ -119,3 +120,41 @@ def kabsch_algorithm(P, ref):
         V[:, -1] = -V[:, -1]
     # Create Rotation matrix U
     return np.dot(V, W)
+
+
+def rotate_vector(vector, R, origin=np.zeros(3)):
+    '''Rotate vector around given origin with rotation matrix R.
+       Returns new vector.
+
+       R of shape (N, N)
+       vector of shape (N) or (M, N).
+    '''
+
+    if len(vector.shape) == 1:
+        return np.einsum('ji, i -> j', R, vector - origin) + origin
+    elif len(vector.shape) == 2:
+        return np.einsum('ji, mi -> mj', R, vector - origin) + origin
+
+
+def rotate_griddata(grid_positions, grid_data, R, origin=np.zeros(3)):
+    '''Rotate scalar field around given origin with rotation matrix R.
+       Keeps grid_positions fixed. Returns new grid_data.
+
+       R of shape (N, N)
+       grid_positions with shape (N, X, Y, Z)
+       grid_data of shape (X, Y, Z)
+       '''
+
+    _p_grid = grid_positions - origin[:, None, None, None]
+    _f = RegularGridInterpolator(
+              (_p_grid[0, :, 0, 0],
+               _p_grid[1, 0, :, 0],
+               _p_grid[2, 0, 0, :]),
+              grid_data,
+              bounds_error=False,
+              fill_value=0.0
+              )
+    # --- unclear why it has to be the other way round (ij)
+    _new_p_grid = np.einsum('ij, imno -> mnoj', R, _p_grid)
+
+    return _f(_new_p_grid)
