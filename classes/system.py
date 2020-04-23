@@ -37,8 +37,8 @@ class _SYSTEM(_CORE):
         if self._topo is not None:
             # python 3.8: use walrus
             self._topo = _read_topology_file(self._topo)
-            _tracked_extract_keys(kwargs, msg='of topology file!',
-                                  **self._topo)
+            self._topo = _tracked_extract_keys(kwargs, msg='of topology file!',
+                                               **self._topo)
             kwargs.update(self._topo)
 
         self.mol_map = kwargs.get("mol_map")

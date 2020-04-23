@@ -137,11 +137,11 @@ def pdbWriter(fn, data, types, symbols, residues, box, title, append=False):
                          box, title, append=append)
 
     elif len(data.shape) == 3:
-        # --- trajectory
+        # --- trajectory (NOT ENCOURAGED TO USE CHIRPY FOR PDB TRAJ FILES!)
         n_frames = len(data)
         for fr in range(n_frames):
-            _write_pdb_frame(fn, data[fr], types[fr], symbols, residues[fr],
-                             box[fr], title[fr], append=append or fr != 0)
+            _write_pdb_frame(fn, data[fr], types, symbols, residues,
+                             box, title, append=append or fr != 0)
     else:
         raise AttributeError('Wrong data shape!', data.shape)
 

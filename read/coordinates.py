@@ -162,6 +162,7 @@ def pdbReader(FN, **kwargs):
     '''Read complete PDB file at once using MDAnalysis.
        Returns data, names, symbols, res, cell_aa_deg, title
        of current frame.
+       Does not support variable cell size, use iterator for this.
 
        https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
        '''

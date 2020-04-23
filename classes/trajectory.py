@@ -475,8 +475,9 @@ class _XYZ():
                                    stacklevel=2)
 
             elif fmt == "xvibs":
+                nargs = _extract_keys(kwargs, mw=False, au=False)
                 n_atoms, numbers, pos_aa, \
-                    n_modes, omega_cgs, modes = xvibsReader(fn, **kwargs)
+                    n_modes, omega_cgs, modes = xvibsReader(fn, **nargs)
                 comments = _np.array(omega_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
                 data = _np.concatenate((

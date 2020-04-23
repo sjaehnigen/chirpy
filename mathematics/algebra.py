@@ -20,28 +20,56 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
 
-def vector(p1, p2):
+def vector(*args):
     '''v = p1 - p2'''
+    if len(args) == 1:
+        p1, p2 = args[0]
+    elif len(args) == 2:
+        p1, p2 = args
+    else:
+        raise TypeError('vector() requires 1 or 2 positional arguments!')
+
     return p1 - p2
 
 
-def angle(v1, v2):
-    """Angle between two vectors"""
+def angle(*args):
+    """args: v1, v2; angle between two vectors"""
+    if len(args) == 1:
+        v1, v2 = args[0]
+    elif len(args) == 2:
+        v1, v2 = args
+    else:
+        raise TypeError('angle() requires 1 or 2 positional arguments!')
+
     al = np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
     a_rad = np.arccos(np.clip(al, -1.0, 1.0))
 
     return a_rad
 
 
-def signed_angle(v1, v2, n):
-    """n is the reference/plane normal for angle direction"""
+def signed_angle(*args):
+    """args: v1, v2, n; n is the reference/plane normal for angle direction"""
+    if len(args) == 1:
+        v1, v2, n = args[0]
+    elif len(args) == 3:
+        v1, v2, n = args
+    else:
+        raise TypeError('signed_angle() requires 1 or 3 positional arguments!')
     a_rad = angle(v1, v2) * np.sign(np.dot(np.cross(v1, v2), n))
 
     return a_rad
 
 
-def angle_from_points(p1, p2, p3):
+def angle_from_points(*args):
     """Angle spanned by p1<--p2, p2-->p3"""
+    if len(args) == 1:
+        p1, p2, p3 = args[0]
+    elif len(args) == 3:
+        p1, p2, p3 = args
+    else:
+        raise TypeError('angle_from_points() requires 1 or 3 '
+                        'positional arguments!')
+
     v1 = np.array(p1) - np.array(p2)
     v2 = np.array(p3) - np.array(p2)
     a_rad = angle(v1, v2)
@@ -49,9 +77,16 @@ def angle_from_points(p1, p2, p3):
     return a_rad
 
 
-def dihedral(p1, p2, p3, p4):
-    '''Definition along given points p1--p2--p3--p4;
+def dihedral(*args):
+    '''args: p1, p2, p3, p4; dihedral angle along p1<--p2-->p3-->p4;
        all p as 3d-np.vectors or np.arrays (last axis will be used)'''
+    if len(args) == 1:
+        p1, p2, p3, p4 = args[0]
+    elif len(args) == 4:
+        p1, p2, p3, p4 = args
+    else:
+        raise TypeError('dihedral() requires 1 or 4 positional arguments!')
+
     v1 = np.array(p1) - np.array(p2)
     v2 = np.array(p3) - np.array(p2)
     v3 = np.array(p4) - np.array(p3)
@@ -67,9 +102,16 @@ def dihedral(p1, p2, p3, p4):
     return dih_rad
 
 
-def plane_normal(p1, p2, p3):
+def plane_normal(*args):
     '''Plane spanned by vectors p1<--p2, p2-->p3;
        all p as 3d-np.vectors or np.arrays (last axis will be used)'''
+    if len(args) == 1:
+        p1, p2, p3 = args[0]
+    elif len(args) == 3:
+        p1, p2, p3 = args
+    else:
+        raise TypeError('plane_normal() requires 1 or 3 positional arguments!')
+
     v1 = np.array(p1) - np.array(p2)
     v2 = np.array(p3) - np.array(p2)
     n = np.cross(v1, v2)
@@ -78,13 +120,29 @@ def plane_normal(p1, p2, p3):
     return n
 
 
-def triple_product(v1, v2, v3):
+def triple_product(*args):
     '''t = (v1 x v2) · v3'''
+    if len(args) == 1:
+        v1, v2, v3 = args[0]
+    elif len(args) == 3:
+        v1, v2, v3 = args
+    else:
+        raise TypeError('triple_product() requires 1 or 3 '
+                        'positional arguments!')
+
     return np.inner(np.cross(v1, v2), v3)
 
 
-def rotation_matrix(v1, v2):
+def rotation_matrix(*args):
     '''rotate v1 to match v2'''
+    if len(args) == 1:
+        v1, v2 = args[0]
+    elif len(args) == 2:
+        v1, v2 = args
+    else:
+        raise TypeError('rotation_matrix() requires 1 or 2 '
+                        'positional arguments!')
+
     u1 = v1 / np.linalg.norm(v1)
     u2 = v2 / np.linalg.norm(v2)
     n = np.cross(u1, u2)

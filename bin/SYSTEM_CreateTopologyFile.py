@@ -31,6 +31,11 @@ def main():
             help="Input structure file (xyz.pdb,xvibs,...)"
             )
     parser.add_argument(
+            "--input_format",
+            help="Input file format (e.g. xyz, pdb, cpmd; optional).",
+            default=None,
+            )
+    parser.add_argument(
             "--center_coords",
             nargs='+',
             help="Center atom list (id starting from 0) in cell \
@@ -60,7 +65,16 @@ def main():
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
 
-    _load = system.Molecule(**vars(args))
+    i_fmt = args.input_format
+    if i_fmt is None:
+        i_fmt = args.fn.split('.')[-1].lower()
+
+    _load = system.Molecule(**vars(args), fmt=i_fmt)
+
+    # --- keep only coordinates
+    if hasattr(_load, 'Modes'):
+        del _load.Modes
+
     _load.define_molecules()
 
     if args.wrap_molecules:
