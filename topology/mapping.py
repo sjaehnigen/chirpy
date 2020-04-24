@@ -259,6 +259,8 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
                                                       cell=cell_aa_deg,
                                                       ),
                                       axis=1))
+        # --- alternative: use the heaviest atom as reference
+        # _r = np.argmax(_w)
 
         # --- complete mols
         _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
@@ -335,6 +337,7 @@ def align_atoms(pos_mobile, w, **kwargs):
 def find_methyl_groups(pos, symbols, hetatm=False, **kwargs):
     '''pos of shape (n_atoms, n_fields) (FRAME)
        Outformat is C H H H'''
+
     dist_array = distance_matrix(pos, cell=kwargs.get("cell_aa_deg"))
     n_atoms = len(symbols)
     symbols = np.array(symbols)

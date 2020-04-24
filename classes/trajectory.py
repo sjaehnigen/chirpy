@@ -183,16 +183,16 @@ class _FRAME(_CORE):
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')
 
-        com1 = _cowt(obj1.data, obj1.masses_amu, axis=-2)
-        com2 = _cowt(obj2.data, obj2.masses_amu, axis=-2)
+        com1 = _cowt(obj1.pos_aa, obj1.masses_amu, axis=-2)
+        com2 = _cowt(obj2.pos_aa, obj2.masses_amu, axis=-2)
 
         assign = _np.zeros((obj1.n_atoms,)).astype(int)
         for s in _np.unique(obj1.symbols):
             i1 = _np.array(obj1.symbols) == s
             i2 = _np.array(obj2.symbols) == s
             ass = _np.argmin(_distance_matrix(
-                                obj1.data[i1, :3] - com1[None],
-                                obj2.data[i2, :3] - com2[None],
+                                obj1.pos_aa[i1] - com1[None],
+                                obj2.pos_aa[i2] - com2[None],
                                 cell=obj1.cell_aa_deg
                                 ),
                              axis=0)

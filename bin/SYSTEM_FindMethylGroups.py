@@ -54,7 +54,10 @@ def main():
         args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
 
     _load = system.Supercell(args.fn).XYZ
-    mapping.find_methyl_groups(_load.data, _load.symbols, **vars(args))
+    mapping.find_methyl_groups(_load.pos_aa,
+                               _load.symbols,
+                               hetatm=args.hetatm,
+                               cell_aa_deg=_load.cell_aa_deg)
 
 
 if(__name__ == "__main__"):
