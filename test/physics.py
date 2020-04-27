@@ -35,7 +35,7 @@ class TestConstants(unittest.TestCase):
     def test_symbols_to_masses(self):
         self.assertListEqual(
                 constants.symbols_to_masses(('C', 'H', 'D', 'P')).tolist(),
-                [12.01115, 1.00797, 2.01410, 30.97376],
+                [12.0107, 1.00794, 2.014101778, 30.973761],
                 )
 
     def test_numbers_to_symbols(self):

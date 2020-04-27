@@ -18,12 +18,13 @@
 import numpy as _np
 import warnings as _warnings
 
-from .core import _CORE
+from .core import _CORE, AttrDict
 from .trajectory import XYZ, XYZFrame, VibrationalModes
 from ..snippets import tracked_extract_keys as _tracked_extract_keys
 from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
+from ..physics import constants
 
 
 class _SYSTEM(_CORE):
@@ -55,6 +56,11 @@ class _SYSTEM(_CORE):
                     self.XYZ = kwargs.pop('XYZ')
             self.cell_aa_deg = self.XYZ.cell_aa_deg
             self.symbols = self.XYZ.symbols
+            # ToDo: Dict of atom kinds
+            self.kinds = AttrDict({_s: constants.elements[_s]
+                                   if _s in constants.elements
+                                   else 'UNKNOWN'
+                                   for _s in self.symbols})
 
             if kwargs.get('sort', False):
                 self.sort_atoms()

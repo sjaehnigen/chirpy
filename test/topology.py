@@ -36,7 +36,7 @@ class TestMapping(unittest.TestCase):
         pass
 
     def test_dist_crit_aa(self):
-        symbols = tuple(constants.rvdw)[:-1]
+        symbols = tuple([_s[0] for _s in constants._rvdw_list])[:-1]
         crit = mapping.dist_crit_aa(symbols)
 
         self.assertIsInstance(crit, np.ndarray)
