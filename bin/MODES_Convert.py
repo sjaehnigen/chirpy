@@ -90,6 +90,12 @@ def main():
             help="Output file name",
             default='output'
             )
+    parser.add_argument(
+            "--n_runs",
+            help="No. of runs in input file (for Gaussian only)",
+            type=int,
+            default=1
+            )
     args = parser.parse_args()
 
     i_fmt = args.input_format
@@ -99,7 +105,12 @@ def main():
         if i_fmt == 'hess':
             # --- assuming ORCA format
             i_fmt = 'orca'
-    _load = system.Molecule(args.fn, fmt=i_fmt, mw=args.mw, au=args.au)
+
+        if i_fmt == 'log':
+            # --- assuming Gaussian format
+            i_fmt = 'g09'
+    _load = system.Molecule(args.fn, fmt=i_fmt, mw=args.mw, au=args.au,
+                            run=args.n_runs)
 
     if o_fmt is None:
         o_fmt = args.f.split('.')[-1].lower()

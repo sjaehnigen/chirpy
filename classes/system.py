@@ -103,7 +103,7 @@ class _SYSTEM(_CORE):
         self.XYZ = self._XYZ(*args, **kwargs)
         fmt = self.XYZ._fmt
 
-        if fmt in ['xvibs', 'orca']:  # re-reads file
+        if fmt in ['xvibs', 'orca', 'g09', 'gaussian']:  # re-reads file
             self.Modes = VibrationalModes(*args, **kwargs)
 
         elif fmt == "pdb":

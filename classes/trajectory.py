@@ -32,6 +32,7 @@ from ..write.modes import xvibsWriter
 from ..interface.orca import orcaReader
 from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import WriteMoldenVibFile
+from ..interface.gaussian import g09Reader
 
 from ..topology.mapping import align_atoms as _align_atoms
 from ..topology.mapping import dec as _dec
@@ -534,6 +535,42 @@ class _XYZ():
 
                 else:
                     raise ValueError('File %s does not contain atoms!' % fn)
+
+            elif fmt in ["g09", 'gaussian']:
+                nargs = _extract_keys(kwargs, run=1)
+                data_dict = g09Reader(fn, **nargs)
+                self._data_dict = data_dict
+
+                if 'symbols' in data_dict:
+                    symbols = data_dict['symbols']
+                    if 'modes' in data_dict:
+                        modes = data_dict['modes']
+                        pos_aa = data_dict['coords']  # * constants.l_au2aa
+                        n_modes = modes.shape[0]
+                        n_atoms = pos_aa.shape[0]
+                        modes = modes.reshape((n_modes, n_atoms, 3))
+                        omega_cgs = data_dict['omega_cgs']
+                        comments = _np.array(omega_cgs).astype(str)
+
+                        data = _np.concatenate((
+                             _np.tile(pos_aa, (n_modes, 1, 1)),
+                             _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
+                             modes
+                            ),
+                            axis=-1
+                            )
+                        try:
+                            # --- ToDo: add and debug these features
+                            # self.APT_au = data_dict['Polar']
+                            # self.AAT_au = data_dict['AAT']
+                            # --- calculate it from tensors
+                            self.IR_kmpmol = data_dict['T**2']
+
+                        except KeyError:
+                            pass
+
+                    else:
+                        raise NotImplementedError('Cannot read file %s!' % fn)
 
             else:
                 raise ValueError('Unknown format: %s.' % fmt)

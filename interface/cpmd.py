@@ -39,6 +39,9 @@ def cpmdReader(FN, **kwargs):
          GEOMETRY
          TRAJECTORY
          MOMENTS
+         MOLVIB
+         APT
+         AAT
       '''
 
     if 'filetype' not in kwargs:
@@ -67,10 +70,53 @@ def cpmdReader(FN, **kwargs):
         data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
         data['symbols'] = symbols
 
-        return data
+    elif 'MOLVIB' in filetype:
+        # ToDo: OLD CODE (not tested)
+        with open(FN, 'r') as f:
+            inbuffer = f.read()
+        inbuffer.split()
+        sep = inbuffer.index('&END')+5
+        cart_block = inbuffer[:sep].split()[1:-1]
+        hessian_block = inbuffer[sep:].split()[1:-1]
+        cart_block = np.array([float(e) for e in cart_block])
+        hessian_block = np.array([float(e) for e in hessian_block])
+        n_atoms = len(cart_block) // 5
+        cart_block = cart_block.reshape((n_atoms, 5)).transpose()
+        numbers = cart_block[0]
+        coords = cart_block[1:-1].transpose()*constants.l_au2aa
+        masses = cart_block[-1]
+        hessian = hessian_block.reshape((n_atoms*3, n_atoms*3))
+
+        data = {}
+        data['symbols'] = constants.numbers_to_symbols(numbers)
+        data['data'] = coords
+        data['masses'] = masses
+        data['hessian'] = hessian
+        # modes ?
+
+    elif 'APT' in filetype:
+        # ToDo: OLD CODE (not tested)
+        data = {}
+        dat = np.genfromtxt(FN, dtype=None, autostrip=True)
+        data['AAT'] = dat.reshape(dat.shape[0] // 3, 9)
+
+    elif 'AAT' in filetype:
+        # ToDo: OLD CODE (not tested)
+        data = {}
+        dat = np.genfromtxt(FN, dtype=None, autostrip=True)
+        data['AAT'] = dat.reshape(dat.shape[0] // 3, 9)
+
+    # elif 'POLARIZATION' in filetype:
+    #     with open(FN, 'r') as f:
+    #         for line in f.readlines():
+    #             if 'atomic units' in line:
+    #                 return np.array([float(e) for e in line.split()[:3]])
+    #     raise Exception('No valid output found! %s'%fn_property_job)
 
     else:
         raise NotImplementedError('Unknown CPMD filetype %s!' % filetype)
+
+    return data
 
 
 def cpmdWriter(fn, data, append=False, **kwargs):
@@ -125,6 +171,33 @@ def cpmdWriter(fn, data, append=False, **kwargs):
                   data[0, :, :3] / constants.l_aa2au,
                   symbols,
                   fn)
+
+
+# ToDo: OLD CODE
+def write_molvib(filename, n_atoms, numbers, coordinates, masses, hessian):
+    obuffer = '&CART\n'
+    for n, r, m in zip(numbers, coordinates, masses):
+        obuffer += ' %d  %16.12f  %16.12f  %16.12f  %16.12f\n' % tuple(
+                                          [n]+list(r*constants.l_aa2au)+[m])
+    obuffer += '  &END \n&FCON \n'
+    hessian = hessian.reshape((n_atoms*n_atoms*3, 3))
+    for line in hessian:
+        obuffer += ' %16.12f  %16.12f  %16.12f\n' % tuple(line)
+    obuffer += '&END \n'
+    with open(filename, 'w') as f:
+        f.write(obuffer)
+
+
+def write_atomic_tensor(at_filename, atomic_tensor):
+    (dim1, dim2) = atomic_tensor.shape
+    if dim2 != 9:
+        raise Exception('Invalid format of at!')
+    atomic_tensor = atomic_tensor.reshape(dim1, 3, 3)
+    with open(at_filename, 'w') as f:
+        for i in range(dim1):
+            for j in range(3):
+                f.write(' %20.15f %20.15f %20.15f\n' % tuple(
+                                             atomic_tensor[i, j]))
 
 
 def cpmd_kinds_from_file(fn):
