@@ -18,6 +18,7 @@
 import copy
 import numpy as np
 from functools import partial
+import warnings as _warnings
 
 from .classical_electrodynamics import switch_origin_gauge
 from .statistical_mechanics import spectral_density
@@ -213,9 +214,14 @@ def _spectrum_from_tcf(*args, **kwargs):
             _m = copy.deepcopy(mag_dipoles)
             _m = _cut(_m, pos, _clip)
             _m = _cut(_m, pos, _cut_sphere)
-            # --- gauge-transport
-            _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
-                                     cell_au_deg=cell)
+
+            # --- calculate gauge-transport
+            if kwargs.get('gauge-transport', True):
+                _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
+                                         cell_au_deg=cell)
+            else:
+                _warnings.warn('Omitting gauge transport term in CD mode!',
+                               stacklevel=2)
 
         if len(_cut_sphere_bg) != 0:
             _c_bg = copy.deepcopy(_c)

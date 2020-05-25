@@ -188,7 +188,7 @@ def _pbc_shift(_d, cell):
         return np.zeros_like(_d)
 
 
-def distance_matrix(p0, p1=None, cell=None, cartesian=None):
+def distance_matrix(p0, p1=None, cell=None, cartesian=False):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
 
@@ -209,7 +209,7 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=None):
                           )
     dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
 
-    if cartesian is not None:
+    if cartesian:
         return dist_array
     else:
         return np.linalg.norm(dist_array, axis=-1)
