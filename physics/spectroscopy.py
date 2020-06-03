@@ -145,6 +145,7 @@ def _spectrum_from_tcf(*args, **kwargs):
             raise ValueError('shapes of given data do not agree',
                              cur_dipoles.shape, mag_dipoles.shape)
     data = {}
+    origin = kwargs.get('origin', np.zeros((3)))
 
     if len(cur_dipoles.shape) == 2:
         omega, _abs, C_abs = spectral_density(
@@ -152,8 +153,20 @@ def _spectrum_from_tcf(*args, **kwargs):
                                 cur_dipoles,
                                 **kwargs
                                 )
+
         # _cc = constants.current_current_prefactor(300)
         _cc = 1.
+        _cm = 4. * omega
+
+        if 'cd' in mode:
+            # --- NB: no gauge-transport here!
+            omega, _cd, C_cd = spectral_density(
+                                    cur_dipoles,
+                                    mag_dipoles,
+                                    **kwargs
+                                    )
+            data['cd'] = _cd * _cm
+            data['tcf_cd'] = C_cd
 
         data['omega'] = omega
         data['abs'] = _abs * _cc
@@ -165,7 +178,10 @@ def _spectrum_from_tcf(*args, **kwargs):
             raise TypeError('Please give positions arguments for moments of '
                             'shape %s' % cur_dipoles.shape)
         cell = kwargs.get('cell_au_deg')
-        origin = kwargs.get('origin', np.zeros((1, 3)))
+
+        # --- map origin on frames if frame dim is missing
+        if len(origin.shape) == 1:
+            origin = np.tile(origin, (pos.shape[0], 1))
 
         # --- cutoff spheres --------------------------------------------------
         _clip = kwargs.get('clip_sphere', [])
@@ -264,6 +280,17 @@ def _spectrum_from_tcf(*args, **kwargs):
             data['tcf_abs'] = _result.pop()
             data['abs'] = _result.pop()
 
+        # --- write moments to dictionary (optional)
+        r_moments = kwargs.get('return_moments', False)
+        if r_moments:
+            data['c'] = _c
+            if 'cd' in mode:
+                data['m'] = _m
+            if len(_cut_sphere_bg) != 0:
+                data['c_bg'] = _c_bg
+                if 'cd' in mode:
+                    data['m_bg'] = _m_bg
+
         # ToDo: warnings.warn("Return tcf incomplete!", stacklevel=2)
     else:
         raise TypeError('data with wrong shape!',
@@ -345,7 +372,7 @@ def _get_tcf_spectrum(*args, **kwargs):
     if sub is not None:
         if not isinstance(sub, int):
             raise TypeError('Subparticle has to be an integer!')
-        _get = partial(_get_subspectra, _sub=sub)
+        _get = partial(_get_subspectra, _sub1=sub)
 
     elif subnots is not None:
         if not isinstance(subnots, list):
@@ -355,7 +382,7 @@ def _get_tcf_spectrum(*args, **kwargs):
     elif subs is not None:
         if not isinstance(subs, tuple):
             raise TypeError('Subparticles has to be a tuple of integers!')
-        _get = partial(_get_subspectra, _sub=subs[0], _sub2=subs[1])
+        _get = partial(_get_subspectra, _sub1=subs[0], _sub2=subs[1])
 
     else:
         _get = _get_spectra

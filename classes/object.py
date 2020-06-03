@@ -28,17 +28,19 @@ class Sphere(_CORE):
     def __init__(self, position=None, radius=None, edge='hard', D=0.23622):
         '''Define a sphere at position, radius and edge (soft/hard).
            D=0.23622 bohr corresponds to 0.125 angstrom (soft sphere only)
-           Expects positions of shape (n_frames, dim).
+           Expects positions of shape ([n_frames, ...] dim).
            Radius can be a float (costants) or an array of shape (n_frames)
            (dynamic).
            '''
-        if len(position.shape) != 2:
-            raise TypeError('Got wrong shape for position!', position.shape)
+#        if len(position.shape) != 2:
+#            raise TypeError('Got wrong shape for sphere position!',
+#                            position.shape)
         if not isinstance(radius, float):
             if isinstance(radius, np.ndarray):
                 if len(radius) != len(position):
                     raise TypeError('Got wrong length for radius!', radius)
-                radius = radius[:, None]
+                # radius = radius[:, None]
+                radius = radius[None, :]  # ?
             else:
                 raise TypeError('Expected float or numpy array for radius!')
 
@@ -74,7 +76,9 @@ class Sphere(_CORE):
         elif pos.shape[::2] == self.pos.shape:
             _d = get_d(self.pos[:, None])
         else:
-            raise TypeError('Got wrong shape for pos!', pos.shape)
+            raise TypeError('Clip reference shape %s does not agree with '
+                            'sphere position shape %s!' %
+                            (pos.shape, self.pos.shape))
 
         _slc = (slice(None),) * len(_d.shape) + (None,)
         x *= self.edge(_d)[_slc]

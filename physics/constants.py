@@ -90,6 +90,7 @@ E_J2eV = 1 / e_si
 E_Hz2J = h_si
 E_J2Hz = 1 / E_Hz2J
 E_Hz2cm_1 = 1 / c_si * centi
+E_cm_12Hz = c_si / centi
 E_J2cm_1 = E_J2Hz * E_Hz2cm_1
 E_eV2cm_1 = E_eV2J * E_J2cm_1
 
@@ -106,7 +107,7 @@ def E_Hz2nm(x):
     return E_J2nm(x * E_Hz2J)
 
 
-# --- other spectroscopic 
+# --- other spectroscopic
 IR_au2kmpmol = (avog * e_si**2) / (12 * eps0_si * c_si**2 * m_amu_si * kilo)
 
 

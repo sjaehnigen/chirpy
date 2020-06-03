@@ -53,17 +53,15 @@ def dec(prop, indices, n_ind=None):
         ]
 
 
-def cowt(pos, wt, **kwargs):
+def cowt(pos, wt, axis=-2, subset=slice(None)):
     '''Calculate centre of weight, consider periodic boundaries before
        calling this method.'''
 
     _wt = np.array(wt)
-    _axis = kwargs.get("axis", -2)
-    _sub = kwargs.get('subset', slice(None))
-    _p = np.moveaxis(pos, _axis, 0)
-    _slc = (_sub,) + (len(_p.shape)-1) * (None,)
+    _p = np.moveaxis(pos, axis, 0)
+    _slc = (subset,) + (len(_p.shape)-1) * (None,)
 
-    return np.sum(_p[_sub] * _wt[_slc], axis=0) / _wt[_sub].sum()
+    return np.sum(_p[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
 
 
 def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
@@ -132,7 +130,7 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
         return 'triclinic'
 
 
-def wrap(pos_aa, cell_aa_deg, **kwargs):
+def wrap(pos_aa, cell_aa_deg):
     '''pos_aa: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
@@ -154,7 +152,7 @@ def wrap(pos_aa, cell_aa_deg, **kwargs):
         return pos_aa
 
 
-def distance_pbc(p0, p1, cell=None, **kwargs):
+def distance_pbc(p0, p1, cell=None):
     '''p1 – p0 with or without periodic boundaries
        accepts cell_aa_deg argument
        length units need not be in angstrom, but
@@ -215,12 +213,11 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
         return np.linalg.norm(dist_array, axis=-1)
 
 
-def neighbour_matrix(pos_aa, symbols, **kwargs):
+def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
     '''Create sparse matrix with entries 1 for neighbouring atoms.
        Expects positions in angstrom of shape (n_atoms, three).
        '''
     symbols = np.array(symbols)
-    cell_aa_deg = kwargs.get("cell_aa_deg")
     dist_array = distance_matrix(pos_aa, cell=cell_aa_deg)
     dist_array[dist_array == 0.0] = 'Inf'
     crit_aa = dist_crit_aa(symbols)
@@ -228,7 +225,7 @@ def neighbour_matrix(pos_aa, symbols, **kwargs):
     return dist_array <= crit_aa
 
 
-def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
+def join_molecules(pos_aa, mol_map, cell_aa_deg, weights=None):
     '''pos_aa (in angstrom) with shape ([n_frames,] n_atoms, three)
     Has still problems with cell-spanning molecules
     Molecules have to be numbered starting with 0!'''
@@ -238,8 +235,9 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, **kwargs):
     pos_aa = np.moveaxis(pos_aa, -2, 0)
     _shape = pos_aa.shape
     n_atoms = _shape[0]
-    w = kwargs.get('weights', np.ones((n_atoms)))
-    w = dec(w, mol_map)
+    if weights is None:
+        weights = np.ones((n_atoms))
+    w = dec(weights, mol_map)
 
     _pos_aa = dec(pos_aa, mol_map)
     mol_com_aa = []
@@ -285,7 +283,7 @@ def get_atom_spread(pos):
                      for _p in np.moveaxis(pos, -1, 0)])
 
 
-def align_atoms(pos_mobile, w, **kwargs):
+def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
     '''Align atoms within trajectory or towards an external
        reference. Kinds and order of atoms (usually) have to
        be equal.
@@ -295,13 +293,15 @@ def align_atoms(pos_mobile, w, **kwargs):
        '''
 
     w = np.array(w)
-    _sub = kwargs.get('subset', slice(None))
-    _data = kwargs.get('data')
+    _sub = subset
+    _data = data
 
     pos_mob = copy.deepcopy(pos_mobile)
     # --- get subset data sets
     # --- default reference: frame 0
-    _s_pos_ref = copy.deepcopy(kwargs.get('ref', pos_mobile[0])[_sub])
+    if ref is None:
+        ref = pos_mobile[0][_sub]
+    _s_pos_ref = copy.deepcopy(ref)
     _s_pos_mob = pos_mob[:, _sub]
 
     # --- get com of data sets
@@ -334,11 +334,11 @@ def align_atoms(pos_mobile, w, **kwargs):
         return pos_mob
 
 
-def find_methyl_groups(pos, symbols, hetatm=False, **kwargs):
+def find_methyl_groups(pos, symbols, hetatm=False, cell_aa_deg=None):
     '''pos of shape (n_atoms, n_fields) (FRAME)
        Outformat is C H H H'''
 
-    dist_array = distance_matrix(pos, cell=kwargs.get("cell_aa_deg"))
+    dist_array = distance_matrix(pos, cell=cell_aa_deg)
     n_atoms = len(symbols)
     symbols = np.array(symbols)
 

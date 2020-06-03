@@ -170,6 +170,7 @@ def spectral_density(*args, **kwargs):
        Adding signal filters may be enabled; use flt_pow=-1 to remove the
        implicit triangular filter due to finite size.
        Expects signal of shape (n_frames, n_dim)
+       Keyword ts: timestep
        Returns:
         1 - discrete sample frequencies
         2 - spectral density (FT TCF)
@@ -182,10 +183,15 @@ def spectral_density(*args, **kwargs):
     R = time_correlation_function(*args, **kwargs)
 
     # --- \ --> /\
+    # --- numpy convolve has given the full periodic cc function, but we cut
+    #     it in half (see time_correlation_function()
+
     final_cc = np.hstack((R, R[::-1]))
     n = final_cc.shape[0]
 
-    S = np.fft.rfft(final_cc, n=n-1).real * ts * constants.t_fs2au * _fac
+    # ToDo: femtoseconds here? Why conversion factor?
+    # expects SI or a.u. (seconds for ts NOT fs)
+    S = np.fft.rfft(final_cc, n=n-1).real * ts * _fac  # * constants.t_fs2au
     S /= 2 * np.pi  # omega
     omega = np.fft.rfftfreq(n-1, d=ts)
 
