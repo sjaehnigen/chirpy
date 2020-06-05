@@ -38,8 +38,8 @@ def power_from_tcf(velocities, **kwargs):
        Optionally returns time-correlation function (return_tcf=True).
        '''
     n_frames, n_atoms, three = velocities.shape
-    wgh = kwargs.get('weights', np.ones(n_atoms))
-    r_tcf = kwargs.get('return_tcf', False)
+    wgh = kwargs.pop('weights', np.ones(n_atoms))
+    r_tcf = kwargs.pop('return_tcf', False)
     wgh = np.array(wgh)
     omega, S, R = zip(*[spectral_density(_v, **kwargs)
                         for _v in velocities.swapaxes(0, 1)])
@@ -124,7 +124,8 @@ def _spectrum_from_tcf(*args, **kwargs):
          "abs"/"cd"         - spectral density (FT TCF)
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
-    mode = kwargs.get('mode', 'abs_cd')
+    mode = kwargs.pop('mode', 'abs_cd')
+
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
     _z = len(args)
@@ -145,7 +146,6 @@ def _spectrum_from_tcf(*args, **kwargs):
             raise ValueError('shapes of given data do not agree',
                              cur_dipoles.shape, mag_dipoles.shape)
     data = {}
-    origin = kwargs.get('origin', np.zeros((3)))
 
     if len(cur_dipoles.shape) == 2:
         omega, _abs, C_abs = spectral_density(
@@ -173,38 +173,41 @@ def _spectrum_from_tcf(*args, **kwargs):
         data['tcf_abs'] = C_abs
 
     elif len(cur_dipoles.shape) == 3:
-        pos = kwargs.get('positions')
+        r_moments = kwargs.pop('return_moments', False)
+        origin = kwargs.pop('origin', np.zeros((3)))
+        pos = kwargs.pop('positions', None)
+
         if pos is None:
             raise TypeError('Please give positions arguments for moments of '
                             'shape %s' % cur_dipoles.shape)
-        cell = kwargs.get('cell_au_deg')
+        cell = kwargs.pop('cell_au_deg', None)
 
         # --- map origin on frames if frame dim is missing
         if len(origin.shape) == 1:
             origin = np.tile(origin, (pos.shape[0], 1))
 
         # --- cutoff spheres --------------------------------------------------
-        _clip = kwargs.get('clip_sphere', [])
+        _clip = kwargs.pop('clip_sphere', [])
         if not isinstance(_clip, list):
             raise TypeError('expected list for keyword "clip_sphere%s"!')
 
         # --- master sphere (cutoff) ==> applied ON TOP OF clip spheres
         _cut_sphere = []
-        cutoff = kwargs.get('cutoff')
+        cutoff = kwargs.pop('cutoff', None)
         if cutoff is not None:
             _cut_sphere.append(Sphere(
                                  origin,
                                  cutoff,
-                                 edge=kwargs.get('cut_type', 'soft')
+                                 edge=kwargs.pop('cut_type', 'soft')
                                  ))
 
         _cut_sphere_bg = []
-        cutoff_bg = kwargs.get('cutoff_bg')
+        cutoff_bg = kwargs.pop('cutoff_bg', None)
         if cutoff_bg is not None:
             _cut_sphere_bg.append(Sphere(
                                     origin,
                                     cutoff_bg,
-                                    edge=kwargs.get('cut_type_bg', 'hard')
+                                    edge=kwargs.pop('cut_type_bg', 'hard')
                                     ))
         # ---------------------------------------------------------------------
 
@@ -232,7 +235,7 @@ def _spectrum_from_tcf(*args, **kwargs):
             _m = _cut(_m, pos, _cut_sphere)
 
             # --- calculate gauge-transport
-            if kwargs.get('gauge-transport', True):
+            if kwargs.pop('gauge-transport', True):
                 _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
                                          cell_au_deg=cell)
             else:
@@ -281,7 +284,6 @@ def _spectrum_from_tcf(*args, **kwargs):
             data['abs'] = _result.pop()
 
         # --- write moments to dictionary (optional)
-        r_moments = kwargs.get('return_moments', False)
         if r_moments:
             data['c'] = _c
             if 'cd' in mode:
@@ -304,12 +306,12 @@ def _get_tcf_spectrum(*args, **kwargs):
        correlation of signals a (and b) with various options.
        '''
     # BETA: correlate moment of part with total moments, expects one integer
-    sub = kwargs.get('subparticle')
+    sub = kwargs.pop('subparticle', None)
     # BETA: correlate moment of one part with another part,
     #     expects tuple of integers
     #     notparticles: exclude these indices; expects list of integers
-    subs = kwargs.get('subparticles')
-    subnots = kwargs.get('subnotparticles')
+    subs = kwargs.pop('subparticles', None)
+    subnots = kwargs.pop('subnotparticles', None)
 
     a = args[0]
     b = args[0]  # dummy

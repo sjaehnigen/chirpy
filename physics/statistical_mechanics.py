@@ -38,7 +38,7 @@ def temperature_from_energies(e_kin_au, fixed_dof=6):
     return (2. * e_kin_au / constants.k_B_au / _n_dof).sum(axis=-1)
 
 
-def maxwell_boltzmann_distribution(T_K, *args, **kwargs):
+def maxwell_boltzmann_distribution(T_K, *args, option='energy'):
     '''Return the Maxwell-Boltzmann distribution function for given temperature
        in K and species with masses in a.m.u.'''
 
@@ -70,7 +70,7 @@ def maxwell_boltzmann_distribution(T_K, *args, **kwargs):
             }
 
     def PDF(x):
-        return _options.get(kwargs.get('option', 'energy'))(T_K, x, *args)
+        return _options.get(option)(T_K, x, *args)
 
     return PDF
 
@@ -88,13 +88,13 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
         raise Exception('Filter %s not supported!' % filter_type)
 
 
-def time_correlation_function(*args, **kwargs):
+def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
     '''Calculate the time-correlation function (TCF) of a signal and
        using the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
-       Adding signal filters may be enabled; use flt_pow=-1 to remove the
-       implicit triangular filter due to finite size.
+       Adding signal filters (Welch) may be enabled; use flt_pow=-1 to remove
+       the implicit triangular filter due to finite size.
        Expects signal of shape (n_frames, n_dim)
        Returns:
         1 - time-correlation function (timestep as in input)
@@ -114,12 +114,9 @@ def time_correlation_function(*args, **kwargs):
         raise TypeError('TCF takes at most 2 arguments, got %d'
                         % len(args))
 
-    flt_pow = kwargs.get('flt_pow', 0)
-    _cc_mode = kwargs.get('cc_mode', 'AB')
-
     n_frames, three = val1.shape
 
-    def _corr(_val1, _val2, _cc_mode='AB'):
+    def _corr(_val1, _val2, cc_mode='AB'):
         _sig = np.array([signal.fftconvolve(
                                   v1,
                                   v2[::-1],
@@ -128,13 +125,13 @@ def time_correlation_function(*args, **kwargs):
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
 
         R = np.zeros_like(_val1)
-        if 'A' in _cc_mode:
+        if 'A' in cc_mode:
             R += _sig[n_frames-1:]
-        if 'B' in _cc_mode:
+        if 'B' in cc_mode:
             R += _sig[:n_frames][::-1]
-        if 'C' in _cc_mode:
+        if 'C' in cc_mode:
             R -= _sig[:n_frames][::-1]
-        if _cc_mode == 'AB':
+        if cc_mode == 'AB':
             R /= 2
 
         return R
@@ -146,7 +143,7 @@ def time_correlation_function(*args, **kwargs):
     #   BC = 0
     #   ABC = A
     # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
-    R = _corr(val1, val2, _cc_mode)
+    R = _corr(val1, val2, cc_mode)
 
     R = R.sum(axis=1)
 
@@ -162,7 +159,7 @@ def time_correlation_function(*args, **kwargs):
     return R
 
 
-def spectral_density(*args, **kwargs):
+def spectral_density(*args, ts=1, factor=1, **kwargs):
     '''Calculate the spectral distribution as the Fourier transformed
        time-correlation function (TCF) of a vector signal (*args).
        The method automatically chooses to calculate auto- or cross-
@@ -177,9 +174,6 @@ def spectral_density(*args, **kwargs):
         3 - time-correlation function (timestep as in input)
        '''
 
-    ts = kwargs.get('ts', 4)
-    _fac = kwargs.get('factor', 1)
-
     R = time_correlation_function(*args, **kwargs)
 
     # --- \ --> /\
@@ -189,10 +183,8 @@ def spectral_density(*args, **kwargs):
     final_cc = np.hstack((R, R[::-1]))
     n = final_cc.shape[0]
 
-    # ToDo: femtoseconds here? Why conversion factor?
-    # expects SI or a.u. (seconds for ts NOT fs)
-    S = np.fft.rfft(final_cc, n=n-1).real * ts * _fac  # * constants.t_fs2au
+    S = np.fft.rfft(final_cc, n=n).real * ts * factor
     S /= 2 * np.pi  # omega
-    omega = np.fft.rfftfreq(n-1, d=ts)
+    omega = np.fft.rfftfreq(n, d=ts)
 
     return omega, S, R
