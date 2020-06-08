@@ -68,6 +68,10 @@ class _PARARRAY():
         except KeyboardInterrupt:
             print("KeyboardInterrupt in _PARARRAY")
 
+        finally:
+            self.pool.terminate()
+            self.pool.join()
+
 
 class _CORE():
     def __init__(self, *args, **kwargs):
