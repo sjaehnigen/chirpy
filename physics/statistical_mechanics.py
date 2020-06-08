@@ -114,7 +114,21 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
         raise TypeError('TCF takes at most 2 arguments, got %d'
                         % len(args))
 
-    n_frames, three = val1.shape
+    _sh1 = val1.shape
+    _sh2 = val2.shape
+    if _sh1 != _sh2:
+        raise ValueError('Got different shapes for signals val1 and val2: '
+                         '%s and %s' % (_sh1, _sh2))
+
+    if len(_sh1) == 1:
+        n_frames, = _sh1
+        val1 = val1.reshape((n_frames, 1))
+        val2 = val2.reshape((n_frames, 1))
+    elif len(_sh1) == 2:
+        n_frames, n_dim = val1.shape
+    else:
+        raise ValueError('Expected shape length 1 or 2 for signal, got %d: %s'
+                         % (len(_sh1), _sh1))
 
     def _corr(_val1, _val2, cc_mode='AB'):
         _sig = np.array([signal.fftconvolve(
@@ -125,7 +139,7 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
 
         R = np.zeros_like(_val1)
-        if 'A' in cc_mode:
+        if 'A' in cc_mode or 'C' in cc_mode:
             R += _sig[n_frames-1:]
         if 'B' in cc_mode:
             R += _sig[:n_frames][::-1]
@@ -183,8 +197,16 @@ def spectral_density(*args, ts=1, factor=1, **kwargs):
     final_cc = np.hstack((R, R[::-1]))
     n = final_cc.shape[0]
 
-    S = np.fft.rfft(final_cc, n=n).real * ts * factor
-    S /= 2 * np.pi  # omega
+    S = np.fft.rfft(final_cc, n=n).real * factor * ts
+
+    # --- Prefactor: see Fourier Integral Theorem;
+    #                Convention: divide by 2 pi where omega is actually put in
+    #                place
+    #                However, in spectroscopy the prefactor is often used in
+    #                forward FT with exp(-iwt).
+    #                NB: 2 pi is a consequence of using omega and does not
+    #                inherently stem from the Fourier transform
+
     omega = np.fft.rfftfreq(n, d=ts)
 
     return omega, S, R
