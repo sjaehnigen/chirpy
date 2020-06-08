@@ -21,7 +21,7 @@ import warnings
 import numpy as np
 import multiprocessing
 from multiprocessing import Pool
-from itertools import product
+from itertools import product, combinations_with_replacement
 
 
 class AttrDict(dict):
@@ -42,31 +42,56 @@ class AttrDict(dict):
         super(AttrDict, self).__setitem__(key, value)
 
 
-class _PARARRAY():
+class _PALARRAY():
     '''Class for parallel processing of array data.
        Processes data in a nested grid
        (i.e. all combinations of indices)'''
 
-    def __init__(self, func, *data, n_cores=multiprocessing.cpu_count()):
+    def __init__(self, func, *data, repeat=1,
+                 n_cores=multiprocessing.cpu_count(),
+                 upper_triangle=False):
         '''Parallel array process setup.
            With executable func(*args) and set of data arrays, data,
            whereas len(data) = len(args).
 
+           Calculate upper_triangle matrix only, if len(data)==1 and repeat==2
+           (optional).
+
            Output: array of shape (len(data[0], len(data[1]), ...)'''
-        # --- user defined
+
         self.f = func
         self.pool = Pool(n_cores)
         self.data = data
-        self.array = product(*self.data)  # combine all data arrays
+        self._ut = False
+        self.repeat = repeat
+
+        if upper_triangle:
+            self._ut = True
+            if len(data) == 1 and repeat == 2:
+                self.array = combinations_with_replacement(self.data[0], 2)
+            else:
+                raise ValueError('Upper triangle requires one data array with '
+                                 'repeat=2!')
+        else:
+            self.array = product(*self.data, repeat=repeat)
 
     def run(self):
-        '''data should actually be "other data"'''
         try:
             result = np.array(self.pool.starmap(self.f, self.array))
-            return result.reshape(tuple([len(_d) for _d in self.data]))
+
+            if self._ut:
+                _l = len(self.data[0])
+                res_result = np.zeros((_l, _l))
+                res_result[np.triu_indices(_l)] = result
+
+                return res_result
+
+            else:
+                return result.reshape(tuple(self.repeat
+                                            * [len(_d) for _d in self.data]))
 
         except KeyboardInterrupt:
-            print("KeyboardInterrupt in _PARARRAY")
+            print("KeyboardInterrupt in _PALARRAY")
 
         finally:
             self.pool.terminate()
