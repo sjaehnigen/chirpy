@@ -194,7 +194,7 @@ def main():
         largs.update({'skip': []})
 
     if args.fn_vel is not None:
-        warnings.warn("Using external velocity file still under development! ",
+        warnings.warn("Using external velocity file still under development! "
                       "Alignment should not be used!",
                       stacklevel=2)
         nargs = {}

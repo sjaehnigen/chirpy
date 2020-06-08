@@ -19,6 +19,9 @@ import pickle
 import itertools
 import warnings
 import numpy as np
+import multiprocessing
+from multiprocessing import Pool
+from itertools import product
 
 
 class AttrDict(dict):
@@ -37,6 +40,33 @@ class AttrDict(dict):
             raise NameError("Trying to alter namespace of built-in "
                             "dict method!", key)
         super(AttrDict, self).__setitem__(key, value)
+
+
+class _PARARRAY():
+    '''Class for parallel processing of array data.
+       Processes data in a nested grid
+       (i.e. all combinations of indices)'''
+
+    def __init__(self, func, *data, n_cores=multiprocessing.cpu_count()):
+        '''Parallel array process setup.
+           With executable func(*args) and set of data arrays, data,
+           whereas len(data) = len(args).
+
+           Output: array of shape (len(data[0], len(data[1]), ...)'''
+        # --- user defined
+        self.f = func
+        self.pool = Pool(n_cores)
+        self.data = data
+        self.array = product(*self.data)  # combine all data arrays
+
+    def run(self):
+        '''data should actually be "other data"'''
+        try:
+            result = np.array(self.pool.starmap(self.f, self.array))
+            return result.reshape(tuple([len(_d) for _d in self.data]))
+
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt in _PARARRAY")
 
 
 class _CORE():
@@ -74,6 +104,9 @@ class _CORE():
         with open(FN, "rb") as f:
             _load = pickle.load(f)
         if isinstance(_load, cls):
+            warnings.warn("Loaded from file:\n%s with data shape %s." %
+                          (cls.__name__, _load.data.shape),
+                          stacklevel=2)
             return _load
         else:
             raise TypeError("File does not contain %s." % cls.__name__)
@@ -109,6 +142,8 @@ class _ITERATOR():
             # --- repeat first step of next() after __init__
             # --- do nothing
             if self._chaste:
+                # warnings.warn("Currently loaded frame repeated after init.",
+                #              stacklevel=2)
                 self._chaste = False
                 return self._fr
 
@@ -149,7 +184,7 @@ class _ITERATOR():
             raise ValueError('Cannot combine frames of different size!')
 
     def rewind(self):
-        '''Reinitialises the Interator (BETA)'''
+        '''Reinitialises the iterator'''
         self._chaste = False
         self.__init__(self._fn, **self._kwargs)
 

@@ -1253,6 +1253,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             # repeat first step of next() after __init__
             # --- do nothing
             if self._chaste:
+                # _warnings.warn("Currently loaded frame repeated after init.",
+                #               stacklevel=2)
                 self._chaste = False
                 return self._fr
 
@@ -1301,7 +1303,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         return self._fr
 
-    def _to_trajectory(self):
+    def expand(self):
         '''Perform iteration on remaining iterator and load
            entire trajectory
            (may take some time)
@@ -1363,21 +1365,18 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'split', *args, **kwargs)
 
-    def merge(self, other, **kwargs):
-        '''Merge with other object by combining the two iterators other than
-           along principal axis (use "+") for that.
-           Specify axis 0 or 1 to combine atoms or data, respectively
-           (default: 0).
+    def merge(self, other, axis=-1, dim1=[0, 1, 2], dim2=[0, 1, 2], **kwargs):
+        '''Merge horizontically with another iterator (of equal length).
+           Specify axis 0 or 1/-1 to combine atoms or data, respectively
+           (default: -1).
            Specify cartesian dimensions to be used from data by dim1/dim2
            (default: [0, 1, 2]).
            <Other> iterator must not be used anymore!
+           To concatenate iterators along the frame axis, use "+".
            BETA'''
 
-        def _add(obj1, obj2, **kwargs):
+        def _add(obj1, obj2):
             '''combine two frames'''
-            axis = kwargs.get("axis", -1)
-            dim1 = kwargs.get("dim1", [0, 1, 2])
-            dim2 = kwargs.get("dim2", [0, 1, 2])
             obj1.axis_pointer = axis
             obj2.axis_pointer = axis
 
@@ -1391,7 +1390,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             # --- next(obj1) is called before loading mask
             try:
                 next(obj2)
-                return _add(obj1, obj2, **kwargs)
+                return _add(obj1, obj2)
             except StopIteration:
                 with _warnings.catch_warnings():
                     _warnings.warn('Merged iterator exhausted!',
@@ -1399,7 +1398,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                    stacklevel=1)
                 return obj1
 
-        self._frame = _add(self._frame, other._frame, **kwargs)
+        self._frame = _add(self._frame, other._frame)
         self.__dict__.update(self._frame.__dict__)
         other._chaste = False
 

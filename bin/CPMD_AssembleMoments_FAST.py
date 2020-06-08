@@ -88,7 +88,7 @@ def main():
     # --- load data into memory
     _traj = _traj.XYZ
     e_data = np.array([_moms_e.data for _m_fr in _moms_e])
-    _traj = _traj._to_trajectory()
+    _traj = _traj.expand()
     # --- wrap molecules for all frames at once
     _traj.wrap_molecules(n_map)
     n_data = _traj.data

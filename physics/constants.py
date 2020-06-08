@@ -203,7 +203,7 @@ for _z, _ZV in _ZV_list:
     elements[_z].valence_charge = _ZV
 
 
-def _get_property(kinds, key):
+def _get_property(kinds, key, fmt=None):
     pr = []
     for _k in kinds:
         try:
@@ -212,7 +212,10 @@ def _get_property(kinds, key):
             _warnings.warn('Cannot find %s for atom: %s !' % (key, _k),
                            RuntimeWarning, stacklevel=2)
             _r = None
-        pr.append(_r)
+        if fmt is not None:
+            pr.append(fmt(_r))
+        else:
+            pr.append(_r)
     return pr
 
 
@@ -221,7 +224,7 @@ def numbers_to_symbols(numbers):
 
 
 def symbols_to_numbers(symbols):
-    return _get_property(symbols, 'number')
+    return _get_property(symbols, 'number', fmt=int)
 
 
 def symbols_to_masses(symbols):
