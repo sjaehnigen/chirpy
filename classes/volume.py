@@ -38,11 +38,17 @@ class ScalarField(_CORE):
                             % self.__class__.__name__)
 
         elif len(args) == 1:
-            self.fn = args[0]
-            self.fmt = kwargs.get('fmt', self.fn.split('.')[-1])
-            if self.fmt == "cube":
+            fn = args[0]
+            self._fn = fn
+            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if fmt == 'bz2':
+                kwargs.update({'bz2': True})
+                fmt = fn.split('.')[-2]
+
+            self._fmt = fmt
+            if fmt == "cube":
                 data, self.origin_au, self.cell_vec_au, pos_au, self.numbers, \
-                    comments = cubeReader(self.fn)
+                    comments = cubeReader(fn, **kwargs)
                 if data.shape[0] > 1:
                     _warnings.warn(
                         'Volume class does not (yet) support trajectory data!',
@@ -52,8 +58,8 @@ class ScalarField(_CORE):
                 self.pos_au = pos_au[0]
                 self.comments = comments[0]
 
-            elif self.fmt == 'npy':
-                test = ScalarField.from_data(data=_np.load(self.fn), **kwargs)
+            elif fmt == 'npy':
+                test = ScalarField.from_data(data=_np.load(fn), **kwargs)
                 self.comments = test.comments
                 self.origin_au = test.origin_au
                 self.cell_vec_au = test.cell_vec_au
@@ -61,7 +67,7 @@ class ScalarField(_CORE):
                 self.numbers = test.numbers
                 self.data = test.data
 
-            elif self.fmt == 'wfn':
+            elif fmt == 'wfn':
                 raise NotImplementedError('Format wfn not supported.')
 
             else:
@@ -368,7 +374,7 @@ class VectorField(ScalarField):
     def _join_scalar_fields(self, x, y, z):
         '''x, y, z ... ScalarField objects'''
         if x._is_similar(y, strict=2) and x._is_similar(z, strict=2):
-            self.fn1, self.fn2, self.fn3 = x.fn, y.fn, z.fn
+            self._fn1, self._fn2, self._fn3 = x._fn, y._fn, z._fn
             self.comments = _np.array([x.comments, y.comments, z.comments])
             self.data = _np.array([x.data, y.data, z.data])
             for _a in [

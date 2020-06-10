@@ -18,12 +18,18 @@
 
 from itertools import islice
 import numpy as np
+import bz2
 
 
 def _gen(fn):
     '''Global generator for all formats'''
     return (line for line in fn if 'NEW DATA' not in line)
 
+def _open(*args, **kwargs):
+    if kwargs.get('bz2'):
+        return bz.open(*args)
+    else:
+        return open(*args)
 
 def _get(_it, kernel, **kwargs):
     '''Gets batch of lines defined by _n_lines and processes
@@ -90,7 +96,7 @@ def _reader(FN, _nlines, _kernel, **kwargs):
 
     kwargs.update({'n_lines': _nlines})
 
-    with open(FN, 'r') as _f:
+    with _open(FN, 'r', **kwargs) as _f:
         _it = _gen(_f)
         data = _get(_it, _kernel, **kwargs)
 

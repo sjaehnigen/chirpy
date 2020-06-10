@@ -21,7 +21,7 @@ import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import warnings
 
-from .generators import _reader
+from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 
@@ -90,7 +90,7 @@ def xyzIterator(FN, **kwargs):
        current frame'''
     _kernel = _xyz
 
-    with open(FN, 'r') as _f:
+    with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip()) + 2
 
     return _reader(FN, _nlines, _kernel, **kwargs)

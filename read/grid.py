@@ -18,7 +18,7 @@
 
 import numpy as np
 from itertools import islice
-from .generators import _reader
+from .generators import _reader, _open
 
 def _cube(frame, **kwargs):
     '''Kernel for processing cube frame.'''
@@ -65,7 +65,7 @@ def cubeIterator(FN, **kwargs):
        current frame'''
     _kernel = _cube
 
-    with open(FN, 'r') as _f:
+    with _open(FN, 'r', **kwargs) as _f:
         _f.readline()
         _f.readline()
         _natoms = int(_f.readline().strip().split()[0])

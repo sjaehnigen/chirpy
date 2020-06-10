@@ -425,6 +425,10 @@ class _XYZ():
         elif len(args) == 1:
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if fmt == 'bz2':
+                kwargs.update({'bz2': True})
+                fmt = fn.split('.')[-2]
+
             self._fmt = fmt
             self._fn = fn
             if self._type == 'frame':
@@ -433,12 +437,12 @@ class _XYZ():
                 kwargs.update({'range': _fr})
             elif self._type == 'trajectory':
                 _fr = kwargs.get('range', (0, 1, float('inf')))
-            self.fn = fn
 
             if fmt == "xyz":
                 data, symbols, comments = xyzReader(fn,
                                                     **_extract_keys(kwargs,
                                                                     range=_fr,
+                                                                    bz2=False,
                                                                     )
                                                     )
 
@@ -578,7 +582,6 @@ class _XYZ():
         elif len(args) == 0:
             if 'data' in kwargs and ('symbols' in kwargs
                                      or 'numbers' in kwargs):
-                self.fn = ''
                 numbers = kwargs.get('numbers')
                 symbols = kwargs.get('symbols')
                 if symbols is None:
@@ -958,7 +961,7 @@ class _XYZ():
                                     _np.array(['MOL'] * loc_self.n_atoms)
                                     )).swapaxes(0, 1),
                       box=cell_aa_deg,
-                      title='Generated from %s with ChirPy' % self.fn
+                      title='Generated with ChirPy'
                       )
 
         elif fmt == 'cpmd':
@@ -1020,7 +1023,6 @@ class _MOMENTS():
                 kwargs.update({'range': _fr})
             elif self._type == 'trajectory':
                 _fr = kwargs.get('range', (0, 1, float('inf')))
-            self.fn = fn
 
             if fmt == "xyz":
                 _warnings.warn("XYZ format not tested for MOMENTS!",
@@ -1052,7 +1054,6 @@ class _MOMENTS():
 
         elif len(args) == 0:
             if 'data' in kwargs:
-                self.fn = ''
                 numbers = kwargs.get('numbers', (1,))
                 symbols = kwargs.get('symbols')
                 if symbols is None:
@@ -1479,7 +1480,7 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
 
         if _np.linalg.norm(self.vel_au) != 0:
             _warnings.warn('Overwriting existing velocities in file %s'
-                           % self.fn,
+                           % self._fn,
                            stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
