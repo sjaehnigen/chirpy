@@ -60,7 +60,8 @@ def main():
     if args.get_mols:
         nargs['define_molecules'] = args.get_mols
 
-    b = supercell._BoxObject.read(args.fn, **nargs)
+    # --- ToDo: define type in arguments
+    b = supercell.Solution.read(args.fn, **nargs)
     b.print_info()
 
 

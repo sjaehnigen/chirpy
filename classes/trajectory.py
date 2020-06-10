@@ -1015,6 +1015,9 @@ class _MOMENTS():
         elif len(args) == 1:
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if fmt == 'bz2':
+                kwargs.update({'bz2': True})
+                fmt = fn.split('.')[-2]
             self._fmt = fmt
             self._fn = fn
             if self._type == 'frame':
@@ -1030,6 +1033,7 @@ class _MOMENTS():
                 data, symbols, comments = xyzReader(fn,
                                                     **_extract_keys(kwargs,
                                                                     range=_fr,
+                                                                    bz2=False,
                                                                     )
                                                     )
 
@@ -1038,7 +1042,7 @@ class _MOMENTS():
                 fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
+                        'symbols': cpmd_kinds_from_file(fn, **kwargs)
                         })
                 data_dict = cpmdReader(fn, **kwargs)
                 self._data_dict = data_dict
@@ -1213,6 +1217,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             fn = args[0]
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if fmt == 'bz2':
+                kwargs.update({'bz2': True})
+                fmt = fn.split('.')[-2]
 
             if self._fmt == "xyz":
                 self._gen = _xyzIterator(fn, **kwargs)
@@ -1225,7 +1232,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
+                        'symbols': cpmd_kinds_from_file(fn, **kwargs)
                         })
                 self._gen = _cpmdIterator(fn, **kwargs)
 
@@ -1422,6 +1429,9 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             fn = args[0]
             self._fn = fn
             self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+            if fmt == 'bz2':
+                kwargs.update({'bz2': True})
+                fmt = fn.split('.')[-2]
 
             # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or 'MOMENTS' in fn:
@@ -1431,7 +1441,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                         _warnings.filterwarnings('ignore',
                                                  category=UserWarning)
                         kwargs.update({
-                            'symbols': cpmd_kinds_from_file(fn)
+                            'symbols': cpmd_kinds_from_file(fn, **kwargs)
                             })
                 self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
 

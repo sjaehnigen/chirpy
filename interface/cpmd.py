@@ -24,6 +24,7 @@ import copy
 
 from ..physics import constants
 from ..read.coordinates import cpmdIterator
+from ..read.generators import _open
 from ..write.coordinates import xyzWriter
 
 # SECTION > KEYWORD > ( <list of ARGUMENTS>, <next line (optional)> )
@@ -206,7 +207,7 @@ def cpmd_kinds_from_file(fn):
 
     warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
                   stacklevel=2)
-    with open(fn, 'r') as _f:
+    with _open(fn, 'r') as _f:
         _i = 1
         _fr = _f.readline().strip().split()[0]
         try:
