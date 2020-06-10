@@ -1216,10 +1216,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         elif len(args) == 1:
             fn = args[0]
             self._fn = fn
-            self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
                 kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
+            self._fmt = fmt
 
             if self._fmt == "xyz":
                 self._gen = _xyzIterator(fn, **kwargs)
@@ -1428,10 +1429,11 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         elif len(args) == 1:
             fn = args[0]
             self._fn = fn
-            self._fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
                 kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
+            self._fmt = fmt
 
             # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or 'MOMENTS' in fn:
