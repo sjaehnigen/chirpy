@@ -269,7 +269,7 @@ _cpmd_keyword_logic = {
         'CG-FACTOR': ([], float),
         'NMR': (['NOVIRT', 'PSI0', 'CURRENT'], None),
         'MAGNETIC': (['VERBOSE'], None),
-        'VOA': (['MD', 'CURRENT', 'ORBITALS', 'DENSITY', 'HALFMESH'], None),
+        'VOA': (['AT', 'MD', 'CURRENT', 'ORBITALS', 'DENSITY', 'HALFMESH'], None),
         'EPR': ([], [str, str]),
         'POLAK': ([], None),
     },

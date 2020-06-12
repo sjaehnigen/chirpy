@@ -218,14 +218,15 @@ class _ITERATOR():
         self.__init__(self._fn, **self._kwargs)
 
     def _unwind(self, *args, **kwargs):
-        '''Unwinds the Iterator until it is exhausted constantly
-           executing the given frame-owned function and passing
+        '''Unwinds the Iterator according to <length> or until it is exhausted
+           constantly executing the given frame-owned function and passing
            through given arguments.
            Events are dictionaries with (relative) frames
            as keys and some action as argument that are only
            executed when the Iterator reaches the value of the
            key.
-           This can partially also be done with masks.'''
+           (This can partially also be done with masks.)
+           '''
         func = kwargs.pop('func', None)
         events = kwargs.pop('events', {})
         length = kwargs.pop('length', None)

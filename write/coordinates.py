@@ -97,7 +97,7 @@ Output: None"""
     format += '%6.2f%6.2f % 12s\n'
     n_atoms = len(symbols)
     obuffer = 'TITLE     %s\n' % title
-    obuffer += 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1%12d\n' % (
+    obuffer += 'CRYST1%9.5f%9.5f%9.5f%7.3f%7.3f%7.3f P 1%12d\n' % (
                                                                box[0],
                                                                box[1],
                                                                box[2],
