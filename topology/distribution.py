@@ -18,21 +18,31 @@
 
 import numpy as np
 
-from .mapping import detect_lattice
+from .mapping import distance_pbc, cell_volume
 from ..mathematics.algebra import rotation_matrix
 
 
-def radial_distribution_function(DS, DO, cell_au_deg=None, **kwargs):
-    '''DS/O ... source/origin data
+def radial_distribution_function(positions,
+                                 origins,
+                                 cell=None,
+                                 rng=(0.1, 10),
+                                 bins=100,
+                                 half_vector=None):
+    '''Compute the normalised radial distribution function (RDF).
+       Array of positions ((n_frames, n_particles, 3)) is evaluated
+       against an array of origins ((n_frames, n_origins, 3)).
        '''
-    n_frames, n_O, three = DO.shape
-    h_v = kwargs.get('half_vector', None)  # BETA: still testing this option
-    del kwargs['half_vector']
+    n_frames, n_O, three = origins.shape
 
-    def _rdf(_P, rng=(0.1, 10), bins=100):
+    if cell is not None:
+        volume = cell_volume(cell)
+    else:
+        volume = 1.0
+
+    def _rdf(_P, rng, bins):
         '''RDF kernel.
-           pos of shape (n_frames,n_particles,3)
-           ref integer of reference particle'''
+           _P … positions of shape (n_frames, n_particles, 3)
+           '''
 
         R = np.linspace(rng[0], rng[1], bins)
         rdf = np.histogram(
@@ -47,10 +57,8 @@ def radial_distribution_function(DS, DO, cell_au_deg=None, **kwargs):
 
         return rdf
 
-    def get_P(s, o, _hv=None):
-        _P = s - o[:, None]
-        if detect_lattice(cell_au_deg) is not None:
-            _P -= np.around(_P/cell_au_deg) * cell_au_deg
+    def get_P(s, o, _hv=None, cell=cell):
+        _P = distance_pbc(o[:, None], s, cell=cell)
 
         if _hv is not None:  # beta
             ind = np.array([
@@ -64,17 +72,27 @@ def radial_distribution_function(DS, DO, cell_au_deg=None, **kwargs):
                     ).swapaxes(0, 1) for _v, _p in zip(_hv, _P)
             ])
             _P = _P[ind[:, :, 2] > 0]  # returns flattened first 2 dims
+
         return np.linalg.norm(_P, axis=-1)  # .flatten() #auto-flattening?
 
     # --- norm to n_frames and density
-    _wg = n_O * DS.shape[0] * DS.shape[1] / np.prod(cell_au_deg)
+    _wg = n_O * positions.shape[0] * positions.shape[1] / volume
 
-    if h_v is not None:
-        return np.sum([_rdf(get_P(DS, DO[:, _o], _hv=h_v[:, _o]), **kwargs)
+    if half_vector is not None:
+        return np.sum([_rdf(get_P(positions,
+                                  origins[:, _o],
+                                  cell=cell,
+                                  _hv=half_vector[:, _o]),
+                            rng,
+                            bins)
                        for _o in range(n_O)], axis=0) / _wg * 2
 
     else:
-        return np.sum([_rdf(get_P(DS, DO[:, _o]), **kwargs)
+        return np.sum([_rdf(get_P(positions,
+                                  origins[:, _o],
+                                  cell=cell),
+                            rng,
+                            bins)
                        for _o in range(n_O)], axis=0) / _wg
 
 

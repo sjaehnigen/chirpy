@@ -94,15 +94,21 @@ def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
     return cell_vec
 
 
-def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
+def cell_volume(cell, n_fields=3):
+    cell_vec = get_cell_vec(cell, n_fields=n_fields)
+
+    return np.dot(cell_vec[0], np.cross(cell_vec[1], cell_vec[2]))
+
+
+def detect_lattice(cell, priority=(0, 1, 2)):
     '''Obtain lattice system from cell measures.
        Does not care of axis order priority.
        (Beta)'''
-    if cell_aa_deg is None or np.any(cell_aa_deg == 0.):
+    if cell is None or np.any(cell == 0.):
         _warnings.warn("Got empty cell!", RuntimeWarning, stacklevel=2)
         return None
 
-    abc, albega = cell_aa_deg[:3], cell_aa_deg[3:]
+    abc, albega = cell[:3], cell[3:]
     _a = np.invert(np.diff(abc).astype(bool))
     _b = np.invert(np.diff(albega).astype(bool))
 
@@ -130,31 +136,31 @@ def detect_lattice(cell_aa_deg, priority=(0, 1, 2)):
         return 'triclinic'
 
 
-def wrap(pos_aa, cell_aa_deg):
-    '''pos_aa: shape ([n_frames,] n_atoms, three)
+def wrap(positions, cell):
+    '''positions: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
-    lattice = detect_lattice(cell_aa_deg)
+    lattice = detect_lattice(cell)
     if lattice is not None:
         # python3.8: use walrus
         if lattice in ['cubic', 'orthorhombic', 'tetragonal']:
             # --- fast
-            return pos_aa - np.floor(pos_aa/cell_aa_deg[:3]) * cell_aa_deg[:3]
+            return positions - np.floor(positions/cell[:3]) * cell[:3]
 
         else:
             # --- more expensive (ToDo: optimise tensordot, ceb; has np.cross)
-            cell_vec_aa = get_cell_vec(cell_aa_deg)  # checked: inexpensive
-            return pos_aa - np.tensordot(np.floor(ceb(pos_aa, cell_vec_aa)),
-                                         cell_vec_aa,
-                                         axes=1
-                                         )
+            cell_vec = get_cell_vec(cell)  # checked: inexpensive
+            return positions - np.tensordot(np.floor(ceb(positions, cell_vec)),
+                                            cell_vec,
+                                            axes=1
+                                            )
     else:
-        return pos_aa
+        return positions
 
 
 def distance_pbc(p0, p1, cell=None):
     '''p1 – p0 with or without periodic boundaries
-       accepts cell_aa_deg argument
+       accepts cell argument (a b c al be ga)
        length units need not be in angstrom, but
        have to be consistent between p0, p1, and
        cell.

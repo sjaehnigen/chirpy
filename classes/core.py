@@ -49,7 +49,8 @@ class _PALARRAY():
 
     def __init__(self, func, *data, repeat=1,
                  n_cores=multiprocessing.cpu_count(),
-                 upper_triangle=False):
+                 upper_triangle=False,
+                 axis=0):
         '''Parallel array process setup.
            With executable func(*args) and set of data arrays, data,
            whereas len(data) = len(args).
@@ -61,9 +62,13 @@ class _PALARRAY():
 
         self.f = func
         self.pool = Pool(n_cores)
-        self.data = data
+
+        self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])
         self._ut = False
         self.repeat = repeat
+
+        # ToDo: memory warning:
+        # print(np.prod([len(_d) for _d in self.data]))
 
         if upper_triangle:
             self._ut = True
@@ -88,7 +93,8 @@ class _PALARRAY():
 
             else:
                 return result.reshape(tuple(self.repeat
-                                            * [len(_d) for _d in self.data]))
+                                            * [len(_d) for _d in self.data])
+                                      + (-1,))
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt in _PALARRAY")
