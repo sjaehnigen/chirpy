@@ -17,7 +17,6 @@
 
 
 import numpy as np
-from scipy import signal
 from ..physics import constants
 
 
@@ -88,7 +87,7 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
         raise Exception('Filter %s not supported!' % filter_type)
 
 
-def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
+def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
     '''Calculate the time-correlation function (TCF) of a signal and
        using the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-
@@ -96,6 +95,7 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
        Adding signal filters (Welch) may be enabled; use flt_pow=-1 to remove
        the implicit triangular filter due to finite size.
        Expects signal of shape (n_frames, n_dim)
+       sum … sum over <n_dim> dimensions
        Returns:
         1 - time-correlation function (timestep as in input)
        '''
@@ -131,10 +131,10 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
                          % (len(_sh1), _sh1))
 
     def _corr(_val1, _val2, cc_mode='AB'):
-        _sig = np.array([signal.fftconvolve(
+        _sig = np.array([np.correlate(
                                   v1,
-                                  v2[::-1],
-                                  mode='full'
+                                  v2,
+                                  mode='full',
                                   )
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
 
@@ -146,7 +146,7 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
         if 'C' in cc_mode:
             R -= _sig[:n_frames][::-1]
         if cc_mode == 'AB':
-            R /= 2
+            R = R / 2.
 
         return R
 
@@ -159,18 +159,19 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB'):
     # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
     R = _corr(val1, val2, cc_mode)
 
-    R = R.sum(axis=1)
-
     # --- filtering
     if flt_pow > 0:
         _filter = signal_filter(n_frames, filter_type='welch') ** flt_pow
-        R *= _filter
+        R *= _filter[:, None]
 
     elif flt_pow == -1:
-        # --- remove implicit size-dependent triangular filter
-        R /= (n_frames * np.ones(n_frames) - (np.arange(n_frames)-1))
+        # --- remove implicit size-dependent triangular filter (finite size)
+        R /= (n_frames * np.ones(n_frames) - (np.arange(n_frames)-1))[:, None]
 
-    return R
+    if not sum_dims:
+        return R
+    else:
+        return R.sum(axis=1)
 
 
 def spectral_density(*args, ts=1, factor=1, **kwargs):

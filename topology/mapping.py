@@ -22,7 +22,7 @@ import warnings as _warnings
 
 from ..physics import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..mathematics.algebra import kabsch_algorithm, rotate_vector
+from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle, signed_angle
 
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
@@ -158,12 +158,22 @@ def wrap(positions, cell):
         return positions
 
 
+def angle_pbc(p0, p1, p2, cell=None, signed=False):
+    '''p0 <– p1 –> p2  with or without periodic boundaries
+       accepts cell argument (a b c al be ga).
+       '''
+    v0 = distance_pbc(p0, p1)
+    v1 = distance_pbc(p2, p1)
+
+    if signed:
+        return signed_angle(v0, v1)
+    else:
+        return angle(v0, v1)
+
+
 def distance_pbc(p0, p1, cell=None):
     '''p1 – p0 with or without periodic boundaries
-       accepts cell argument (a b c al be ga)
-       length units need not be in angstrom, but
-       have to be consistent between p0, p1, and
-       cell.
+       accepts cell argument (a b c al be ga).
        '''
     # actually it does not calculate a "distance"
     _d = p1 - p0
@@ -362,3 +372,35 @@ def find_methyl_groups(pos, symbols, hetatm=False, cell_aa_deg=None):
                      for i in out if len(i[1]) == 3])
 
     print(out)
+
+
+def isHB(*args, **kwargs):
+    return ishydrogenbond(*args, **kwargs)
+
+
+def ishydrogenbond(positions, donor, acceptor, hydrogen,
+                   cell=None,
+                   dist_crit=3.0,
+                   angle_crit=130):
+    '''Returns a bool / an array of bools stating if there is a
+       hydrogen bond (HB) between donor and acceptor (heavy atoms).
+
+       positions … position arrays of shape ([n_frames, ]n_atoms, 3)
+       donor/acceptor … atom indices of heavy atoms donating/accepting HBs
+       hydrogen … indices of the (sub)set of hydrogen atoms
+       '''
+
+    # Todo: add frame dim ?
+    # donor, acceptor, hdrogen: must not be list
+
+    _dist_da = distance_matrix(positions[donor], positions[acceptor],
+                               cell=cell)
+    _eligible = _dist_da <= dist_crit
+
+    # angle with pbc support! 
+    for _d, _a in zip(*np.argwhere(_eligible)):
+       pass
+
+    # check if there is an H atom inbewteen
+    _dist_dh = distance_matrix(positions[donor], positions[hydrogen])
+    _dist_ah = distance_matrix(positions[acceptor], positions[hydrogen])
