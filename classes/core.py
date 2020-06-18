@@ -92,9 +92,7 @@ class _PALARRAY():
                 return res_result
 
             else:
-                return result.reshape(tuple(self.repeat
-                                            * [len(_d) for _d in self.data])
-                                      + (-1,))
+                return result
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt in _PALARRAY")

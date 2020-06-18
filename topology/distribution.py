@@ -20,6 +20,7 @@ import numpy as np
 
 from .mapping import distance_pbc, cell_volume
 from ..mathematics.algebra import rotation_matrix
+from ..classes import core
 
 
 def radial_distribution_function(positions,
@@ -76,24 +77,36 @@ def radial_distribution_function(positions,
         return np.linalg.norm(_P, axis=-1)  # .flatten() #auto-flattening?
 
     # --- norm to n_frames and density
-    _wg = n_O * positions.shape[0] * positions.shape[1] / volume
+    _wg = positions.shape[0] * positions.shape[1] / volume
+
+    global func
 
     if half_vector is not None:
-        return np.sum([_rdf(get_P(positions,
-                                  origins[:, _o],
-                                  cell=cell,
-                                  _hv=half_vector[:, _o]),
-                            rng,
-                            bins)
-                       for _o in range(n_O)], axis=0) / _wg * 2
+        def func(x):
+            return _rdf(
+                     get_P(
+                        positions,
+                        origins[:, x],
+                        cell=cell,
+                        _hv=half_vector[:, x]
+                        ),
+                     rng,
+                     bins
+                    ) / _wg * 2
 
     else:
-        return np.sum([_rdf(get_P(positions,
-                                  origins[:, _o],
-                                  cell=cell),
-                            rng,
-                            bins)
-                       for _o in range(n_O)], axis=0) / _wg
+        def func(x):
+            return _rdf(
+                     get_P(
+                        positions,
+                        origins[:, x],
+                        cell=cell,
+                        ),
+                     rng,
+                     bins
+                    ) / _wg
+
+    return np.mean(core._PALARRAY(func, range(n_O)).run(), axis=0)
 
 
 def rdf(*args, **kwargs):

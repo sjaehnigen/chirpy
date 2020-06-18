@@ -22,7 +22,8 @@ import warnings as _warnings
 
 from ..physics import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle, signed_angle
+from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
+        signed_angle
 
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
@@ -162,8 +163,8 @@ def angle_pbc(p0, p1, p2, cell=None, signed=False):
     '''p0 <– p1 –> p2  with or without periodic boundaries
        accepts cell argument (a b c al be ga).
        '''
-    v0 = distance_pbc(p0, p1)
-    v1 = distance_pbc(p2, p1)
+    v0 = distance_pbc(p0, p1, cell)
+    v1 = distance_pbc(p2, p1, cell)
 
     if signed:
         return signed_angle(v0, v1)
@@ -385,22 +386,50 @@ def ishydrogenbond(positions, donor, acceptor, hydrogen,
     '''Returns a bool / an array of bools stating if there is a
        hydrogen bond (HB) between donor and acceptor (heavy atoms).
 
-       positions … position arrays of shape ([n_frames, ]n_atoms, 3)
+       positions … position array of shape (n_atoms, 3)
        donor/acceptor … atom indices of heavy atoms donating/accepting HBs
        hydrogen … indices of the (sub)set of hydrogen atoms
+
+       dist_crit … float in units of positions
+       angle_crit … float in degrees
+
+       returns: bool array of shape (n_donors, n_acceptors)
        '''
 
-    # Todo: add frame dim ?
-    # donor, acceptor, hdrogen: must not be list
+    _angle_crit = angle_crit / 180 * np.pi
+
+    if len(positions.shape) != 2:
+        raise ValueError('Expected shape length 2 for positions, got %s: %s'
+                         % (len(positions.shape), positions.shape))
+
+    # --- sinussatz für maximale O-H-O-Kette
+    dist_crit_dha = dist_crit / np.sin(_angle_crit) \
+        * np.sin((np.pi - _angle_crit) / 2) * 2
 
     _dist_da = distance_matrix(positions[donor], positions[acceptor],
                                cell=cell)
     _eligible = _dist_da <= dist_crit
 
-    # angle with pbc support! 
-    for _d, _a in zip(*np.argwhere(_eligible)):
-       pass
+    # --- loop over eligible pairs and find H atom
+    answer = np.zeros((len(donor), len(acceptor))).astype(bool)
 
-    # check if there is an H atom inbewteen
-    _dist_dh = distance_matrix(positions[donor], positions[hydrogen])
-    _dist_ah = distance_matrix(positions[acceptor], positions[hydrogen])
+    for _d, _a in np.argwhere(_eligible):
+        _ai = acceptor[_a]
+        _di = donor[_d]
+
+        _dist_dah = distance_matrix(positions[[_di, _ai]], positions[hydrogen],
+                                    cell=cell)
+        _pre_h = np.argwhere(_dist_dah[0] <= dist_crit_dha / 2.).flatten()
+
+        if len(_pre_h) == 0:
+            _warnings.warn('No hydrogen atom found at donor %d' % _di)
+
+        _h = np.argmin(_dist_dah[1, _pre_h])
+        _hi = hydrogen[_pre_h][_h]
+
+        if _dist_dah[:, _pre_h[_h]].sum(axis=0) <= dist_crit_dha:
+            _angle_dah = angle_pbc(*positions[[_di, _hi, _ai]], cell=cell)
+            if _angle_dah >= _angle_crit:
+                answer[_d, _a] = True
+
+    return answer

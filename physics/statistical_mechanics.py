@@ -124,6 +124,7 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
         n_frames, = _sh1
         val1 = val1.reshape((n_frames, 1))
         val2 = val2.reshape((n_frames, 1))
+
     elif len(_sh1) == 2:
         n_frames, n_dim = val1.shape
     else:
