@@ -236,10 +236,30 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
        '''
     symbols = np.array(symbols)
     dist_array = distance_matrix(pos_aa, cell=cell_aa_deg)
+    # ToDo: use diagonal method of numpy
     dist_array[dist_array == 0.0] = 'Inf'
+    # --- ToDo: Do valency check instead
+
+    # --- clean matrix for hydrogen atoms
+    _hind = symbols == 'H'
+    _hmin = np.argmin(dist_array[_hind], axis=-1)
+    dist_array[_hind] = 'Inf'
+    dist_array[:, _hind] = 'Inf'
+    dist_array[_hind, _hmin] = 0.0
     crit_aa = dist_crit_aa(symbols)
 
     return dist_array <= crit_aa
+
+
+def connectivity(pos_aa, symbols, cell_aa_deg=None):
+    '''For each atom return covalently bound neighbours.
+       pos_aa:       np.array of shape (n_atoms, three) in angstrom
+       symbols:      tuple of length n_atoms containing element symbols
+       cell_aa_deg:  cell parametres (1 b c al be ga) in angstrom/degrees
+                     (optional)
+    '''
+    neighs = neighbour_matrix(pos_aa, symbols, cell_aa_deg=cell_aa_deg)
+    return np.array([np.argwhere(_n).ravel() for _n in neighs])
 
 
 def join_molecules(pos_aa, mol_map, cell_aa_deg, weights=None):
@@ -433,3 +453,104 @@ def ishydrogenbond(positions, donor, acceptor, hydrogen,
                 answer[_d, _a] = True
 
     return answer
+
+
+def guess_atom_types(pos_aa,
+                     symbols,
+                     cell_aa_deg=None,
+                     classification='integer',
+                     similarity='connectivity',
+                     order=1):
+    '''Define atom types and assign them to each atom using similarity kernel
+       (default: connectivity).
+       Atom types can be arbitrary integers (default) or actual pre-defined
+       types as used by common force fields (NOT YET IMPLEMENTED).
+
+       pos_aa:       np.array of shape (n_atoms, three) in angstrom
+       symbols:      tuple of length n_atoms containing element symbols
+       cell_aa_deg:  cell parametres (1 b c al be ga) in angstrom/degrees
+                     (optional)
+
+       Return:       tuple of atom types
+    '''
+    if classification != 'integer':
+        raise NotImplementedError('Only integer classification supported!')
+
+    # duplicate of method in dissection; ToDo: externalise/unify method
+    # (and rename it)
+    def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
+        '''This method can do more than molecules! See BoxObject
+        molecule … assignment
+        n_mol … species counter
+        n_atoms … total number of entries
+        neigh_map … list of neighbour atoms per atom
+        atom … current line in reading neighbour map
+        atom_count … starts with n_atoms until zero
+        '''
+        molecule[atom] = n_mol
+        atom_count -= 1
+        for _i in neigh_map[atom]:
+            if molecule[_i] == 0:
+                molecule, atom_count = assign_molecule(
+                    molecule,
+                    n_mol,
+                    n_atoms,
+                    neigh_map,
+                    _i,
+                    atom_count
+                    )
+                # print(atom_count)
+            if atom_count == 0:
+                break
+        return molecule, atom_count
+
+    def assign_types(character, kernel):
+        '''general evaluation of similarity kernel'''
+        similarity = np.array([[_i for _i, _ch1 in enumerate(character)
+                                if _ch1 == _ch0]
+                               for _ch0 in character])
+        n_types = 0
+        n_atoms = atom_count = len(character)
+
+        atom_types = np.zeros((n_atoms)).astype(int)
+
+        for atom in range(n_atoms):
+            if atom_types[atom] == 0:
+                n_types += 1
+                atom_types, atom_count = assign_molecule(atom_types,
+                                                         n_types,
+                                                         n_atoms,
+                                                         similarity,
+                                                         atom,
+                                                         atom_count)
+            if atom_count == 0:
+                break
+
+        return atom_types
+
+    if similarity == 'connectivity':
+        _core = connectivity(pos_aa, symbols, cell_aa_deg=cell_aa_deg)
+
+        _character = [(_s,) for _s in symbols]
+        if order > 0:
+            _character = [_ch + tuple(sorted(np.array(symbols)[_s]))
+                          for _ch, _s in zip(_character, _core)]
+        if order > 1:
+            _character = [_ch + tuple(sorted(
+                                        [tuple(sorted(np.array(symbols)[_ss]))
+                                         for _ss in _core[_s]]
+                                        ))
+                          for _ch, _s in zip(_character, _core)]
+
+        def _kernel(x, y):
+            return x == y
+
+    elif similarity == 'SOAP':
+        raise NotImplementedError('SOAP kernels are not yet supported!')
+
+    else:
+        raise ValueError('Unknown similarity kernel: %s' % similarity)
+
+    atom_types = assign_types(_character, _kernel)
+
+    return atom_types

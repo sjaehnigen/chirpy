@@ -148,6 +148,7 @@ class _BoxObject(_CORE):
         self._sync_class()
 
     def __add__(self, other):
+        '''Combine members of different systems'''
         if not isinstance(other, _BoxObject):
             raise TypeError('unsupported operand type(s) for +: '
                             '\'%s\' and \'%s\''
@@ -164,6 +165,7 @@ class _BoxObject(_CORE):
         # Later: choose largest cell param and lowest symmetry
 
     def __mul__(self, other):
+        '''Multiply system keeping box size constant'''
         new = _copy.deepcopy(self)
         if isinstance(other, int):
             for _i in range(other-1):
@@ -176,6 +178,7 @@ class _BoxObject(_CORE):
         return new
 
     def __pow__(self, other):
+        '''Multiply system and scale box accordingly'''
         _warnings.warn('Power in beta state. Proceed with care!',
                        stacklevel=2)
         if not isinstance(other, int):

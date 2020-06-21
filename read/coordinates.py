@@ -70,16 +70,29 @@ def _cpmd(frame, **kwargs):
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
-# --- This does currently not work (missing next() call)
-#     if filetype == 'GEOMETRY':
-#         return np.array([_l.strip().split() for _l in frame]).astype(float)
-#
-#     elif filetype in ['TRAJECTORY', 'MOMENTS']:
-#         return np.array([_l.strip().split()[1:]
-#                          for _l in frame]).astype(float)
-#
-#     else:
-#         raise ValueError('Unknown CPMD filetype %s' % filetype)
+
+def _arc(frame, **kwargs):
+    '''Kernel for processing xyz frame.'''
+
+    _head = next(frame).strip().split()
+    _atomnumber = int(_head[0])
+    comment = ' '.join(_head[1:])
+
+    if kwargs.get('n_lines') != _atomnumber + 1:
+        raise ValueError('Inconsistent XYZ file!')
+
+    _split = (_l.strip().split() for _l in frame)
+
+    numbers, symbols, data, types, connectivity =\
+        zip(*[(int(_l[0]), _l[1], _l[2:5], int(_l[5]), list(map(int, _l[6:])))
+              for _l in _split])
+
+    if len(data) != kwargs.get("n_lines") - 1:
+        raise ValueError('Tried to read broken or incomplete file!')
+
+    return np.array(data).astype(float), symbols, numbers, types,\
+        connectivity, comment
+
 
 # --- iterators
 
@@ -113,15 +126,40 @@ def cpmdIterator(FN, **kwargs):
 
     return _reader(FN, _nlines, _kernel, **kwargs)
 
+
+def arcIterator(FN, **kwargs):
+    '''Iterator for arcReader
+       Usage: next() returns data, symbols, numbers, types, and connectivity
+       of current frame'''
+    _kernel = _arc
+
+    with _open(FN, 'r', **kwargs) as _f:
+        _nlines = int(_f.readline().strip().split()[0]) + 1
+
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
+
 # --- complete readers
 
 
 def xyzReader(FN, **kwargs):
-    '''Read complete XYZ file at once.abs
+    '''Read complete XYZ file at once.
        Returns data, symbols, comments of current frame'''
     data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
     return np.array(data), symbols[0], list(comments)
 
+
+def arcReader(FN, **kwargs):
+    '''Read complete ARC file at once.
+       Returns data, symbols, numbers, types, and connectivity
+       of current frame'''
+    data, symbols, numbers, types, connectivity, comments =\
+        zip(*arcIterator(FN, **kwargs))
+
+    # --- FUTURE: support of changes in type or connectivity (if Tinker
+    # supports it)
+    return np.array(data), symbols[0], numbers[0], types[0], connectivity[0],\
+        list(comments)
 
 # ------ external readers
 

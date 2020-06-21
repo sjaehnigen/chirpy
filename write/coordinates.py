@@ -24,8 +24,7 @@ def _write_xyz_frame(filename, data, symbols, comment, append=False):
         3. symbols: list of atom symbols (contains strings)
         4. comment line (string)
         5. append: Append to file (optional, default = False)
-Output: None"""
-    # OLD section to be integrated with xyzWriter
+    Output: None"""
 
     format = '  %s'
     # print(data.shape, data.shape[1])
@@ -70,6 +69,74 @@ def xyzWriter(fn, data, symbols, comments, append=False):
         for fr in range(n_frames):
             _write_xyz_frame(fn, data[fr], symbols,
                              comments[fr], append=append or fr != 0)
+
+    else:
+        raise AttributeError('Wrong data shape!', data.shape)
+
+
+def _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
+                     comment=None, append=False):
+    """
+    Input:
+        1. fn: File to write to
+        2. data: np.array of shape (#atoms, #fields/atom)
+        3. symbols: list of atom symbols (contains strings)
+        4. numbers
+        5. types
+        6. connectivity
+        7. append: Append to file (optional, default = False)
+
+    Return: None"""
+    # --- kwargs for additional header lines (crystal etc.)
+
+    # --- header
+    n_atoms = len(symbols)
+    obuffer = '{:>6d}'.format(n_atoms)
+    if comment is not None:
+        obuffer += f'  {comment}'
+    obuffer += '\n'
+
+    # --- corpus
+
+    for _n, _s, _d, _t, _c in zip(numbers, symbols, data, types, connectivity):
+        _line = '{:>6d}  {:3s}' + 3 * '{:>12.6f}' + '{:>6d}' +\
+            len(_c)*'{:>6d}' + '\n'
+        obuffer += _line.format(_n, _s, *_d, _t, *_c)
+
+    # --- type
+    fmt = 'w'
+    if append:
+        fmt = 'a'
+    with open(fn, fmt) as f:
+        f.write(obuffer)
+
+
+def arcWriter(fn, data, symbols, numbers, types, connectivity,
+              comments=None, append=False):
+    """
+       Input:
+        1. fn: File to write to
+        2. data: np.array of shape (#atoms, #fields/atom)
+        3. symbols: list of atom symbols (contains strings)
+        4. numbers
+        5. types
+        6. connectivity
+        7. append: Append to file (optional, default = False)
+
+        Return: None"""
+
+    if len(data.shape) == 2:
+        # ---frame
+        _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
+                         comment=comments, append=append)
+
+    elif len(data.shape) == 3:
+        # --- trajectory
+        n_frames = len(data)
+        for fr in range(n_frames):
+            _write_arc_frame(fn, data[fr], symbols, numbers, types,
+                             connectivity, comment=comments[fr],
+                             append=append or fr != 0)
 
     else:
         raise AttributeError('Wrong data shape!', data.shape)
