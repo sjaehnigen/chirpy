@@ -44,6 +44,7 @@ def current_dipole_moment(vel_au, charges):
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au, **kwargs):
+    # in atomic units (NO cgs convention)
     if len(c_au.shape) == 2:
         return 0.5 * np.sum(eijk[None, :, :, :]
                             * trans_au[:, :, None, None]
@@ -71,6 +72,7 @@ def switch_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
 
        Returns: An updated array of m_au
        '''
+   # in atomic units (NO cgs convention)
     if len(o_a_au.shape) == 1:
         o_a_au = np.tile(o_a_au.shape, (c_au.shape[0], 1))
 
@@ -106,25 +108,25 @@ def coulomb_kspace(rho, cell_au, voxel):
 
 def biot_savart(r0, r, j, thresh=1.E-8):
     '''r...shape(N, ..., 3)'''
-    # in atomic units using cgs convention for B field (µ0 = 1/c)
+    # in atomic units using cgs convention for B field would be: µ0/4*pi = 1/c
+    # here we use au w/o cgs : µ0/4*pi = 1/c**2
     d = r0 - r
     d3 = np.linalg.norm(d, axis=-1)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))
     B = np.cross(j, d, axisa=-1, axisb=-1, axisc=-1) * d3_inv[:, None]
-    return B / constants.c_au
+    return B / constants.c_au**2
 
 
 def biot_savart_grid(r, j, pos_grid, voxel, thresh=1.E-8):
     '''r...shape(3, ..., N)'''
-    # in atomic units using cgs convention for B field (µ0 = 1/c)
     d = r[:, None, None, None]-pos_grid
     d3 = np.linalg.norm(d, axis=0)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))
     B = np.cross(j, d, axisa=0, axisb=0, axisc=0) * d3_inv[None] * voxel
     B = B.sum(axis=(1, 2, 3))
-    return B / constants.c_au
+    return B / constants.c_au**2
 
 
 def biot_savart_kspace(j, cell_au, voxel):
@@ -138,4 +140,4 @@ def biot_savart_kspace(j, cell_au, voxel):
     # this 4 pi division should be done in kspace binary already?
 
     # G == 0 ???
-    return B * voxel / constants.c_au  # *2??
+    return B * voxel / constants.c_au**2

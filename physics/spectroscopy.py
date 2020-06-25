@@ -26,29 +26,41 @@ from ..physics import constants
 from ..classes.object import Sphere
 
 
-def absorption_from_transition_moments(etdm_au):
-    '''absorption in km/mol'''
-    return (etdm_au ** 2).sum(axis=-1) * constants.IR_au2kmpmol
+def absorption_from_transition_moment(etdm_au, freq_au, T_K=300):
+    '''absorption in a.u'''
+    return (etdm_au ** 2).sum(axis=-1) *\
+        constants.dipole_dipole_prefactor_au(T_K, freq_au * 2 * np.i)
 
 
-def power_from_tcf(velocities, **kwargs):
-    '''Expects data of shape (n_frames, n_atoms, three)
+def power_from_tcf(velocities, weights=1.0, **kwargs):
+    '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
+
+       Expects atomic units for the correct prefactors.
+
+       ts ... timestep in a.u.
+
        The output is averaged over the no. of atoms/species.
-       Optionally returns time-correlation function (return_tcf=True).
+       Returns dictionary with (all in a.u.):
+         "f"             - discrete sample frequencies
+         "power"         - spectral density (FT TCF) in <energy>
+                           (for weights in <mass>)
+         "tcf_power"     - time-correlation function (TCF)
        '''
     n_frames, n_atoms, three = velocities.shape
-    wgh = kwargs.pop('weights', np.ones(n_atoms))
-    r_tcf = kwargs.pop('return_tcf', False)
-    wgh = np.array(wgh)
-    omega, S, R = zip(*[spectral_density(_v, **kwargs)
-                        for _v in velocities.swapaxes(0, 1)])
+
+    if not hasattr(weights, '__len__'):
+        wgh = np.ones(n_atoms) * weights
+    else:
+        wgh = np.array(weights)
+
+    f, S, R = zip(*[spectral_density(_v, **kwargs)
+                    for _v in velocities.swapaxes(0, 1)])
 
     data = {}
     data['power'] = (np.array(S) * wgh[:, None]).sum(axis=0) / n_atoms
-    data['omega'] = omega[0]
-    if r_tcf:
-        data['tcf_velocities'] = np.array(R).sum(axis=0) / n_atoms
+    data['f'] = f[0]
+    data['tcf_power'] = np.array(R).sum(axis=0) / n_atoms
 
     return data
 
@@ -63,14 +75,15 @@ def absorption_from_tcf(*args, **kwargs):
        the positions of kinds of the same shape is required.
        No support of trajectory iterators.
 
-       Expects atomic units (but it is not mandatory).
+       Expects atomic units for the correct prefactors.
 
-       ts ... timestep
+       ts ... timestep in a.u.
 
-       Returns dictionary with:
-         "omega"       - discrete sample frequencies
-         "abs"         - spectral density (FT TCF)
-         "tcf_abs"     - time-correlation function (TCF)
+       Returns dictionary with (all in a.u.):
+         "freq"             - discrete sample frequencies
+         "abs"/"cd"         - spectral density (FT TCF) in
+                              <distance**2> = 1 / (<distance> * <density>)
+         "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
     kwargs.update({'mode': 'abs'})
     return _spectrum_from_tcf(*args, **kwargs)
@@ -88,20 +101,34 @@ def circular_dichroism_from_tcf(*args, **kwargs):
        the positions of kinds of the same shape is required.
        No support of trajectory iterators.
 
-       Expects atomic units (but it is not mandatory).
+       Expects atomic units for the correct prefactors.
 
-       ts ... timestep
+       ts ... timestep in a.u.
 
-       Returns dictionary with:
-         "omega"      - discrete sample frequencies
-         "cd"         - spectral density (FT TCF)
-         "tcf_cd"     - time-correlation function (TCF)
+       Returns dictionary with (all in a.u.):
+         "freq"             - discrete sample frequencies
+         "abs"/"cd"         - spectral density (FT TCF) in
+                              <distance**2> = 1 / (<distance> * <density>)
+         "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
     kwargs.update({'mode': 'cd'})
     return _spectrum_from_tcf(*args, **kwargs)
 
 
-def _spectrum_from_tcf(*args, **kwargs):
+def _spectrum_from_tcf(*args,
+                       T_K=300,
+                       mode='abs_cd',
+                       origin=np.zeros((3)),
+                       cell_au_deg=None,
+                       positions=None,
+                       return_moments=False,
+                       gauge_transport=True,
+                       cutoff=None,
+                       cutoff_bg=None,
+                       cut_type='soft',
+                       cut_type_bg='hard',
+                       clip_sphere=[],
+                       **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
            1 - current (electric) dipole moments of shape
@@ -117,14 +144,18 @@ def _spectrum_from_tcf(*args, **kwargs):
 
        Expects atomic units (but it is not mandatory).
 
-       ts ... timestep
+       ts ... timestep in a.u.
 
-       Returns dictionary with:
-         "omega"            - discrete sample frequencies
-         "abs"/"cd"         - spectral density (FT TCF)
+       Returns dictionary with (all in a.u.):
+         "freq"             - discrete sample frequencies
+         "abs"/"cd"         - spectral density (FT TCF) in
+                              <distance**2> = 1 / (<distance> * <density>)
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
-    mode = kwargs.pop('mode', 'abs_cd')
+
+    cell = cell_au_deg
+    r_moments = return_moments
+    pos = positions
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
@@ -148,66 +179,57 @@ def _spectrum_from_tcf(*args, **kwargs):
     data = {}
 
     if len(cur_dipoles.shape) == 2:
-        omega, _abs, C_abs = spectral_density(
+        freq, _abs, C_abs = spectral_density(
                                 cur_dipoles,
                                 cur_dipoles,
                                 **kwargs
                                 )
 
-        # _cc = constants.current_current_prefactor(300)
-        _cc = 1.
-        _cm = 4. * omega
+        _cc = constants.current_current_prefactor_au(T_K)
 
         if 'cd' in mode:
             # --- NB: no gauge-transport here!
-            omega, _cd, C_cd = spectral_density(
+            freq, _cd, C_cd = spectral_density(
                                     cur_dipoles,
                                     mag_dipoles,
                                     **kwargs
                                     )
+            _cm = constants.current_magnetic_prefactor_au(T_K, freq*2*np.pi)
             data['cd'] = _cd * _cm
             data['tcf_cd'] = C_cd
 
-        data['omega'] = omega
+        data['freq'] = freq
         data['abs'] = _abs * _cc
         data['tcf_abs'] = C_abs
 
     elif len(cur_dipoles.shape) == 3:
-        r_moments = kwargs.pop('return_moments', False)
-        origin = kwargs.pop('origin', np.zeros((3)))
-        pos = kwargs.pop('positions', None)
-
         if pos is None:
             raise TypeError('Please give positions arguments for moments of '
-                            'shape %s' % cur_dipoles.shape)
-        cell = kwargs.pop('cell_au_deg', None)
+                            f'shape {cur_dipoles.shape}')
 
         # --- map origin on frames if frame dim is missing
         if len(origin.shape) == 1:
             origin = np.tile(origin, (pos.shape[0], 1))
 
         # --- cutoff spheres --------------------------------------------------
-        _clip = kwargs.pop('clip_sphere', [])
-        if not isinstance(_clip, list):
+        if not isinstance(clip_sphere, list):
             raise TypeError('expected list for keyword "clip_sphere%s"!')
 
         # --- master sphere (cutoff) ==> applied ON TOP OF clip spheres
         _cut_sphere = []
-        cutoff = kwargs.pop('cutoff', None)
         if cutoff is not None:
             _cut_sphere.append(Sphere(
                                  origin,
                                  cutoff,
-                                 edge=kwargs.pop('cut_type', 'soft')
+                                 edge=cut_type
                                  ))
 
         _cut_sphere_bg = []
-        cutoff_bg = kwargs.pop('cutoff_bg', None)
         if cutoff_bg is not None:
             _cut_sphere_bg.append(Sphere(
                                     origin,
                                     cutoff_bg,
-                                    edge=kwargs.pop('cut_type_bg', 'hard')
+                                    edge=cut_type_bg
                                     ))
         # ---------------------------------------------------------------------
 
@@ -227,15 +249,15 @@ def _spectrum_from_tcf(*args, **kwargs):
             return np.clip(y, 0, 1) * x
 
         _c = copy.deepcopy(cur_dipoles)
-        _c = _cut(_c, pos, _clip)
+        _c = _cut(_c, pos, clip_sphere)
         _c = _cut(_c, pos, _cut_sphere)
         if 'cd' in mode:
             _m = copy.deepcopy(mag_dipoles)
-            _m = _cut(_m, pos, _clip)
+            _m = _cut(_m, pos, clip_sphere)
             _m = _cut(_m, pos, _cut_sphere)
 
             # --- calculate gauge-transport
-            if kwargs.pop('gauge-transport', True):
+            if gauge_transport:
                 _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
                                          cell_au_deg=cell)
             else:
@@ -250,30 +272,27 @@ def _spectrum_from_tcf(*args, **kwargs):
                 _m_bg = _cut(_m_bg, pos, _cut_sphere_bg, inverse=True)
 
         # --- get spectra
-        # ToDo: sort out prefactors!
         _result = []
         if 'abs' in mode:
-            omega, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
+            freq, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
+            _cc = constants.current_current_prefactor_au(T_K)
             if len(_cut_sphere_bg) != 0:
                 _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
                 _abs -= _tmp[1]
                 C_abs -= _tmp[2]
-            # _cc = constants.current_current_prefactor(300)
-            _cc = 1.
             _result += [_abs*_cc, C_abs]
 
         if 'cd' in mode:
-            omega, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
+            freq, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
+            _cm = constants.current_magnetic_prefactor_au(T_K, freq*2*np.pi)
             if len(_cut_sphere_bg) != 0:
                 _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
                 _cd -= _tmp[1]
                 C_cd -= _tmp[2]
-            # _cm = constants.current_magnetic_prefactor(omega, 300)
-            _cm = 4. * omega
             _result += [_cd*_cm, C_cd]
-        _result += [omega]
+        _result += [freq]
 
-        data['omega'] = _result.pop()
+        data['freq'] = _result.pop()
 
         if 'cd' in mode:
             data['tcf_cd'] = _result.pop()
@@ -293,7 +312,6 @@ def _spectrum_from_tcf(*args, **kwargs):
                 if 'cd' in mode:
                     data['m_bg'] = _m_bg
 
-        # ToDo: warnings.warn("Return tcf incomplete!", stacklevel=2)
     else:
         raise TypeError('data with wrong shape!',
                         cur_dipoles.shape)
@@ -301,17 +319,23 @@ def _spectrum_from_tcf(*args, **kwargs):
     return data
 
 
-def _get_tcf_spectrum(*args, **kwargs):
+def _get_tcf_spectrum(*args,
+                      subparticle0=None,
+                      subparticle1=None,
+                      subnotparticles=None,
+                      **kwargs):
     '''Kernel for calculating spectral densities from
        correlation of signals a (and b) with various options.
        '''
-    # BETA: correlate moment of part with total moments, expects one integer
-    sub = kwargs.pop('subparticle', None)
-    # BETA: correlate moment of one part with another part,
-    #     expects tuple of integers
-    #     notparticles: exclude these indices; expects list of integers
-    subs = kwargs.pop('subparticles', None)
-    subnots = kwargs.pop('subnotparticles', None)
+    # --- correlate moment of part with total moments, expects one integer
+    sub0 = subparticle0
+    sub1 = subparticle1
+    if sub1 is not None and sub0 is None:
+        sub0 = sub1
+        sub1 = None
+
+    # --- exclude these indices; expects list of integers
+    subnots = subnotparticles
 
     a = args[0]
     b = args[0]  # dummy
@@ -324,33 +348,33 @@ def _get_tcf_spectrum(*args, **kwargs):
         '''standard spectrum'''
         _a = _a.sum(axis=1)
         if not cross:
-            omega, S_aa, R_aa = spectral_density(_a, **kwargs)
-            return omega, S_aa, R_aa
+            f, S_aa, R_aa = spectral_density(_a, **kwargs)
+            return f, S_aa, R_aa
         else:
             _b = _b.sum(axis=1)
-            omega, S_ab, R_ab = spectral_density(_a, _b, **kwargs)
-            return omega, S_ab, R_ab
+            f, S_ab, R_ab = spectral_density(_a, _b, **kwargs)
+            return f, S_ab, R_ab
 
-    def _get_subspectra(_a, _b, cross, _sub1, _sub2=None, **kwargs):
-        _a1 = _a[:, _sub1]
-        if _sub2 is None:
+    def _get_subspectra(_a, _b, cross, _sub0, _sub1=None, **kwargs):
+        _a1 = _a[:, _sub0]
+        if _sub1 is None:
             _a2 = _a.sum(axis=1)
         else:
-            _a2 = _a[:, _sub2]
+            _a2 = _a[:, _sub1]
         if not cross:
-            omega, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
-            return omega, S_aa, R_aa
+            f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
+            return f, S_aa, R_aa
         else:
-            _b1 = _b[:, _sub1]
-            if _sub2 is None:
+            _b1 = _b[:, _sub0]
+            if _sub1 is None:
                 _b2 = _b.sum(axis=1)
             else:
-                _b2 = _b[:, _sub2]
-            omega, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
-            omega, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
+                _b2 = _b[:, _sub1]
+            f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
+            f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
             S_ab = (S_ab1 + S_ab2) / 2
             R_ab = (R_ab1 + R_ab2) / 2
-            return omega, S_ab, R_ab
+            return f, S_ab, R_ab
 
     def _get_subnotspectra(_a, _b, cross, _subnot, **kwargs):
         _a1 = _a.sum(axis=1)
@@ -358,33 +382,34 @@ def _get_tcf_spectrum(*args, **kwargs):
         _a2[:, _subnot] = np.array([0.0, 0.0, 0.0])
         _a2 = _a2.sum(axis=1)
         if not cross:
-            omega, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
-            return omega, S_aa, R_aa
+            f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
+            return f, S_aa, R_aa
         else:
             _b1 = _b.sum(axis=1)
             _b2 = copy.deepcopy(_b)
             _b2[:, _subnot] = np.array([0.0, 0.0, 0.0])
             _b2 = _b2.sum(axis=1)
-            omega, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
-            omega, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
+            f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
+            f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
             S_ab = (S_ab1 + S_ab2) / 2
             R_ab = (R_ab1 + R_ab2) / 2
-            return omega, S_ab, R_ab
+            return f, S_ab, R_ab
 
-    if sub is not None:
-        if not isinstance(sub, int):
+    if sub0 is not None:
+        if not isinstance(sub0, int):
             raise TypeError('Subparticle has to be an integer!')
-        _get = partial(_get_subspectra, _sub1=sub)
+        if sub1 is not None:
+            if not isinstance(sub1, int):
+                raise TypeError('Subparticle has to be an integer!')
+            _get = partial(_get_subspectra, _sub0=sub0, _sub1=sub1)
+
+        else:
+            _get = partial(_get_subspectra, _sub0=sub0)
 
     elif subnots is not None:
         if not isinstance(subnots, list):
             raise TypeError('Subnotparticles has to be a list!')
         _get = partial(_get_subnotspectra, _subnot=subnots)
-
-    elif subs is not None:
-        if not isinstance(subs, tuple):
-            raise TypeError('Subparticles has to be a tuple of integers!')
-        _get = partial(_get_subspectra, _sub1=subs[0], _sub2=subs[1])
 
     else:
         _get = _get_spectra

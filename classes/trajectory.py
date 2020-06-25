@@ -48,8 +48,8 @@ from ..physics.statistical_mechanics import kinetic_energies as \
         _kinetic_energies
 from ..physics.classical_electrodynamics import current_dipole_moment as \
         _current_dipole_moment
-from ..physics.spectroscopy import absorption_from_transition_moments as \
-        _absorption_from_transition_moments
+from ..physics.spectroscopy import absorption_from_transition_moment as \
+        _absorption_from_transition_moment
 
 from ..mathematics import algebra as _algebra
 
@@ -395,13 +395,17 @@ class _MODES(_FRAME):
 
         self._sync_class(check_orthonormality=False)
 
-    def _calculate_spectral_intensities(self):
+    def _calculate_spectral_intensities(self, T_K=300):
         '''Calculate IR and VCD intensities from electronic and magnetic
            transition dipole moments.
            '''
 
-        self.IR_kmpmol = _absorption_from_transition_moments(self.etdm)
-        # units?
+        # --- use constants.Abs_au2per_M_cm_mol for conversion
+        self.IR_au = _absorption_from_transition_moment(
+                                        self.etdm,
+                                        self.eival_cgs*constants.E_cm_12au,
+                                        T_K=T_K
+                                        )
         # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
 

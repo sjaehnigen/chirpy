@@ -89,9 +89,11 @@ E_eV2J = e_si
 E_J2eV = 1 / e_si
 E_Hz2J = h_si
 E_J2Hz = 1 / E_Hz2J
-E_Hz2cm_1 = 1 / c_si * centi
-E_cm_12Hz = c_si / centi
+E_Hz2cm_1 = centi / c_si
+E_cm_12Hz = 1 / E_Hz2cm_1
 E_J2cm_1 = E_J2Hz * E_Hz2cm_1
+E_cm_12au = E_cm_12Hz * E_Hz2J / E_au
+E_au2cm_1 = 1 / E_cm_12au
 E_eV2cm_1 = E_eV2J * E_J2cm_1
 
 
@@ -108,26 +110,32 @@ def E_Hz2nm(x):
 
 
 # --- other spectroscopic
-IR_au2kmpmol = (avog * e_si**2) / (12 * eps0_si * c_si**2 * m_amu_si * kilo)
+#     Calculated spectra are given as specific coefficient according to
+#     the Beer-Lambert law with general unit 1/(<density> * <distance>)
+Abs_au2si_per_mol = avog * l_au**2
+Abs_au2L_per_cm_mol = Abs_au2si_per_mol * centi / dezi**3
+Abs_au2km2per_mol = Abs_au2si_per_mol / kilo**2
 
 
-def _dipole_dipole_prefactor(T_K):
-    beta_cgs = 1./(T_K * k_B_cgs)
-    prefactor_cgs = (2 * np.pi * avog * beta_cgs * finestr * hbar_cgs) / 3
-    return prefactor_cgs
+def current_current_prefactor_au(T_K, n=1):
+    # --- finestr equals e**2 / (4 pi eps_0) / (hbar *c), we multiply by hbar=1
+    beta_au = 1./(T_K * k_B_au)
+    prefactor_au = 4 * np.pi**2 * beta_au * finestr / 3 / n
+    return prefactor_au
 
 
-def current_current_prefactor(T_K):
-    prefactor_cgs = _dipole_dipole_prefactor(T_K) * (a0_cgs/t_au)**2
-    cm2_kmcm = 1E-5
-    return prefactor_cgs * cm2_kmcm * t_au
+def dipole_dipole_prefactor_au(T_K, omega_au, n=1):
+    '''omega_au = 2 * pi * freq_au'''
+    prefactor_au = current_current_prefactor_au(T_K, n=n) * omega_au**2
+    return prefactor_au
 
 
-def current_magnetic_prefactor(nu_cgs, T_K):
-    prefactor_cgs = _dipole_dipole_prefactor(T_K) * (a0_cgs**3/t_au**2/c_cgs)
-    cm2_kmcm = 1E-5
-    omega_cgs = nu_cgs * c_cgs * 2 * np.pi
-    return 4 * omega_cgs * prefactor_cgs * cm2_kmcm * t_au
+def current_magnetic_prefactor_au(T_K, omega_au, n=1):
+    '''omega_au = 2 * pi * freq_au'''
+    # --- factor 1/c here because we do not use cgs for B-field
+
+    prefactor_au = 4 * current_current_prefactor_au(T_K, n=n) * omega_au / c_au
+    return prefactor_au
 
 
 # PERIODIC TABLE

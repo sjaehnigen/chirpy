@@ -175,7 +175,7 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
         return R.sum(axis=1)
 
 
-def spectral_density(*args, ts=1, factor=1, **kwargs):
+def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     '''Calculate the spectral distribution as the Fourier transformed
        time-correlation function (TCF) of a vector signal (*args).
        The method automatically chooses to calculate auto- or cross-
@@ -202,13 +202,23 @@ def spectral_density(*args, ts=1, factor=1, **kwargs):
     S = np.fft.rfft(final_cc, n=n).real * factor * ts
 
     # --- Prefactor: see Fourier Integral Theorem;
-    #                Convention: divide by 2 pi where omega is actually put in
-    #                place
-    #                However, in spectroscopy the prefactor is often used in
+    #                Convention: factor = 1 / (2 pi), i.e.
+    #                multiply by 2 pi where omega is actually put
+    #                in place:
+    #                EXAMPLE: \int_{-\infty}^{\infty} d\omega
+    #                         dw = 2 pi * 1 / (dt * 2 * n_frames)
+    #                         here: dt = ts = 1
+    #                         numerical sum over omega corresponds to
+    #                         \int_{0}^{\infty} d\omega --> factor 2 needed
+    #                         it follows: w_factor = dw * 2 = 2 pi / n_frames
+    #
+    #                In spectroscopy the prefactor is often used in
     #                forward FT with exp(-iwt).
     #                NB: 2 pi is a consequence of using omega and does not
     #                inherently stem from the Fourier transform
 
-    omega = np.fft.rfftfreq(n, d=ts)
+    # --- cycles per ts (NOT the angular frequency, NOT omega!)
+    f = np.fft.rfftfreq(n, d=ts)
+    # omega = 2 * np.pi * f
 
-    return omega, S, R
+    return f, S, R
