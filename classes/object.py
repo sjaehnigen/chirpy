@@ -39,8 +39,8 @@ class Sphere(_CORE):
             if isinstance(radius, np.ndarray):
                 if len(radius) != len(position):
                     raise TypeError('Got wrong length for radius!', radius)
-                # radius = radius[:, None]
-                radius = radius[None, :]  # ?
+                radius = radius[:, None]
+                #  radius = radius[None, :]  # ?
             else:
                 raise TypeError('Expected float or numpy array for radius!')
 

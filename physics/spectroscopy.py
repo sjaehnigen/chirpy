@@ -20,16 +20,65 @@ import numpy as np
 from functools import partial
 import warnings as _warnings
 
-from .classical_electrodynamics import switch_origin_gauge
+from .classical_electrodynamics import switch_magnetic_origin_gauge
 from .statistical_mechanics import spectral_density
 from ..physics import constants
 from ..classes.object import Sphere
 
 
-def absorption_from_transition_moment(etdm_au, freq_au, T_K=300):
-    '''absorption in a.u'''
-    return (etdm_au ** 2).sum(axis=-1) *\
-        constants.dipole_dipole_prefactor_au(T_K, freq_au * 2 * np.i)
+def absorption_from_transition_moment(etdm_au):
+    '''Integrated absorption coeffcient in atomic units corresponding to
+       distance**2 / time / amount.
+       For integration over wavenumbers, i.e. distance / amount
+       (e.g., km / mol in SI), divide by speed of light and transform
+       units accordingly.
+       etdm_au:     electric transition dipole moment in atomic units
+                    (charge)
+                    NB: NO mass-weighted coordinate charge / sqrt(mass)!
+       '''
+    # --- see Neugebauer2002
+    # --- we take the prefacor from Fermi's Golden Rule and combine it with the
+    #     harmonic oscillator approximation (prefactors); dependencies on omega
+    #     and the temperature cancel so we use a dummy values
+    T = 100
+    w = 1
+    prefactor_au = constants.dipole_dipole_prefactor_au(T, w)
+    prefactor_au *= T * constants.k_B_au / w**2
+    # --- from omega to nu
+    prefactor_au /= 2 * np.pi
+    # --- average intensity over period
+    prefactor_au /= 2
+
+    return (etdm_au ** 2).sum(axis=-1) * prefactor_au
+
+
+def circular_dichroism_from_transition_moments(etdm_au, mtdm_au):
+    '''Integrated differential absorption coeffcient in atomic units
+       corresponding to distance**2 / time / amount.
+       For integration over wavenumbers, i.e. distance / amount
+       (e.g., km / mol in SI), divide by speed of light and transform
+       units accordingly.
+       etdm_au:     electric transition dipole moment in atomic units
+                    (charge)
+       mtdm_au:     magnetic transition dipole moment in atomic units
+                    (current * distance)
+                    NB: NO mass-weighted coordinate * 1 / sqrt(mass)!
+                    NB: NO cgs-convention for magnetic moments!
+       '''
+    # --- see Neugebauer2002
+    # --- we take the prefacor from Fermi's Golden Rule and combine it with the
+    #     harmonic oscillator approximation (prefactors); dependencies on omega
+    #     and the temperature cancel so we use a dummy values
+    T = 100
+    w = 1
+    prefactor_au = constants.dipole_magnetic_prefactor_au(T, w)
+    prefactor_au *= T * constants.k_B_au / w**2
+    # --- from omega to nu
+    prefactor_au /= 2 * np.pi
+    # --- average intensity over period
+    prefactor_au /= 2
+
+    return (etdm_au * mtdm_au).sum(axis=-1) * prefactor_au
 
 
 def power_from_tcf(velocities, weights=1.0, **kwargs):
@@ -82,7 +131,7 @@ def absorption_from_tcf(*args, **kwargs):
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
          "abs"/"cd"         - spectral density (FT TCF) in
-                              <distance**2> = 1 / (<distance> * <density>)
+                              distance**2 = 1 / (distance * density)
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
     kwargs.update({'mode': 'abs'})
@@ -95,6 +144,7 @@ def circular_dichroism_from_tcf(*args, **kwargs):
                (n_frames[, nkinds], three) (mode=abs)
            2 - magnetic dipole moments of shape
                 (n_frames[, nkinds], three) (mode=cd).
+           NB: No cgs-convention for magnetic properties!
 
        When specifying multiple kinds (2nd dimension), an
        additional named argument ("positions") containing
@@ -108,7 +158,7 @@ def circular_dichroism_from_tcf(*args, **kwargs):
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
          "abs"/"cd"         - spectral density (FT TCF) in
-                              <distance**2> = 1 / (<distance> * <density>)
+                              distance**2 = 1 / (distance * density)
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
     kwargs.update({'mode': 'cd'})
@@ -153,6 +203,10 @@ def _spectrum_from_tcf(*args,
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
 
+    if kwargs.get('flt_pow') >= 0:
+        _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
+                       'require flt_pow < 0 to account for finite size of '
+                       'input data!', stacklevel=2)
     cell = cell_au_deg
     r_moments = return_moments
     pos = positions
@@ -258,8 +312,8 @@ def _spectrum_from_tcf(*args,
 
             # --- calculate gauge-transport
             if gauge_transport:
-                _m = switch_origin_gauge(_c, _m, pos, origin[:, None],
-                                         cell_au_deg=cell)
+                _m = switch_magnetic_origin_gauge(_c, _m, pos, origin[:, None],
+                                                  cell_au_deg=cell)
             else:
                 _warnings.warn('Omitting gauge transport term in CD mode!',
                                stacklevel=2)

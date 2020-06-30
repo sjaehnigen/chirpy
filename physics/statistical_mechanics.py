@@ -161,13 +161,16 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
     R = _corr(val1, val2, cc_mode)
 
     # --- filtering
-    if flt_pow > 0:
-        _filter = signal_filter(n_frames, filter_type='welch') ** flt_pow
-        R *= _filter[:, None]
-
-    elif flt_pow == -1:
+    # --- ToDo: another keyword for removing size dependent filter without
+    # other filter (i.e. -0)
+    if flt_pow < 0:
         # --- remove implicit size-dependent triangular filter (finite size)
-        R /= (n_frames * np.ones(n_frames) - (np.arange(n_frames)-1))[:, None]
+        _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames)-1)
+        R /= _filter[:, None]
+
+    if flt_pow != 0:
+        _filter = signal_filter(n_frames, filter_type='welch') ** abs(flt_pow)
+        R *= _filter[:, None]
 
     if not sum_dims:
         return R
@@ -185,14 +188,14 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
        Expects signal of shape (n_frames, n_dim)
        Keyword ts: timestep
        Returns:
-        1 - discrete sample frequencies
-        2 - spectral density (FT TCF)
+        1 - discrete sample frequencies f = omega/(2*pi)
+        2 - spectral density (FT TCF) as f(omega)
         3 - time-correlation function (timestep as in input)
        '''
 
     R = time_correlation_function(*args, **kwargs)
 
-    # --- \ --> /\
+    # --- \ --> \/
     # --- numpy convolve has given the full periodic cc function, but we cut
     #     it in half (see time_correlation_function()
 
@@ -210,6 +213,7 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     #                         here: dt = ts = 1
     #                         numerical sum over omega corresponds to
     #                         \int_{0}^{\infty} d\omega --> factor 2 needed
+    #                         (for symmetric/even integrand)
     #                         it follows: w_factor = dw * 2 = 2 pi / n_frames
     #
     #                In spectroscopy the prefactor is often used in

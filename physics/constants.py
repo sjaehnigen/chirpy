@@ -73,6 +73,7 @@ hbar_cgs = h_cgs / (2*pi)  # reduced Planck constant [erg s]
 a0_cgs = a0_si / centi  # Bohr radius [cm]
 k_B_cgs = k_B_si * kilo / centi**2  # Boltzmann constant [erg/K]
 
+
 # --- misc
 a_lat = 2*pi / l_au  # lattice constant
 finestr = 1 / c_au  # finestructure constant
@@ -110,17 +111,28 @@ def E_Hz2nm(x):
 
 
 # --- other spectroscopic
-#     Calculated spectra are given as specific coefficient according to
-#     the Beer-Lambert law with general unit 1/(<density> * <distance>)
+#     Calculated spectra are given as specific absorption coefficient according
+#     to Beer-Lambert law with general unit 1/(amount_per_volume * distance)
+#     (for continuous or Lorentzian-broadened spectra and TCF calculations)
 Abs_au2si_per_mol = avog * l_au**2
 Abs_au2L_per_cm_mol = Abs_au2si_per_mol * centi / dezi**3
-Abs_au2km2per_mol = Abs_au2si_per_mol / kilo**2
+
+#     Integrated absorption coefficient with general units
+#     frequency-based:   1/(amount_per_volume * distance * time) or
+#     wavenumber-based:  distance/amount
+#     (for line spectra and static calculations)
+IntAbs_au2si_per_mol = Abs_au2si_per_mol / t_au
+IntAbs_au2km_per_mol = IntAbs_au2si_per_mol / c_si / kilo
 
 
 def current_current_prefactor_au(T_K, n=1):
-    # --- finestr equals e**2 / (4 pi eps_0) / (hbar *c), we multiply by hbar=1
-    beta_au = 1./(T_K * k_B_au)
-    prefactor_au = 4 * np.pi**2 * beta_au * finestr / 3 / n
+    # --- from Fermi's Golden Rule we have factor of omega
+    # --- finestr equals e**2 / (4 pi eps_0) / (hbar * c)
+    # --- we multiply with omega * hbar * beta (classical limit for Kubo TCF)
+    # --- transition to current dipole moment squared gives factor 1/omega**2
+    # --- see also McQuarrie, Statisical Mechanics, Appendix F
+    beta_au = 1 / (T_K * k_B_au)
+    prefactor_au = 4 * np.pi**2 * finestr / 3 / n * beta_au
     return prefactor_au
 
 
@@ -131,10 +143,24 @@ def dipole_dipole_prefactor_au(T_K, omega_au, n=1):
 
 
 def current_magnetic_prefactor_au(T_K, omega_au, n=1):
-    '''omega_au = 2 * pi * freq_au'''
+    '''omega_au = 2 * pi * freq_au
+       No cgs-convention for magnetic properties, i.e. unit of m is
+       current * distance**2.
+    '''
     # --- factor 1/c here because we do not use cgs for B-field
 
     prefactor_au = 4 * current_current_prefactor_au(T_K, n=n) * omega_au / c_au
+    return prefactor_au
+
+
+def dipole_magnetic_prefactor_au(T_K, omega_au, n=1):
+    '''omega_au = 2 * pi * freq_au
+       No cgs-convention for magnetic properties, i.e. unit of m is
+       current * distance**2.
+       '''
+    # --- factor 1/c here because we do not use cgs for B-field
+
+    prefactor_au = current_magnetic_prefactor_au(T_K, omega_au, n=n) * omega_au
     return prefactor_au
 
 

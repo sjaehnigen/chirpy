@@ -128,9 +128,11 @@ def main():
                                [_r_e, _c_e, _m_e])
 
         # --- translate Wannier-centre/nuclear gauge to molecular com
-        _m_e = [ed.switch_origin_gauge(_c, _m, _r, _o, cell_au_deg=_cell)
+        _m_e = [ed.switch_magnetic_origin_gauge(_c, _m, _r, _o,
+                                                cell_au_deg=_cell)
                 for _o, _r, _c, _m in zip(mol_com, _r_e, _c_e, _m_e)]
-        _m_n = [ed.switch_origin_gauge(_c, _m, _r, _o, cell_au_deg=_cell)
+        _m_n = [ed.switch_magnetic_origin_gauge(_c, _m, _r, _o,
+                                                cell_au_deg=_cell)
                 for _o, _r, _c, _m in zip(mol_com, _r_n, _c_n, _m_n)]
 
         # --- calculate the molecular current dipole moment
