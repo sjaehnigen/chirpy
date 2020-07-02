@@ -159,12 +159,19 @@ class _FRAME(_CORE):
                 _new.append(create_obj(_d, _s))
             return _new
         else:
-            if isinstance(select, list):
-                _new = create_obj(_data[select[0]], _symbols[select[0]])
-                for _id in select[1:]:
+            if isinstance(select, int):
+                select = [select]
+            elif not isinstance(select, list):
+                raise TypeError('Expected list or integer for select '
+                                'argument!')
+            _iselect = [_i for _i, _m in enumerate(set(mask)) if _m in select]
+            if len(_iselect) > 0:
+                _new = create_obj(_data[_iselect[0]], _symbols[_iselect[0]])
+                for _id in _iselect[1:]:
                     _new += create_obj(_data[_id], _symbols[_id])
             else:
-                _new = create_obj(_data[select], _symbols[select])
+                raise ValueError('Selection does not correspond to any '
+                                 'mask entry!')
             self.__dict__.update(_new.__dict__)
             self._sync_class()
 
@@ -1256,6 +1263,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fr -= self._st
             next(self)
             self._chaste = True
+            # --- Store original skip as it is consumed by generator
+            if 'skip' in self._kwargs:
+                self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
         else:
             raise TypeError("File reader of %s takes exactly 1 argument!"
@@ -1374,6 +1384,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._mask(self, 'wrap_molecules', *args, **kwargs)
 
     def split(self, *args, **kwargs):
+        if 'select' not in kwargs:
+            _warnings.warn('Splitting iterator without select argument has '
+                           'no effect!', stacklevel=2)
         self._frame.split(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'split', *args, **kwargs)

@@ -81,7 +81,9 @@ def circular_dichroism_from_transition_moments(etdm_au, mtdm_au):
     return (etdm_au * mtdm_au).sum(axis=-1) * prefactor_au
 
 
-def power_from_tcf(velocities, weights=1.0, **kwargs):
+def power_from_tcf(velocities, weights=1.0,
+                   flt_pow=-1.E-99,
+                   average_atoms=True, **kwargs):
     '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
 
@@ -96,20 +98,30 @@ def power_from_tcf(velocities, weights=1.0, **kwargs):
                            (for weights in <mass>)
          "tcf_power"     - time-correlation function (TCF)
        '''
-    n_frames, n_atoms, three = velocities.shape
+    if flt_pow >= 0:
+        _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
+                       'require flt_pow < 0 to account for finite size of '
+                       'input data!', stacklevel=2)
+    kwargs.update({'flt_pow': flt_pow})
+    n_frames, n_atoms, n_dims = velocities.shape
 
     if not hasattr(weights, '__len__'):
-        wgh = np.ones(n_atoms) * weights
+        wgh = np.ones(n_atoms * n_dims) * weights
     else:
-        wgh = np.array(weights)
+        wgh = np.repeat(weights, n_dims)
 
+    _velocities = velocities.reshape((n_frames, -1))
     f, S, R = zip(*[spectral_density(_v, **kwargs)
-                    for _v in velocities.swapaxes(0, 1)])
+                    for _v in _velocities.T])
 
     data = {}
-    data['power'] = (np.array(S) * wgh[:, None]).sum(axis=0) / n_atoms
     data['f'] = f[0]
-    data['tcf_power'] = np.array(R).sum(axis=0) / n_atoms
+    if average_atoms:
+        data['power'] = np.mean(np.array(S) * wgh[:, None], axis=0)
+        data['tcf_power'] = np.mean(np.array(R), axis=0)
+    else:
+        data['power'] = np.array(S) * wgh[:, None]
+        data['tcf_power'] = np.array(R)
 
     return data
 
@@ -178,6 +190,7 @@ def _spectrum_from_tcf(*args,
                        cut_type='soft',
                        cut_type_bg='hard',
                        clip_sphere=[],
+                       flt_pow=-1.E-99,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
@@ -203,10 +216,11 @@ def _spectrum_from_tcf(*args,
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
 
-    if kwargs.get('flt_pow') >= 0:
+    if flt_pow >= 0:
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
                        'input data!', stacklevel=2)
+    kwargs.update({'flt_pow': flt_pow})
     cell = cell_au_deg
     r_moments = return_moments
     pos = positions

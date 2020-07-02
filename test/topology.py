@@ -49,10 +49,19 @@ class TestMapping(unittest.TestCase):
     def test_dec(self):
         a = np.tile(np.arange(20), (3, 1)).T
         i = 10 * (1,) + 10 * (3,)
-        dec = mapping.dec(a, i)
+        dec = mapping.dec(a, i, n_ind=4)
 
         self.assertIsInstance(dec, list)
         self.assertEqual(len(dec), max(i) + 1)
+        self.assertTrue(np.allclose(
+                       np.concatenate(
+                         tuple([_d.flatten() for _d in dec])).reshape((20, 3)),
+                       a
+                       ))
+
+        # --- repeat without interpreting numerically
+        dec = mapping.dec(a, i)
+        self.assertEqual(len(dec), 2)
         self.assertTrue(np.allclose(
                        np.concatenate(
                          tuple([_d.flatten() for _d in dec])).reshape((20, 3)),

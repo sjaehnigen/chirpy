@@ -44,13 +44,16 @@ def dist_crit_aa(symbols):
 
 def dec(prop, indices, n_ind=None):
     """decompose prop according to indices
-       n_ind: if number of pieces cannot be retrieved from indices"""
-    if n_ind is None:
-        n_ind = max(indices)+1
+       n_ind: interpret numerical entries of indices and return empty arrays
+       for missing indices"""
+    if n_ind is not None:
+        iterator = range(n_ind)
+    else:
+        iterator = set(indices)
     return [
         np.array([
             prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
-            ]) for i_mol in range(n_ind)
+            ]) for i_mol in iterator
         ]
 
 

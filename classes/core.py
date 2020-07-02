@@ -166,6 +166,8 @@ class _ITERATOR():
         self._fr -= self._st
         next(self)
         self._chaste = True
+        # --- Store original skip information as it is consumed by generator
+        self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
     def __iter__(self):
         return self
@@ -219,6 +221,8 @@ class _ITERATOR():
     def rewind(self):
         '''Reinitialises the iterator'''
         self._chaste = False
+        if '_skip' in self._kwargs:
+            self._kwargs['skip'] = self._kwargs['_skip'].copy()
         self.__init__(self._fn, **self._kwargs)
 
     def _unwind(self, *args, **kwargs):
@@ -344,6 +348,10 @@ class _ITERATOR():
 
         self._kwargs['_masks'] = _masks
         self._kwargs['range'] = _keep
+
+        # --- Store original skip information as it is consumed by generator
+        self._kwargs['_skip'] = self._kwargs['skip'].copy()
+
         if kwargs.get('rewind', True):
             self.rewind()
 

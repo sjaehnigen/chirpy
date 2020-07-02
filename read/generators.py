@@ -25,12 +25,14 @@ def _gen(fn):
     '''Global generator for all formats'''
     return (line for line in fn if 'NEW DATA' not in line)
 
+
 def _open(*args, **kwargs):
     if kwargs.get('bz2'):
         # --- BETA: overrides args[1:]
         return bz2.open(args[0], 'rt')
     else:
         return open(*args)
+
 
 def _get(_it, kernel, **kwargs):
     '''Gets batch of lines defined by _n_lines and processes

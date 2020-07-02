@@ -193,6 +193,8 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
         3 - time-correlation function (timestep as in input)
        '''
 
+    # --- enforce summation over dimensions
+    kwargs.update({'sum_dims': True})
     R = time_correlation_function(*args, **kwargs)
 
     # --- \ --> \/

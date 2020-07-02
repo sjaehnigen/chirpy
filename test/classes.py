@@ -21,11 +21,50 @@ import warnings
 import filecmp
 import numpy as np
 
-from ..classes import system, quantum
+from ..classes import system, quantum, trajectory
 
-# volume, trajectory, field, domain, core
+# volume, field, domain, core
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+
+
+class TestTrajectory(unittest.TestCase):
+    # --- insufficiently tested
+
+    def setUp(self):
+        self.dir = _test_dir + '/classes'
+
+    def tearDown(self):
+        pass
+
+    def test_split(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            traj_6 = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_6')
+            traj_3 = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
+        traj_6.split([4, 4, 0, 0, 0, 4], select=4)
+        self.assertTrue(traj_3._is_similar(traj_6)[0] == 1)
+        self.assertTrue(np.allclose(traj_3.data, traj_6.data))
+
+    def test_iterator(self):
+        traj = trajectory.XYZ(self.dir + '/traj_w_doubles.xyz',
+                              range=(0, 10, 1000)
+                              )
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            traj.mask_duplicate_frames(verbose=False)
+            ref = trajectory.XYZTrajectory.load(self.dir + '/TRAJ_clean')
+        self.assertFalse(traj._is_equal(ref)[0] == 1)
+        self.assertFalse(traj._is_equal(ref)[1][0] == 1)
+        traj_e = traj.expand()
+        self.assertTrue(traj_e._is_similar(ref)[0] == 1)
+        self.assertTrue(np.allclose(traj_e.data, ref.data))
+
+        self.assertTrue(len(traj.expand().data), 0)
+        traj.rewind()
+        traj_e = traj.expand()
+        self.assertTrue(traj_e._is_similar(ref)[0] == 1)
+        self.assertTrue(np.allclose(traj_e.data, ref.data))
 
 
 class TestSystem(unittest.TestCase):

@@ -16,12 +16,17 @@
 # ------------------------------------------------------
 
 import unittest
+import os
 from math import isclose
 import numpy as np
+import warnings
 
-from ..physics import constants, statistical_mechanics
+from ..physics import constants, statistical_mechanics, spectroscopy
+from ..classes import trajectory
 # classical_electrodynamics
-# kspace, modern_theory_of_magnetisation, spectroscopy
+# kspace, modern_theory_of_magnetisation
+
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestConstants(unittest.TestCase):
@@ -68,7 +73,6 @@ class TestConstants(unittest.TestCase):
 
 
 class TestStatisticalMechanics(unittest.TestCase):
-    # --- insufficiently tested
 
     def setUp(self):
         pass
@@ -135,3 +139,30 @@ class TestStatisticalMechanics(unittest.TestCase):
         S /= np.amax(S)
         for _i in np.round(freq, decimals=2):
             self.assertIn(_i, np.unique(np.round(omega[S > 0.2], decimals=2)))
+
+
+class TestSpectroscopy(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = _test_dir + '/classes'
+
+    def tearDown(self):
+        pass
+
+    def test_power_from_tcf(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            _load = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
+        POW = spectroscopy.power_from_tcf(
+                                  _load.vel_au,
+                                  weights=_load.masses_amu*constants.m_amu_au,
+                                  average_atoms=False
+                                  )
+
+        self.assertAlmostEqual(
+                np.mean(constants.k_B_au * 347 / (
+                        POW['power'].sum(axis=1) * 2 * np.pi / _load.n_frames
+                        )),
+                1.0,
+                places=2
+                )
