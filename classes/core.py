@@ -84,15 +84,15 @@ class _PALARRAY():
         try:
             result = np.array(self.pool.starmap(self.f, self.array))
 
+            _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:
-                _l = len(self.data[0])
-                res_result = np.zeros((_l, _l))
+                res_result = np.zeros(_l + result.shape[1:])
                 res_result[np.triu_indices(_l)] = result
 
                 return res_result
 
             else:
-                return result
+                return result.reshape(_l + result.shape[1:])
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt in _PALARRAY")

@@ -152,7 +152,7 @@ class TestSpectroscopy(unittest.TestCase):
     def test_power_from_tcf(self):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
-            _load = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
+            _load = trajectory._XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
         POW = spectroscopy.power_from_tcf(
                                   _load.vel_au,
                                   weights=_load.masses_amu*constants.m_amu_au,

@@ -21,11 +21,45 @@ import warnings
 import filecmp
 import numpy as np
 
-from ..classes import system, quantum, trajectory
+from ..classes import system, quantum, trajectory, core
 
-# volume, field, domain, core
+# volume, field, domain
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+
+
+class TestCore(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_palarray(self):
+        global _func
+
+        def _func(x0, x1):
+            # --- some example array manipulation
+            r0 = x0 + x1.swapaxes(1, 2)
+            r0 = np.linalg.norm(r0, axis=-2)
+            return r0.T
+
+        d0 = np.random.rand(8, 8, 8, 13)
+        d1 = np.random.rand(8, 8, 8, 17)
+        JOB = core._PALARRAY(_func, d0, repeat=2, axis=3, n_cores=6)
+        S = JOB.run()
+        r0 = d0[:, :, :, :, None] + d0[:, :, :, None, :].swapaxes(1, 2)
+        r0 = np.linalg.norm(r0, axis=1).swapaxes(0, 1)
+        r0 = np.moveaxis(r0, -1, 0)
+        r0 = np.moveaxis(r0, -1, 0)
+        self.assertTrue(np.allclose(S, r0))
+        JOB = core._PALARRAY(_func, d0, d1, axis=3)
+        S = JOB.run()
+        r0 = d0[:, :, :, :, None] + d1[:, :, :, None, :].swapaxes(1, 2)
+        r0 = np.linalg.norm(r0, axis=1).swapaxes(0, 1)
+        r0 = np.moveaxis(r0, -1, 0)
+        r0 = np.moveaxis(r0, -1, 0)
+        self.assertTrue(np.allclose(S, r0))
 
 
 class TestTrajectory(unittest.TestCase):
@@ -40,8 +74,8 @@ class TestTrajectory(unittest.TestCase):
     def test_split(self):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
-            traj_6 = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_6')
-            traj_3 = trajectory.XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
+            traj_6 = trajectory._XYZTrajectory.load(self.dir+'/ALANINE_NVT_6')
+            traj_3 = trajectory._XYZTrajectory.load(self.dir+'/ALANINE_NVT_3')
         traj_6.split([4, 4, 0, 0, 0, 4], select=4)
         self.assertTrue(traj_3._is_similar(traj_6)[0] == 1)
         self.assertTrue(np.allclose(traj_3.data, traj_6.data))
@@ -53,7 +87,7 @@ class TestTrajectory(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
             traj.mask_duplicate_frames(verbose=False)
-            ref = trajectory.XYZTrajectory.load(self.dir + '/TRAJ_clean')
+            ref = trajectory._XYZTrajectory.load(self.dir + '/TRAJ_clean')
         self.assertFalse(traj._is_equal(ref)[0] == 1)
         self.assertFalse(traj._is_equal(ref)[1][0] == 1)
         traj_e = traj.expand()

@@ -875,6 +875,35 @@ class _XYZ():
         if kwargs.get("wrap", True):
             self.wrap_atoms()
 
+    def rotate(self, R, origin_aa=_np.zeros(3)):
+        '''Rotate atomic positions and velocities
+           R ... rotation matrix of shape (3, 3)
+           '''
+        if self._type == 'frame':
+            _pos = _algebra.rotate_vector(self.pos_aa, R, origin=origin_aa)
+            _vel = _algebra.rotate_vector(self.vel_au, R)  # no origin needed
+            self._vel_au(_vel)
+
+        elif self._type == 'trajectory':
+            _pos = []
+            _vel = []
+            for _p, _v in zip(self.pos_aa, self.vel_au):
+                _pos.append(_algebra.rotate_vector(_p, R))
+                _vel.append(_algebra.rotate_vector(_v, R))
+            _pos = _np.array(_pos)
+            _vel = _np.array(_vel)
+            self._vel_au(_vel)
+
+        elif self._type == 'modes':
+            _mod = []
+            for _p, _m in zip(self.pos_aa, self.modes):
+                _mod.append(_algebra.rotate_vector(_m, R))
+            _mod = _np.array(_mod)
+            self._modes(_mod)
+
+        self._pos_aa(_pos)
+        self._vel_au(_vel)
+
     def align_to_vector(self, i0, i1, vec, **kwargs):
         '''
         Align a reference line pos[i1]-pos[i0] to vec (no pbc support)
@@ -886,6 +915,7 @@ class _XYZ():
             _pos = _algebra.rotate_vector(self.pos_aa, _R,
                                           origin=self.pos_aa[i0, None])
             _vel = _algebra.rotate_vector(self.vel_au, _R)
+            self._vel_au(_vel)
 
         else:
             _pos = []
@@ -900,6 +930,7 @@ class _XYZ():
 
             _pos = _np.array(_pos) + self.pos_aa[:, i0, None]
             _vel = _np.array(_vel)
+            self._vel_au(_vel)
 
         if self._type == 'modes':
             _mod = []
@@ -913,7 +944,6 @@ class _XYZ():
             self._modes(_mod)
 
         self._pos_aa(_pos)
-        self._vel_au(_vel)
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')  # not supported for all formats
@@ -1185,11 +1215,11 @@ class XYZFrame(_XYZ, _FRAME):
                            (n_images, 1, 1))
         _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
 
-        return XYZTrajectory(data=_np.dstack((_pos_aa, _vel_aa)),
-                             symbols=self.symbols,
-                             comments=[self.comments + ' im ' + str(m)
-                                       for m in _img]
-                             )
+        return _XYZTrajectory(data=_np.dstack((_pos_aa, _vel_aa)),
+                              symbols=self.symbols,
+                              comments=[self.comments + ' im ' + str(m)
+                                        for m in _img]
+                              )
 
 
 class MOMENTSFrame(_MOMENTS, _FRAME):
@@ -1343,7 +1373,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         self._kwargs.update(out)
 
-        return XYZTrajectory(**self._kwargs)
+        return _XYZTrajectory(**self._kwargs)
 
     def write(self, fn, **kwargs):
         self._unwind(fn,
@@ -1482,6 +1512,19 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             raise TypeError("File reader of %s takes exactly 1 argument!"
                             % self.__class__.__name__)
 
+    def expand(self):
+        '''Perform iteration on remaining iterator and load
+           entire trajectory
+           (may take some time)
+           '''
+        self._chaste = True
+        data = [self.data for _fr in self]
+        out = {'data': _np.array(data)}
+
+        self._kwargs.update(out)
+
+        return _MOMENTSTrajectory(**self._kwargs)
+
     def write(self, fn, **kwargs):
         self._unwind(fn,
                      func='write',
@@ -1492,12 +1535,10 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             self.rewind()
 
 
-class XYZTrajectory(_XYZ, _TRAJECTORY):
-    '''XYZ trajectory without using iterators'''
+class _XYZTrajectory(_XYZ, _TRAJECTORY):
+    '''Load full XYZ trajectory into memory'''
 
     def _sync_class(self, **kwargs):
-        # _warnings.warn("XYZTrajectory class will no longer be supported in "
-        #               "upcoming versions!", FutureWarning, stacklevel=2)
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
@@ -1513,6 +1554,14 @@ class XYZTrajectory(_XYZ, _TRAJECTORY):
                            stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
+
+
+class _MOMENTSTrajectory(_MOMENTS, _TRAJECTORY):
+    '''Load full MOMENTS trajectory into memory'''
+
+    def _sync_class(self, **kwargs):
+        _TRAJECTORY._sync_class(self)
+        _MOMENTS._sync_class(self)
 
 
 class VibrationalModes(_XYZ, _MODES):
