@@ -131,51 +131,60 @@ def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
         raise ValueError('Expected shape length 1 or 2 for signal, got %d: %s'
                          % (len(_sh1), _sh1))
 
-    def _corr(_val1, _val2, cc_mode='AB'):
+    def _corr(_val1, _val2):
         _sig = np.array([np.correlate(
                                   v1,
                                   v2,
                                   mode='full',
                                   )
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
+        return _sig
 
-        R = np.zeros_like(_val1)
-        if 'A' in cc_mode or 'C' in cc_mode:
-            R += _sig[n_frames-1:]
-        if 'B' in cc_mode:
-            R += _sig[:n_frames][::-1]
-        if 'C' in cc_mode:
-            R -= _sig[:n_frames][::-1]
-        if cc_mode == 'AB':
-            R = R / 2.
-
-        return R
-
-    # cc mode:
-    #   A or B = Ra or Rb
-    #   AB = (Ra + Rb) / 2
-    #   AC = Ra - Rb (benchmark)
-    #   BC = 0
-    #   ABC = A
-    # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
-    R = _corr(val1, val2, cc_mode)
+    R = _corr(val1, val2)
 
     # --- filtering
     # --- ToDo: another keyword for removing size dependent filter without
     # other filter (i.e. -0)
     if flt_pow < 0:
         # --- remove implicit size-dependent triangular filter (finite size)
-        _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames)-1)
+        _filter = np.roll(
+             np.abs(n_frames*np.ones(2*n_frames)-np.arange(2*n_frames))[:-1]+1,
+             n_frames
+             )
+        # _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames)-1)
         R /= _filter[:, None]
 
     if flt_pow != 0:
         _filter = signal_filter(n_frames, filter_type='welch') ** abs(flt_pow)
+        _filter = np.hstack((_filter[::-1], _filter[1:]))
         R *= _filter[:, None]
 
+    # cc mode:
+    # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
+    #   A or B = Ra or Rb
+    #   AB = (Ra + Rb) / 2
+    #   AC = Ra - Rb (benchmark)
+    #   BC = 0
+    #   ABC = A
+    fR = np.zeros_like(val1)
+    if 'A' in cc_mode or 'C' in cc_mode:
+        fR += R[n_frames-1:]
+    if 'B' in cc_mode:
+        fR += R[:n_frames][::-1]
+    if 'C' in cc_mode:
+        fR -= R[:n_frames][::-1]
+    if cc_mode == 'AB':
+        fR = fR / 2.
+
+    if cc_mode == 'full':
+        fR = np.roll(R, len(R) // 2)
+    # else:
+    #     fR = np.hstack((fR, fR[::-1]))
+
     if not sum_dims:
-        return R
+        return fR
     else:
-        return R.sum(axis=1)
+        return fR.sum(axis=1)
 
 
 def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
@@ -195,28 +204,25 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
 
     # --- enforce summation over dimensions
     kwargs.update({'sum_dims': True})
+
     R = time_correlation_function(*args, **kwargs)
 
-    # --- \ --> \/
-    # --- numpy convolve has given the full periodic cc function, but we cut
-    #     it in half (see time_correlation_function()
+    n = R.shape[0]
 
-    final_cc = np.hstack((R, R[::-1]))
-    n = final_cc.shape[0]
-
-    S = np.fft.rfft(final_cc, n=n).real * factor * ts
+    S = np.fft.rfft(R, n=n).real * factor * ts
 
     # --- Prefactor: see Fourier Integral Theorem;
     #                Convention: factor = 1 / (2 pi), i.e.
     #                multiply by 2 pi where omega is actually put
     #                in place:
     #                EXAMPLE: \int_{-\infty}^{\infty} d\omega
-    #                         dw = 2 pi * 1 / (dt * 2 * n_frames)
+    #                         dw = 2 pi * 1 / (dt * n)
     #                         here: dt = ts = 1
     #                         numerical sum over omega corresponds to
     #                         \int_{0}^{\infty} d\omega --> factor 2 needed
     #                         (for symmetric/even integrand)
-    #                         it follows: w_factor = dw * 2 = 2 pi / n_frames
+    #                         it follows: w_factor = dw * 2 = 2 pi * 2 / n
+    #                         NB: f[1] = 1 / (dt * n)
     #
     #                In spectroscopy the prefactor is often used in
     #                forward FT with exp(-iwt).

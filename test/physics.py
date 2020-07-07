@@ -127,7 +127,21 @@ class TestStatisticalMechanics(unittest.TestCase):
         P = 10000
         N = 100000
         X = np.linspace(0, P * 2*np.pi, N).reshape(N, 1)
-        freq = np.random.random(10) * np.pi
+        # freq = np.random.random(10) * np.pi
+        freq = [
+                2.28006930,
+                0.90912777,
+                2.06137591,
+                2.93732800,
+                0.16941237,
+                0.30892809,
+                1.48137192,
+                3.07558759,
+                2.19663137,
+                2.46566211,
+                0.91958214,
+                0.10000100,
+                ]
         sig = np.zeros_like(X)
         for f in freq:
             sig += np.sin(f * X)
@@ -153,16 +167,28 @@ class TestSpectroscopy(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
             _load = trajectory._XYZTrajectory.load(self.dir + '/ALANINE_NVT_3')
+        # --- arbitrary ts value
+        ts = 2
         POW = spectroscopy.power_from_tcf(
                                   _load.vel_au,
+                                  ts=ts,
                                   weights=_load.masses_amu*constants.m_amu_au,
-                                  average_atoms=False
+                                  average_atoms=False,
+                                  cc_mode='A',
+                                  flt_pow=-1,
                                   )
 
         self.assertAlmostEqual(
                 np.mean(constants.k_B_au * 347 / (
-                        POW['power'].sum(axis=1) * 2 * np.pi / _load.n_frames
-                        )),
+                     POW['power'].sum(axis=1) * 2*np.pi * 2 * POW['freq'][1]
+                     )),
+                1.0,
+                places=2
+                )
+        self.assertAlmostEqual(
+                np.mean(constants.k_B_au * 347 / (
+                     POW['power'].sum(axis=1) * 2*np.pi * 2 / _load.n_frames/ts
+                     )),
                 1.0,
                 places=2
                 )

@@ -85,7 +85,9 @@ v_au2si = 1E+5 * l_au2aa / t_au2fs
 v_si2au = 1 / v_au2si
 v_au2aaperfs = l_au2aa / t_au2fs
 
-# --- spectroscopic light energy conversion functions
+# --- spectroscopic light energy and frequency conversion functions
+E_au2J = E_au
+E_J2au = 1 / E_au
 E_eV2J = e_si
 E_J2eV = 1 / e_si
 E_Hz2J = h_si
@@ -93,9 +95,16 @@ E_J2Hz = 1 / E_Hz2J
 E_Hz2cm_1 = centi / c_si
 E_cm_12Hz = 1 / E_Hz2cm_1
 E_J2cm_1 = E_J2Hz * E_Hz2cm_1
-E_cm_12au = E_cm_12Hz * E_Hz2J / E_au
-E_au2cm_1 = 1 / E_cm_12au
+E_cm_12J = 1 / E_J2cm_1
 E_eV2cm_1 = E_eV2J * E_J2cm_1
+E_cm_12eV = E_cm_12J * E_J2eV
+E_eV2Hz = E_eV2J * E_J2Hz
+E_Hz2eV = E_Hz2J * E_J2eV
+# --- NB: atomic units of 1/time and not Hartree energy!
+E_cm_12aufreq = E_cm_12Hz * t_au
+E_aufreq2cm_1 = 1 / t_au * E_Hz2cm_1
+E_Hz2aufreq = t_au
+E_aufreq2Hz = 1 / t_au
 
 
 def E_J2nm(x):
@@ -126,6 +135,7 @@ IntAbs_au2km_per_mol = IntAbs_au2si_per_mol / c_si / kilo
 
 
 def current_current_prefactor_au(T_K, n=1):
+    '''in time / charge**2'''
     # --- from Fermi's Golden Rule we have factor of omega
     # --- finestr equals e**2 / (4 pi eps_0) / (hbar * c)
     # --- we multiply with omega * hbar * beta (classical limit for Kubo TCF)
@@ -137,13 +147,15 @@ def current_current_prefactor_au(T_K, n=1):
 
 
 def dipole_dipole_prefactor_au(T_K, omega_au, n=1):
-    '''omega_au = 2 * pi * freq_au'''
+    '''in 1 / (time * charge**2)
+       omega_au = 2 * pi * freq_au'''
     prefactor_au = current_current_prefactor_au(T_K, n=n) * omega_au**2
     return prefactor_au
 
 
 def current_magnetic_prefactor_au(T_K, omega_au, n=1):
-    '''omega_au = 2 * pi * freq_au
+    '''in time / (distance * charge**2)
+       omega_au = 2 * pi * freq_au
        No cgs-convention for magnetic properties, i.e. unit of m is
        current * distance**2.
     '''
@@ -154,7 +166,8 @@ def current_magnetic_prefactor_au(T_K, omega_au, n=1):
 
 
 def dipole_magnetic_prefactor_au(T_K, omega_au, n=1):
-    '''omega_au = 2 * pi * freq_au
+    '''in 1 / (distance * charge**2)
+       omega_au = 2 * pi * freq_au
        No cgs-convention for magnetic properties, i.e. unit of m is
        current * distance**2.
        '''

@@ -32,9 +32,9 @@ def absorption_from_transition_moment(etdm_au):
        For integration over wavenumbers, i.e. distance / amount
        (e.g., km / mol in SI), divide by speed of light and transform
        units accordingly.
-       etdm_au:     electric transition dipole moment in atomic units
-                    (charge)
-                    NB: NO mass-weighted coordinate charge / sqrt(mass)!
+       etdm_au:    electric transition dipole moment of a normal mode
+                   in atomic units (charge / sqrt(mass))
+                   NB: assuming mass-weighted coordinate distance * sqrt(mass)!
        '''
     # --- see Neugebauer2002
     # --- we take the prefacor from Fermi's Golden Rule and combine it with the
@@ -82,7 +82,7 @@ def circular_dichroism_from_transition_moments(etdm_au, mtdm_au):
 
 
 def power_from_tcf(velocities, weights=1.0,
-                   flt_pow=-1.E-99,
+                   flt_pow=-1,
                    average_atoms=True, **kwargs):
     '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
@@ -115,7 +115,7 @@ def power_from_tcf(velocities, weights=1.0,
                     for _v in _velocities.T])
 
     data = {}
-    data['f'] = f[0]
+    data['freq'] = f[0]
     if average_atoms:
         data['power'] = np.mean(np.array(S) * wgh[:, None], axis=0)
         data['tcf_power'] = np.mean(np.array(R), axis=0)
@@ -190,7 +190,7 @@ def _spectrum_from_tcf(*args,
                        cut_type='soft',
                        cut_type_bg='hard',
                        clip_sphere=[],
-                       flt_pow=-1.E-99,
+                       flt_pow=-1,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
@@ -317,7 +317,9 @@ def _spectrum_from_tcf(*args,
             return np.clip(y, 0, 1) * x
 
         _c = copy.deepcopy(cur_dipoles)
+        # --- apply handed over spheres
         _c = _cut(_c, pos, clip_sphere)
+        # --- apply general cutoff
         _c = _cut(_c, pos, _cut_sphere)
         if 'cd' in mode:
             _m = copy.deepcopy(mag_dipoles)

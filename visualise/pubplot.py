@@ -19,6 +19,8 @@
 import numpy as np
 import warnings
 
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+
 
 class pub_label():
     def __init__(self,  ax,  **kwargs):
@@ -95,73 +97,117 @@ def make_nice_ax(p):
     p.spines['right'].set_linewidth(3.0)
 
 
-def multiplot(ax, x_a, y_a, **kwargs):
-    global _shift  # unique variable used by pub_label class
-    try:
-        n_plots = len(y_a)
-    except TypeError:
-        n_plots = y_a.shape[0]
-    fill = kwargs.get('fill',  False)  # ToDo: Rename argument, refers to std
-    bool_a = kwargs.get('bool_a',  n_plots * [True])
-    std_a = kwargs.get('std_a')
-    _exp = kwargs.get('exp')
-    _sty_exp = kwargs.get('style_exp', '-')
-    _alpha_exp = kwargs.get('alpha_exp', 1.0)
-    if _exp is not None:
-        e,  xe = _exp[:,  1],  _exp[:,  0]
-    xlim = kwargs.get('xlim',  (np.amin(np.array(np.hstack(x_a))),
-                                np.amax(np.array(np.hstack(x_a)))))
-    ylim = kwargs.get('ylim')
-    sep = kwargs.get('sep',  5)  # separation between plots in percent
-    color_a = kwargs.get('color_a',
-                         ['mediumblue',
-                          'crimson',
-                          'green',
-                          'goldenrod',
-                          'pink'])
-    sty_a = kwargs.get('style_a',  n_plots * ['-'])
-    alpha_a = kwargs.get('alpha_a',  n_plots * [1.0])
-    f_alpha_a = kwargs.get('fill_alpha_a',  n_plots * [0.25])
-    stack = kwargs.get('stack_plots',  True)
-    pile_up = kwargs.get('pile_up',  False)  # fill space between plots
-    hatch_a = kwargs.get('hatch_a',  n_plots * [None])
-    pass_through = kwargs.get('pass_through',  {})
+def set_mutliple_y_axes(ax, sep, n_axes,
+                        offset=0.0,
+                        minor=(-1, 1, 0.5),
+                        major=(-1, 1, 0.2),
+                        fmt='%5.1f'
+                        ):
+    if not isinstance(offset, list):
+        offset = [offset] * n_axes
+    if not isinstance(minor, list):
+        minor = [minor] * n_axes
+    if not isinstance(major, list):
+        major = [major] * n_axes
+
+    _minor_tick_rel_pos = []
+    _major_tick_rel_pos = []
+    _major_tick_labels = []
+
+    for _i, _m, _M, _o in zip(range(n_axes), minor, major, offset):
+        ax.yaxis.set_major_locator(MultipleLocator(_M[2]))
+        ax.yaxis.set_minor_locator(MultipleLocator(_m[2]))
+        ax.yaxis.set_major_formatter(FormatStrFormatter(fmt))
+        ax.yaxis.set_minor_locator(MultipleLocator(_m[-1]))
+
+        _minor_base = np.linspace(_m[0], _m[1], int((_m[1]-_m[0])/_m[2])+1)
+        _major_base = np.linspace(_M[0], _M[1], int((_M[1]-_M[0])/_M[2])+1)
+        _minor_tick_rel_pos += (_minor_base - _i * sep + _o).tolist()
+        _major_tick_rel_pos += (_major_base - _i * sep + _o).tolist()
+        _major_tick_labels += _major_base.tolist()
+
+    ax.set_yticks(_minor_tick_rel_pos, minor=True)
+    ax.set_yticks(_major_tick_rel_pos, minor=False)
+    ax.set_yticklabels(_major_tick_labels)
+
+
+def multiplot(ax, x_a, y_a,
+              std_a=None,
+              bool_a=True,  # False to deactivate plot in list
+              color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'pink'],
+              style_a='-',
+              alpha_a=1.0,
+              std_alpha_a=0.25,
+              exp=None,
+              style_exp='-',
+              alpha_exp=1.0,
+              stack_plots=True,
+              pile_up=False,  # fill space between plots
+              hatch_a=None,  # pattern for pile_up
+              offset_a=0.0,  # shift y
+              sep=5,  # in %
+              xlim=None,
+              ylim=None,
+              **kwargs):
+    '''Make a nice plot of data in list.
+       Arguments with _a denote list of values corresponding to data list y_a
+       kwargs contains argument for pyplot
+       '''
 
     if not isinstance(y_a, list):
         raise TypeError('Expected list for y_a!')
+
+    global _shift  # unique variable also used by pub_label class
+
+    n_plots = len(y_a)
+
+    if exp is not None:
+        e,  xe = exp[:,  1],  exp[:,  0]
+
+    if xlim is None:
+        xlim = (np.amin(np.array(np.hstack(x_a))),
+                np.amax(np.array(np.hstack(x_a))))
+
     if x_a.__class__ is not list:
         x_a = [np.array([_x for _x in x_a])] * n_plots
+    if bool_a.__class__ is not list:
+        bool_a = [bool_a] * n_plots
     if color_a.__class__ is not list:
         color_a = [color_a] * n_plots
-    if sty_a.__class__ is not list:
-        sty_a = [sty_a] * n_plots
+    if style_a.__class__ is not list:
+        style_a = [style_a] * n_plots
     if alpha_a.__class__ is not list:
         alpha_a = [alpha_a] * n_plots
-    if f_alpha_a.__class__ is not list:
-        f_alpha_a = [f_alpha_a] * n_plots
+    if std_alpha_a.__class__ is not list:
+        std_alpha_a = [std_alpha_a] * n_plots
+    if hatch_a.__class__ is not list:
+        hatch_a = [hatch_a] * n_plots
+    if offset_a.__class__ is not list:
+        offset_a = [offset_a] * n_plots
 
-    if pile_up and any([stack,  fill]):
+    fill = False
+    if std_a is not None:
+        fill = True
+
+    if pile_up and any([stack_plots,  fill]):
         warnings.warn('pile_up set: automatically setting stack_plots and fill'
                       ' argument to False, respectively!', stacklevel=2)
-        stack = False
+        stack_plots = False
         fill = False
 
     if any(len(_a) != n_plots for _a in [y_a,  bool_a]):
         raise ValueError('Inconsistent no. of plots in lists!')
 
-    if fill and any(_a is None for _a in [std_a]):
-        raise AttributeError('Need std_a argument for "fill" option!')
-
     # --- Calculate hspace per plot and ylim
     _slc = [slice(*sorted(np.argmin(np.abs(_x_a-_x)) for _x in xlim))
             for _x_a in x_a]
-    if _exp is not None:
+    if exp is not None:
         _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
 
     try:
         _shift = max([np.amax(_y[_s]) - np.amin(_y[_s])
                       for _y, _s in zip(y_a, _slc)])
-        if _exp is not None:
+        if exp is not None:
             _shift = max(np.amax(e[_slce]) - np.amin(e[_slce]), _shift)
         _shift *= (1 + sep / 100)
 
@@ -170,78 +216,78 @@ def multiplot(ax, x_a, y_a, **kwargs):
                       RuntimeWarning,
                       stacklevel=2)
 
-    if stack:
+    if stack_plots:
         print(_shift)
         _y_a = [_y-_shift*_i for _i, _y in enumerate(y_a)]
-        if _exp is not None:
-            _e = e-n_plots*_shift
+        if exp is not None:
+            _e = e - n_plots*_shift
     else:
         _y_a = y_a
-        if _exp is not None:
+        if exp is not None:
             _e = e
 
     if ylim is None:  # add routine for pile_up option
         ylim = (min([np.amin(_y[_s]) for _y, _s in zip(_y_a, _slc)]),
                 max([np.amax(_y[_s]) for _y, _s in zip(_y_a, _slc)]))
-        if _exp is not None:
+        if exp is not None:
             ylim = (min(ylim[0], np.amin(_e[_slce])),
                     max(ylim[1], np.amax(_e[_slce])))
-        ylim = (ylim[0]-0.25*_shift, ylim[1]+0.25*_shift)
+        ylim = (ylim[0] - 0.25*_shift, ylim[1] + 0.25*_shift)
 
     # --- plot reference (experiment)
-    if _exp is not None:
-        ax.plot(xe, _e, _sty_exp, alpha=_alpha_exp, lw=3, color='black',
+    if exp is not None:
+        ax.plot(xe, _e, style_exp, alpha=alpha_exp, lw=3, color='black',
                 label='exp.')
 
     # --- plot data
     if fill:
-        for _b, _x, _y, _st, _c, _al, _s, _fal in zip(bool_a,
-                                                      x_a,
-                                                      _y_a,
-                                                      sty_a,
-                                                      color_a,
-                                                      alpha_a,
-                                                      std_a,
-                                                      f_alpha_a):
+        for _b, _x, _y, _st, _c, _al, _s, _fal, _o in zip(bool_a,
+                                                          x_a,
+                                                          _y_a,
+                                                          style_a,
+                                                          color_a,
+                                                          alpha_a,
+                                                          std_a,
+                                                          std_alpha_a,
+                                                          offset_a):
             if _b:
-                ax.fill_between(_x,  _y+_s,  _y-_s,  color=_c,  alpha=_fal)
-                ax.plot(_x, _y, _st, lw=3, color=_c, alpha=_al)
+                ax.fill_between(_x, _y+_o+_s, _y+_o-_s, color=_c, alpha=_fal)
+                ax.plot(_x, _y+_o, _st, lw=3, color=_c, alpha=_al, **kwargs)
     if pile_up:
         if not np.allclose(np.unique(x_a),  x_a[0]):
             raise ValueError('pile_up argument requires identical x content!')
         _last = np.zeros_like(_y_a[0])
-        for _b,  _x,  _y,  _st,  _ha,  _c,  _al,  _fal in zip(bool_a,
-                                                              x_a,
-                                                              _y_a,
-                                                              sty_a,
-                                                              hatch_a,
-                                                              color_a,
-                                                              alpha_a,
-                                                              f_alpha_a):
+        for _b,  _x,  _y,  _st,  _ha,  _c,  _al,  _fal, _o in zip(bool_a,
+                                                                  x_a,
+                                                                  _y_a,
+                                                                  style_a,
+                                                                  hatch_a,
+                                                                  color_a,
+                                                                  alpha_a,
+                                                                  std_alpha_a,
+                                                                  offset_a):
             if _b:
-                ax.fill_between(_x, _last, _last + _y,
+                ax.fill_between(_x, _last, _last + _y+_o,
                                 lw=0, color=_c, alpha=_fal,  hatch=_ha)
-                _last += _y
-                ax.plot(_x, _last, _st, lw=3, color=_c, alpha=_al)
+                _last += _y+_o
+                ax.plot(_x, _last, _st, lw=3, color=_c, alpha=_al, **kwargs)
     else:
-        for _b, _x, _y, _st, _c, _al in zip(bool_a,
-                                            x_a,
-                                            _y_a,
-                                            sty_a,
-                                            color_a,
-                                            alpha_a):
+        for _b, _x, _y, _st, _c, _al, _o in zip(bool_a,
+                                                x_a,
+                                                _y_a,
+                                                style_a,
+                                                color_a,
+                                                alpha_a,
+                                                offset_a):
             if _b:
-                ax.plot(_x, _y, _st, lw=3, color=_c, alpha=_al, **pass_through)
+                ax.plot(_x, _y+_o, _st, lw=3, color=_c, alpha=_al, **kwargs)
 
     # --- layout
     make_nice_ax(ax)
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
 
-    # --- export label object (beta)
-    # LB is simply returned can be retrieved (or not)
-
-    if stack:
+    if stack_plots:
         LB = [pub_label(
                         ax,
                         color=_c,
@@ -257,7 +303,7 @@ def multiplot(ax, x_a, y_a, **kwargs):
                         Y=-n_plots * _shift,
                         sep=0.2 * _shift,
                         stancil=r'\emph{%s}'
-                    )] * (_exp is not None)
+                    )] * (exp is not None)
 
     else:
         LB = [pub_label(ax,
@@ -269,61 +315,42 @@ def multiplot(ax, x_a, y_a, **kwargs):
                           color='black',
                           X=np.mean(xlim),
                           Y=np.mean(ylim),
-                          stancil=r'\emph{%s}')] * (_exp is not None)
+                          stancil=r'\emph{%s}')] * (exp is not None)
 
     return LB
 
 
-def histogram(ax_a, data_a, **kwargs):  # needs a list of ax
-    '''BETA'''
+def histogram(ax_a, data_a,
+              color_a=['#607c8e', '#c85a53', '#7ea07a', '#c4a661', '#3c4142'],
+              alpha_a=1.0,
+              bool_a=True,
+              sum_to_one=False,  # exclusive with density
+              edges=False,  # exclusive with density
+              bins=None,
+              ylim=None,
+              weights_a=None,
+              **kwargs):
+    '''Create a beautiful histogram plot.
+       Requires list of ax'''
     global _shift
     _shift = 0
     n_plots = len(data_a)
-    color_a = kwargs.get('color_a', ['#607c8e',
-                                     '#c85a53',
-                                     '#7ea07a',
-                                     '#c4a661',
-                                     '#3c4142', ])
-    alpha_a = kwargs.get('alpha_a', n_plots*[kwargs.get('alpha', 1.0)])
-    bool_a = kwargs.get('bool_a', n_plots*[True])
     xlim = kwargs.get('range')
-    ylim = kwargs.get('ylim')
-    sum_one = kwargs.get('sum_to_one', False)  # exclusive with density
-    edges = kwargs.get('edges', False)  # exclusive with density
-    # ToDo: routine for automatic (and equal!) range for all data_a
-    bins = kwargs.get('bins')  # Quick workaround
-    # sep = kwargs.get('sep', 0.0)
 
     if color_a.__class__ is not list:
         color_a = [color_a] * n_plots
     if alpha_a.__class__ is not list:
         alpha_a = [alpha_a] * n_plots
+    if bool_a.__class__ is not list:
+        bool_a = [bool_a] * n_plots
 
-    if sum_one:
+    if sum_to_one:
         weights_a = [np.ones_like(_d) / _d.shape[0] for _d in data_a]
     else:
-        weights_a = kwargs.get('weights_a', [np.ones_like(_d)
-                                             for _d in data_a])
-    # ToDo: this is clumsy; get routine that read AND deletes argument
-    #       OR use .pop() or do not pass-through kwargs
-    for key in ['color_a',
-                'color',
-                'alpha_a',
-                'alpha',
-                'bool_a',
-                'weights',
-                'weights_a',
-                'sum_to_one',
-                'edges',
-                'facecolor',
-                'edgecolor',
-                'bins',
-                'sep',
-                'ylim']:
-        try:
-            del kwargs[key]
-        except KeyError:
-            pass
+        if weights_a is None:
+            weights_a = [np.ones_like(_d) for _d in data_a]
+
+    # ToDo: missing keys: facecolor, edgecolor
 
     # _bin_width=(xlim[1]-xlim[0])/bins #use system variable?
     for _i, (ax, _b, _d, _c, _al, _wg) in enumerate(zip(ax_a,
@@ -333,7 +360,7 @@ def histogram(ax_a, data_a, **kwargs):  # needs a list of ax
                                                         alpha_a,
                                                         weights_a)):
         if _b and not edges:
-            _h, _b_e = np.histogram(_d, bins=bins, range=kwargs.get('range'))
+            _h, _b_e = np.histogram(_d, bins=bins, **kwargs)
 #            _b_e+=_i*sep*_bin_width
             # a = ax.hist(_d, bins=_b_e, color=_c, alpha=_al, weights=_wg,
             # bottom=-_i*sep, **kwargs)

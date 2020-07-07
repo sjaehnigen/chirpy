@@ -87,7 +87,7 @@ class _PALARRAY():
             _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:
                 res_result = np.zeros(_l + result.shape[1:])
-                res_result[np.triu_indices(_l)] = result
+                res_result[np.triu_indices(_l[0])] = result
 
                 return res_result
 

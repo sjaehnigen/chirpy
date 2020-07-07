@@ -79,10 +79,10 @@ def radial_distribution_function(positions,
     # --- norm to n_frames and density
     _wg = positions.shape[0] * positions.shape[1] / volume
 
-    global func
+    global _func
 
     if half_vector is not None:
-        def func(x):
+        def _func(x):
             return _rdf(
                      get_P(
                         positions,
@@ -95,7 +95,7 @@ def radial_distribution_function(positions,
                     ) / _wg * 2
 
     else:
-        def func(x):
+        def _func(x):
             return _rdf(
                      get_P(
                         positions,
@@ -106,7 +106,7 @@ def radial_distribution_function(positions,
                      bins
                     ) / _wg
 
-    return np.mean(core._PALARRAY(func, range(n_O)).run(), axis=0)
+    return np.mean(core._PALARRAY(_func, range(n_O)).run(), axis=0)
 
 
 def rdf(*args, **kwargs):
