@@ -216,6 +216,10 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
     # ToDo: the following lines explode memory for many atoms
     #   ==> do coarse mapping beforehand
     # (overlapping batches) or set a max limit for n_atoms
+    # For now:
+    if len(p0.shape) > 2 or len(p1.shape) > 2:
+        raise ValueError('distance_matrix only accepts positions of shape '
+                         '(n_atoms, dim) or (n_frames, dim)!')
     if p1 is None:
         p1 = p0
 

@@ -136,9 +136,9 @@ def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
     return m_au - magnetic_dipole_shift_origin(c_au, _trans)
 
 
-def coulomb(r0, r, q, thresh=1.E-8):
+def coulomb(r0, r, q, cell=None, thresh=1.E-8):
     '''r...shape(N, ..., 3)'''
-    d = r0 - r
+    d = mapping.distance_pbc(r, r0, cell=cell)  # r0 - r
     d3 = np.linalg.norm(d, axis=-1)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))
@@ -146,8 +146,11 @@ def coulomb(r0, r, q, thresh=1.E-8):
     return E
 
 
-def coulomb_grid(r, rho, pos_grid, voxel, thresh=1.E-8):
+def coulomb_grid(r, rho, pos_grid, voxel, cell=None, thresh=1.E-8):
     '''r...shape(3, ..., N)'''
+    if cell is not None:
+        raise NotImplementedError('coulomb_grid does not support periodic '
+                                  'boundaries!')
     d = r[:, None, None, None]-pos_grid
     d3 = np.linalg.norm(d, axis=0)**3
     with np.errstate(divide='ignore'):
@@ -161,11 +164,12 @@ def coulomb_kspace(rho, cell_au, voxel):
     pass
 
 
-def biot_savart(r0, r, j, thresh=1.E-8):
+def biot_savart(r0, r, j, cell=None, thresh=1.E-8):
     '''r...shape(N, ..., 3)'''
     # in atomic units using cgs convention for B field would be: µ0/4*pi = 1/c
     # here we use au w/o cgs : µ0/4*pi = 1/c**2
-    d = r0 - r
+    # d = r0 - r
+    d = mapping.distance_pbc(r, r0, cell=cell)  # r0 - r
     d3 = np.linalg.norm(d, axis=-1)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))
@@ -173,8 +177,11 @@ def biot_savart(r0, r, j, thresh=1.E-8):
     return B / constants.c_au**2
 
 
-def biot_savart_grid(r, j, pos_grid, voxel, thresh=1.E-8):
+def biot_savart_grid(r, j, pos_grid, voxel, cell=None, thresh=1.E-8):
     '''r...shape(3, ..., N)'''
+    if cell is not None:
+        raise NotImplementedError('coulomb_grid does not support periodic '
+                                  'boundaries!')
     d = r[:, None, None, None]-pos_grid
     d3 = np.linalg.norm(d, axis=0)**3
     with np.errstate(divide='ignore'):

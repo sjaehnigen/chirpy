@@ -64,17 +64,19 @@ class Sphere(_CORE):
 
         # NB: Manipulation of x is retained outside of this function!
 
-        def get_d(orig):
-            return np.linalg.norm(distance_pbc(orig, pos, cell=cell), axis=-1)
+        def get_d(orig, _pos):
+            return np.linalg.norm(distance_pbc(orig, _pos, cell=cell), axis=-1)
 
         keep = copy.deepcopy(x)
 
         if len(pos.shape) > 3:
             raise TypeError('Got wrong shape for pos!', pos.shape)
         elif pos.shape == self.pos.shape:
-            _d = get_d(self.pos)
+            _d = get_d(self.pos, pos)
         elif pos.shape[::2] == self.pos.shape:
-            _d = get_d(self.pos[:, None])
+            _d = get_d(self.pos[:, None], pos)
+        elif pos.shape[::2] == self.pos.shape[::2]:
+            _d = get_d(self.pos[:, None], pos[:, :, None])
         else:
             raise TypeError('Clip reference shape %s does not agree with '
                             'sphere position shape %s!' %
