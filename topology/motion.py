@@ -71,7 +71,7 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
     '''Compute auto-correlation function of hydrogen bond occurrence between
        donor and acceptor (heavy atoms).
 
-       positions:        position array of shape (n_atoms, 3)
+       positions:        position array of shape (n_frames, n_atoms, 3)
        donor/acceptor:   atom indices of heavy atoms donating/accepting HBs
        hydrogen:         indices of the (sub)set of hydrogen atoms
 

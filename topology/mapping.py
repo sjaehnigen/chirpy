@@ -61,8 +61,11 @@ def cowt(pos, wt, axis=-2, subset=slice(None)):
     '''Calculate centre of weight, consider periodic boundaries before
        calling this method.'''
 
-    _wt = np.array(wt)
     _p = np.moveaxis(pos, axis, 0)
+    if not hasattr(wt, '__len__'):
+        _wt = np.ones(len(_p)) * wt
+    else:
+        _wt = np.array(wt)
     _slc = (subset,) + (len(_p.shape)-1) * (None,)
 
     return np.sum(_p[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
@@ -331,16 +334,28 @@ def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
     '''Align atoms within trajectory or towards an external
        reference. Kinds and order of atoms (usually) have to
        be equal.
+       pos_mobile of shape ([n_frames, ]n_atoms, three)
+       w .... weights of length n_atoms or float
        Specify additional atom data (e.g., velocities),
        which has to be parallel transformed, listed through the keyword
        data=... (shape has to be according to positions).
        '''
 
-    w = np.array(w)
     _sub = subset
     _data = data
 
-    pos_mob = copy.deepcopy(pos_mobile)
+    # --- no frame dimension: set it to one
+    if len(pos_mobile) == 2:
+        pos_mob = np.array([copy.deepcopy(pos_mobile)])
+
+    else:
+        pos_mob = copy.deepcopy(pos_mobile)
+
+    if not hasattr(w, '__len__'):
+        w = np.ones(pos_mob.shape[-2]) * w
+    else:
+        w = np.array(w)
+
     # --- get subset data sets
     # --- default reference: frame 0
     if ref is None:
