@@ -31,7 +31,7 @@ from ..write.modes import xvibsWriter
 
 from ..interface.orca import orcaReader
 from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
-from ..interface.molden import WriteMoldenVibFile
+from ..interface.molden import write_moldenvib_file
 from ..interface.gaussian import g09Reader
 
 from ..topology.mapping import align_atoms as _align_atoms
@@ -977,12 +977,12 @@ class _XYZ():
         elif fmt == 'molden':
             if not hasattr(self, 'modes'):
                 raise AttributeError('Cannot find modes for molden output!')
-            WriteMoldenVibFile(fn,
-                               loc_self.symbols,
-                               loc_self.pos_aa[1] * constants.l_aa2au,
-                               loc_self.eival_cgs,
-                               loc_self.modes,
-                               )
+            write_moldenvib_file(fn,
+                                 loc_self.symbols,
+                                 loc_self.pos_aa[1] * constants.l_aa2au,
+                                 loc_self.eival_cgs,
+                                 loc_self.modes,
+                                 )
 
         elif fmt == "pdb":
             mol_map = kwargs.get('mol_map')

@@ -19,7 +19,7 @@
 import subprocess
 import numpy as np
 
-# old code
+# ToDo: old code
 
 
 def read_output_file(fn_out, clean=False):
@@ -36,11 +36,11 @@ def read_output_file(fn_out, clean=False):
 
     print(data.shape)
     tss = np.array(data[1:, 0]).astype(int)
-    energies_tot_si = np.array(data[1:, 10]).astype(float)*4184.00
-    energies_kin_si = np.array(data[1:, 9]).astype(float)*4184.00
-    energies_pot_si = np.array(data[1:, 12]).astype(float)*4184.00
+    energies_tot_si = np.array(data[1:, 10]).astype(float) * 4184.00
+    energies_kin_si = np.array(data[1:, 9]).astype(float) * 4184.00
+    energies_pot_si = np.array(data[1:, 12]).astype(float) * 4184.00
     temperatures = np.array(data[1:, 11]).astype(float)
-    pressures_si = np.array(data[1:, 18]).astype(float)*100000
+    pressures_si = np.array(data[1:, 18]).astype(float) * 100000
     volumes_aa = np.array(data[1:, 17]).astype(float)
 
     # remove redundant steps
@@ -57,4 +57,5 @@ def read_output_file(fn_out, clean=False):
         pressures_si = np.delete(pressures_si, redundant)
         volumes_aa = np.delete(volumes_aa, redundant)
 
-    return tss, energies_tot_si, energies_kin_si, energies_pot_si, temperatures, pressures_si, volumes_aa
+    return tss, energies_tot_si, energies_kin_si, energies_pot_si, \
+        temperatures, pressures_si, volumes_aa

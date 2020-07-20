@@ -20,122 +20,158 @@ import numpy as np
 import copy
 
 from scipy.interpolate import UnivariateSpline
-Angstrom2Bohr = 1.8897261247828971
 
 
-# NEEDS Routine to include arrow tip in total vector length
-# ToDo clean up
+# ToDo: NEEDS Routine to include arrow tip in total vector length
 
+class VMDPaths():
+    def __init__(self, positions_aa, auto_smooth=True):
+        '''Read a set of paths defines by node positions in angstrom with
+           shape (n_points p. path[, n_paths], 3)'''
 
-def VMDTube(fn, pos_aa, **kwargs):
-    '''pos_au with shape n_points p. tube, n_tubes, 3'''
-    arr = kwargs.get('arrow', False)
-    # label = kwargs.get('label', False)
-    res = kwargs.get('resolution', 10)
-    rad = kwargs.get('radius', 0.025)
-    sparse = kwargs.get('sparse', 5)  # sparsity of iconification (NOT of streamline production)
-    factor = kwargs.get('factor', 1)
-    cut = kwargs.get('cutoff_aa', 0)  # min length of tube in AA to be iconified
-    mat = kwargs.get('material', 'AOShiny')
-    rhlng = kwargs.get('relative_head_length', 15)  # rhlng times radius ... chnage it soon
-    rhrad = kwargs.get('relative_head_radius', 3)  # rhrad times radius ... chnage it soon
-    rgb = kwargs.get('rgb', (0.0, 0.4, 0.0))  # rhrad times radius ... chnage it soon
+        if len(positions_aa.shape) == 2:
+            self.pos_aa = np.array(positions_aa[:, None])
+        elif len(positions_aa.shape) == 3:
+            self.pos_aa = positions_aa
+        else:
+            raise ValueError('Expected positions with 2 or 3 axes, got'
+                             f' {positions_aa.shape}')
 
-    n_points, n_tubes, three = pos_aa.shape
+        self.n_points, self.n_paths, three = self.pos_aa.shape
 
-    def spline(points):
-        x = np.arange(points.shape[0])
-        spl0 = UnivariateSpline(x, points[:, 0])
-        spl1 = UnivariateSpline(x, points[:, 1])
-        spl2 = UnivariateSpline(x, points[:, 2])
-        return np.array([spl0(x), spl1(x), spl2(x)]).swapaxes(0, 1)
+        if auto_smooth:
+            self.smooth()
+        print(self.pos_aa.shape)
 
-    arr_head_sense = lambda p, depth: ((p[-1, None]-p[-depth:-1])/np.linalg.norm(p[-1, None]-p[-depth:-1], axis=-1)[:, :, None]).sum(axis=0)/depth
+    def smooth(self):
+        '''Smoothing with k=3 spline'''
+        def spline(points):
+            x = np.arange(points.shape[0])
+            spl0 = UnivariateSpline(x, points[:, 0])
+            spl1 = UnivariateSpline(x, points[:, 1])
+            spl2 = UnivariateSpline(x, points[:, 2])
+            return np.array([spl0(x), spl1(x), spl2(x)]).swapaxes(0, 1)
 
-    ind = np.linalg.norm(np.abs(np.diff(pos_aa[:, :, :3], axis=0)).sum(axis=0), axis=-1) >= cut  # consider curve
-    # ind = np.linalg.norm(np.abs(pos_aa[-1, :, :3]-pos_aa[0, :, :3]), axis=-1)  > = cut # simple
-    pos_aa = np.array([spline(points) for points in pos_aa[:, ind, :].swapaxes(0, 1)]).swapaxes(0, 1)[::sparse][::factor]
-    print(pos_aa.shape)
-    with open(fn, 'w') as f:
-        f.write("color change rgb tan %f %f %f\n" % rgb)
-        f.write("draw color tan\n")
-        # f.write("draw color black\n")
-        # f.write("draw materials off\n")
-        f.write("draw materials on\n")
-        f.write("draw material %s\n" % mat)
+        self.pos_aa = np.array(
+                [spline(points) for points in self.pos_aa.swapaxes(0, 1)]
+                ).swapaxes(0, 1)
+
+    def reduce(self, cutoff_aa=0.0):
+        '''Keep paths whose length is above given cutoff'''
+        ind = np.linalg.norm(np.abs(
+                                np.diff(self.pos_aa[:, :, :3], axis=0)
+                                ).sum(axis=0),
+                             axis=-1) >= cutoff_aa  # integrate curved path
+        self.pos_aa = self.pos_aa[:, ind]
+
+    @staticmethod
+    def _draw_bit(p0, p1, tool='line', options='', overlap=0.0):
+        '''p0, p1 ... path bits of shape (n_paths, 3)'''
+        return ''.join([
+            f"draw {tool} " +
+            "{%16.9f %16.9f %16.9f} " % tuple(t0) +
+            "{%16.9f %16.9f %16.9f} " % tuple(t0 + (1.0+overlap) * (t1-t0)) +
+            options +
+            "\n"
+            for t0, t1 in zip(p0, p1)])
+
+    def _draw(self, sparse=5, **kwargs):
+        block = ''
         p0 = None
-        for ip, p1 in enumerate(pos_aa):
+        for ip, p1 in enumerate(self.pos_aa[::sparse]):
             if ip > 0:
-                [f.write("draw cylinder {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} radius %f resolution %d\n" % (
-                              t0[0], t0[1], t0[2],
-                              t0[0]+1.0*(t1[0]-t0[0]),
-                              t0[1]+1.0*(t1[1]-t0[1]),
-                              t0[2]+1.0*(t1[2]-t0[2]),
-                              rad, res)) for t0, t1 in zip(p0, p1)]
-#            if ip > 0: [f.write("draw line {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} width %d style solid\n"%(t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], 2)) for t0, t1 in zip(p0, p1)]
+                block += self._draw_bit(p0, p1, **kwargs)
             p0 = copy.deepcopy(p1)
-            # [f.write("draw sphere {%8.2f %8.2f %8.2f} radius %f resolution %d\n"%(t1[0], t1[1], t1[2], rad, res)) for t1 in p1]
-        if arr:
-            [f.write("draw cone {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} radius %f resolution %d\n" % (
-                     t0[0], t0[1], t0[2],
-                     t0[0]+rhlng*rad*t1[0],
-                     t0[1]+rhlng*rad*t1[1],
-                     t0[2]+rhlng*rad*t1[2],
-                     rhrad*rad, rhrad*res)) for t0, t1 in zip(pos_aa[-1], arr_head_sense(pos_aa, 5))]
+        return block
 
+    @staticmethod
+    def _draw_arrow_tip(positions_aa,
+                        radius=0.075,
+                        length=None,
+                        resolution=30):
+        '''Add cone to the ends of paths given through positions of
+        shape (n_points p. path[, n_paths], 3)'''
+        if length is None:
+            length = 5 * radius
 
-def VMDLine(fn, pos_aa, **kwargs):
-    '''pos_au with shape n_points p. tube, n_tubes, 3'''
-    arr = kwargs.get('arrow', False)
-    res = kwargs.get('resolution', 10)
-    sty = kwargs.get('style', 'solid')
-    wdt = kwargs.get('width', 1)
-    rad = kwargs.get('radius', 0.025)  # only for arrow, NEXT change routine
-    sparse = kwargs.get('sparse', 5)  # sparsity of iconification (NOT of streamline production)
-    factor = kwargs.get('factor', 1)
-    cut = kwargs.get('cutoff_aa', 0)  # min length of tube in AA to be iconified
-    rgb = kwargs.get('rgb', (0.5, 0.5, 0.5))  # rhrad times radius ... chnage it soon
+        def arr_head_sense(p, depth):
+            '''unit vector of pointing cone'''
+            backtrace = p[-1, None] - p[-depth:-1]
+            return (backtrace / np.linalg.norm(backtrace, axis=-1)[:, :, None]
+                    ).sum(axis=0) / depth
 
-    n_points, n_tubes, three = pos_aa.shape
+        pos = positions_aa[-1]
+        sense = arr_head_sense(positions_aa, 5)
 
-    def spline(points):
-        x = np.arange(points.shape[0])
-        spl0 = UnivariateSpline(x, points[:, 0])
-        spl1 = UnivariateSpline(x, points[:, 1])
-        spl2 = UnivariateSpline(x, points[:, 2])
-        return np.array([spl0(x), spl1(x), spl2(x)]).swapaxes(0, 1)
+        return ''.join(["draw cone " +
+                        "{%16.9f %16.9f %16.9f} " % tuple(t0) +
+                        "{%16.9f %16.9f %16.9f} " % tuple(t0 + length * t1) +
+                        f"radius {radius} resolution {resolution}"
+                        "\n"
+                        for t0, t1 in zip(pos, sense)])
 
-    arr_head_sense = lambda p, depth: ((p[-1, None]-p[-depth:-1])/np.linalg.norm(p[-1, None]-p[-depth:-1], axis=-1)[:, :, None]).sum(axis=0)/depth
+    def draw_line(self, fn,
+                  cutoff_aa=0.0,
+                  sparse=5,
+                  style='solid',
+                  width=1,
+                  rgb=(0.5, 0.5, 0.5),
+                  arrow=False,
+                  arrow_radius=0.075,
+                  arrow_length=None,
+                  arrow_resolution=30,
+                  ):
+        '''sparsity: skip every <sparse>th point in positions; <0 for reversed
+        order'''
+        tool = 'line'
+        options = f'width {width} style {style}'
+        self.reduce(cutoff_aa=cutoff_aa)
 
-    ind = np.linalg.norm(np.abs(np.diff(pos_aa[:, :, :3], axis=0)).sum(axis=0), axis=-1) >= cut  # consider curve
-    # ind = np.linalg.norm(np.abs(pos_aa[-1, :, :3]-pos_aa[0, :, :3]), axis=-1)  > = cut # simple
-    pos_aa = np.array([spline(points) for points in pos_aa[:, ind, :].swapaxes(0, 1)]).swapaxes(0, 1)[::sparse][::factor]
-    print(pos_aa.shape)
-    with open(fn, 'w') as f:
-        f.write("color change rgb tan %f %f %f\n" % rgb)
-        f.write("draw color tan\n")
-        f.write("draw materials off\n")
-        # f.write("draw materials on\n")
-#        f.write("draw material AOShiny\n")
-        p0 = None
-        for ip, p1 in enumerate(pos_aa):
-            if ip > 0:
-                [f.write("draw line {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} width %d style %s\n"%( # add style
-                              t0[0], t0[1], t0[2],
-                              t0[0]+1.8*(t1[0]-t0[0]),
-                              t0[1]+1.8*(t1[1]-t0[1]),
-                              t0[2]+1.8*(t1[2]-t0[2]),
-                              wdt, sty)) for t0, t1 in zip(p0, p1)]
-#            if ip > 0: [f.write("draw line {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} width %d style solid\n"%(t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], 2)) for t0, t1 in zip(p0, p1)]
-            p0 = copy.deepcopy(p1)
-            # [f.write("draw sphere {%8.2f %8.2f %8.2f} radius %f resolution %d\n"%(t1[0], t1[1], t1[2], rad, res)) for t1 in p1]
-        if arr:
-            [f.write("draw cone {%16.9f %16.9f %16.9f} {%16.9f %16.9f %16.9f} radius %f resolution %d\n" % (
-                     t0[0], t0[1], t0[2],
-                     t0[0]+15*rad*t1[0],
-                     t0[1]+15*rad*t1[1],
-                     t0[2]+15*rad*t1[2],
-                     3*rad, 3*res)) for t0, t1 in zip(pos_aa[-1], arr_head_sense(pos_aa, 5))]
+        with open(fn, 'w') as f:
+            f.write("color change rgb tan %f %f %f\n" % rgb)
+            f.write("draw color tan\n")
+            f.write("draw materials off\n")
+            f.write(self._draw(tool=tool, options=options, sparse=sparse, overlap=0.0))
+            if arrow:
+                f.write(self._draw_arrow_tip(self.pos_aa[::sparse],
+                                             radius=arrow_radius,
+                                             length=arrow_length,
+                                             resolution=arrow_resolution))
+
+    def draw_tube(self, fn,
+                  cutoff_aa=0.0,
+                  sparse=5,
+                  radius=0.025,
+                  resolution=10,
+                  material='AOShiny',
+                  rgb=(0.0, 0.4, 0.0),
+                  arrow=False,
+                  arrow_radius=None,
+                  arrow_length=None,
+                  arrow_resolution=30,
+                  ):
+        '''sparsity: skip every <sparse>th point in positions; <0 for reversed
+        order'''
+        tool = 'cylinder'
+        options = f'radius {radius} resolution {resolution}'
+        self.reduce(cutoff_aa=cutoff_aa)
+        if arrow_radius is None:
+            arrow_radius = 3 * radius
+
+        with open(fn, 'w') as f:
+            f.write("color change rgb tan %f %f %f\n" % rgb)
+            f.write("draw color tan\n")
+            f.write("draw materials on\n")
+            f.write("draw material %s\n" % material)
+            f.write(self._draw(tool=tool, options=options, sparse=sparse, overlap=0.0))
+            if arrow:
+                f.write(self._draw_arrow_tip(self.pos_aa[::sparse],
+                                             radius=arrow_radius,
+                                             length=arrow_length,
+                                             resolution=arrow_resolution))
+
+# [f.write("draw sphere {%8.2f %8.2f %8.2f} radius %f resolution %d\n"
+# %(t1[0], t1[1], t1[2], rad, res)) for t1 in p1]
 
 # draw color black
 # draw materials off
