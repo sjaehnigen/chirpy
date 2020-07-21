@@ -220,12 +220,12 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
     #   ==> do coarse mapping beforehand
     # (overlapping batches) or set a max limit for n_atoms
     # For now:
-    if len(p0.shape) > 2 or len(p1.shape) > 2:
-        raise ValueError('distance_matrix only accepts positions of shape '
-                         '(n_atoms, dim) or (n_frames, dim)!')
     if p1 is None:
         p1 = p0
 
+    if len(p0.shape) > 2 or len(p1.shape) > 2:
+        raise ValueError('distance_matrix only accepts positions of shape '
+                         '(n_atoms, dim) or (n_frames, dim)!')
     if max(p0.shape[0], p1.shape[0]) > 1000:
         # python3.8: use walrus
         print(max(p0.shape[0], p1.shape[0]))
