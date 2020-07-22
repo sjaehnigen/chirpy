@@ -106,17 +106,15 @@ def main():
             default=None,
             )
     parser.add_argument(
-            "--force_centre",
+            "--force_centering",
             action='store_true',
             help="Enforce centering after alignment.",
             default=False,
             )
     parser.add_argument(
-            "--use_com",
-            action='store_true',
-            help="Use centre of mass instead of centre of geometry \
-                    as reference",
-            default=False
+            "--weight",
+            help="Atom weights used for atom alignment, centering, wrapping",
+            default='mass'
             )
     parser.add_argument(
             "--extract_molecules",

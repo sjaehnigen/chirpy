@@ -110,11 +110,11 @@ class ScalarField(_CORE):
         print('Origin (a.u.)'
               + ' '.join(map('{:10.5f}'.format, self.origin_au)))
         print(77 * '-')
-        print(' cell(A) (a.u.) '
+        print(' grid vector (A) (a.u.) '
               + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[0])))
-        print(' cell(B) (a.u.) '
+        print(' grid vector (B) (a.u.) '
               + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[1])))
-        print(' cell(C) (a.u.) '
+        print(' grid vector (C) (a.u.) '
               + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[2])))
         print(77 * '–')
         print('')
@@ -131,7 +131,7 @@ class ScalarField(_CORE):
     def from_data(cls, **kwargs):
         cell_vec_au = kwargs.get('cell_vec_au', _np.empty((0)))
         data = kwargs.get('data', _np.empty((0)))
-        if any([cell_vec_au.size == 0, data.size == 0]):
+        if any([len(cell_vec_au) == 0, len(data) == 0]):
             raise TypeError('Please give both, cell_vec_au and data!')
         obj = cls()
         # quick workaround to find out if vectorfield
@@ -224,7 +224,7 @@ class ScalarField(_CORE):
         return self.voxel*_simps(_simps(_simps(self.data)))
 
     def normalise(self, **kwargs):
-        '''If no norm is given, the method uses _np.linalg.norm
+        '''If no norm is given, the method uses np.linalg.norm
         (give axis in kwargs).'''
 
         _N = kwargs.pop("norm")
@@ -407,7 +407,14 @@ class VectorField(ScalarField):
         raise NotImplementedError(
                 'Use the ScalarField method for each component!')
 
-    def streamlines(self, p0, **kwargs):
+    def streamlines(self, p0,
+                    sparse=4,
+                    forward=True,
+                    backward=True,
+                    length=400,
+                    timestep=0.5,
+                    external_object=False,
+                    **kwargs):
         '''pn...starting points of shape (n_points, 3)'''
         def get_value(p):
             return _griddata(points,
@@ -415,12 +422,8 @@ class VectorField(ScalarField):
                              (p[0], p[1], p[2]),
                              method='nearest')
 
-        sparse = kwargs.get('sparse', 4)
-        fw = kwargs.get('forward', True)
-        bw = kwargs.get('backward', True)
-        L = kwargs.get('length', 400)
-        dt = kwargs.get('timestep', 0.5)
-        ext = kwargs.get('external_object', False)
+        dt = timestep
+        ext = external_object
         if ext:
             ext_p0, ext_v = kwargs.get('ext_p'), kwargs.get('ext_v')
 
@@ -452,7 +455,7 @@ class VectorField(ScalarField):
         traj = list()
         ext_t = list()
 
-        if bw:
+        if backward:
             pn = _copy.deepcopy(p0)
             vn = get_value(p0.swapaxes(0, 1))
             traj.append(_np.concatenate((_copy.deepcopy(pn),
@@ -464,7 +467,7 @@ class VectorField(ScalarField):
                                               _copy.deepcopy(ext_v)),
                                              axis=-1))
 
-            for t in range(L):
+            for t in range(length):
                 pn -= vn/gl_norm*ds[None]*dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((_copy.deepcopy(pn),
@@ -475,7 +478,7 @@ class VectorField(ScalarField):
                     ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
                                                   _copy.deepcopy(ext_v)),
                                                  axis=-1))
-            if fw:
+            if forward:
                 traj = traj[1:][::-1]
                 if ext:
                     ext_t = ext_t[1:][::-1]
@@ -484,7 +487,7 @@ class VectorField(ScalarField):
                 if ext:
                     ext_t = ext_t[::-1]
 
-        if fw:
+        if forward:
             pn = _copy.deepcopy(p0)
             vn = get_value(pn.swapaxes(0, 1))
             traj.append(_np.concatenate((_copy.deepcopy(pn),
@@ -496,7 +499,7 @@ class VectorField(ScalarField):
                                               _copy.deepcopy(ext_v)),
                                              axis=-1))
 
-            for t in range(L):
+            for t in range(length):
                 pn += vn/gl_norm*ds[None]*dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((_copy.deepcopy(pn),

@@ -77,7 +77,7 @@ class _SYSTEM(_CORE):
                 self.XYZ.center_coordinates(
                         [_is for _is, _i in enumerate(self.mol_map)
                          if _i == center_mol],
-                        use_com=True
+                        mode='com',
                         )  # **kwargs)
                 self.wrap_molecules()
 

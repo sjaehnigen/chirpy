@@ -104,8 +104,7 @@ class _PALARRAY():
 
 class _CORE():
     def __init__(self, *args, **kwargs):
-        self.data = kwargs.get("data")
-        self._sync_class()
+        pass
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -125,9 +124,6 @@ class _CORE():
         self = self.__pow__(other)
         return self
 
-    def _sync_class(self):
-        self.n_fields = self.data.shape[-1]
-
     def dump(self, FN):
         with open(FN, "wb") as f:
             pickle.dump(self, f)
@@ -137,9 +133,11 @@ class _CORE():
         with open(FN, "rb") as f:
             _load = pickle.load(f)
         if isinstance(_load, cls):
-            warnings.warn("Loaded from file:\n%s with data shape %s." %
-                          (cls.__name__, _load.data.shape),
+            warnings.warn(f"Loaded from file: {cls.__name__}.",
                           stacklevel=2)
+            if hasattr(_load, 'data'):
+                warnings.warn(f"Found data with shape {_load.data.shape}.",
+                              stacklevel=2)
             return _load
         else:
             raise TypeError("File does not contain %s." % cls.__name__)

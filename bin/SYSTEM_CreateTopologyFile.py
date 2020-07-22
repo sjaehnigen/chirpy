@@ -43,11 +43,9 @@ def main():
             default=None,
             )
     parser.add_argument(
-            "--use_com",
-            action='store_true',
-            help="Use centre of mass instead of centre of geometry \
-                    as reference",
-            default=False
+            "--weight",
+            help="Atom weights used for centering and wrapping of molecules",
+            default='mass'
             )
     parser.add_argument(
         "--cell_aa_deg",

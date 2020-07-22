@@ -176,7 +176,7 @@ class _FRAME(_CORE):
             self._sync_class()
 
     @staticmethod
-    def map_frame(obj1, obj2, **kwargs):
+    def map_frame(obj1, obj2):
         '''obj1, obj2 ... Frame objects.
            Returns indices that would sort obj2 to match obj1.
            '''
@@ -248,7 +248,7 @@ class _MODES(_FRAME):
         self._type = 'modes'
         self._labels = ('comments', 'symbols', None)
 
-    def _sync_class(self, **kwargs):
+    def _sync_class(self, check_orthonormality=True):
         self.n_modes, self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent with '
@@ -291,7 +291,7 @@ class _MODES(_FRAME):
                      / _np.sqrt(self.masses_amu)[None, :, None])[:, :, :, None]
                     ).sum(axis=(1, 2))
 
-        if kwargs.get('check_orthonormality', True):
+        if check_orthonormality:
             self._check_orthonormality()
 
     def _modelist(self, modelist):
@@ -745,17 +745,16 @@ class _XYZ():
         return _np.prod(ie), ie
 
     # --- join the next two methods?
-    def wrap_atoms(self, **kwargs):
+    def wrap_atoms(self):
         if self._type == 'frame':
             self._pos_aa(_wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
                                self.cell_aa_deg)[0])
         else:
             self._pos_aa(_wrap(self.pos_aa, self.cell_aa_deg))
 
-    def wrap_molecules(self, mol_map, **kwargs):
-        mode = kwargs.get('mode', 'com')
+    def wrap_molecules(self, mol_map, weight='mass'):
         w = _np.ones((self.n_atoms))
-        if mode == 'com':
+        if weight == 'mass':
             w = self.masses_amu
 
         if self._type == 'trajectory':
@@ -777,7 +776,8 @@ class _XYZ():
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
 
-    def align_coordinates(self, align_coords, **kwargs):
+    def align_coordinates(self, align_coords, weight='mass', align_ref=None,
+                          force_centering=False):
         '''Aligns positions and rotates (but does not correct)
            velocities.
            '''
@@ -793,7 +793,7 @@ class _XYZ():
 
         self._aligned_coords = align_coords
         wt = _np.ones((self.n_atoms))
-        if kwargs.get('use_com', False):
+        if weight == 'mass':
             wt = self.masses_amu
 
         if self._type == 'frame':
@@ -803,7 +803,10 @@ class _XYZ():
             _p = self.pos_aa
             _v = self.vel_au
 
-        self._align_ref = kwargs.get('align_ref', _p[0])
+        if align_ref is None:
+            self._align_ref = _p[0]
+        else:
+            self._align_ref = align_ref
 
         _p, _data = _align_atoms(_p,
                                  wt,
@@ -820,15 +823,14 @@ class _XYZ():
             self._pos_aa(_p)
             self._vel_au(_data[0])
 
-        if hasattr(self, '_centered_coords') and kwargs.get(
-                'force_centre', False):
+        if hasattr(self, '_centered_coords') and force_centering:
             _ref = _cowt(self.pos_aa,
                          wt,
                          subset=self._centered_coords,
                          axis=self.axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
 
-    def center_coordinates(self, center_coords, **kwargs):
+    def center_coordinates(self, center_coords, weight='mass', wrap=False):
         if not isinstance(center_coords, list):
             if isinstance(center_coords, bool):
                 if center_coords:
@@ -840,13 +842,13 @@ class _XYZ():
                                 'for centering!')
         self._centered_coords = center_coords
         wt = _np.ones((self.n_atoms))
-        if kwargs.get('use_com', False):
+        if weight == 'mass':
             wt = self.masses_amu
 
         _p = self.pos_aa[center_coords]
 
         # ---join subset (only for frame)
-        if kwargs.get('wrap', False) and isinstance(center_coords, list):
+        if wrap and isinstance(center_coords, list):
             if self._type == 'frame':
                 _p = _np.array([_p])
             _p = _join_molecules(
@@ -863,7 +865,7 @@ class _XYZ():
 
         self.center_position(_ref, self.cell_aa_deg)
 
-    def center_position(self, pos, cell_aa_deg, **kwargs):
+    def center_position(self, pos, cell_aa_deg, wrap=True):
         '''pos reference in shape (n_frames, three)'''
         if self._type == 'frame':
             self._pos_aa(self.pos_aa + cell_aa_deg[None, :3] / 2
@@ -872,7 +874,7 @@ class _XYZ():
             self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2
                          - pos[:, None, :])
 
-        if kwargs.get("wrap", True):
+        if wrap:
             self.wrap_atoms()
 
     def rotate(self, R, origin_aa=_np.zeros(3)):
@@ -904,7 +906,7 @@ class _XYZ():
         self._pos_aa(_pos)
         self._vel_au(_vel)
 
-    def align_to_vector(self, i0, i1, vec, **kwargs):
+    def align_to_vector(self, i0, i1, vec):
         '''
         Align a reference line pos[i1]-pos[i0] to vec (no pbc support)
         Center of rotation is  pos[i0]. '''
@@ -1205,7 +1207,7 @@ class XYZFrame(_XYZ, _FRAME):
         _FRAME._sync_class(self)
         _XYZ._sync_class(self)
 
-    def make_trajectory(self, n_images=3, ts_fs=1, **kwargs):
+    def make_trajectory(self, n_images=3, ts_fs=1):
         '''Create a XYZTrajectory object with <n_images>
            frames from velocities and a timestep ts.'''
 
@@ -1542,15 +1544,10 @@ class _XYZTrajectory(_XYZ, _TRAJECTORY):
         _TRAJECTORY._sync_class(self)
         _XYZ._sync_class(self)
 
-    def calculate_nuclear_velocities(self, **kwargs):
+    def calculate_nuclear_velocities(self, ts=0.5):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
-        _warnings.warn("Using outdated method of XYZTrajectory. "
-                       "Proceed with care!", FutureWarning, stacklevel=2)
-        ts = kwargs.get('ts', 0.5)
-
         if _np.linalg.norm(self.vel_au) != 0:
-            _warnings.warn('Overwriting existing velocities in file %s'
-                           % self._fn,
+            _warnings.warn('Overwriting existing velocities in object!',
                            stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
@@ -1570,10 +1567,9 @@ class VibrationalModes(_XYZ, _MODES):
         _XYZ._sync_class(self)
         _MODES._sync_class(self, **kwargs)
 
-    def calculate_nuclear_velocities(self, **kwargs):
+    def calculate_nuclear_velocities(self, occupation='single',
+                                     temperature=300):
         '''Occupation can be single, average, or random.'''
-        occupation = kwargs.get('occupation', 'single')
-        temperature = kwargs.get('temperature', 300)
         beta_au = 1./(temperature*constants.k_B_au)
         print('Calculating velocities for {} K.'.format(temperature))
 

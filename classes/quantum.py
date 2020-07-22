@@ -201,12 +201,19 @@ class CurrentDensity(_VectorField):
 
 
 class TDElectronicState(_CORE):
-    def __init__(self, fn, fn1, fn2, fn3, **kwargs):
+    def __init__(self, fn, fn1, fn2, fn3, psi1=None, **kwargs):
+        '''psi1 - imaginary part from linear response calculation'''
         self.psi = WaveFunction(fn, **kwargs)
         self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
         self.psi.integral()
         if not self.psi._is_similar(self.j, strict=2, return_false=True):
             raise ValueError('Wavefunction and Current are not consistent!')
+        if psi1 is not None:
+            self.psi1 = WaveFunction(psi1, **kwargs)
+            if not self.psi._is_similar(self.psi1, strict=2,
+                                        return_false=True):
+                raise ValueError('Got inconsistent real and imaginary parts '
+                                 'for wavefunction!')
 
     def grid(self):
         return self.psi.grid()
@@ -218,6 +225,8 @@ class TDElectronicState(_CORE):
         self.psi.crop(r)
         self.psi.integral()
         self.j.crop(r)
+        if hasattr(self, 'psi1'):
+            self.psi1.crop(r)
 
     def calculate_velocity_field(self, rho, **kwargs):
         '''Requires total density rho'''

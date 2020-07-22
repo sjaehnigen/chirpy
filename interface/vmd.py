@@ -131,7 +131,8 @@ class VMDPaths():
             f.write("color change rgb tan %f %f %f\n" % rgb)
             f.write("draw color tan\n")
             f.write("draw materials off\n")
-            f.write(self._draw(tool=tool, options=options, sparse=sparse, overlap=0.0))
+            f.write(self._draw(tool=tool, options=options, sparse=sparse,
+                    overlap=0.0))
             if arrow:
                 f.write(self._draw_arrow_tip(self.pos_aa[::sparse],
                                              radius=arrow_radius,
@@ -163,7 +164,8 @@ class VMDPaths():
             f.write("draw color tan\n")
             f.write("draw materials on\n")
             f.write("draw material %s\n" % material)
-            f.write(self._draw(tool=tool, options=options, sparse=sparse, overlap=0.0))
+            f.write(self._draw(tool=tool, options=options, sparse=sparse,
+                    overlap=0.0))
             if arrow:
                 f.write(self._draw_arrow_tip(self.pos_aa[::sparse],
                                              radius=arrow_radius,
