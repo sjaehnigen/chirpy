@@ -141,7 +141,6 @@ def main():
                 'ext_p': copy.deepcopy(_part.pos_aa * constants.l_aa2au),
                 'ext_v': copy.deepcopy(_part.vel_au),
                 })
-        del _part
     export_args.update({
                 "sparse": args.streamlines_sparse,
                 "forward": args.streamlines_direction in ["forward", "both"],

@@ -17,6 +17,7 @@
 
 
 import argparse
+import sys
 import os
 import warnings
 
@@ -103,6 +104,9 @@ def main():
             )
     args = parser.parse_args()
 
+    global WDIR
+    WDIR = args.dir
+
     # ------ NPY only: open DENSITY cube file that contains grid metadata
     kwargs = {}
     if args.compression == 'npy':
@@ -112,7 +116,8 @@ def main():
                       FutureWarning,
                       stacklevel=2)
 
-        _topo = quantum.ElectronDensity(args.density + ".cube")
+        _topo = quantum.ElectronDensity(os.path.join(WDIR,
+                                                     args.density + ".cube"))
         kwargs.update({_k: getattr(_topo, _k)
                        for _k in ['comments',
                                   'origin_au',
@@ -121,9 +126,6 @@ def main():
                                   'numbers']
                        })
     # ----------------------------------------------------------------------
-
-    global WDIR
-    WDIR = args.dir
 
     def _assemble_file(fn,
                        fmt=args.format,
@@ -138,6 +140,7 @@ def main():
         _n = 1
         while os.path.isfile(_assemble_file(args.state0 % _n)):
             print(_n)
+            sys.stdout.flush()
             _FN = (args.state1 % _n, args.state0 % _n) + tuple(
                     args.current_state % (_n, _i) for _i in (1, 2, 3))
 
@@ -173,6 +176,7 @@ def main():
             global WDIR
             WDIR = _fdir
             print('Loading time-dependent electron density ...')
+            sys.stdout.flush()
             _FN = (args.density,) + tuple(args.current % _i
                                           for _i in (1, 2, 3))
 
@@ -203,6 +207,7 @@ def main():
 
     # --- START
     print('Loading time-dependent electron density ...')
+    sys.stdout.flush()
     _FN = (args.density,) + tuple(args.current % _i for _i in (1, 2, 3))
 
     _sys = quantum.TDElectronDensity(
@@ -219,6 +224,7 @@ def main():
     if _V != 0:
         print(' --> Crop %s' % _V)
     _sys.rho.print_info()
+    sys.stdout.flush()
 
     # --- save
     if _V != 0 and args.save_cropped:
@@ -235,6 +241,7 @@ def main():
         _recurse_states()
     print('Done.')
     print(77 * '-')
+    sys.stdout.flush()
 
     if not args.ignore_fragments:
         _recurse_fragments()

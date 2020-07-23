@@ -105,6 +105,11 @@ def xyzIterator(FN, **kwargs):
 
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip()) + 2
+        _comment = _f.readline().strip()
+    if 'CPMD' in _comment or 'GEOMETRY' in FN:
+        warnings.warn('It seems as if you are reading an XYZ file generated '
+                      'by CPMD with wrong velocity units (not atomic units). '
+                      'Proceed with care!', stacklevel=2)
 
     return _reader(FN, _nlines, _kernel, **kwargs)
 
