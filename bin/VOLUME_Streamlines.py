@@ -15,8 +15,8 @@ def main():
             )
     parser.add_argument(
             "vector_field",
-            help="Files containing velocity field (X, Y, Z) in atomic units.",
-            nargs=3,
+            help="File(s) containing velocity field (X,Y,Z) in atomic units.",
+            nargs='+',
             )
     parser.add_argument(
             "--normalise",
@@ -92,27 +92,28 @@ def main():
                   length).",
             default='both'
             )
-
     args = parser.parse_args()
 
+    # --- LOAD
     _vec = volume.VectorField(*args.vector_field)
 
     if args.scalar_field is not None:
         _sca = volume.ScalarField(args.scalar_field)
-    # --- optional: reduce grid size
+
+    # --- PRE-PROCESS
     if args.auto_crop:
         if args.scalar_field is None:
             raise AttributeError('Please specify --scalar_field for automatic'
                                  ' croppping!')
         _r = _sca.auto_crop(thresh=args.crop_thresh)  # Default: 1.E-3
         _vec.crop(_r)
-    _vec.print_info()
-
     if args.normalise:
         if args.scalar_field is None:
             raise AttributeError('Please specify --scalar_field for'
                                  ' normalisation!')
         _vec.normalise(norm=_sca.data)
+
+    _vec.print_info()
 
     # --- class operations
     # _vec.helmholtz_decomposition()
@@ -128,26 +129,23 @@ def main():
         _sca.sparsity(args.scalar_seed_sparse)
         pn = (_sca.pos_grid()[:, _sca.data > args.scalar_seed_thresh]
               ).reshape((3, -1)).T
-
         print(f"Seeding {pn.shape[0]} points.")
+        del _sca
 
+    # --- streamline options
     export_args = {}
     if args.particles is not None:
         _part = trajectory.XYZFrame(args.particles)
-
-        apos = copy.deepcopy(_part.pos_aa * constants.l_aa2au)
-        avel = copy.deepcopy(_part.vel_au)
         export_args.update({
                 'external_object': True,
-                'ext_p': apos,
-                'ext_v': avel,
+                'ext_p': copy.deepcopy(_part.pos_aa * constants.l_aa2au),
+                'ext_v': copy.deepcopy(_part.vel_au),
                 })
-
-    # --- streamline options
+        del _part
     export_args.update({
                 "sparse": args.streamlines_sparse,
                 "forward": args.streamlines_direction in ["forward", "both"],
-                "backward": args.streamlines_direction in ["forward", "both"],
+                "backward": args.streamlines_direction in ["backward", "both"],
                 "length": args.streamlines_length,
                 "timestep": args.streamlines_step
                 })

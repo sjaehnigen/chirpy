@@ -132,15 +132,19 @@ class _CORE():
     def load(cls, FN):
         with open(FN, "rb") as f:
             _load = pickle.load(f)
-        if isinstance(_load, cls):
-            warnings.warn(f"Loaded from file: {cls.__name__}.",
-                          stacklevel=2)
-            if hasattr(_load, 'data'):
-                warnings.warn(f"Found data with shape {_load.data.shape}.",
-                              stacklevel=2)
-            return _load
-        else:
-            raise TypeError("File does not contain %s." % cls.__name__)
+        if not isinstance(_load, cls):
+            warnings.warn(f"{FN} does not contain {cls.__name__}. Trying to "
+                          "convert.", stacklevel=2)
+            _load = convert_object(_load, cls)
+
+        # if hasattr(_load, 'data'):
+            # warnings.warn(f"Found data with shape {_load.data.shape}.",
+            #               stacklevel=2)
+
+        if hasattr(_load, '_sync_class'):
+            _load._sync_class()
+
+        return _load
 
     def print_info(self):
         print('')
@@ -354,3 +358,72 @@ class _ITERATOR():
             self.rewind()
 
         return self._kwargs['skip']
+
+
+# BETA: Work in progress
+
+_known_objects = {
+        'VectorField': {
+            'VectorField': [],
+            'CurrentDensity': [],
+            'TDElectronDensity': ['j'],
+            'TDElectronicState': ['j'],
+            },
+        'ScalarField': {
+            'ScalarField': [],
+            'ElectronDensity': [],
+            'WaveFunction': [],
+            'WannierFunction': [],
+            'TDElectronDensity': ['rho'],
+            'TDElectronicState': ['psi'],
+            # 'TDElectronicState': ['psi1'],
+            }
+        }
+
+_attributes = {
+        'VectorField': [
+            'data',
+            'cell_vec_au',
+            'origin_au',
+            'pos_au',
+            'numbers',
+            'comments'
+            ],
+        'ScalarField': [
+            'data',
+            'cell_vec_au',
+            'origin_au',
+            'pos_au',
+            'numbers',
+            'comments'
+            ],
+        }
+
+
+def convert_object(source, target):
+    '''source is an object and target is a class'''
+    try:
+        _ko = _known_objects[target.__name__]
+
+    except KeyError:
+        raise TypeError('Unsupported conversion target: '
+                        f'{target.__name__}')
+
+    src = source
+    src_name = source.__class__.__name__
+    if src_name in _ko:
+        for attr in _ko[src_name]:
+            src = getattr(src, attr)
+    else:
+        raise TypeError(f'{target.__name__} cannot proselytize to '
+                        '{source.__class__.__name__}!')
+
+    obj = target()
+    for attr in _attributes[target.__name__]:
+        value = getattr(src, attr)
+        if value is None:
+            raise AttributeError(f'{source} does not contain the {attr} '
+                                 'attribute!')
+        setattr(obj, attr, value)
+
+    return obj

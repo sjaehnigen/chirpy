@@ -71,7 +71,10 @@ class ScalarField(_CORE):
                 raise NotImplementedError('Format wfn not supported.')
 
             else:
-                raise ValueError('Unknown format.')
+                try:
+                    self.__dict__ = self.__class__.load(args[0]).__dict__
+                except (TypeError, AttributeError):
+                    raise ValueError('Unknown format.')
 
         elif len(args) == 0:
             if kwargs.get("fmt") is not None:  # deprecated
@@ -357,9 +360,9 @@ class ScalarField(_CORE):
 
 class VectorField(ScalarField):
     def __init__(self, *args, **kwargs):
-        if len(args) not in [0, 3]:
+        if len(args) not in [0, 1, 3]:
             raise TypeError(
-                    "File reader of %s takes exactly zero or three arguments!"
+                    "File reader of %s takes only 0, 1, or 3 arguments!"
                     % self.__class__.__name__)
         elif len(args) == 3:
             buf_x = ScalarField(args[0], **kwargs)
@@ -367,6 +370,13 @@ class VectorField(ScalarField):
             buf_z = ScalarField(args[2], **kwargs)
             self._join_scalar_fields(buf_x, buf_y, buf_z)
             del buf_x, buf_y, buf_z
+
+        elif len(args) == 1:
+            try:
+                self.__dict__ = self.__class__.load(args[0]).__dict__
+            except (TypeError, AttributeError):
+                raise ValueError('Unknown format.')
+
         elif len(args) == 0:
             if hasattr(self, "fmt"):  # deprecated
                 self = self.__class__.from_data(**kwargs)
