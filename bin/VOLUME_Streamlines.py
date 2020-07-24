@@ -19,6 +19,13 @@ def main():
             nargs='+',
             )
     parser.add_argument(
+            "--decompose",
+            action='store_true',
+            help="Calculate and return the Helmholtz decomposed vector fields\
+                  as well (before normalisation)",
+            default=False
+            )
+    parser.add_argument(
             "--normalise",
             action='store_true',
             help="Normalise vector field with given scalar field",
@@ -82,9 +89,10 @@ def main():
             )
     parser.add_argument(
             "--streamlines_step",
-            help="Propagation time step.",
+            help="Propagation time step in atomic units (41.341 a.u. \
+                  corresponds to 1 fs).",
             type=float,
-            default=0.5
+            default=41.341
             )
     parser.add_argument(
             "--streamlines_direction",
@@ -105,18 +113,23 @@ def main():
         if args.scalar_field is None:
             raise AttributeError('Please specify --scalar_field for automatic'
                                  ' croppping!')
-        _r = _sca.auto_crop(thresh=args.crop_thresh)  # Default: 1.E-3
+        _r = _sca.auto_crop(thresh=args.crop_thresh)
         _vec.crop(_r)
+
+    if args.decompose:
+        _vec.helmholtz_decomposition()
+
     if args.normalise:
         if args.scalar_field is None:
             raise AttributeError('Please specify --scalar_field for'
                                  ' normalisation!')
         _vec.normalise(norm=_sca.data)
+        if args.decompose:
+            _vec.irrotational_field.normalise(norm=_sca.data)
+            _vec.solenoidal_field.normalise(norm=_sca.data)
+            _vec.homogeneous_field.normalise(norm=_sca.data)
 
     _vec.print_info()
-
-    # --- class operations
-    # _vec.helmholtz_decomposition()
 
     # --- STREAMLINES AND ICONS
 
@@ -151,10 +164,17 @@ def main():
 
     # --- generate streamlines
     _SL = _vec.streamlines(pn, **export_args)
+    traj = _SL['streamlines']
     if args.particles is not None:
-        traj, atoms = _SL
-    else:
-        traj = _SL
+        atoms = _SL['particles']
+
+    if args.decompose:
+        traj_div = _vec.irrotational_field.streamlines(
+                                            pn, **export_args)['streamlines']
+        traj_rot = _vec.solenoidal_field.streamlines(
+                                            pn, **export_args)['streamlines']
+        traj_hom = _vec.homogeneous_field.streamlines(
+                                            pn, **export_args)['streamlines']
 
     # --- OUTPUT
 
@@ -165,7 +185,6 @@ def main():
                              symbols=traj.shape[1]*['C'],
                              comments=traj.shape[0]*['C']
                              ).write('streamlines.xyz')
-
     if args.particles is not None:
         atoms[:, :, :3] *= constants.l_au2aa
         trajectory._XYZTrajectory(
@@ -173,6 +192,27 @@ def main():
                              symbols=_part.symbols,
                              comments=atoms.shape[0]*['C']
                              ).write('atoms.xyz')
+
+
+    if args.decompose:
+        traj_div[:, :, :3] *= constants.l_au2aa
+        traj_rot[:, :, :3] *= constants.l_au2aa
+        traj_hom[:, :, :3] *= constants.l_au2aa
+        trajectory._XYZTrajectory(
+                             data=traj_div,
+                             symbols=traj_div.shape[1]*['C'],
+                             comments=traj_div.shape[0]*['C']
+                             ).write('streamlines_div.xyz')
+        trajectory._XYZTrajectory(
+                             data=traj_rot,
+                             symbols=traj_rot.shape[1]*['C'],
+                             comments=traj_rot.shape[0]*['C']
+                             ).write('streamlines_rot.xyz')
+        trajectory._XYZTrajectory(
+                             data=traj_hom,
+                             symbols=traj_hom.shape[1]*['C'],
+                             comments=traj_hom.shape[0]*['C']
+                             ).write('streamlines_hom.xyz')
 
     print('Done.')
 

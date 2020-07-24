@@ -177,8 +177,8 @@ class TestQuantum(unittest.TestCase):
         system.calculate_velocity_field(lower_thresh=thresh)
         system.v.helmholtz_decomposition()
         self.assertTrue(np.allclose(system.v.data,
-                                    system.v.solenoidal_field +
-                                    system.v.irrotational_field,
+                                    system.v.solenoidal_field.data +
+                                    system.v.irrotational_field.data,
                                     atol=thresh
                                     ))
 

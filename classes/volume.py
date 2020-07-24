@@ -40,7 +40,7 @@ class ScalarField(_CORE):
         elif len(args) == 1:
             fn = args[0]
             self._fn = fn
-            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fmt = kwargs.get('fmt', str(fn).split('.')[-1])
             if fmt == 'bz2':
                 kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
@@ -72,14 +72,16 @@ class ScalarField(_CORE):
 
             else:
                 try:
-                    self.__dict__ = self.__class__.load(args[0]).__dict__
-                except (TypeError, AttributeError):
-                    raise ValueError('Unknown format.')
+                    self.__dict__ = self.from_object(args[0],
+                                                     **kwargs).__dict__
+                except TypeError:
+                    try:
+                        self.__dict__ = self.load(args[0]).__dict__
+                    except (TypeError, AttributeError):
+                        raise ValueError('Unknown format.')
 
         elif len(args) == 0:
-            if kwargs.get("fmt") is not None:  # deprecated
-                raise NotImplementedError("Use %s.from_data()!"
-                                          % self.__class__.__name__)
+            self.__dict__ = self.__class__.from_data(**kwargs).__dict__
 
         self._sync_class()
         if kwargs.get('sparsity', 1) != 1:
@@ -123,8 +125,12 @@ class ScalarField(_CORE):
         print('')
 
     @classmethod
-    def from_object(cls, obj):
-        return cls.from_data(**vars(_copy.deepcopy(obj)))
+    def from_object(cls, obj, **kwargs):
+        '''Use kwargs to transfer new attribute values'''
+        nargs = {}
+        nargs.update(vars(obj))
+        nargs.update(kwargs)
+        return cls.from_data(**nargs)
 
     @classmethod
     def from_domain(cls, domain, **kwargs):
@@ -132,11 +138,11 @@ class ScalarField(_CORE):
 
     @classmethod
     def from_data(cls, **kwargs):
-        cell_vec_au = kwargs.get('cell_vec_au', _np.empty((0)))
-        data = kwargs.get('data', _np.empty((0)))
-        if any([len(cell_vec_au) == 0, len(data) == 0]):
+        cell_vec_au = kwargs.get('cell_vec_au')
+        data = kwargs.get('data')
+        if any([cell_vec_au is None, data is None]):
             raise TypeError('Please give both, cell_vec_au and data!')
-        obj = cls()
+        obj = cls.__new__(cls)
         # quick workaround to find out if vectorfield
         if data.shape[0] == 3:
             obj.comments = 3 * [('no_comment', 'no_comment')]
@@ -327,9 +333,6 @@ class ScalarField(_CORE):
             self.origin_au = rotate_vector(self.origin_au, R, origin=_o)
 
     def write(self, fn, **kwargs):
-        '''Generalise this routine with autodetection for scalar and velfield,
-        since div j is a scalar field, but attr of vec field class.'''
-
         fmt = kwargs.get('fmt', fn.split('.')[-1])
         attr = kwargs.get('attribute', 'data')
         if not hasattr(self, attr):
@@ -373,13 +376,16 @@ class VectorField(ScalarField):
 
         elif len(args) == 1:
             try:
-                self.__dict__ = self.__class__.load(args[0]).__dict__
+                self.__dict__ = self.load(args[0]).__dict__
             except (TypeError, AttributeError):
-                raise ValueError('Unknown format.')
+                try:
+                    self.__dict__ = self.from_object(args[0],
+                                                     **kwargs).__dict__
+                except TypeError:
+                    raise ValueError('Unknown format.')
 
         elif len(args) == 0:
-            if hasattr(self, "fmt"):  # deprecated
-                self = self.__class__.from_data(**kwargs)
+            self.__dict__ = self.__class__.from_data(**kwargs).__dict__
 
     def _join_scalar_fields(self, x, y, z):
         '''x, y, z ... ScalarField objects'''
@@ -451,8 +457,8 @@ class VectorField(ScalarField):
 
         pos_grid = self.pos_grid()[:, ::sparse, ::sparse, ::sparse]
         v_field = self.data[:, ::sparse, ::sparse, ::sparse]
-        gl_norm = _np.amax(_np.linalg.norm(v_field, axis=0))
-        ds = _np.linalg.norm(self.cell_vec_au, axis=1)
+        # gl_norm = _np.amax(_np.linalg.norm(v_field, axis=0))
+        # ds = _np.linalg.norm(self.cell_vec_au, axis=1)
 
         points = _np.array(
                 [pos_grid[0].ravel(), pos_grid[1].ravel(), pos_grid[2].ravel()]
@@ -478,13 +484,15 @@ class VectorField(ScalarField):
                                              axis=-1))
 
             for t in range(length):
-                pn -= vn/gl_norm*ds[None]*dt
+                # pn -= vn/gl_norm*ds[None]*dt
+                pn -= vn * dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((_copy.deepcopy(pn),
                                              _copy.deepcopy(vn)),
                                             axis=-1))
                 if ext:
-                    ext_p -= ext_v/gl_norm*ds*dt
+                    # ext_p -= ext_v/gl_norm*ds*dt
+                    ext_p -= ext_v * dt
                     ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
                                                   _copy.deepcopy(ext_v)),
                                                  axis=-1))
@@ -510,28 +518,32 @@ class VectorField(ScalarField):
                                              axis=-1))
 
             for t in range(length):
-                pn += vn/gl_norm*ds[None]*dt
+                # pn += vn/gl_norm*ds[None]*dt
+                pn += vn * dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((_copy.deepcopy(pn),
                                              _copy.deepcopy(vn)),
                                             axis=-1))
                 if ext:
-                    ext_p += ext_v/gl_norm*ds*dt
+                    # ext_p += ext_v/gl_norm*ds*dt
+                    ext_p += ext_v * dt
                     ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
                                                   _copy.deepcopy(ext_v)),
                                                  axis=-1))
 
+        result = {}
+        result['streamlines'] = _np.array(traj)
         if ext:
-            return _np.array(traj), _np.array(ext_t)
-        else:
-            return _np.array(traj)
+            result['particles'] = _np.array(ext_t)
+
+        return result
 
     def streamtubes(self):
         '''See notebook 24b'''
         pass
 
     @staticmethod
-    def _get_helmholtz_components(data, cell_vec_au):
+    def _helmholtz_components(data, cell_vec_au):
         div, rot = _get_divrot(data, cell_vec_au)
         V = _k_potential(div, _np.array(cell_vec_au))[1]/(4*_np.pi)
         A1 = _k_potential(rot[0], _np.array(cell_vec_au))[1]
@@ -550,12 +562,18 @@ class VectorField(ScalarField):
         self.div, self.rot = _get_divrot(self.data, self.cell_vec_au)
 
     def helmholtz_decomposition(self):
-        self.irrotational_field,\
-                self.solenoidal_field,\
-                self.div,\
-                self.rot\
-                =\
-                self._get_helmholtz_components(self.data, self.cell_vec_au)
+        irr = _copy.deepcopy(self)
+        sol = _copy.deepcopy(self)
+        hom = _copy.deepcopy(self)
+        irr.data, sol.data, div, rot = self._helmholtz_components(
+                                                   self.data, self.cell_vec_au)
+
+        self.div = ScalarField(self, data=div)
+        self.rot = ScalarField(self, data=rot)
+        hom.data = self.data - irr.data - sol.data
+        self.irrotational_field = irr
+        self.solenoidal_field = sol
+        self.homogeneous_field = hom
 
     def write(self, fn1, fn2, fn3, **kwargs):
         '''Generalise this routine with autodetection for scalar and velfield,
