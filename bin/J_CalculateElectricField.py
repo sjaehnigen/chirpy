@@ -22,9 +22,10 @@ import copy
 import numpy as np
 import time
 
-from chirpy.classes import volume,trajectory,field
+from chirpy.classes import volume, trajectory, field
 from chirpy.physics import constants
 from chirpy.snippets import extract_keys
+
 
 def main():
     if int(np.version.version.split('.')[1]) < 14:
@@ -163,7 +164,7 @@ def main():
 
     if args.q_crop is not None:
         rho.crop(args.q_crop)
-    rho.sparsity(args.q_sparse)
+    rho = rho.sparse(args.q_sparse)
     rho.print_info()
 
     #----------- Get vel and Q for atoms -------- 
@@ -203,7 +204,7 @@ def main():
            _tmp = copy.deepcopy(rho)
            if args.r_crop is not None:
                _tmp.crop(args.r_crop)
-           _tmp.sparsity(args.r_sparse)
+           _tmp = _tmp.sparse(args.r_sparse)
            R = _tmp.pos_grid()
            smear_charges = True
 

@@ -113,6 +113,13 @@ class _CORE():
         self = self.__add__(other)
         return self
 
+    def __rsub__(self, other):
+        return self.__sub__(other)
+
+    def __isub__(self, other):
+        self = self.__sub__(other)
+        return self
+
     def __rmul__(self, other):
         return self.__mul__(other)
 
@@ -418,7 +425,7 @@ def convert_object(source, target):
         raise TypeError(f'{target.__name__} cannot proselytize to '
                         '{source.__class__.__name__}!')
 
-    obj = target()
+    obj = target.__new__(target)
     for attr in _attributes[target.__name__]:
         value = getattr(src, attr)
         if value is None:

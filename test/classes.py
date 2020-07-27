@@ -182,7 +182,7 @@ class TestQuantum(unittest.TestCase):
                                     atol=thresh
                                     ))
 
-        system.rho.sparsity(2)
-        system.j.sparsity(2)
+        system.rho = system.rho.sparse(2)
+        system.j = system.j.sparse(2)
         system.rho.write(self.dir + "/out.cube")
         os.remove(self.dir + "/out.cube")

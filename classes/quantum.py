@@ -36,13 +36,11 @@ class WaveFunction(_ScalarField):
 
 
 class WannierFunction(_ScalarField):
-    def auto_crop(self, **kwargs):
-        '''crop after threshold (default: ...)'''
-        thresh = kwargs.get('thresh', 1.0)
-        a = _np.amin(_np.array(self.data.shape) -
-                     _np.argwhere(_np.abs(self.data) > thresh))
-        b = _np.amin(_np.argwhere(_np.abs(self.data) > thresh))
-        self.crop(min(a, b))
+    def auto_crop(self, thresh=1.0):
+        '''crop all after threshold'''
+        r = self.auto_crop(thresh=thresh)
+
+        return r
 
     def extrema(self, **kwargs):
         data = gaussian_filter(self.data, 4.0)
@@ -147,7 +145,7 @@ class ElectronDensity(_ScalarField):
             ind = _np.unravel_index(
                     _np.argmin(
                         _np.linalg.norm(
-                            pos_grid[:, :, :, :] -
+                            pos_grid -
                             self.pos_au[iatom, :, None, None, None],
                             axis=0)), self.data.shape)
             jatom = _np.argmax(basin[ind])
@@ -201,19 +199,28 @@ class CurrentDensity(_VectorField):
 
 
 class TDElectronicState(_CORE):
-    def __init__(self, fn, fn1, fn2, fn3, psi1=None, **kwargs):
+    def __init__(self, *args, psi1=None, **kwargs):
         '''psi1 - imaginary part from linear response calculation'''
-        self.psi = WaveFunction(fn, **kwargs)
-        self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
-        self.psi.integral()
-        if not self.psi._is_similar(self.j, strict=2, return_false=True):
-            raise ValueError('Wavefunction and Current are not consistent!')
+        if len(args) == 4:
+            self.psi = WaveFunction(args[0], **kwargs)
+            self.j = CurrentDensity(*args[1:], **kwargs)
+            self.psi.integral()
+            if not self.psi._is_similar(self.j, strict=2, return_false=True):
+                raise ValueError('Wavefunction and Current not consistent!')
+        elif len(args) == 1:
+            self.__dict__ = self.__class__.load(args[0]).__dict__
+        else:
+            raise TypeError(f"File reader of {self.__class__.__name__} takes "
+                            "only 1 or 4 arguments!")
         if psi1 is not None:
             self.psi1 = WaveFunction(psi1, **kwargs)
             if not self.psi._is_similar(self.psi1, strict=2,
                                         return_false=True):
                 raise ValueError('Got inconsistent real and imaginary parts '
                                  'for wavefunction!')
+            self.psi1._sync_class()
+        self.psi._sync_class()
+        self.j._sync_class()
 
     def grid(self):
         return self.psi.grid()
@@ -221,28 +228,44 @@ class TDElectronicState(_CORE):
     def pos_grid(self):
         return self.psi.pos_grid()
 
+    def auto_crop(self, thresh=1.0):
+        '''crop all after threshold'''
+        r = self.psi.auto_crop(thresh=thresh, dry_run=True)
+        self.crop(r)
+
+        return r
+
     def crop(self, r, **kwargs):
         self.psi.crop(r)
         self.psi.integral()
         self.j.crop(r)
+        self.psi._sync_class()
+        self.j._sync_class()
         if hasattr(self, 'psi1'):
             self.psi1.crop(r)
+            self.psi1._sync_class()
 
-    def calculate_velocity_field(self, rho, **kwargs):
+    def calculate_velocity_field(self, rho, thresh=1.E-8):
         '''Requires total density rho'''
         self.v = _VectorField.from_object(self.j)
-        self.v.normalise(norm=rho.data, **kwargs)
-
-        self.v.__class__.__name__ = "VelocityField"
+        self.v.normalise(norm=rho.data, thresh=thresh)
 
 
 class TDElectronDensity(_CORE):
-    def __init__(self, fn, fn1, fn2, fn3, **kwargs):
-        self.rho = ElectronDensity(fn, **kwargs)
-        self.j = CurrentDensity(fn1, fn2, fn3, **kwargs)
-        self.rho.integral()
-        if not self.rho._is_similar(self.j, strict=2, return_false=True):
-            raise ValueError('Density and Current are not consistent!')
+    def __init__(self, *args, **kwargs):
+        if len(args) == 4:
+            self.rho = ElectronDensity(args[0], **kwargs)
+            self.j = CurrentDensity(*args[1:], **kwargs)
+            self.rho.integral()
+            if not self.rho._is_similar(self.j, strict=2, return_false=True):
+                raise ValueError('Density and Current are not consistent!')
+        elif len(args) == 1:
+            self.__dict__ = self.__class__.load(args[0]).__dict__
+        else:
+            raise TypeError(f"File reader of {self.__class__.__name__} takes "
+                            "only 1 or 4 arguments!")
+        self.rho._sync_class()
+        self.j._sync_class()
 
     def grid(self):
         return self.rho.grid()
@@ -251,26 +274,22 @@ class TDElectronDensity(_CORE):
         return self.rho.pos_grid()
 
     def crop(self, r, **kwargs):
-        self.rho.crop(r)
+        self.rho.crop(r, **kwargs)
         self.rho.integral()
-        self.j.crop(r)
+        self.j.crop(r, **kwargs)
+        self.rho._sync_class()
+        self.j._sync_class()
 
-    def auto_crop(self, **kwargs):
-        '''crop after threshold (default: ...)'''
-        thresh = kwargs.get('thresh', self.rho.threshold)
-        scale = self.rho.data
-        a = _np.amin(_np.array(self.rho.data.shape)
-                     - _np.argwhere(scale > thresh))
-        b = _np.amin(_np.argwhere(scale > thresh))
-        self.crop(min(a, b))
+    def auto_crop(self, thresh=5.E-4):
+        '''crop all after density threshold'''
+        r = self.rho.auto_crop(thresh=thresh, dry_run=True)
+        self.crop(r)
 
-        return min(a, b)
+        return r
 
-    def calculate_velocity_field(self, **kwargs):
+    def calculate_velocity_field(self, thresh=1.E-8):
         self.v = _VectorField.from_object(self.j)
-        self.v.normalise(norm=self.rho.data, **kwargs)
-
-        self.v.__class__.__name__ = "VelocityField"
+        self.v.normalise(norm=self.rho.data, thresh=thresh)
 
     def propagate_density(self, dt=8.0):
         '''dt in atomic units'''

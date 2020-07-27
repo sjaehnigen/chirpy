@@ -76,26 +76,26 @@ def main():
             default=None,
             )
     parser.add_argument(
-            "--streamlines_sparse",
+            "--sparse",
             help="Sparsity of velocity field grid points for propagation.",
             type=int,
-            default=2
+            default=1
             )
     parser.add_argument(
-            "--streamlines_length",
+            "--length",
             help="Number of propagation steps.",
             type=int,
             default=20
             )
     parser.add_argument(
-            "--streamlines_step",
+            "--step",
             help="Propagation time step in atomic units (41.341 a.u. \
                   corresponds to 1 fs).",
             type=float,
             default=41.341
             )
     parser.add_argument(
-            "--streamlines_direction",
+            "--direction",
             help="Choose 'forward', 'backward' propagation or 'both' (doubles\
                   length).",
             default='both'
@@ -139,7 +139,7 @@ def main():
                                  ' points seed!')
 
         # --- Prepare initial points (pn) from scalar field cutoff + sparsity
-        _sca.sparsity(args.scalar_seed_sparse)
+        _sca = _sca.sparse(args.scalar_seed_sparse)
         pn = (_sca.pos_grid()[:, _sca.data > args.scalar_seed_thresh]
               ).reshape((3, -1)).T
         print(f"Seeding {pn.shape[0]} points.")
@@ -155,11 +155,11 @@ def main():
                 'ext_v': copy.deepcopy(_part.vel_au),
                 })
     export_args.update({
-                "sparse": args.streamlines_sparse,
-                "forward": args.streamlines_direction in ["forward", "both"],
-                "backward": args.streamlines_direction in ["backward", "both"],
-                "length": args.streamlines_length,
-                "timestep": args.streamlines_step
+                "sparse": args.sparse,
+                "forward": args.direction in ["forward", "both"],
+                "backward": args.direction in ["backward", "both"],
+                "length": args.length,
+                "timestep": args.step
                 })
 
     # --- generate streamlines
@@ -192,7 +192,6 @@ def main():
                              symbols=_part.symbols,
                              comments=atoms.shape[0]*['C']
                              ).write('atoms.xyz')
-
 
     if args.decompose:
         traj_div[:, :, :3] *= constants.l_au2aa

@@ -28,7 +28,15 @@ def main():
             )
     parser.add_argument(
             "fn",
-            help="File that contains volume data")
+            help="File(s) that contain(s) volume data",
+            nargs='+'
+            )
+    parser.add_argument(
+            "--vector_field",
+            help="FN contains vector field data.",
+            action='store_true',
+            default=False,
+            )
     parser.add_argument(
             "--sparsity",
             help="Reduce the meshsize by factor.",
@@ -36,14 +44,34 @@ def main():
             default=1
             )
     parser.add_argument(
+            "--auto_crop",
+            help="Crop grid edges.",
+            action='store_true',
+            default=False
+            )
+    parser.add_argument(
+            "--crop_thresh",
+            help="Lower threshold for cropping grid edges.",
+            type=float,
+            default=1.E-3
+            )
+
+    parser.add_argument(
             "-f",
-            help="Output file name",
-            default='out.cube')
+            help="Output file name(s)",
+            nargs='+',
+            default=['out.cube'])
     args = parser.parse_args()
 
-    fn = args.fn
-    system = volume.ScalarField(fn, **vars(args))
-    system.write(args.f)
+    if args.vector_field:
+        system = volume.VectorField(*args.fn, **vars(args))
+    else:
+        system = volume.ScalarField(*args.fn, **vars(args))
+
+    if args.auto_crop:
+        system.auto_crop(thresh=args.crop_thresh)
+
+    system.write(*args.f)
 
 
 if(__name__ == "__main__"):
