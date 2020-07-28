@@ -18,6 +18,7 @@
 import unittest
 import os
 import numpy as np
+import warnings
 
 from ..read import modes as r_modes
 from ..read import coordinates as r_coordinates
@@ -96,8 +97,10 @@ class TestCoordinates(unittest.TestCase):
         # --- only single frames for now
         w_coordinates.pdbWriter(self.dir + '/out.pdb', data[0], names, symbols,
                                 res, cell_aa_deg, title)
-        data2, names2, symbols2, res2, cell_aa_deg2, title2 =\
-            r_coordinates.pdbReader(self.dir + '/out.pdb')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+            data2, names2, symbols2, res2, cell_aa_deg2, title2 =\
+                r_coordinates.pdbReader(self.dir + '/out.pdb')
 
         self.assertListEqual(names.tolist(), names2.tolist())
         self.assertTupleEqual(symbols, symbols2)

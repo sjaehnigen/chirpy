@@ -3,18 +3,18 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pip=20.0.*
-  - python=3.7.*
-  - ipython=7.13.*
+  - ipython=7.16.*
   - jupyter=1.0.*
   - jupyter_core=4.6.*
-  - numpy=1.18.*
-  - scipy=1.4.*
-  - matplotlib=3.2.*
-  - mdanalysis=0.19.* 
+  - matplotlib=3.3.*
+  - mdanalysis=1.0.* 
+  - numpy=1.19.*
   - packmol=18.169
   - periodictable=1.5.*
+  - pip=20.1.*
   - pycifrw=4.4.*
+  - python=3.8.*
+  - scipy=1.5.*
   - pip:
     - mayavi==4.7.*
     - pyqt5==5.13.*

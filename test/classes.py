@@ -174,7 +174,7 @@ class TestQuantum(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=RuntimeWarning)
             system.rho.aim(verbose=False)
-        system.calculate_velocity_field(lower_thresh=thresh)
+        system.calculate_velocity_field(thresh=thresh)
         system.v.helmholtz_decomposition()
         self.assertTrue(np.allclose(system.v.data,
                                     system.v.solenoidal_field.data +

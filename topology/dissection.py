@@ -33,15 +33,14 @@ def _make_batches(MIN, MAX, nb, ov=None):
        ov ... overlap of batches (for cross communication)
        Future: allow manual definition of batches (adaptive grid)
        '''
-    _nodes = np.array([np.linspace(_min, _max, _n + 1)
-                       for _min, _max, _n in zip(MIN, MAX, nb)])
+    _nodes = [np.linspace(_min, _max, _n + 1)
+              for _min, _max, _n in zip(MIN, MAX, nb)]
     if ov is None:
         ov = [(_x[1] - _x[0]) / 3. for _x in _nodes]
 
-    _edges = np.array([
-           [(_x0-_ov, _x1+_ov) for _x0, _x1 in zip(_x, np.roll(_x, -1))][:-1]
-           for _x, _ov in zip(_nodes, ov)
-           ])
+    _edges = [[(_x0-_ov, _x1+_ov)
+               for _x0, _x1 in zip(_x, np.roll(_x, -1))][:-1]
+              for _x, _ov in zip(_nodes, ov)]
 
     _starts = np.array(np.meshgrid(
         *[np.array(_y)[:, 0] for _y in _edges])).reshape((3, -1)).T
