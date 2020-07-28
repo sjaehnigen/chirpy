@@ -40,7 +40,6 @@ def tracked_extract_keys(dict1, **defaults):
 def tracked_update(dict1, dict2, msg='in dict1!'):
     '''Update dict1 with dict2 but warns if existing data is changed'''
     for _k2 in dict2:
-        # python3.8: use walrus
         _v1 = dict1.get(_k2)
         _v2 = dict2.get(_k2)
         if _v1 is not None:

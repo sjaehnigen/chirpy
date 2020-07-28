@@ -222,6 +222,12 @@ class TDElectronicState(_CORE):
         self.psi._sync_class()
         self.j._sync_class()
 
+    def _sync_class(self):
+        self.psi._sync_class()
+        self.j._sync_class()
+        if hasattr(self, 'psi1'):
+            self.psi1._sync_class()
+
     def grid(self):
         return self.psi.grid()
 
@@ -264,6 +270,10 @@ class TDElectronDensity(_CORE):
         else:
             raise TypeError(f"File reader of {self.__class__.__name__} takes "
                             "only 1 or 4 arguments!")
+        self.rho._sync_class()
+        self.j._sync_class()
+
+    def _sync_class(self):
         self.rho._sync_class()
         self.j._sync_class()
 

@@ -33,10 +33,8 @@ class _SYSTEM(_CORE):
 
     def __init__(self, *args, **kwargs):
         '''Manually given arguments overwrite file attributes'''
-        # python3.8: use walrus
         self._topo = kwargs.get('fn_topo')
         if self._topo is not None:
-            # python 3.8: use walrus
             self._topo = _read_topology_file(self._topo)
             self._topo = _tracked_extract_keys(kwargs, msg='of topology file!',
                                                **self._topo)
@@ -48,9 +46,7 @@ class _SYSTEM(_CORE):
             if len(args) != 0:
                 self.read_fn(*args, **kwargs)
             else:
-                # python3.8: use walrus
-                fn = kwargs.get('fn')
-                if fn is not None:
+                if (fn := kwargs.get('fn')) is not None:
                     self.read_fn(fn, **kwargs)
                 else:
                     self.XYZ = kwargs.pop('XYZ')
@@ -70,9 +66,7 @@ class _SYSTEM(_CORE):
                     self.define_molecules()
                 self.wrap_molecules()
 
-            center_mol = kwargs.get('center_molecule')
-            if center_mol is not None:
-                # if python 3.8: use walrus
+            if (center_mol := kwargs.get('center_molecule')) is not None:
                 self.wrap_molecules()
                 self.XYZ.center_coordinates(
                         [_is for _is, _i in enumerate(self.mol_map)
@@ -84,7 +78,6 @@ class _SYSTEM(_CORE):
             # Consistency check
             if self._topo is not None:
                 for _k in self._topo:
-                    # python3.8: use walrus
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
                     if _k is not None:
                         if not _equal(_v, self._topo[_k]):

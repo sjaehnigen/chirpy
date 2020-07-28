@@ -147,9 +147,7 @@ def wrap(positions, cell):
     '''positions: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
-    lattice = detect_lattice(cell)
-    if lattice is not None:
-        # python3.8: use walrus
+    if (lattice := detect_lattice(cell)) is not None:
         if lattice in ['cubic', 'orthorhombic', 'tetragonal']:
             # --- fast
             return positions - np.floor(positions/cell[:3]) * cell[:3]
@@ -226,9 +224,8 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
     if len(p0.shape) > 2 or len(p1.shape) > 2:
         raise ValueError('distance_matrix only accepts positions of shape '
                          '(n_atoms, dim) or (n_frames, dim)!')
-    if max(p0.shape[0], p1.shape[0]) > 1000:
-        # python3.8: use walrus
-        print(max(p0.shape[0], p1.shape[0]))
+    if (_max := max(p0.shape[0], p1.shape[0])) > 1000:
+        print(_max)
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>1000 atom support in a future version)!'
                           )

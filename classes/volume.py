@@ -85,9 +85,8 @@ class ScalarField(_CORE):
             self.__dict__ = self.__class__.from_data(**kwargs).__dict__
 
         self._sync_class()
-        if kwargs.get('sparsity', 1) != 1:
-            # python 3.8: use walrus
-            self = self.sparse(kwargs.get('sparsity'))
+        if (sparse := kwargs.get('sparsity', 1)) != 1:
+            self = self.sparse(sparse)
 
     def _sync_class(self):
         self.n_x = self.data.shape[-3]
@@ -624,9 +623,9 @@ class VectorField(ScalarField):
         self.div, self.rot = _get_divrot(self.data, self.cell_vec_au)
 
     def helmholtz_decomposition(self):
-        irr = _copy.deepcopy(self)
-        sol = _copy.deepcopy(self)
-        hom = _copy.deepcopy(self)
+        irr = self.__class__.from_object(self)
+        sol = self.__class__.from_object(self)
+        hom = self.__class__.from_object(self)
         irr.data, sol.data, div, rot = self._helmholtz_components(
                                                    self.data, self.cell_vec_au)
 
