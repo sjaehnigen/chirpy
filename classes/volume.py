@@ -163,7 +163,11 @@ class ScalarField(_CORE):
         return obj
 
     def __add__(self, other, factor=1):
-        '''supports different data shapes'''
+        '''Supports different data shapes.
+           For equal grids use the faster way:
+              new = obj.__class__.from_object(obj)
+              new.data + data1 + data2 etc.
+        '''
         new = _copy.deepcopy(self)
         points = (_np.arange(0, other.n_x),
                   _np.arange(0, other.n_y),
@@ -263,15 +267,20 @@ class ScalarField(_CORE):
         return self.voxel*_simps(_simps(_simps(self.data)))
 
     def normalise(self, norm=None, thresh=1.E-8, **kwargs):
-        '''If no norm is given, the method uses np.linalg.norm
-        (give axis in kwargs).'''
+        '''Norm has to be a ScalarField object (can be of different shape).
+           If no norm is given, the method uses np.linalg.norm of vector field
+           (give axis in kwargs).'''
 
-        _N = norm
+        # --- create empty object with the correct grid
+        _N = self.__class__.from_object(self, data=self.grid())
         if _N is None:
-            _N = _np.linalg.norm(self.data, **kwargs)
+            _N.data = _np.linalg.norm(self.data, **kwargs)
+        else:
+            # --- __add__ interpolates different grids
+            _N += norm
 
         with _np.errstate(divide='ignore'):
-            _N_inv = _np.where(_N < thresh, 0.0, _np.divide(1.0, _N))
+            _N_inv = _np.where(_N.data < thresh, 0.0, _np.divide(1.0, _N.data))
 
         self.data *= _N_inv
 

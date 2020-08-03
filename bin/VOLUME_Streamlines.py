@@ -123,11 +123,11 @@ def main():
         if args.scalar_field is None:
             raise AttributeError('Please specify --scalar_field for'
                                  ' normalisation!')
-        _vec.normalise(norm=_sca.data)
+        _vec.normalise(norm=_sca)
         if args.decompose:
-            _vec.irrotational_field.normalise(norm=_sca.data)
-            _vec.solenoidal_field.normalise(norm=_sca.data)
-            _vec.homogeneous_field.normalise(norm=_sca.data)
+            _vec.irrotational_field.normalise(norm=_sca)
+            _vec.solenoidal_field.normalise(norm=_sca)
+            _vec.homogeneous_field.normalise(norm=_sca)
 
     _vec.print_info()
 

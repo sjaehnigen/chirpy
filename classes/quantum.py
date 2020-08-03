@@ -254,7 +254,7 @@ class TDElectronicState(_CORE):
     def calculate_velocity_field(self, rho, thresh=1.E-8):
         '''Requires total density rho'''
         self.v = _VectorField.from_object(self.j)
-        self.v.normalise(norm=rho.data, thresh=thresh)
+        self.v.normalise(norm=rho, thresh=thresh)
 
 
 class TDElectronDensity(_CORE):
@@ -299,7 +299,7 @@ class TDElectronDensity(_CORE):
 
     def calculate_velocity_field(self, thresh=1.E-8):
         self.v = _VectorField.from_object(self.j)
-        self.v.normalise(norm=self.rho.data, thresh=thresh)
+        self.v.normalise(norm=self.rho, thresh=thresh)
 
     def propagate_density(self, dt=8.0):
         '''dt in atomic units'''
