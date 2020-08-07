@@ -192,8 +192,7 @@ def main():
         largs.update({'skip': []})
 
     if args.fn_vel is not None:
-        warnings.warn("Using external velocity file still under development! "
-                      "Alignment should not be used!",
+        warnings.warn("Using external velocity file still under development!",
                       stacklevel=2)
         nargs = {}
         for _a in [
@@ -206,6 +205,14 @@ def main():
 
         _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
+
+        # --- repeat alignment call after merge to include velocities
+        if args.align_coords is not None:
+            _load.XYZ.align_coordinates(
+                    args.align_coords,
+                    weight=args.weight,
+                    force_centering=args.force_centering,
+                    align_ref=_load.XYZ._frame._align_ref)
 
     extract_molecules = largs.pop('extract_molecules')
 
