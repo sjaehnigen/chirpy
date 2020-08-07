@@ -426,6 +426,7 @@ class _XYZ():
         align_coords = kwargs.pop('align_coords', None)
         center_coords = kwargs.pop('center_coords', None)
         wrap = kwargs.get('wrap', False)
+        weight = kwargs.get('weight', 'mass')
         # wrap_molecules = kwargs.get('wrap_molecules', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
@@ -634,7 +635,7 @@ class _XYZ():
                     center_coords = bool(center_coords[0])
                 else:
                     center_coords = [int(_a) for _a in center_coords]
-            self.center_coordinates(center_coords, **kwargs)
+            self.center_coordinates(center_coords, weight=weight, wrap=wrap)
 
         if wrap:
             self.wrap_atoms()
@@ -659,7 +660,12 @@ class _XYZ():
                 # unnecessary here
                 wrap = False
                 wrap_molecules = False
-            self.align_coordinates(align_coords, **kwargs)
+            self.align_coordinates(
+                           align_coords,
+                           weight=weight,
+                           align_ref=kwargs.get('align_ref'),
+                           force_centering=kwargs.get('force_centering', False)
+                           )
 
         self._sync_class(check_orthonormality=False)
 
@@ -804,7 +810,7 @@ class _XYZ():
             _v = self.vel_au
 
         if align_ref is None:
-            self._align_ref = _p[0]
+            self._align_ref = _p[0, align_coords]
         else:
             self._align_ref = align_ref
 

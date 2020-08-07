@@ -103,6 +103,7 @@ def main():
             nargs='+',
             help="Align atom list (id starting from 0)  or \'True\' \
                     for selecting all atoms.",
+            type=int,
             default=None,
             )
     parser.add_argument(
@@ -194,6 +195,9 @@ def main():
     if args.fn_vel is not None:
         warnings.warn("Using external velocity file still under development!",
                       stacklevel=2)
+        if args.align_coords is not None:
+            raise NotImplementedError('Atom alignment does not support '
+                                      'external velocities!')
         nargs = {}
         for _a in [
             'range',

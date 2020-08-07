@@ -475,6 +475,9 @@ class CPMDinput():
             channels = []
             n_kinds = []
             data = []
+            _f = 1
+            if fmt == 'angstrom':
+                _f = constants.l_aa2au
             for _l in section_input:
                 if '*' in _l:
                     kinds.append(_l.strip())
@@ -484,17 +487,14 @@ class CPMDinput():
                     data.append(np.array([list(map(
                                             float,
                                             next(section_input).split()
-                                            )) for _i in range(n)]))
+                                            )) for _i in range(n)]) * _f)
 
             # --- simple solution for pp
             _C['pp'] = '_'.join(kinds[0].split('_')[1:])
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
-            _f = 1
-            if fmt == 'angstrom':
-                _f = constants.l_aa2au
-            _C['data'] = np.array(data) * _f
+            _C['data'] = data
 
             out = cls()
             out.__dict__.update(_C)
@@ -533,7 +533,7 @@ class CPMDinput():
             _C['kinds'] = kinds
             _C['channels'] = channels
             _C['n_kinds'] = n_kinds
-            _C['data'] = np.array(data)
+            _C['data'] = data
 
             out = cls()
             out.__dict__.update(_C)
