@@ -43,6 +43,14 @@ def main():
             default=None,
             )
     parser.add_argument(
+            "--center_molecule",
+            help="Center residue (resid as given in fn_topo) in \
+                    cell and wrap (requires a topology file).",
+            default=None,
+            type=int,
+            )
+
+    parser.add_argument(
             "--weight",
             help="Atom weights used for centering and wrapping of molecules",
             default='mass'

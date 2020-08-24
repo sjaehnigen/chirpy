@@ -151,7 +151,7 @@ def main():
         _part = trajectory.XYZFrame(args.particles)
         export_args.update({
                 'external_object': True,
-                'ext_p': copy.deepcopy(_part.pos_aa * constants.l_aa2au),
+                'ext_p0': copy.deepcopy(_part.pos_aa * constants.l_aa2au),
                 'ext_v': copy.deepcopy(_part.vel_au),
                 })
     export_args.update({

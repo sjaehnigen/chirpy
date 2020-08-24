@@ -71,7 +71,7 @@ class _SYSTEM(_CORE):
                 self.XYZ.center_coordinates(
                         [_is for _is, _i in enumerate(self.mol_map)
                          if _i == center_mol],
-                        mode='com',
+                        weight=kwargs.get('weight', 'mass'),
                         )  # **kwargs)
                 self.wrap_molecules()
 
@@ -115,8 +115,10 @@ class _SYSTEM(_CORE):
         self.XYZ.wrap_atoms()
 
     def extract_molecules(self, mols):
-        '''mols: list of molecular indices
-           BETA; not for iterators (yet)'''
+        '''Split XYZ through topology and select molecule(s) according to given
+           ids
+        mols  ...  list of molecular indices
+        '''
         if self.mol_map is None:
             raise AttributeError('Extract molecules requires a topology '
                                  '(mol_map)!')

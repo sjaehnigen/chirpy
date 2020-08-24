@@ -87,17 +87,17 @@ class _BoxObject(_CORE):
 
     def _cell_aa_deg(self):
         if hasattr(self, 'cell_aa_deg'):
-            if self.cell_aa_deg is not None:
+            if _get_symmetry(self.cell_aa_deg) is not None:
                 return self.cell_aa_deg
         if hasattr(self, 'cell_vec_aa'):
-            return _np.concatenate(
+            return _np.concatenate((
                 _np.linalg.norm(self.cell_vec_aa, axis=-1),
                 _np.array([
                     angle(self.cell_vec_aa[1], self.cell_vec_aa[2]),
                     angle(self.cell_vec_aa[0], self.cell_vec_aa[2]),
                     angle(self.cell_vec_aa[0], self.cell_vec_aa[1])
                     ]) * 180./_np.pi
-                )
+                ))
 
     def _volume_aa3(self):
         return _np.dot(self.cell_vec_aa[0],
@@ -220,7 +220,7 @@ class _BoxObject(_CORE):
         print('%45s %8s %12s' % ('File', 'No.', 'Molar Mass'))
         print(77 * '-')
         print('\n'.join(['%45s %8d %12.4f' %
-                         (_m[1].fn, _m[0], sum(_m[1].masses_amu))
+                         (_m[1]._fn, _m[0], sum(_m[1].masses_amu))
                          for _m in self.member_set]))
         print(77 * '–')
 
@@ -400,7 +400,7 @@ class Solution(_BoxObject):
 
     def _c_mol_L(self):
         return [_m[0] / (constants.avog * 1E-27) / self.volume_aa3
-                for _m in self.members]
+                for _m in self.member_set]
 
     def _rho_g_cm3(self):
         return self.mass_amu / (constants.avog * 1E-24) / self.volume_aa3

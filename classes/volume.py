@@ -267,14 +267,17 @@ class ScalarField(_CORE):
         return self.voxel*_simps(_simps(_simps(self.data)))
 
     def normalise(self, norm=None, thresh=1.E-8, **kwargs):
-        '''Norm has to be a ScalarField object (can be of different shape).
+        '''Norm has to be a ScalarField object (can be of different shape) or
+           float.
            If no norm is given, the method uses np.linalg.norm of vector field
            (give axis in kwargs).'''
 
         # --- create empty object with the correct grid
-        _N = self.__class__.from_object(self, data=self.grid())
-        if _N is None:
+        _N = ScalarField.from_object(self, data=self.grid())
+        if norm is None:
             _N.data = _np.linalg.norm(self.data, **kwargs)
+        elif isinstance(norm, float):
+            _N.data += norm
         else:
             # --- __add__ interpolates different grids
             _N += norm
@@ -507,7 +510,9 @@ class VectorField(ScalarField):
                     length=400,
                     timestep=0.5,
                     external_object=False,
-                    **kwargs):
+                    ext_p0=None,
+                    ext_v=None,
+                    ):
         '''pn...starting points of shape (n_points, 3)'''
         def get_value(p):
             return self._rtransform(_interpn(points,
@@ -520,8 +525,6 @@ class VectorField(ScalarField):
         dt = timestep
         ext = external_object
         if ext:
-            ext_p0, ext_v = kwargs.get('ext_p'), kwargs.get('ext_v')
-
             if any([ext_p0 is None, ext_v is None]):
                 _warnings.warn('Missing external object for set keyword! '
                                'Please give ext_p and ext_v.',
@@ -639,7 +642,7 @@ class VectorField(ScalarField):
                                                    self.data, self.cell_vec_au)
 
         self.div = ScalarField(self, data=div)
-        self.rot = ScalarField(self, data=rot)
+        self.rot = VectorField(self, data=rot)
         hom.data = self.data - irr.data - sol.data
         self.irrotational_field = irr
         self.solenoidal_field = sol

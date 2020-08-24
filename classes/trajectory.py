@@ -1422,6 +1422,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._mask(self, 'wrap_molecules', *args, **kwargs)
 
     def split(self, *args, **kwargs):
+        '''split is faster with fully loaded trajectory'''
         if 'select' not in kwargs:
             _warnings.warn('Splitting iterator without select argument has '
                            'no effect!', stacklevel=2)

@@ -21,8 +21,10 @@ import copy
 
 from scipy.interpolate import UnivariateSpline
 
+from ..physics import constants
 
 # ToDo: NEEDS Routine to include arrow tip in total vector length
+
 
 class VMDPaths():
     def __init__(self, positions_aa, auto_smooth=True):
@@ -64,6 +66,69 @@ class VMDPaths():
                              axis=-1) >= cutoff_aa  # integrate curved path
         self.pos_aa = self.pos_aa[:, ind]
 
+
+    @staticmethod
+    def tmp_normalise(obj, norm=None, thresh=1.E-8, **kwargs):
+        from ..classes.volume import ScalarField
+        '''Norm has to be a ScalarField object (can be of different shape) or
+           float.
+           If no norm is given, the method uses np.linalg.norm of vector field
+           (give axis in kwargs).'''
+
+        # --- create empty object with the correct grid
+        _N = ScalarField.from_object(obj, data=obj.grid())
+        if norm is None:
+            _N.data = np.linalg.norm(obj.data, **kwargs)
+        elif isinstance(norm, float):
+            _N.data += norm
+        else:
+            # --- __add__ interpolates different grids
+            _N += norm
+
+        with np.errstate(divide='ignore'):
+            _N_inv = np.where(_N.data < thresh, 0.0, np.divide(1.0, _N.data))
+
+        obj.data *= _N_inv
+        return obj
+
+
+    @classmethod
+    def from_vector_field(cls, obj,
+                          sparse=1,
+                          scale=1,
+                          length=1,
+                          normalise=None,
+                          thresh=0.0
+                          ):
+        '''Generate VMD object from VectorField object
+           normalise ... None/max/local
+           thresh ... exclude regions of where vector norm is smaller than
+                      value (before normalisation)
+           '''
+
+        _obj = obj.sparse(sparse)
+        _ind = np.linalg.norm(_obj.data, axis=0) > thresh
+
+        if normalise is not None:
+            if normalise == 'max':
+                _obj = cls.tmp_normalise(_obj, np.amax(np.linalg.norm(_obj.data, axis=0)))
+            elif normalise == 'local':
+                _obj = cls.tmp_normalise(_obj, axis=0)
+
+        _p = _obj.pos_grid()[:, _ind].reshape((3, -1))
+        print(f"Seeding {_p.shape[-1]} points.")
+
+        pos_au = obj.streamlines(  # NB: using original obj
+                    _p.T,
+                    sparse=1,  # sparsity of interpolation
+                    forward=True,
+                    backward=True,
+                    length=length,
+                    timestep=scale
+                    )['streamlines'][:, :, :3]
+
+        return cls(pos_au*constants.l_au2aa, auto_smooth=False)
+
     @staticmethod
     def _draw_bit(p0, p1, tool='line', options='', overlap=0.0):
         '''p0, p1 ... path bits of shape (n_paths, 3)'''
@@ -97,8 +162,11 @@ class VMDPaths():
         def arr_head_sense(p, depth):
             '''unit vector of pointing cone'''
             backtrace = p[-1, None] - p[-depth:-1]
-            return (backtrace / np.linalg.norm(backtrace, axis=-1)[:, :, None]
-                    ).sum(axis=0) / depth
+            with np.errstate(divide='ignore'):
+                _N = np.linalg.norm(backtrace, axis=-1)
+                _N_inv = np.where(_N < 1.E-16, 0.0, np.divide(1.0, _N))
+
+            return (backtrace * _N_inv[:, :, None]).sum(axis=0) / depth
 
         pos = positions_aa[-1]
         sense = arr_head_sense(positions_aa, 5)
@@ -111,7 +179,7 @@ class VMDPaths():
                         for t0, t1 in zip(pos, sense)])
 
     def draw_line(self, fn,
-                  cutoff_aa=0.0,
+                  cutoff_aa=0.1,
                   sparse=5,
                   style='solid',
                   width=1,
@@ -140,7 +208,7 @@ class VMDPaths():
                                              resolution=arrow_resolution))
 
     def draw_tube(self, fn,
-                  cutoff_aa=0.0,
+                  cutoff_aa=0.1,
                   sparse=5,
                   radius=0.025,
                   resolution=10,

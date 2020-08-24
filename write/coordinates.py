@@ -161,7 +161,7 @@ Output: None"""
     format = '%s%7d %-5s%-4s%5d    '
     for field in range(data.shape[1]):
         format += '%8.3f'
-    format += '%6.2f%6.2f % 12s\n'
+    format += '%6.2f%6.2f %10s%-2s\n'
     n_atoms = len(symbols)
     obuffer = 'TITLE     %s\n' % title
     obuffer += 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1%12d\n' % (
@@ -176,7 +176,7 @@ Output: None"""
     for i in range(n_atoms):
         tmp = ['ATOM'] + [i+1] + [types[i]] + [residues[i][1]] + \
                 [int(residues[i][0])] + [c for c in data[i]] + [1] \
-                + [0] + [symbols[i]]
+                + [0] + [''] + [symbols[i]]
         obuffer += format % tuple(tmp)
     obuffer += 'MASTER        1    0    0    0    0    0    0    0 '
     obuffer += '%4d    0 %4d    0\nEND' % (n_atoms, n_atoms)
