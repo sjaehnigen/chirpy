@@ -18,25 +18,12 @@
 
 import numpy as np
 from ..physics import constants, kspace
+from ..physics.constants import eijk
 from ..topology import mapping
-
-eijk = np.zeros((3, 3, 3))
-eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = +1
-eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+from ..mathematics.analysis import divrot
 
 # m magnetic dipole moment
 # c current ipole moment
-
-
-def _get_divrot(data, cell_au):
-    """data of shape 3, x, y, z"""
-    gradients = np.array(np.gradient(data, 1,
-                                     cell_au[0][0],
-                                     cell_au[1][1],
-                                     cell_au[2][2])[1:])
-    div = gradients.trace(axis1=0, axis2=1)
-    rot = np.einsum('ijk, jklmn->ilmn', eijk, gradients)
-    return div, rot
 
 
 def electric_dipole_moment(pos_au, charges_au):
@@ -191,13 +178,13 @@ def biot_savart_grid(r, j, pos_grid, voxel, cell=None, thresh=1.E-8):
     return B / constants.c_au**2
 
 
-def biot_savart_kspace(j, cell_au, voxel):
-    div, rot = _get_divrot(j, cell_au)
+def biot_savart_kspace(j, cell_vec_au, voxel):
+    div, rot = divrot(j, cell_vec_au)
 
     # G != 0
-    B1 = kspace.k_potential(rot[0], cell_au)[1]
-    B2 = kspace.k_potential(rot[1], cell_au)[1]
-    B3 = kspace.k_potential(rot[2], cell_au)[1]
+    B1 = kspace.k_potential(rot[0], cell_vec_au)[1]
+    B2 = kspace.k_potential(rot[1], cell_vec_au)[1]
+    B3 = kspace.k_potential(rot[2], cell_vec_au)[1]
     B = np.array([B1, B2, B3]) / (4 * np.pi)
     # this 4 pi division should be done in kspace binary already?
 

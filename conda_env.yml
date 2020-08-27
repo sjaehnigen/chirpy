@@ -16,6 +16,6 @@ dependencies:
   - python=3.8.*
   - scipy=1.5.*
   - pip:
+    - pyqt5==5.15.*
     - mayavi==4.7.*
-    - pyqt5==5.13.*
 

@@ -25,10 +25,10 @@ from .core import _CORE
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
-from ..physics.classical_electrodynamics import _get_divrot
 from ..physics import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
 from ..mathematics.algebra import change_euclidean_basis as ceb
+from ..mathematics.analysis import divrot
 
 
 class ScalarField(_CORE):
@@ -95,8 +95,9 @@ class ScalarField(_CORE):
         try:
             self.n_atoms = self.pos_au.shape[0]
             if self.n_atoms != len(self.numbers):
-                raise ValueError('List of atom numbers and atom positions do '
-                                 'not match!')
+                raise ValueError('List of atom positions and numbers do '
+                                 'not match: %d, %d'
+                                 % (self.n_atoms, len(self.numbers)))
 
             self.symbols = constants.numbers_to_symbols(self.numbers)
             self.voxel = _np.dot(self.cell_vec_au[0],
@@ -302,13 +303,18 @@ class ScalarField(_CORE):
                           self.cell_vec_au
                           )
 
-    def pos_grid(self):
-        '''Generate grid point coordinates (only for tetragonal cells)'''
+    def ind_grid(self):
+        '''Return grid point indices'''
         xaxis = _np.arange(0, self.n_x)
         yaxis = _np.arange(0, self.n_y)
         zaxis = _np.arange(0, self.n_z)
 
-        pos_grid = _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
+        return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
+
+    def pos_grid(self):
+        '''Return grid point coordinates'''
+        pos_grid = self.ind_grid()
+
         return _np.einsum(
                 'inmo, ji -> jnmo',
                 pos_grid,
@@ -617,7 +623,7 @@ class VectorField(ScalarField):
 
     @staticmethod
     def _helmholtz_components(data, cell_vec_au):
-        div, rot = _get_divrot(data, cell_vec_au)
+        div, rot = divrot(data, cell_vec_au)
         V = _k_potential(div, _np.array(cell_vec_au))[1]/(4*_np.pi)
         A1 = _k_potential(rot[0], _np.array(cell_vec_au))[1]
         A2 = _k_potential(rot[1], _np.array(cell_vec_au))[1]
@@ -627,12 +633,12 @@ class VectorField(ScalarField):
                                                      cell_vec_au[0][0],
                                                      cell_vec_au[1][1],
                                                      cell_vec_au[2][2]))
-        solenoidal_field = _get_divrot(A, cell_vec_au)[1]
+        solenoidal_field = divrot(A, cell_vec_au)[1]
 
         return irrotational_field, solenoidal_field, div, rot
 
     def divergence_and_rotation(self):
-        self.div, self.rot = _get_divrot(self.data, self.cell_vec_au)
+        self.div, self.rot = divrot(self.data, self.cell_vec_au)
 
     def helmholtz_decomposition(self):
         irr = self.__class__.from_object(self)
