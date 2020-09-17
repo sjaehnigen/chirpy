@@ -15,7 +15,6 @@ dependencies:
   - pycifrw=4.4.*
   - python=3.8.*
   - scipy=1.5.*
-  - pip:
-    - pyqt5==5.15.*
-    - mayavi==4.7.*
+    #  - pip:
+    #- pyqt5==5.15.*
 

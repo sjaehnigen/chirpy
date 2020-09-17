@@ -19,6 +19,7 @@
 import numpy as np
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
+import copy
 import warnings
 
 from .generators import _reader, _open
@@ -228,6 +229,12 @@ def cifReader(fn):
         elif isinstance(number, list):
             return [_convert(_st) for _st in number]
 
+    def get_label(_list):
+        _label = None
+        for _l in _list:
+            _label = _load.get(_l, _label)
+        return _label
+
     _read = _ReadCif(fn)
     title = _read.keys()[0]
     _load = _read[title]
@@ -244,29 +251,47 @@ def cifReader(fn):
 #                                                           '_atom_site_fract_y',
 #                                                           '_atom_site_fract_z'
 #                                                           ]]).T
-    x = np.array(_measurement2float(_load['_atom_site_fract_x']))
-    y = np.array(_measurement2float(_load['_atom_site_fract_y']))
-    z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+    _x = np.array(_measurement2float(_load['_atom_site_fract_x']))
+    _y = np.array(_measurement2float(_load['_atom_site_fract_y']))
+    _z = np.array(_measurement2float(_load['_atom_site_fract_z']))
 
     symbols = tuple(_load['_atom_site_type_symbol'])
     names = tuple(_load['_atom_site_label'])
-    if detect_lattice(cell_aa_deg) != _load['_space_group_crystal_system']:
+
+    _space_group_label = get_label([
+            '_space_group_crystal_system',
+            '_symmetry_cell_setting'
+            ])
+
+    if _space_group_label is None:
+        warnings.warn('No space group label found in file!', stacklevel=2)
+
+    elif detect_lattice(cell_aa_deg) != _space_group_label:
         warnings.warn('The given space group and cell parametres do not match!'
-                      ' %s != %s' % (_load['_space_group_crystal_system'],
+                      ' %s != %s' % (_space_group_label,
                                      detect_lattice(cell_aa_deg)),
                       RuntimeWarning,
                       stacklevel=2)
 
-        # -- apply given symmetry operations
-        #    (assumes first operation to be the identity: 'x, y, z')
-    for op in _load['_space_group_symop_operation_xyz'][1:]:
-        _op = [__op.strip() for __op in op.split(',')]
-        x = np.concatenate((x, eval(_op[0])), axis=0)
-        y = np.concatenate((y, eval(_op[1])), axis=0)
-        z = np.concatenate((z, eval(_op[2])), axis=0)
-        symbols += symbols
+    _space_group_symop = get_label([
+            '_space_group_symop_operation_xyz',
+            '_symmetry_equiv_pos_as_xyz',
+            ])
+    # -- apply given symmetry operations
+    #    (assumes first operation to be the identity: 'x, y, z')
+    if _space_group_symop is None:
+        warnings.warn('No symmetry operations found in file!', stacklevel=2)
+    else:
+        for op in _space_group_symop[1:]:
+            _op = [__op.strip() for __op in op.split(',')]
+            # --- copy required until complete operation done
+            x, y, z = tuple([copy.deepcopy(_i) for _i in (_x, _y, _z)])
+            _x = np.append(_x, eval(_op[0]), axis=0)
+            _y = np.append(_y, eval(_op[1]), axis=0)
+            _z = np.append(_z, eval(_op[2]), axis=0)
+            symbols += symbols
 
-    data = np.array([x, y, z]).T
+    data = np.array([_x, _y, _z]).T
 
     # -- change to cell vector base
     cell_vec_aa = get_cell_vec(cell_aa_deg)

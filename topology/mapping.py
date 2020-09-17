@@ -123,8 +123,8 @@ def detect_lattice(cell, priority=(0, 1, 2)):
         return None
 
     abc, albega = cell[:3], cell[3:]
-    _a = np.invert(np.diff(abc).astype(bool))
-    _b = np.invert(np.diff(albega).astype(bool))
+    _a = np.invert(np.diff(np.round(abc, decimals=3)).astype(bool))
+    _b = np.invert(np.diff(np.round(albega, decimals=3)).astype(bool))
 
     if np.all(albega == 90.0):
         if np.all(_a):
