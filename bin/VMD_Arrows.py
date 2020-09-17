@@ -46,6 +46,18 @@ def main():
             default=10
             )
     parser.add_argument(
+            "--rgb",
+            help="RGB code of line/icon colour. Format: r g b",
+            nargs=3,
+            type=float,
+            default=None
+            )
+    parser.add_argument(
+            "--material",
+            help="Draw material for icons",
+            default="Diffuse"
+            )
+    parser.add_argument(
             "--skip",
             help="For trajectories: use every <skip>th timestep.",
             type=int,
@@ -62,6 +74,11 @@ def main():
             action='store_true',
             help="Skip spline smoothing of path",
             default=False
+            )
+    parser.add_argument(
+            "-f",
+            help="Output file stem for output",
+            default=None
             )
 
     args = parser.parse_args()
@@ -82,22 +99,36 @@ def main():
     # ("source file.tcl") than loading it at startup ("-e file.tcl")!
 
     paths = vmd.VMDPaths(traj.pos_aa, auto_smooth=not args.no_smooth)
+
+    # --- OUTPUT
+    if args.f is None:
+        _stem = ''
+    else:
+        _stem = args.f + '_'
+
+    nargs = {}
+    if args.rgb is not None:
+        nargs['rgb'] = tuple(args.rgb)
+
     if args.type == 'lines':
-        paths.draw_line('lines.tcl',
+        paths.draw_line(_stem + 'lines.tcl',
                         sparse=1,  # args.skip,
                         arrow=not args.no_head,
                         cutoff_aa=args.cutoff_aa,
                         arrow_resolution=args.resolution,
                         arrow_radius=args.radius,
+                        **nargs
                         )
 
     if args.type == 'icons':
-        paths.draw_tube('icons.tcl',
+        nargs['material'] = args.material
+        paths.draw_tube(_stem + 'icons.tcl',
                         sparse=1,  # args.skip,
                         arrow=not args.no_head,
                         cutoff_aa=args.cutoff_aa,
                         resolution=args.resolution,
                         radius=args.radius,
+                        **nargs
                         )
 
 

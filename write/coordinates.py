@@ -21,7 +21,7 @@ def _write_xyz_frame(filename, data, symbols, comment, append=False):
     Input:
         1. filename: File to read
         2. data: np.array of shape (#atoms, #fields/atom)
-        3. symbols: list of atom symbols (contains strings)
+        3. symbols: tuple of atom symbols (contains strings)
         4. comment line (string)
         5. append: Append to file (optional, default = False)
     Output: None"""
@@ -53,7 +53,7 @@ def xyzWriter(fn, data, symbols, comments, append=False):
        Input:
         1. fn: File to write
         2. data: np.array of shape ([#frames,] #atoms, #fields/atom)
-        3. symbols: list of atom symbols (contains strings)
+        3. symbols: tuple of atom symbols (contains strings)
         4. list of comment lines (contains strings)
         5. append: Append to file (optional, default = False)
 
@@ -80,7 +80,7 @@ def _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
     Input:
         1. fn: File to write to
         2. data: np.array of shape (#atoms, #fields/atom)
-        3. symbols: list of atom symbols (contains strings)
+        3. symbols: tuple of atom symbols (contains strings)
         4. numbers
         5. types
         6. connectivity
@@ -142,15 +142,15 @@ def arcWriter(fn, data, symbols, numbers, types, connectivity,
         raise AttributeError('Wrong data shape!', data.shape)
 
 
-def _write_pdb_frame(fn, data, types, symbols, residues, box, title,
+def _write_pdb_frame(fn, data, names, symbols, residues, box, title,
                      append=False):
     """WritePDB(fn, data, types, symbols, residues, box, comment, append=False)
        Input:
         1. filename: File to write
         2. data: np.array of shape (#atoms, #fields/atom)
-        3. types: list of atom types
-        4. symbols: list of atom symbols (contains strings)
-        5. residues: np.array of fragment no. consistent to symbols with
+        3. names: tuple of atom names
+        4. symbols: tuple of atom symbols (contains strings)
+        5. residues: tuple of fragment no. consistent to symbols with
                      residue names
         6. box: list of box parameters (xyz, 3angles)
         7. comment line (string)
@@ -161,7 +161,7 @@ Output: None"""
     format = '%s%7d %-5s%-4s%5d    '
     for field in range(data.shape[1]):
         format += '%8.3f'
-    format += '%6.2f%6.2f %10s%-2s\n'
+    format += '%6.2f%6.2f %8s%2s\n'
     n_atoms = len(symbols)
     obuffer = 'TITLE     %s\n' % title
     obuffer += 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1%12d\n' % (
@@ -174,7 +174,7 @@ Output: None"""
                                                                1
                                                                )
     for i in range(n_atoms):
-        tmp = ['ATOM'] + [i+1] + [types[i]] + [residues[i][1]] + \
+        tmp = ['ATOM'] + [i+1] + [names[i]] + [residues[i][1]] + \
                 [int(residues[i][0])] + [c for c in data[i]] + [1] \
                 + [0] + [''] + [symbols[i]]
         obuffer += format % tuple(tmp)
@@ -188,7 +188,7 @@ Output: None"""
         f.write(obuffer)
 
 
-def pdbWriter(fn, data, types, symbols, residues, box, title, append=False):
+def pdbWriter(fn, data, names, symbols, residues, box, title, append=False):
     """WritePDBFile(filename, data, symbols, comments, append=False)
        Input:
         1. fn: File to write
@@ -200,14 +200,14 @@ def pdbWriter(fn, data, types, symbols, residues, box, title, append=False):
         Output: None"""
     if len(data.shape) == 2:
         # ---frame
-        _write_pdb_frame(fn, data, types, symbols, residues,
+        _write_pdb_frame(fn, data, names, symbols, residues,
                          box, title, append=append)
 
     elif len(data.shape) == 3:
         # --- trajectory (NOT ENCOURAGED TO USE CHIRPY FOR PDB TRAJ FILES!)
         n_frames = len(data)
         for fr in range(n_frames):
-            _write_pdb_frame(fn, data[fr], types, symbols, residues,
+            _write_pdb_frame(fn, data[fr], names, symbols, residues,
                              box, title, append=append or fr != 0)
     else:
         raise AttributeError('Wrong data shape!', data.shape)

@@ -215,14 +215,14 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
     return molecule, atom_count
 
 
-def read_topology_file(fn, **kwargs):
+def read_topology_file(fn):
     '''Only PDB support for now'''
     fmt = fn.split('.')[-1]
     if fmt == 'pdb':
         # A little old messy code
-        data, types, symbols, residues, cell_aa_deg, title = pdbReader(fn)
-        residues = np.array(residues).astype(str)
-        resi = ['-'.join(_r) for _r in residues]
+        data, names, symbols, residues, cell_aa_deg, title = pdbReader(fn)
+        # residues = np.array(residues).astype(str)
+        resi = ['-'.join(_r) for _r in np.array(residues).astype(str)]
         # python>=3.6: keeps order
         _map_dict = dict(zip(list(dict.fromkeys(resi)), range(len(set(resi)))))
         mol_map = [_map_dict[_r] for _r in resi]
@@ -236,12 +236,17 @@ def read_topology_file(fn, **kwargs):
 
         return {'mol_map': mol_map,
                 'symbols': symbols,
-                'cell_aa_deg': cell_aa_deg}
+                'names': names,
+                'residues': residues,
+                'cell_aa_deg': cell_aa_deg,
+                'fn': fn}
 
     elif fmt == 'xyz':
         data, symbols, comments = xyzReader(fn)
 
-        return {'symbols': symbols}
+        return {'symbols': symbols,
+                'fn': fn,
+                }
 
     else:
         raise ValueError('Unknown format: %s.' % fmt)

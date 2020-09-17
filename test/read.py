@@ -268,7 +268,7 @@ class TestCoordinates(unittest.TestCase):
 
         with open(self.dir + '/res', 'r') as _f:
             tmp = [tuple(_l.strip().split('-')) for _l in _f.readlines()]
-            tmp = tuple([(int(_a[0]), str(_a[1])) for _a in tmp])
+            tmp = tuple([[int(_a[0]), str(_a[1])] for _a in tmp])
         self.assertTupleEqual(res, tmp)
 
         self.assertTupleEqual(

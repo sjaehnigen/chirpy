@@ -59,7 +59,7 @@ class TestSupercell(unittest.TestCase):
                                     self.dir + "/782512_1x2x2.pdb",
                                     shallow=False),
                         'Creator does not reproduce reference file '
-                        '(see out.pdb)!',
+                        '782512_1x2x2.pdb (see out.pdb)!',
                         )
 
         os.remove('out.pdb')

@@ -66,7 +66,6 @@ class VMDPaths():
                              axis=-1) >= cutoff_aa  # integrate curved path
         self.pos_aa = self.pos_aa[:, ind]
 
-
     @staticmethod
     def tmp_normalise(obj, norm=None, thresh=1.E-8, **kwargs):
         from ..classes.volume import ScalarField
@@ -91,7 +90,6 @@ class VMDPaths():
         obj.data *= _N_inv
         return obj
 
-
     @classmethod
     def from_vector_field(cls, obj,
                           sparse=1,
@@ -111,7 +109,8 @@ class VMDPaths():
 
         if normalise is not None:
             if normalise == 'max':
-                _obj = cls.tmp_normalise(_obj, np.amax(np.linalg.norm(_obj.data, axis=0)))
+                _obj = cls.tmp_normalise(_obj, np.amax(
+                                    np.linalg.norm(_obj.data, axis=0)))
             elif normalise == 'local':
                 _obj = cls.tmp_normalise(_obj, axis=0)
 
@@ -178,6 +177,13 @@ class VMDPaths():
                         "\n"
                         for t0, t1 in zip(pos, sense)])
 
+    @staticmethod
+    def _get_color_id():
+        '''picks randonly one of VMD's colors (57 < id < 1057 to preserve solid
+        colors). Warning: this may interfere with other
+        represantations/drawings'''
+        return int(np.random.random() * 1000 + 57)
+
     def draw_line(self, fn,
                   cutoff_aa=0.1,
                   sparse=5,
@@ -196,8 +202,10 @@ class VMDPaths():
         self.reduce(cutoff_aa=cutoff_aa)
 
         with open(fn, 'w') as f:
-            f.write("color change rgb tan %f %f %f\n" % rgb)
-            f.write("draw color tan\n")
+            _col = self._get_color_id()
+            f.write("mol new\n")
+            f.write("color change rgb %d %f %f %f\n" % tuple((_col,) + rgb))
+            f.write("draw color %d\n" % _col)
             f.write("draw materials off\n")
             f.write(self._draw(tool=tool, options=options, sparse=sparse,
                     overlap=0.0))
@@ -206,6 +214,7 @@ class VMDPaths():
                                              radius=arrow_radius,
                                              length=arrow_length,
                                              resolution=arrow_resolution))
+            f.write("display resetview\n")
 
     def draw_tube(self, fn,
                   cutoff_aa=0.1,
@@ -228,8 +237,10 @@ class VMDPaths():
             arrow_radius = 3 * radius
 
         with open(fn, 'w') as f:
-            f.write("color change rgb tan %f %f %f\n" % rgb)
-            f.write("draw color tan\n")
+            _col = self._get_color_id()
+            f.write("mol new\n")
+            f.write("color change rgb %d %f %f %f\n" % tuple((_col,) + rgb))
+            f.write("draw color %d\n" % _col)
             f.write("draw materials on\n")
             f.write("draw material %s\n" % material)
             f.write(self._draw(tool=tool, options=options, sparse=sparse,
@@ -239,6 +250,7 @@ class VMDPaths():
                                              radius=arrow_radius,
                                              length=arrow_length,
                                              resolution=arrow_resolution))
+            f.write("display resetview\n")
 
 # [f.write("draw sphere {%8.2f %8.2f %8.2f} radius %f resolution %d\n"
 # %(t1[0], t1[1], t1[2], rad, res)) for t1 in p1]

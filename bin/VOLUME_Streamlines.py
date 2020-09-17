@@ -100,6 +100,11 @@ def main():
                   length).",
             default='both'
             )
+    parser.add_argument(
+            "-f",
+            help="Output file stem for output",
+            default='streamlines'
+            )
     args = parser.parse_args()
 
     # --- LOAD
@@ -177,6 +182,7 @@ def main():
                                             pn, **export_args)['streamlines']
 
     # --- OUTPUT
+    _stem = args.f
 
     # --- convert positions to angstrom (velocities in a.u.!)
     traj[:, :, :3] *= constants.l_au2aa
@@ -184,14 +190,14 @@ def main():
                              data=traj,
                              symbols=traj.shape[1]*['C'],
                              comments=traj.shape[0]*['C']
-                             ).write('streamlines.xyz')
+                             ).write(_stem + '.xyz')
     if args.particles is not None:
         atoms[:, :, :3] *= constants.l_au2aa
         trajectory._XYZTrajectory(
                              data=atoms,
                              symbols=_part.symbols,
                              comments=atoms.shape[0]*['C']
-                             ).write('atoms.xyz')
+                             ).write(_stem + '_atoms.xyz')
 
     if args.decompose:
         traj_div[:, :, :3] *= constants.l_au2aa
@@ -201,17 +207,17 @@ def main():
                              data=traj_div,
                              symbols=traj_div.shape[1]*['C'],
                              comments=traj_div.shape[0]*['C']
-                             ).write('streamlines_div.xyz')
+                             ).write(_stem + '_div.xyz')
         trajectory._XYZTrajectory(
                              data=traj_rot,
                              symbols=traj_rot.shape[1]*['C'],
                              comments=traj_rot.shape[0]*['C']
-                             ).write('streamlines_rot.xyz')
+                             ).write(_stem + '_rot.xyz')
         trajectory._XYZTrajectory(
                              data=traj_hom,
                              symbols=traj_hom.shape[1]*['C'],
                              comments=traj_hom.shape[0]*['C']
-                             ).write('streamlines_hom.xyz')
+                             ).write(_stem + '_hom.xyz')
 
     print('Done.')
 

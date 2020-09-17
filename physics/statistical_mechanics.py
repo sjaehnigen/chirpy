@@ -87,7 +87,11 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
         raise Exception('Filter %s not supported!' % filter_type)
 
 
-def time_correlation_function(*args, flt_pow=0, cc_mode='AB', sum_dims=True):
+def time_correlation_function(*args,
+                              flt_pow=-1.E-16,
+                              cc_mode='AB',
+                              sum_dims=True
+                              ):
     '''Calculate the time-correlation function (TCF) of a signal and
        using the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-

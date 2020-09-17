@@ -75,16 +75,21 @@ class _SYSTEM(_CORE):
                         )  # **kwargs)
                 self.wrap_molecules()
 
-            # Consistency check
+            if self.mol_map is not None:
+                self.clean_residues()
+
+            # --- Consistency check
             if self._topo is not None:
                 for _k in self._topo:
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
-                    if _k is not None:
+                    if _k is not None and _k != 'fn':
                         if not _equal(_v, self._topo[_k]):
-                            # print(_v, self._topo[_k])
-                            _warnings.warn('Topology file does not represent'
-                                           ' molecule in {}!'.format(_k),
+                            _warnings.warn(f'Topology file {self._topo["fn"]}'
+                                           ' does not represent molecule '
+                                           f'{self.XYZ._fn} in {_k}!',
                                            stacklevel=2)
+                            print(self._topo[_k])
+                            print(_v)
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -133,6 +138,19 @@ class _SYSTEM(_CORE):
                                         self.XYZ.symbols,
                                         cell_aa_deg=self.cell_aa_deg))
         self.mol_map = n_map
+        self.clean_residues()
+
+    def clean_residues(self):
+        '''Update residue numbers in XYZ (but not names!).
+           Modes not supported.'''
+
+        if hasattr(self.XYZ, 'residues'):
+            self.XYZ.residues = tuple([[_im+1, _resn]
+                                       for _im, (_resid, _resn) in
+                                       zip(self.mol_map, self.XYZ.residues)])
+
+        else:
+            self.XYZ.residues = tuple([[_im+1, 'MOL'] for _im in self.mol_map])
 
     def sort_atoms(self, *args):
         '''Sort atoms alphabetically (default)'''
@@ -143,12 +161,21 @@ class _SYSTEM(_CORE):
 
         if self.mol_map is not None:
             self.mol_map = _np.array(self.mol_map)[ind].flatten().tolist()
+            self.clean_residues()
 
         if self._topo is not None:
             self._topo['mol_map'] = _np.array(
                                  self._topo['mol_map'])[ind].flatten().tolist()
             self._topo['symbols'] = tuple(_np.array(
-                                 self._topo['symbols'])[ind].flatten())
+                                 self._topo['symbols'])[ind][0])  # .flatten())
+            # --- symbols analogues (update residues via mol_map [see above])
+            for key in ['names']:
+                try:
+                    self._topo[key] = tuple(
+                            _np.array(self._topo[key])[ind][0].tolist()
+                            )
+                except AttributeError:
+                    pass
 
     def print_info(self):
         print(77 * '–')
@@ -177,6 +204,7 @@ class _SYSTEM(_CORE):
             if self.mol_map is None:
                 _warnings.warn('Could not find mol_map.', stacklevel=2)
                 self.mol_map = _np.zeros(self.XYZ.n_atoms).astype(int)
+            self.clean_residues()
             nargs = {_s: getattr(self, _s)
                      for _s in ('mol_map', 'cell_aa_deg')}
         if fmt == 'xyz':

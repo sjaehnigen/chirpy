@@ -183,7 +183,7 @@ def pdbIterator(FN):
         data = u.coord.positions
         resns = u.atoms.resnames
         resids = u.atoms.resids
-        names = u.atoms.names
+        names = tuple(u.atoms.names)
         symbols = tuple(u.atoms.types)
         cell_aa_deg = u.dimensions
         title = u.trajectory.title
@@ -196,9 +196,9 @@ def pdbIterator(FN):
         else:
             title = title[0]
 
-        yield data, names, symbols, [_n for _n in zip(
+        yield data, names, symbols, tuple([list(_n) for _n in zip(
                                              resids,
-                                             resns)], cell_aa_deg, title
+                                             resns)]), cell_aa_deg, title
 
 
 def pdbReader(FN, **kwargs):
@@ -213,7 +213,7 @@ def pdbReader(FN, **kwargs):
     data, names, symbols, res, cell_aa_deg, title = \
         tuple([_b for _b in zip(*pdbIterator(FN, **kwargs))])
 
-    return np.array(data), names[0], tuple(symbols[0]), tuple(res[0]), \
+    return np.array(data), tuple(names[0]), tuple(symbols[0]), tuple(res[0]), \
         cell_aa_deg[0], list(title)
 
 

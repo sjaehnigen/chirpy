@@ -66,20 +66,17 @@ def source_params(matplotlib):
     # **{'family':'sans-serif', 'sans-serif':['Helvetica']}) #gives warning
     matplotlib.rcParams['mathtext.fontset'] = 'stixsans'
     matplotlib.rc('text',  usetex=True)
-    matplotlib.rcParams['text.latex.preamble'] = [
-                                r'\usepackage[utf8]{inputenc}',
-                                # r'\usepackage[T1]{fontenc}',
-                                r'\usepackage{upgreek}',
-                                r'\usepackage{bm}',
-                                # r'\usepackage[warn]{textcomp}',
-                                # r'\usepackage{siunitx}',
-                                # r'\sisetup{detect-all}',
-                                r'\usepackage{xcolor}',
-                                r'\usepackage{amsmath}',
-                                r'\usepackage{helvet}',
-                                r'\usepackage{sansmath}',
-                                r'\sansmath',
-                                r'\def\mymathhyphen{{\hbox{-}}}']
+    matplotlib.rcParams['text.latex.preamble'] = r'''
+\usepackage[utf8]{inputenc}
+\usepackage{upgreek}
+\usepackage{bm}
+% \usepackage{xcolor} % destroys vertical alignment
+\usepackage{amsmath}
+\usepackage{helvet}
+\usepackage{sansmath}
+\sansmath
+\def\mymathhyphen{{\hbox{-}}}
+'''
     matplotlib.rcParams.update({'mathtext.default':  'regular'})
 
 
@@ -134,7 +131,7 @@ def set_mutliple_y_axes(ax, sep, n_axes,
 def multiplot(ax, x_a, y_a,
               std_a=None,
               bool_a=True,  # False to deactivate plot in list
-              color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'pink'],
+              color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'purple'],
               style_a='-',
               alpha_a=1.0,
               std_alpha_a=0.25,

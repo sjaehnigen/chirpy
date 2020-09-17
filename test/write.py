@@ -102,7 +102,7 @@ class TestCoordinates(unittest.TestCase):
             data2, names2, symbols2, res2, cell_aa_deg2, title2 =\
                 r_coordinates.pdbReader(self.dir + '/out.pdb')
 
-        self.assertListEqual(names.tolist(), names2.tolist())
+        self.assertTupleEqual(names, names2)
         self.assertTupleEqual(symbols, symbols2)
         self.assertTupleEqual(res, res2)
         self.assertTrue(np.array_equal(data, data2))

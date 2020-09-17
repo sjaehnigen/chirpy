@@ -106,6 +106,8 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
         return segments
 
     global func0
+    global _acf_c
+    global _acf_i
 
     def func0(p):
         return ishydrogenbond(
@@ -122,10 +124,9 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
         segments = cumulate_hydrogen_bonding_events(h, min_length)
         if len(segments) == 0:
             return np.zeros_like(h)
-        B = np.mean(
-                core._PALARRAY(time_correlation_function, segments).run(),
-                axis=0
-                )
+        B = np.mean([time_correlation_function(_s) for _s in segments],
+                    axis=0
+                    )
         return B / B[0]
 
     def _acf_i(h):
@@ -134,21 +135,30 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
 
     # --- generate HB occurence trajectory (parallel run)
     H = core._PALARRAY(func0, positions).run()
+    # print('Done with HB occurrence...')
 
     n_frames, n_donors, n_acceptors = H.shape
-    _wH = H.reshape((n_frames, -1)).T.astype(int)
+    _wH = np.array([_h
+                    for _h in H.reshape((n_frames, -1)).T.astype(float)
+                    if np.sum(_h) > min_length])
 
-    # --- correlate
+    # --- correlate (parallel run)
     if mode == 'continuous':
-        ACF = np.array([_acf_c(_h) for _h in _wH if np.sum(_h) > 0])
+        ACF = core._PALARRAY(_acf_c, _wH).run()
 
     if mode == 'intermittent':
-        ACF = np.array([_acf_i(_h) for _h in _wH if np.sum(_h) > 0])
+        ACF = core._PALARRAY(_acf_i, _wH).run()
+    # print('Done with ACF...')
 
     if no_average:
         ACF_res = np.zeros((n_donors, n_acceptors, n_frames))
-        ACF_res[H.sum(axis=0) > 0] = ACF
+        ACF_res[H.sum(axis=0) > min_length] = ACF
         return ACF_res
 
     else:
-        return np.mean(ACF, axis=0)
+        #oACF = np.array([_acf for _acf in ACF if np.prod(_acf[:min_length]) !=
+        #    0.0])
+        #if len(oACF) == 0:
+       #     return np.zeros_like(ACF[0])
+        # return np.mean(oACF, axis=0)
+        return np.average(ACF, axis=0, weights=ACF.sum(axis=-1))

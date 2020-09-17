@@ -76,6 +76,15 @@ class _FRAME(_CORE):
     def _sync_class(self):
         self.axis_pointer = -2
 
+        if not isinstance(self.symbols, tuple):
+            raise TypeError('Expected tuple for symbols attribute. '
+                            f'Got {self.symbols.__class__.__name__}')
+        # --- optional attributes (symbols analogues)
+        for key in ['names', 'residues']:
+            if not isinstance((_oa := getattr(self, key, None)),
+                              (tuple, type(None))):
+                raise TypeError(f'Expected tuple for {key} attribute. '
+                                f'Got {_oa.__class__.__name__}')
         self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent '
@@ -90,6 +99,15 @@ class _FRAME(_CORE):
         _l = new._labels[self.axis_pointer]
         if _l is not None:
             setattr(new, _l, getattr(self, _l) + getattr(other, _l))
+
+        # --- symbol analogues
+        if _l == 'symbols':
+            for _l in ['names', 'residues']:
+                try:
+                    setattr(new, _l, getattr(self, _l) + getattr(other, _l))
+                except AttributeError:
+                    pass
+
         new._sync_class()
         return new
 
@@ -128,6 +146,13 @@ class _FRAME(_CORE):
 
         self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
         self.symbols = tuple(_symbols[_slist])
+        # --- symbols analogues
+        for _l in ['names', 'residues']:
+            try:
+                setattr(self, _l, tuple(_np.array(getattr(self,
+                                        _l))[_slist].tolist()))
+            except AttributeError:
+                pass
         self._sync_class()
 
         return _slist
@@ -146,17 +171,28 @@ class _FRAME(_CORE):
                  for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
         _symbols = _dec(self.symbols, mask)
 
-        def create_obj(_d, _s):
+        _DEC = (_data, _symbols)
+
+        # --- ToDo: Generalise optional attributes
+        for _l in ['names', 'residues']:
+            if hasattr(self, _l):
+                _dl = _dec(getattr(self, _l), mask)
+                _DEC += (_dl,)
+
+        def create_obj(_d, _s, *optargs):
             nargs = {}
             nargs.update(self.__dict__)
             nargs.update({'data': _d, 'symbols': _s})
+            for _oa, key in zip(optargs, ['names', 'residues']):
+                nargs.update({key: _oa})
             _obj = self._from_data(**nargs)
             return _obj
 
         if select is None:
             _new = []
-            for _d, _s in zip(_data, _symbols):
-                _new.append(create_obj(_d, _s))
+            # for _d, _s in zip(_data, _symbols):
+            for _D in zip(*_DEC):
+                _new.append(create_obj(*_D))
             return _new
         else:
             if isinstance(select, int):
@@ -166,9 +202,11 @@ class _FRAME(_CORE):
                                 'argument!')
             _iselect = [_i for _i, _m in enumerate(set(mask)) if _m in select]
             if len(_iselect) > 0:
-                _new = create_obj(_data[_iselect[0]], _symbols[_iselect[0]])
+                # _new = create_obj(_data[_iselect[0]], _symbols[_iselect[0]])
+                _new = create_obj(*[_D[_iselect[0]] for _D in _DEC])
                 for _id in _iselect[1:]:
-                    _new += create_obj(_data[_id], _symbols[_id])
+                    # _new += create_obj(_data[_id], _symbols[_id])
+                    _new += create_obj(*[_D[_id] for _D in _DEC])
             else:
                 raise ValueError('Selection does not correspond to any '
                                  'mask entry!')
@@ -429,6 +467,8 @@ class _XYZ():
         weight = kwargs.get('weight', 'mass')
         # wrap_molecules = kwargs.get('wrap_molecules', False)
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
+        names = kwargs.get('names')  # atom names
+        residues = kwargs.get('residues')  # resid + num
 
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
@@ -459,7 +499,7 @@ class _XYZ():
                                                     )
 
             elif fmt == "pdb":
-                data, types, symbols, residues, cell_aa_deg, title = \
+                data, names, symbols, residues, cell_aa_deg, title = \
                         pdbReader(fn)
                 n_atoms = len(symbols)
                 comments = kwargs.get('comments', title)
@@ -477,7 +517,7 @@ class _XYZ():
                                        stacklevel=2)
 
             elif fmt == "cif":
-                data, types, symbols, cell_aa_deg, title = cifReader(fn)
+                data, names, symbols, cell_aa_deg, title = cifReader(fn)
                 comments = kwargs.get('comments', title)
 
                 if self.cell_aa_deg is None:
@@ -624,9 +664,18 @@ class _XYZ():
             self.eival_cgs = omega_cgs
             comments = _np.array(omega_cgs).astype(str)
 
-        self.symbols = tuple(symbols)
-        self.comments = comments
+        # --- external metadata (i.e. from topology file)
+        #     wins over fn, but not in the case of data
+        self.symbols = kwargs.get('symbols', tuple(symbols))
+        self.comments = kwargs.get('comments', comments)
         self.data = data
+
+        # --- optional
+        if names is not None:
+            self.names = kwargs.get('names', tuple(names))
+        if residues is not None:
+            self.residues = kwargs.get('residues', tuple(residues))
+
         self._sync_class(check_orthonormality=False)
 
         if center_coords is not None:
@@ -1001,14 +1050,15 @@ class _XYZ():
                 _warnings.warn("Missing cell parametres for PDB output!",
                                RuntimeWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+
             pdbWriter(fn,
                       loc_self.pos_aa,
-                      types=loc_self.symbols,  # types not supported
+                      names=getattr(loc_self, 'names', loc_self.symbols),
                       symbols=loc_self.symbols,
-                      residues=_np.vstack((
+                      residues=getattr(loc_self, 'residues', _np.vstack((
                                     _np.array(mol_map) + 1,
                                     _np.array(['MOL'] * loc_self.n_atoms)
-                                    )).swapaxes(0, 1),
+                                    )).swapaxes(0, 1)),
                       box=cell_aa_deg,
                       title='Generated with ChirPy'
                       )
@@ -1324,17 +1374,18 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         if self._fmt == 'xyz':
             out = {
                     'data': frame[0],
-                    'symbols': frame[1],
+                    'symbols': getattr(self._topology, 'symbols', frame[2]),
                     'comments': frame[2],
                     }
 
         if self._fmt == 'pdb':
             out = {
                     'data': frame[0],
-                    'symbols': frame[2],
+                    'symbols': getattr(self._topology, 'symbols', frame[2]),
                     'comments': str(frame[-1]),  # if no title: 'None'
                     'cell_aa_deg': frame[-2],
-                    # 'res':
+                    'names': getattr(self._topology, 'names', frame[1]),
+                    'residues': getattr(self._topology, 'residues', frame[3]),
                     }
 
         if self._fmt == 'cpmd':

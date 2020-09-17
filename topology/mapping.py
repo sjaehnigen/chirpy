@@ -50,11 +50,18 @@ def dec(prop, indices, n_ind=None):
         iterator = range(n_ind)
     else:
         iterator = set(indices)
-    return [
-        np.array([
-            prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
-            ]) for i_mol in iterator
-        ]
+    if isinstance(prop, (tuple, int)):
+        return [
+            type(prop)([
+                prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
+                ]) for i_mol in iterator
+            ]
+    else:
+        return [
+            np.array([
+                prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
+                ]) for i_mol in iterator
+            ]
 
 
 def cowt(pos, wt, axis=-2, subset=slice(None)):

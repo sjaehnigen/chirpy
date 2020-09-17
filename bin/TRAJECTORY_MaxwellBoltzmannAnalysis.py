@@ -46,11 +46,11 @@ def main():
             default=None,
             type=int,
             )
-    # parser.add_argument("--fn_topo",
-    #                     help="Topology file containing metadata (cell, \
-    #                             molecules, ...).",
-    #                     default=None,
-    #                     )
+    parser.add_argument("--fn_topo",
+                        help="Topology file containing metadata (cell, \
+                                molecules, ...).",
+                        default=None,
+                        )
     parser.add_argument(
             "--subset",
             nargs='+',
@@ -96,6 +96,9 @@ def main():
             args.subset = args.subset[_ind]
         else:
             args.subset = _ind
+
+    print('Analysed atoms (symbols):\n%s' %
+          np.array(_load.XYZ.symbols)[args.subset])
 
     def get_v():
         try:
