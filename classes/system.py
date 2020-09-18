@@ -67,6 +67,8 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             if (center_mol := kwargs.get('center_molecule')) is not None:
+                if self.mol_map is None:
+                    self.define_molecules()
                 self.wrap_molecules()
                 self.XYZ.center_coordinates(
                         [_is for _is, _i in enumerate(self.mol_map)
@@ -82,9 +84,10 @@ class _SYSTEM(_CORE):
             if self._topo is not None:
                 for _k in self._topo:
                     _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
-                    if _k is not None and _k != 'fn':
+                    if _k is not None and 'topo' not in _k:
                         if not _equal(_v, self._topo[_k]):
-                            _warnings.warn(f'Topology file {self._topo["fn"]}'
+                            _warnings.warn('Topology file '
+                                           f'{self._topo["fn_topo"]}'
                                            ' does not represent molecule '
                                            f'{self.XYZ._fn} in {_k}!',
                                            stacklevel=2)

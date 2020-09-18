@@ -250,6 +250,13 @@ for _z, _ZV in _ZV_list:
     elements[_z].valence_charge = _ZV
 
 
+def detect_element(string):
+    while string.title() not in np.array(_rvdw_list)[:, 0]:
+        # NB: using elements array not practical here (HO would become Holmium)
+        string = string[:-1]
+    return string.title()
+
+
 def _get_property(kinds, key, fmt=None):
     pr = []
     for _k in kinds:

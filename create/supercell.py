@@ -22,12 +22,12 @@ import warnings as _warnings
 
 from ..topology.dissection import assign_molecule as _assign_molecule
 from ..topology.mapping import get_cell_vec as _get_cell_vec
+from ..topology.mapping import get_cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.core import _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Molecule as _Molecule
 from ..physics import constants
-from ..mathematics.algebra import angle
 
 
 class _BoxObject(_CORE):
@@ -90,14 +90,7 @@ class _BoxObject(_CORE):
             if _get_symmetry(self.cell_aa_deg) is not None:
                 return self.cell_aa_deg
         if hasattr(self, 'cell_vec_aa'):
-            return _np.concatenate((
-                _np.linalg.norm(self.cell_vec_aa, axis=-1),
-                _np.array([
-                    angle(self.cell_vec_aa[1], self.cell_vec_aa[2]),
-                    angle(self.cell_vec_aa[0], self.cell_vec_aa[2]),
-                    angle(self.cell_vec_aa[0], self.cell_vec_aa[1])
-                    ]) * 180./_np.pi
-                ))
+            return _get_cell_aa_deg(self.cell_vec_aa)
 
     def _volume_aa3(self):
         return _np.dot(self.cell_vec_aa[0],

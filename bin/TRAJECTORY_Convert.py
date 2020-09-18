@@ -173,6 +173,13 @@ def main():
     # --- Caution when passing all arguments to object!
     largs = vars(args)
 
+    if args.align_coords is not None:
+        if args.center_coords is not None or args.center_molecule is not None:
+            warnings.warn('Using centering/wrapping and aligning in one call '
+                          'may not yield the desired result (use two '
+                          'consecutive calls if this is the case).',
+                          stacklevel=2)
+
     skip = largs.pop('mask_frames')
     if skip is not None:
         if skip[0] in ['True', 'False']:
@@ -196,8 +203,8 @@ def main():
         warnings.warn("Using external velocity file still under development!",
                       stacklevel=2)
         if args.align_coords is not None:
-            raise NotImplementedError('Atom alignment does not support '
-                                      'external velocities!')
+            warnings.warn('Atom alignment including external velocities still '
+                          'in beta stage. Proceed with caution!')
         nargs = {}
         for _a in [
             'range',
@@ -210,7 +217,9 @@ def main():
         _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 
-        # --- repeat alignment call after merge to include velocities
+        # --- repeat alignment call after merge to include velocities into
+        #     iterator mask
+        # ToDo: (IS THIS NECESSARY?)
         if args.align_coords is not None:
             _load.XYZ.align_coordinates(
                     args.align_coords,

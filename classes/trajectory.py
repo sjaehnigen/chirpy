@@ -42,6 +42,7 @@ from ..topology.mapping import cowt as _cowt
 from ..topology.mapping import join_molecules as _join_molecules
 from ..topology.mapping import distance_matrix as _distance_matrix
 from ..topology.mapping import distance_pbc as _distance_pbc
+from ..topology.dissection import read_topology_file
 
 from ..physics import constants
 from ..physics.statistical_mechanics import kinetic_energies as \
@@ -627,6 +628,15 @@ class _XYZ():
 
                     else:
                         raise NotImplementedError('Cannot read file %s!' % fn)
+
+            elif fmt in ['cp2k', 'restart', 'inp']:
+                # --- single frame only
+                _dict = read_topology_file(fn)
+                symbols = _dict['symbols']
+                names = _dict['names']
+                comments = _dict['comments_topo']
+                self.cell_aa_deg = _dict['cell_aa_deg']
+                data = _dict['data_topo']
 
             else:
                 raise ValueError('Unknown format: %s.' % fmt)

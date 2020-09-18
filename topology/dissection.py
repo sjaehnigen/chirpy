@@ -17,10 +17,14 @@
 
 
 import numpy as np
+import copy
+
 from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
-    detect_lattice, neighbour_matrix
+    detect_lattice, neighbour_matrix, get_cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
+from ..physics.constants import detect_element
 from ..read.coordinates import pdbReader, xyzReader
+from ..interface import cp2k
 
 
 def fermi_cutoff_function(distance, R_cutoff, D):
@@ -239,14 +243,100 @@ def read_topology_file(fn):
                 'names': names,
                 'residues': residues,
                 'cell_aa_deg': cell_aa_deg,
-                'fn': fn}
+                'fn_topo': fn}
 
     elif fmt == 'xyz':
         data, symbols, comments = xyzReader(fn)
 
         return {'symbols': symbols,
-                'fn': fn,
+                'fn_topo': fn,
                 }
+
+    elif fmt in ['cp2k', 'restart', 'inp']:
+        _C = cp2k.parse_restart_file(fn)
+        syntax = [
+            # attribute
+            # location
+            # keyword(s) (list=AND, tuple=OR)
+            # process
+            ('comments',
+                ['GLOBAL'],
+                'PROJECT_NAME',
+                lambda x: x[0],
+             ),
+            ('cell_vec_aa',
+                ['FORCE_EVAL', 'SUBSYS', 'CELL'],
+                ['A', 'B', 'C'],
+                lambda x: np.array(x).astype(float),
+             ),
+            ('abc',
+                ['FORCE_EVAL', 'SUBSYS', 'CELL'],
+                'ABC',
+                lambda x: np.array(x).astype(float),
+             ),
+            ('albega',
+                ['FORCE_EVAL', 'SUBSYS', 'CELL'],
+                'ALBEGA',
+                lambda x: np.array(x).astype(float),
+             ),
+            ('names',
+                ['FORCE_EVAL', 'SUBSYS', 'COORD'],
+                None,
+                lambda x: x[0],
+             ),
+            ('pos_aa',
+                ['FORCE_EVAL', 'SUBSYS', 'COORD'],
+                None,
+                lambda x: np.array(x[1:]).astype(float),
+             ),
+            ('vel_au',
+                ['FORCE_EVAL', 'SUBSYS', 'VELOCITY'],
+                None,
+                lambda x: np.array(x).astype(float),
+             ),
+            ]
+        _con = {}
+        # --- read syntax
+        for _attr in syntax:
+            _attrname = _attr[0]
+            _section = copy.deepcopy(_C)
+            for _title in _attr[1]:
+                _section = _section[_title]
+            _section = _section['KEYWORDS']
+
+            # --- what follows is walrus magic within a list comprehension :)
+            _con[_attrname] = list(map(_attr[3], [
+                _values[1:] if _keyword is not None
+                else _values
+                for _keyword in (
+                    _attr[2] if isinstance(_attr[2], list)
+                    else [_attr[2]]
+                    )
+                for _entry in _section
+                if (_values := _entry.split())[0] == _keyword
+                or _keyword is None
+                ]))
+
+        if (cell_aa_deg := _con['abc'] + _con['albega']) == []:
+            cell_aa_deg = get_cell_l_deg(np.array(_con['cell_vec_aa']))
+
+        if _con['vel_au'] == []:
+            data = np.tile(np.concatenate(
+                (_con['pos_aa'], np.zeros_like(_con['pos_aa'])),
+                axis=-1
+                ), (1, 1, 1))
+        else:
+            data = np.tile(np.concatenate(
+                (_con['pos_aa'], _con['vel_au']),
+                axis=-1
+                ), (1, 1, 1))
+
+        return {'symbols': tuple([detect_element(_n) for _n in _con['names']]),
+                'names': tuple(_con['names']),
+                'data_topo': data,
+                'cell_aa_deg': cell_aa_deg,
+                'comments_topo': _con['comments'],
+                'fn_topo': fn}
 
     else:
         raise ValueError('Unknown format: %s.' % fmt)

@@ -14,9 +14,41 @@
 #  https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
 # ------------------------------------------------------
-# ------------------------------------------------------
 
+import warnings
 import numpy as np
+
+
+def parse_restart_file(fn):
+    def _collect(_iter):
+        COL = {}
+        COL['KEYWORDS'] = []
+        for _l in _iter:
+            if '&END' in _l:
+                break
+            if "&" in _l:
+                COL[_l[1:].upper()] = _collect(_iter)
+            else:
+                COL['KEYWORDS'].append(_l)
+        return COL
+
+    with open(fn, 'r') as _f:
+        _iter = (_l.strip() for _l in _f)
+        CONTENT = _collect(_iter)
+
+    if len(CONTENT) == 0:
+        raise ValueError(f'Could not read file {fn}! Is this CP2K?')
+
+    if 'GLOBAL' not in CONTENT or 'FORCE_EVAL' not in CONTENT:
+        warnings.warn('Invalid or incomplete CP2K input/restart file!',
+                      RuntimeWarning, stacklevel=2)
+    try:
+        CONTENT['FORCE_EVAL']['SUBSYS']['COORD']
+    except KeyError:
+        warnings.warn('Could not find atom coordinates in file!',
+                      stacklevel=2)
+
+    return CONTENT
 
 
 def read_ener_file(fn):
