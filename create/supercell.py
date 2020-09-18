@@ -220,7 +220,9 @@ class _BoxObject(_CORE):
         print('%45s %8s %12s' % ('File', 'No.', 'Molar Mass'))
         print(77 * '-')
         print('\n'.join(['%45s %8d %12.4f' %
-                         (_m[1]._fn, _m[0], sum(_m[1].masses_amu))
+                         (getattr(_m[1], '_fn', ''),
+                          _m[0],
+                          sum(_m[1].masses_amu))
                          for _m in self.member_set]))
         print(77 * '–')
 
