@@ -174,10 +174,18 @@ Output: None"""
                                                                1
                                                                )
     for i in range(n_atoms):
-        tmp = ['ATOM'] + [i+1] + [names[i]] + [residues[i][1]] + \
-                [int(residues[i][0])] + [c for c in data[i]] + [1] \
-                + [0] + [''] + [symbols[i]]
+        tmp = ['ATOM']
+        tmp += [i+1]
+        tmp += [names[i]]
+        tmp += [residues[i][1]]
+        tmp += [int(residues[i][0])]
+        tmp += [c for c in data[i]]
+        tmp += [1]
+        tmp += [0]
+        tmp += ['']
+        tmp += [symbols[i]]
         obuffer += format % tuple(tmp)
+
     obuffer += 'MASTER        1    0    0    0    0    0    0    0 '
     obuffer += '%4d    0 %4d    0\nEND' % (n_atoms, n_atoms)
 

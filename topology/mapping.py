@@ -280,6 +280,13 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
     return dist_array <= crit_aa
 
 
+def close_neighbours(p0, cell=None, crit=0.0):
+    _dM = distance_matrix(p0, cell=cell)
+    return [(_i, [(_j, _dM[_i, _j]) for _j in np.argwhere(_idM).flatten()])
+            for _i, _idM in enumerate(np.triu(_dM <= crit, k=1))
+            if np.any(_idM)]
+
+
 def connectivity(pos_aa, symbols, cell_aa_deg=None):
     '''For each atom return covalently bound neighbours.
        pos_aa:       np.array of shape (n_atoms, three) in angstrom

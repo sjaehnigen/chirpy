@@ -196,7 +196,7 @@ class _BoxObject(_CORE):
                 _imol += 1
         return _np.array(mol_map)
 
-    def print_info(self):
+    def print_info(self) -> None:
         print(77 * '–')
         print('%-12s' % self.__class__.__name__)
         print(77 * '–')
@@ -205,6 +205,7 @@ class _BoxObject(_CORE):
               (self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3))
         print(77 * '–')
         print('CELL ' + ' '.join(map('{:10.5f}'.format, self.cell_aa_deg)))
+        print(f'{_get_symmetry(self.cell_aa_deg)}'.upper())
         print(77 * '-')
         print(' A   ' + ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[0])))
         print(' B   ' + ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[1])))

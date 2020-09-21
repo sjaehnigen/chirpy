@@ -42,6 +42,7 @@ from ..topology.mapping import cowt as _cowt
 from ..topology.mapping import join_molecules as _join_molecules
 from ..topology.mapping import distance_matrix as _distance_matrix
 from ..topology.mapping import distance_pbc as _distance_pbc
+from ..topology.mapping import close_neighbours as _close_neighbours
 from ..topology.dissection import read_topology_file
 
 from ..physics import constants
@@ -1269,6 +1270,17 @@ class _MOMENTS():
 
 
 class XYZFrame(_XYZ, _FRAME):
+    def _check_distances(self):
+        _too_close = _close_neighbours(self.data[:, :3],
+                                       cell=self.cell_aa_deg,
+                                       crit=0.5)
+
+        for _i in _too_close:
+            for _j in _i[1]:
+                _warnings.warn(f'Found too close atoms {_i[0]} and {_j[0]} ('
+                               f'{_np.round(_j[1], decimals=3)} Å)!',
+                               RuntimeWarning, stacklevel=2)
+
     def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
         _XYZ._sync_class(self)

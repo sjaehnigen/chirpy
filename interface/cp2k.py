@@ -73,11 +73,11 @@ def read_ener_file(fn):
         cqty.append(float(buff[5]))
 
     step_n = np.array(step_n)
-    time = np.array(time)
-    kin = np.array(kin)
-    temp = np.array(temp)
-    pot = np.array(pot)
-    cqty = np.array(cqty)
+    time = np.array(time).astype(float)
+    kin = np.array(kin).astype(float)
+    temp = np.array(temp).astype(float)
+    pot = np.array(pot).astype(float)
+    cqty = np.array(cqty).astype(float)
 
 #    kin_avg = np.average(kin)
 #    pot_avg = np.average(pot)

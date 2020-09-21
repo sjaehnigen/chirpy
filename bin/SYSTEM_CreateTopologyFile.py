@@ -76,6 +76,7 @@ def main():
         i_fmt = args.fn.split('.')[-1].lower()
 
     _load = system.Molecule(**vars(args), fmt=i_fmt)
+    _load.XYZ._check_distances()
 
     # --- keep only coordinates
     if hasattr(_load, 'Modes'):

@@ -19,11 +19,11 @@
 import numpy as np
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
-import copy
 import warnings
 
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
+# close_neighbours
 
 
 # --- kernels
@@ -251,9 +251,12 @@ def cifReader(fn):
 #                                                           '_atom_site_fract_y',
 #                                                           '_atom_site_fract_z'
 #                                                           ]]).T
-    _x = np.array(_measurement2float(_load['_atom_site_fract_x']))
-    _y = np.array(_measurement2float(_load['_atom_site_fract_y']))
-    _z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+    x = np.array(_measurement2float(_load['_atom_site_fract_x']))
+    y = np.array(_measurement2float(_load['_atom_site_fract_y']))
+    z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+
+    if False:
+        print(f'Asymmetric unit: {len(list(zip(x, y, z)))} atoms')
 
     symbols = tuple(_load['_atom_site_type_symbol'])
     names = tuple(_load['_atom_site_label'])
@@ -277,19 +280,20 @@ def cifReader(fn):
             '_space_group_symop_operation_xyz',
             '_symmetry_equiv_pos_as_xyz',
             ])
-    # -- apply given symmetry operations
-    #    (assumes first operation to be the identity: 'x, y, z')
     if _space_group_symop is None:
         warnings.warn('No symmetry operations found in file!', stacklevel=2)
     else:
-        for op in _space_group_symop[1:]:
+        _x = _y = _z = []
+        _symbols = _names = ()
+        # -- apply given symmetry operations on asymmetric unit
+        #    (assumes first operation to be the identity: 'x, y, z')
+        for op in _space_group_symop:
             _op = [__op.strip() for __op in op.split(',')]
-            # --- copy required until complete operation done
-            x, y, z = tuple([copy.deepcopy(_i) for _i in (_x, _y, _z)])
             _x = np.append(_x, eval(_op[0]), axis=0)
             _y = np.append(_y, eval(_op[1]), axis=0)
             _z = np.append(_z, eval(_op[2]), axis=0)
-            symbols += symbols
+            _symbols += symbols
+            _names += names
 
     data = np.array([_x, _y, _z]).T
 
@@ -297,5 +301,14 @@ def cifReader(fn):
     cell_vec_aa = get_cell_vec(cell_aa_deg)
     data = np.tensordot(data, cell_vec_aa, axes=1)
 
+    # --- clean data (atom duplicates), a little clumsy
+    #     NOT REQUIRED FOR INTEGER FILES!
+    # ind = np.array(sorted([
+    #        _j[0]
+    #        for _i in close_neighbours(data, cell=cell_aa_deg, crit=0.0)
+    #        for _j in _i[1]
+    #        ]))
+    # data = np.delete(data, ind, axis=0)
+
     # --- add frames dimension (no support of cif trajectories)
-    return np.array([data]), names, symbols, cell_aa_deg, [title]
+    return np.array([data]), _names, _symbols, cell_aa_deg, [title]

@@ -52,7 +52,7 @@ class _SYSTEM(_CORE):
                     self.XYZ = kwargs.pop('XYZ')
             self.cell_aa_deg = self.XYZ.cell_aa_deg
             self.symbols = self.XYZ.symbols
-            # ToDo: Dict of atom kinds
+            # ToDo: Dict of atom kinds (with names)
             self.kinds = AttrDict({_s: constants.elements[_s]
                                    if _s in constants.elements
                                    else 'UNKNOWN'
@@ -132,6 +132,10 @@ class _SYSTEM(_CORE):
                                  '(mol_map)!')
 
         self.XYZ.split(self.mol_map, select=mols)
+        self.mol_map = _np.array([_i for _i in self.mol_map if _i in mols])
+
+        self.symbols = self.XYZ.symbols
+        # self.names = self.XYZ.names
 
     def define_molecules(self, **kwargs):
         if self.mol_map is not None:
