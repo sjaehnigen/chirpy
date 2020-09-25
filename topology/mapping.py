@@ -246,10 +246,10 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
     if len(p0.shape) > 2 or len(p1.shape) > 2:
         raise ValueError('distance_matrix only accepts positions of shape '
                          '(n_atoms, dim) or (n_frames, dim)!')
-    if (_max := max(p0.shape[0], p1.shape[0])) > 1000:
+    if (_max := max(p0.shape[0], p1.shape[0])) > 10000:
         print(_max)
         raise MemoryError('Too many atoms for molecular recognition'
-                          '(>1000 atom support in a future version)!'
+                          '(>10000 atom support in a future version)!'
                           )
     dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
 

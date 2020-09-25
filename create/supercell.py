@@ -28,6 +28,7 @@ from ..classes.core import _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Molecule as _Molecule
 from ..physics import constants
+from ..visualise import print_info
 
 
 class _BoxObject(_CORE):
@@ -197,19 +198,12 @@ class _BoxObject(_CORE):
         return _np.array(mol_map)
 
     def print_info(self) -> None:
-        print(77 * '–')
-        print('%-12s' % self.__class__.__name__)
-        print(77 * '–')
+        # ToDo: self._print_info = [print_info.print_header]
+        print_info.print_header(self)
         print('%-12s %s' % ('Periodic', self.pbc))
         print('%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %
               (self.n_members, self.n_atoms, self.mass_amu, self.volume_aa3))
-        print(77 * '–')
-        print('CELL ' + ' '.join(map('{:10.5f}'.format, self.cell_aa_deg)))
-        print(f'{_get_symmetry(self.cell_aa_deg)}'.upper())
-        print(77 * '-')
-        print(' A   ' + ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[0])))
-        print(' B   ' + ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[1])))
-        print(' C   ' + ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[2])))
+        print_info.print_cell(self)
         print(77 * '–')
         print('%45s %8s %12s' % ('File', 'No.', 'Molar Mass'))
         print(77 * '-')
@@ -276,31 +270,40 @@ class MolecularCrystal(_BoxObject):
 
         return new
 
-    def create(self, **kwargs):
+    def create(self, verbose=True, **kwargs):
         _SC = self.members[0][1]
         _SC.axis_pointer = -2
-        _mol = 0
-        mol_map = [_mol] * len(_SC.symbols)
+        # _mol = 0
+        # mol_map = [_mol] * len(_SC.symbols)
         for _i in range(self.members[0][0]-1):
             _SC += self.members[0][1]
-            _mol += 1
-            mol_map += [_mol] * len(self.members[0][1].symbols)
+        #    _mol += 1
+        #    mol_map += [_mol] * len(self.members[0][1].symbols)
 
         for _m in self.members[1:]:
             for _i in range(_m[0]):
                 _SC += _m[1]
-                _mol += 1
-                mol_map += [_mol] * len(self.members[0][1].symbols)
+        #        _mol += 1
+        #        mol_map += [_mol] * len(self.members[0][1].symbols)
 
-        # ToDO: mol_map somehow broken, can be recovered by define_molecules()
-        multiply = kwargs.get('multiply', (1, 1, 1))
-        _uc_mol_map = mol_map
-        for _repeat in range(1, _np.prod(multiply)):
-            mol_map = _np.concatenate((mol_map, _uc_mol_map+_np.amax(mol_map)))
+        # multiply = kwargs.get('multiply', (1, 1, 1))
+        # _uc_mol_map = mol_map
+        # for _repeat in range(1, _np.prod(multiply)):
+        #   mol_map = _np.concatenate((mol_map, _uc_mol_map+_np.amax(mol_map)))
 
-        return _Molecule(XYZ=self.propagate(_SC, **kwargs),
-                         mol_map=mol_map,
+        _MOL = _Molecule(XYZ=self.propagate(_SC, **kwargs),
+                         # mol_map=mol_map,
                          cell_aa_deg=self.cell_aa_deg)
+        # ToDO: incremental mol_map broken, recovered by define_molecules()
+        #       (reason?: original mol map wrong due to too small cell)
+
+        _MOL.define_molecules(silent=True)
+        print('')
+        _MOL.sort_atoms(_np.argsort(_MOL.mol_map, kind='stable'))
+        if verbose:
+            _MOL.print_info()
+
+        return _MOL
 
 
 _solvents = {}
@@ -414,8 +417,9 @@ class Solution(_BoxObject):
     def create(self, **kwargs):
         return self._fill_box(**kwargs)
 
-    def _fill_box(self, verbose=False, **kwargs):
-        '''requires packmol'''
+    def _fill_box(self, verbose=False, sort_atoms=False, write_pdb=True):
+        '''requires packmol
+           sort_atoms ... sort atoms alphabetically (False: sorted by resid)'''
         # --- calculate packmol box
         _box_aa = _np.concatenate((self.origin_aa, _np.dot(_np.ones((3)),
                                   self.cell_vec_aa)))
@@ -426,12 +430,17 @@ class Solution(_BoxObject):
         with open('packmol.inp', 'w') as f:
 
             f.write('tolerance 2.000' + 2*'\n')
-            f.write('filetype xyz' + 2*'\n')
-            f.write('output .simbox.xyz' + '\n')
+            f.write('filetype pdb' + 2*'\n')
+            f.write('output .simbox.pdb' + '\n')
+
+            # --- supress any RuntimeWarning from PDBReader for missing cell
 
             for _im, _m in enumerate(self.member_set):
-                _fn = '.member-%03d.xyz' % _im
-                _m[1].write(_fn)
+                _fn = '.member-%03d.pdb' % _im
+                _m[1].mol_map = _np.zeros_like(_m[1].symbols)
+                with _warnings.catch_warnings():
+                    _warnings.filterwarnings('ignore', category=RuntimeWarning)
+                    _m[1].write(_fn)
                 f.write('\n')
                 f.write('structure %s' % _fn + '\n')
                 f.write('  number %d' % _m[0] + '\n')
@@ -445,26 +454,26 @@ class Solution(_BoxObject):
         if verbose:
             print("Done.")
 
-        if self.pbc:
-            _load = _Molecule(".simbox.xyz",
-                              cell_aa_deg=self._cell_aa_deg(),
-                              mol_map=self._mol_map(),
-                              center_residue=0)
-        else:
-            _load = _Molecule(".simbox.xyz",
+        with _warnings.catch_warnings():
+            _warnings.filterwarnings('ignore', category=RuntimeWarning)
+            _load = _Molecule(".simbox.pdb",
                               cell_aa_deg=self._cell_aa_deg(),
                               mol_map=self._mol_map())
 
         self.mol_map = self._mol_map()
-        if kwargs.get('sort') is not None:
+        _load.define_molecules(silent=True)
+        _load.sort_atoms(_np.argsort(_load.mol_map, kind='stable'))
+        if self.pbc:
+            _load.center_molecule(0)
+        if sort_atoms:
             _load.sort_atoms()
-        if kwargs.get('write_PDB', True):
+        if write_pdb:
             _load.write("topology.pdb")
 
         # --- clean files
         # _os.remove(".tmp_packmol.inp")
         for _im, _m in enumerate(self.member_set):
-            _os.remove(".member-%03d.xyz" % _im)
-        _os.remove(".simbox.xyz")
+            _os.remove(".member-%03d.pdb" % _im)
+#        _os.remove(".simbox.pdb")
 
         return _load

@@ -29,7 +29,7 @@ from ..physics import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.analysis import divrot
-
+from ..visualise import print_info
 
 class ScalarField(_CORE):
     def __init__(self, *args, **kwargs):
@@ -107,10 +107,7 @@ class ScalarField(_CORE):
             pass
 
     def print_info(self):
-        print('')
-        print(77 * '–')
-        print('%-12s' % self.__class__.__name__)
-        print(77 * '–')
+        print_info.print_header(self)
         print(' x '.join(map('{:d}'.format, self.data.shape[-3:])))
         print('%d Atoms' % self.n_atoms)
         # print('\n'.join(self.comments))

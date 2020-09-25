@@ -25,6 +25,7 @@ from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
 from ..physics import constants
+from ..visualise import print_info
 
 
 class _SYSTEM(_CORE):
@@ -67,15 +68,7 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             if (center_mol := kwargs.get('center_molecule')) is not None:
-                if self.mol_map is None:
-                    self.define_molecules()
-                self.wrap_molecules()
-                self.XYZ.center_coordinates(
-                        [_is for _is, _i in enumerate(self.mol_map)
-                         if _i == center_mol],
-                        weight=kwargs.get('weight', 'mass'),
-                        )  # **kwargs)
-                self.wrap_molecules()
+                self.center_molecule(self, center_mol, kwargs.get('weight'))
 
             if self.mol_map is not None:
                 self.clean_residues()
@@ -112,6 +105,17 @@ class _SYSTEM(_CORE):
                 self._topo = _read_topology_file(self.XYZ._fn)
                 self.mol_map = self._topo['mol_map']
 
+    def center_molecule(self, index, weight='mass'):
+        if self.mol_map is None:
+            self.define_molecules()
+        self.wrap_molecules()
+        self.XYZ.center_coordinates(
+                [_is for _is, _i in enumerate(self.mol_map)
+                 if _i == index],
+                weight=weight,
+                )
+        self.wrap_molecules()
+
     def wrap_molecules(self):
         if self.mol_map is None:
             raise AttributeError('Wrap molecules requires a topology '
@@ -137,8 +141,8 @@ class _SYSTEM(_CORE):
         self.symbols = self.XYZ.symbols
         # self.names = self.XYZ.names
 
-    def define_molecules(self, **kwargs):
-        if self.mol_map is not None:
+    def define_molecules(self, silent=False):
+        if self.mol_map is not None and not silent:
             _warnings.warn('Overwriting existing mol_map!', stacklevel=2)
 
         n_map = tuple(_define_molecules(self.XYZ.pos_aa,
@@ -185,20 +189,13 @@ class _SYSTEM(_CORE):
                     pass
 
     def print_info(self):
-        print(77 * '–')
-        print('%-12s' % self.__class__.__name__)
-        print(77 * '–')
+        # self._print_info = [print_info.print_header]
+        print_info.print_header(self)
         print('%12d Atoms\n%12s' %
               (self.XYZ.n_atoms, self.XYZ.symbols))
         if self.mol_map is not None:
-            print('Molecular Map:\n%12s' % self.mol_map)
-        print(77 * '–')
-        print('CELL ' + ' '.join(map('{:10.5f}'.format, self.cell_aa_deg)))
-        # print(77 * '-')
-        # print(' A   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[0])))
-        # print(' B   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[1])))
-        # print(' C   '+ ' '.join(map('{:10.5f}'.format, self.cell_vec_aa[2])))
-        # print(77 * '–')
+            print(f'Molecular Map:\n{self.mol_map}')
+        print_info.print_cell(self)
         print(77 * '–')
 
     def _parse_write_args(self, fn, **kwargs):

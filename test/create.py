@@ -41,7 +41,7 @@ class TestSupercell(unittest.TestCase):
                         rho_g_cm3=0.844,
                       )
 
-        sys._fill_box(verbose=False, sort=True)
+        sys._fill_box(verbose=False, sort_atoms=True)
 
         os.remove('topology.pdb')
         os.remove('packmol.inp')
@@ -50,7 +50,7 @@ class TestSupercell(unittest.TestCase):
     def test_molecular_crystal(self):
         c = supercell.MolecularCrystal(self.dir + '/782512.pdb')
 
-        b = c.create(multiply=(1, 2, 2))
+        b = c.create(verbose=False, multiply=(1, 2, 2))
         b.sort_atoms()
         b.wrap_atoms()
         b.write('out.pdb')

@@ -23,6 +23,8 @@ import multiprocessing
 from multiprocessing import Pool
 from itertools import product, combinations_with_replacement
 
+from ..visualise import print_info
+
 
 class AttrDict(dict):
     '''Converts dictionary keys into attributes'''
@@ -104,7 +106,7 @@ class _PALARRAY():
 
 class _CORE():
     def __init__(self, *args, **kwargs):
-        pass
+        self._print_info = [print_info.print_header]
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -154,11 +156,8 @@ class _CORE():
         return _load
 
     def print_info(self):
-        print('')
-        print(77 * '–')
-        print('%-12s' % self.__class__.__name__)
-        print(77 * '–')
-        print('')
+        for _func in self.print_info:
+            _func(self)
 
 
 class _ITERATOR():

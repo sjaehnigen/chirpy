@@ -1053,11 +1053,12 @@ class _XYZ():
                                  )
 
         elif fmt == "pdb":
-            mol_map = kwargs.get('mol_map')
-            if mol_map is None:
-                raise AttributeError('Could not find mol_map for PDB output!')
-            cell_aa_deg = kwargs.get('cell_aa_deg')
-            if cell_aa_deg is None:
+            if (mol_map := kwargs.get('mol_map')) is None:
+                _warnings.warn('Could not find mol_map for PDB output!',
+                               RuntimeWarning, stacklevel=2)
+                mol_map = _np.zeros(loc_self.n_atoms).astype(int)
+
+            if (cell_aa_deg := kwargs.get('cell_aa_deg')) is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
                                RuntimeWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])

@@ -177,7 +177,9 @@ def pdbIterator(FN):
 
        https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
        '''
-    u = mda.Universe(FN)
+    with warnings.catch_warnings():  # ignroe MDAnalysis warnings
+        warnings.filterwarnings('ignore', category=UserWarning)
+        u = mda.Universe(FN)
 
     for ts in u.trajectory:
         # only take what is needed in ChirPy
