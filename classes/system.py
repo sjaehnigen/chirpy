@@ -68,7 +68,7 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             if (center_mol := kwargs.get('center_molecule')) is not None:
-                self.center_molecule(self, center_mol, kwargs.get('weight'))
+                self.center_molecule(center_mol, kwargs.get('weight', 'mass'))
 
             if self.mol_map is not None:
                 self.clean_residues()

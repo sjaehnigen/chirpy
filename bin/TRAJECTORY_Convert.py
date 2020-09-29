@@ -143,8 +143,8 @@ def main():
             )
     parser.add_argument(
             "--pp",
-            help="Pseudopotential, e.g. MT_BLYP (CPMD ATOMS SECTION only).",
-            default=None,
+            help="Pseudopotential (for CPMD ATOMS section only).",
+            default='MT_BLYP KLEINMAN-BYLANDER',
             )
     args = parser.parse_args()
 
@@ -200,8 +200,6 @@ def main():
         largs.update({'skip': []})
 
     if args.fn_vel is not None:
-        warnings.warn("Using external velocity file still under development!",
-                      stacklevel=2)
         if args.align_coords is not None:
             warnings.warn('Atom alignment including external velocities still '
                           'in beta stage. Proceed with caution!')

@@ -501,14 +501,7 @@ class CPMDinput():
             return out
 
         @classmethod
-        def from_data(cls, symbols, pos_au, pp=None):
-            if pp is None:
-                pp = 'MT_BLYP'
-                warnings.warn('Setting pseudopotential in CPMD ATOMS output to'
-                              ' default (Troullier-Martins, BLYP)!',
-                              stacklevel=2)
-            # 'SG_BLYP KLEINMAN-BYLANDER'
-
+        def from_data(cls, symbols, pos_au, pp='MT_BLYP KLEINMAN-BYLANDER'):
             elements = sorted(set(symbols))
             symbols = np.array(symbols)
 
