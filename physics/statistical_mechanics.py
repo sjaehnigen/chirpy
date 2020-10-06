@@ -151,11 +151,8 @@ def time_correlation_function(*args,
     # other filter (i.e. -0)
     if flt_pow < 0:
         # --- remove implicit size-dependent triangular filter (finite size)
-        _filter = np.roll(
-             np.abs(n_frames*np.ones(2*n_frames)-np.arange(2*n_frames))[:-1]+1,
-             n_frames
-             )
-        # _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames)-1)
+        _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames))
+        _filter = np.hstack((_filter[:0:-1], _filter))
         R /= _filter[:, None]
 
     if flt_pow != 0:
@@ -181,9 +178,13 @@ def time_correlation_function(*args,
         fR = fR / 2.
 
     if cc_mode == 'full':
-        fR = np.roll(R, len(R) // 2)
-    # else:
-    #     fR = np.hstack((fR, fR[::-1]))
+        # fR = np.roll(R, len(R) // 2)
+        fR = R
+    else:
+        # --- avoid double index 0 after vstack
+        #     --> otherwise ugly phase shift in spectra
+        #     --> not necessary for index -1 (cc = 0)
+        fR = np.vstack((fR[1:], fR[::-1]))  # [::-1]
 
     if not sum_dims:
         return fR
@@ -211,8 +212,18 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
 
     R = time_correlation_function(*args, **kwargs)
 
-    n = R.shape[0]
+    # --- \ --> \/
+    # --- numpy convolve has given the full periodic cc function, but we cut
+    #     it in half (see time_correlation_function()
 
+    # n = R.shape[0]
+    # print(n)
+    # final_cc = np.hstack((R[n//2:], R[n//2:][::-1]))
+    # # final_cc = (R + R[::-1]) / 2
+    # n = final_cc.shape[0]
+    # S = np.fft.rfft(final_cc, n=n).real * factor * ts
+
+    n = R.shape[0]
     S = np.fft.rfft(R, n=n).real * factor * ts
 
     # --- Prefactor: see Fourier Integral Theorem;
