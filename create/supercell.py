@@ -474,6 +474,6 @@ class Solution(_BoxObject):
         # _os.remove(".tmp_packmol.inp")
         for _im, _m in enumerate(self.member_set):
             _os.remove(".member-%03d.pdb" % _im)
-#        _os.remove(".simbox.pdb")
+        _os.remove(".simbox.pdb")
 
         return _load
