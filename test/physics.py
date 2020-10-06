@@ -179,15 +179,15 @@ class TestSpectroscopy(unittest.TestCase):
                                   )
 
         self.assertAlmostEqual(
-                np.mean(constants.k_B_au * 347 / (
+                np.mean(constants.k_B_au * 344 / (
                      POW['power'].sum(axis=1) * 2*np.pi * 2 * POW['freq'][1]
                      )),
                 1.0,
                 places=2
                 )
         self.assertAlmostEqual(
-                np.mean(constants.k_B_au * 347 / (
-                     POW['power'].sum(axis=1) * 2*np.pi * 2 / _load.n_frames/ts
+                np.mean(constants.k_B_au * 344 / (
+                     POW['power'].sum(axis=1) * 2*np.pi / _load.n_frames/ts
                      )),
                 1.0,
                 places=2

@@ -178,13 +178,13 @@ def time_correlation_function(*args,
         fR = fR / 2.
 
     if cc_mode == 'full':
-        # fR = np.roll(R, len(R) // 2)
-        fR = R
+        fR = np.roll(R, len(R) // 2)
+        # fR = R
     else:
         # --- avoid double index 0 after vstack
         #     --> otherwise ugly phase shift in spectra
         #     --> not necessary for index -1 (cc = 0)
-        fR = np.vstack((fR[1:], fR[::-1]))  # [::-1]
+        fR = np.vstack((fR, fR[:0:-1]))  # [::-1]
 
     if not sum_dims:
         return fR
@@ -211,17 +211,6 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     kwargs.update({'sum_dims': True})
 
     R = time_correlation_function(*args, **kwargs)
-
-    # --- \ --> \/
-    # --- numpy convolve has given the full periodic cc function, but we cut
-    #     it in half (see time_correlation_function()
-
-    # n = R.shape[0]
-    # print(n)
-    # final_cc = np.hstack((R[n//2:], R[n//2:][::-1]))
-    # # final_cc = (R + R[::-1]) / 2
-    # n = final_cc.shape[0]
-    # S = np.fft.rfft(final_cc, n=n).real * factor * ts
 
     n = R.shape[0]
     S = np.fft.rfft(R, n=n).real * factor * ts
