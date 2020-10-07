@@ -18,31 +18,42 @@
 
 import numpy as np
 import warnings
+from ..classes.core import AttrDict
 
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
 
 class pub_label():
-    def __init__(self,  ax,  **kwargs):
+    def __init__(self, ax,
+                 X=1400,
+                 Y=0.0,
+                 color="k",
+                 size=24,
+                 pad=0.0,
+                 alpha=1.0,
+                 stancil=r'\textbf{%s}',
+                 ):
         self.ax = ax
-        self.X = kwargs.get('X',  1400)
-        self.Y = kwargs.get('Y',  0.0)
-        self.color = kwargs.get('color',  'black')
-        self.size = kwargs.get('size',  24)
-        self.stancil = kwargs.get('stancil',  r'\textbf{%s}')
-        self.sep = kwargs.get('sep',  0.0)
-        self.alpha = kwargs.get('alpha',  1.0)
+        self.X = X
+        self.Y = Y
+        self.color = color
+        self.size = size
+        self.stancil = stancil
+        self.pad = pad
+        self.alpha = alpha
 
     def print(self,  string,  **kwargs):
+        args = AttrDict()
         for _key in self.__dict__.keys():
-            setattr(self,  _key,  kwargs.get(_key,  getattr(self,  _key)))
+            args[_key] = kwargs.get(_key,  getattr(self,  _key))
             try:
                 del kwargs[_key]
             except KeyError:
                 pass
-        self.ax.text(self.X,  self.Y + self.sep,  self.stancil % string,
-                     color=self.color,  alpha=self.alpha,  size=self.size,
+        self.ax.text(args.X,  args.Y + args.pad,  args.stancil % string,
+                     color=args.color,  alpha=args.alpha,  size=args.size,
                      **kwargs)
+        return args
 
 
 def source_params(matplotlib):
@@ -96,9 +107,10 @@ def make_nice_ax(p):
 
 def set_mutliple_y_axes(ax, sep, n_axes,
                         offset=0.0,
-                        minor=(-1, 1, 0.5),
-                        major=(-1, 1, 0.2),
-                        fmt='%5.1f'
+                        minor=(-1, 1, 11),
+                        major=(-1, 1, 5),
+                        fmt='%5.1f',
+                        auxiliary_axis=False,
                         ):
     if not isinstance(offset, list):
         offset = [offset] * n_axes
@@ -117,8 +129,10 @@ def set_mutliple_y_axes(ax, sep, n_axes,
         ax.yaxis.set_major_formatter(FormatStrFormatter(fmt))
         ax.yaxis.set_minor_locator(MultipleLocator(_m[-1]))
 
-        _minor_base = np.linspace(_m[0], _m[1], int((_m[1]-_m[0])/_m[2])+1)
-        _major_base = np.linspace(_M[0], _M[1], int((_M[1]-_M[0])/_M[2])+1)
+        # _minor_base = np.linspace(_m[0], _m[1], int((_m[1]-_m[0])/_m[2])+1)
+        # _major_base = np.linspace(_M[0], _M[1], int((_M[1]-_M[0])/_M[2])+1)
+        _minor_base = np.linspace(*_m)
+        _major_base = np.linspace(*_M)
         _minor_tick_rel_pos += (_minor_base - _i * sep + _o).tolist()
         _major_tick_rel_pos += (_major_base - _i * sep + _o).tolist()
         _major_tick_labels += _major_base.tolist()
@@ -127,25 +141,34 @@ def set_mutliple_y_axes(ax, sep, n_axes,
     ax.set_yticks(_major_tick_rel_pos, minor=False)
     ax.set_yticklabels(_major_tick_labels)
 
+    # --- auxiliary axis for plot design
+    if auxiliary_axis:
+        aux_ax = ax.twinx()
+        aux_ax.set_ylim(ax.get_ylim())
 
-def multiplot(ax, x_a, y_a,
-              std_a=None,
-              bool_a=True,  # False to deactivate plot in list
-              color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'purple'],
-              style_a='-',
-              alpha_a=1.0,
-              std_alpha_a=0.25,
-              exp=None,
-              style_exp='-',
-              alpha_exp=1.0,
-              stack_plots=True,
-              pile_up=False,  # fill space between plots
-              hatch_a=None,  # pattern for pile_up
-              offset_a=0.0,  # shift y
-              sep=5,  # in %
-              xlim=None,
-              ylim=None,
-              **kwargs):
+
+def multiplot(
+             ax, x_a, y_a,
+             std_a=None,
+             bool_a=True,  # False to deactivate plot in list
+             color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'purple'],
+             style_a='-',
+             alpha_a=1.0,
+             lw_a=3,
+             std_alpha_a=0.25,
+             exp=None,
+             style_exp='-',
+             alpha_exp=1.0,
+             lw_exp=3,
+             stack_plots=True,
+             pile_up=False,  # fill space between plots
+             hatch_a=None,  # pattern for pile_up
+             offset_a=0.0,  # shift y
+             sep=5,  # in %
+             hspace=None,  # maually define shift between plots, overrrides sep
+             xlim=None,
+             ylim=None,
+             **kwargs):
     '''Make a nice plot of data in list.
        Arguments with _a denote list of values corresponding to data list y_a
        kwargs contains argument for pyplot
@@ -175,6 +198,8 @@ def multiplot(ax, x_a, y_a,
         style_a = [style_a] * n_plots
     if alpha_a.__class__ is not list:
         alpha_a = [alpha_a] * n_plots
+    if lw_a.__class__ is not list:
+        lw_a = [lw_a] * n_plots
     if std_alpha_a.__class__ is not list:
         std_alpha_a = [std_alpha_a] * n_plots
     if hatch_a.__class__ is not list:
@@ -195,23 +220,26 @@ def multiplot(ax, x_a, y_a,
     if any(len(_a) != n_plots for _a in [y_a,  bool_a]):
         raise ValueError('Inconsistent no. of plots in lists!')
 
-    # --- Calculate hspace per plot and ylim
     _slc = [slice(*sorted(np.argmin(np.abs(_x_a-_x)) for _x in xlim))
             for _x_a in x_a]
     if exp is not None:
         _slce = slice(*sorted(np.argmin(np.abs(xe-_x)) for _x in xlim))
 
-    try:
-        _shift = max([np.amax(_y[_s]) - np.amin(_y[_s])
-                      for _y, _s in zip(y_a, _slc)])
-        if exp is not None:
-            _shift = max(np.amax(e[_slce]) - np.amin(e[_slce]), _shift)
-        _shift *= (1 + sep / 100)
+    # --- Calculate hspace per plot and ylim
+    if hspace is None:
+        try:
+            _shift = max([np.amax(_y[_s]) - np.amin(_y[_s])
+                          for _y, _s in zip(y_a, _slc)])
+            if exp is not None:
+                _shift = max(np.amax(e[_slce]) - np.amin(e[_slce]), _shift)
+            _shift *= (1 + sep / 100)
 
-    except ValueError:
-        warnings.warn('Could not calculate plot shift. Good luck!',
-                      RuntimeWarning,
-                      stacklevel=2)
+        except ValueError:
+            warnings.warn('Could not calculate plot shift. Good luck!',
+                          RuntimeWarning,
+                          stacklevel=2)
+    else:
+        _shift = hspace
 
     if stack_plots:
         print(_shift)
@@ -233,51 +261,54 @@ def multiplot(ax, x_a, y_a,
 
     # --- plot reference (experiment)
     if exp is not None:
-        ax.plot(xe, _e, style_exp, alpha=alpha_exp, lw=3, color='black',
+        ax.plot(xe, _e, style_exp, alpha=alpha_exp, lw=lw_exp, color='black',
                 label='exp.')
 
     # --- plot data
     if fill:
-        for _b, _x, _y, _st, _c, _al, _s, _fal, _o in zip(bool_a,
-                                                          x_a,
-                                                          _y_a,
-                                                          style_a,
-                                                          color_a,
-                                                          alpha_a,
-                                                          std_a,
-                                                          std_alpha_a,
-                                                          offset_a):
+        for _b, _x, _y, _st, _c, _al, _lw, _s, _fal, _o in zip(bool_a,
+                                                               x_a,
+                                                               _y_a,
+                                                               style_a,
+                                                               color_a,
+                                                               alpha_a,
+                                                               lw_a,
+                                                               std_a,
+                                                               std_alpha_a,
+                                                               offset_a):
             if _b:
                 ax.fill_between(_x, _y+_o+_s, _y+_o-_s, color=_c, alpha=_fal)
-                ax.plot(_x, _y+_o, _st, lw=3, color=_c, alpha=_al, **kwargs)
+                ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
     if pile_up:
         if not np.allclose(np.unique(x_a),  x_a[0]):
             raise ValueError('pile_up argument requires identical x content!')
         _last = np.zeros_like(_y_a[0])
-        for _b,  _x,  _y,  _st,  _ha,  _c,  _al,  _fal, _o in zip(bool_a,
-                                                                  x_a,
-                                                                  _y_a,
-                                                                  style_a,
-                                                                  hatch_a,
-                                                                  color_a,
-                                                                  alpha_a,
-                                                                  std_alpha_a,
-                                                                  offset_a):
+        for _b, _x, _y, _st, _ha, _c, _al, _lw, _fal, _o in zip(bool_a,
+                                                                x_a,
+                                                                _y_a,
+                                                                style_a,
+                                                                hatch_a,
+                                                                color_a,
+                                                                alpha_a,
+                                                                lw_a,
+                                                                std_alpha_a,
+                                                                offset_a):
             if _b:
                 ax.fill_between(_x, _last, _last + _y+_o,
                                 lw=0, color=_c, alpha=_fal,  hatch=_ha)
                 _last += _y+_o
-                ax.plot(_x, _last, _st, lw=3, color=_c, alpha=_al, **kwargs)
+                ax.plot(_x, _last, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
     else:
-        for _b, _x, _y, _st, _c, _al, _o in zip(bool_a,
-                                                x_a,
-                                                _y_a,
-                                                style_a,
-                                                color_a,
-                                                alpha_a,
-                                                offset_a):
+        for _b, _x, _y, _st, _c, _al, _lw, _o in zip(bool_a,
+                                                     x_a,
+                                                     _y_a,
+                                                     style_a,
+                                                     color_a,
+                                                     alpha_a,
+                                                     lw_a,
+                                                     offset_a):
             if _b:
-                ax.plot(_x, _y+_o, _st, lw=3, color=_c, alpha=_al, **kwargs)
+                ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
 
     # --- layout
     make_nice_ax(ax)
@@ -291,14 +322,14 @@ def multiplot(ax, x_a, y_a,
                         X=np.mean(xlim),
                         Y=-_shift * _i,
                         alpha=_al,
-                        sep=0.2 * _shift
+                        pad=0.2 * _shift
                     ) for _i,  (_c, _al) in enumerate(zip(color_a, alpha_a))] \
                  + [pub_label(
                         ax,
                         color='black',
                         X=np.mean(xlim),
                         Y=-n_plots * _shift,
-                        sep=0.2 * _shift,
+                        pad=0.2 * _shift,
                         stancil=r'\emph{%s}'
                     )] * (exp is not None)
 
