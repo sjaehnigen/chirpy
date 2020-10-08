@@ -32,6 +32,9 @@ def radial_distribution_function(positions,
     '''Compute the normalised radial distribution function (RDF).
        Array of positions ((n_frames, n_particles, 3)) is evaluated
        against an array of origins ((n_frames, n_origins, 3)).
+       Returns:
+        r   - bin positions
+        RDF - values
        '''
     n_frames, n_O, three = origins.shape
 
@@ -106,7 +109,8 @@ def radial_distribution_function(positions,
                      bins
                     ) / _wg
 
-    return np.mean(core._PALARRAY(_func, range(n_O)).run(), axis=0)
+    return np.linspace(*rng, bins),\
+        np.mean(core._PALARRAY(_func, range(n_O)).run(), axis=0)
 
 
 def rdf(*args, **kwargs):
