@@ -31,6 +31,7 @@ from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.analysis import divrot
 from ..visualise import print_info
 
+
 class ScalarField(_CORE):
     def __init__(self, *args, **kwargs):
 

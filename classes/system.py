@@ -189,7 +189,7 @@ class _SYSTEM(_CORE):
                     pass
 
     def print_info(self):
-        # self._print_info = [print_info.print_header]
+        # Todo: use self._print_info = [print_info.print_header]
         print_info.print_header(self)
         print('%12d Atoms\n%12s' %
               (self.XYZ.n_atoms, self.XYZ.symbols))

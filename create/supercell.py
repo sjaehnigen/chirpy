@@ -198,7 +198,7 @@ class _BoxObject(_CORE):
         return _np.array(mol_map)
 
     def print_info(self) -> None:
-        # ToDo: self._print_info = [print_info.print_header]
+        # ToDo: use self._print_info = [print_info.XXX]
         print_info.print_header(self)
         print('%-12s %s' % ('Periodic', self.pbc))
         print('%12d Members\n%12d Atoms\n%12.4f amu\n%12.4f aa3' %
