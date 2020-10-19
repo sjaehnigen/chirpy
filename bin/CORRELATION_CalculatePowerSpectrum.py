@@ -87,10 +87,10 @@ def main():
     parser.add_argument(
             "--filter_strength",
             help="Strength of signal filter (welch) for TCF pre-processing."
-                 "Give -1 to remove the implicit size-dependent triangular "
+                 "Give <0 to remove the implicit size-dependent triangular "
                  "filter",
-            default=0,
-            type=int,
+            default=-1,
+            type=float,
             )
     parser.add_argument(
             "--return_tcf",
@@ -161,10 +161,9 @@ def main():
                                 ts=args.ts * constants.femto,
                                 weights=_load.XYZ.masses_amu,
                                 flt_pow=args.filter_strength,
-                                return_tcf=args.return_tcf
                                 )
 
-    plt.plot(_pow['omega'] * constants.E_Hz2cm_1, _pow['power'])
+    plt.plot(_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])
     plt.xlim(*args.xrange)
 
     plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
@@ -174,13 +173,13 @@ def main():
     if args.save:
         np.savetxt(
              args.f,
-             np.array((_pow['omega'] * constants.E_Hz2cm_1, _pow['power'])).T,
+             np.array((_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])).T,
              header='omega in cm-1, power spectral density'
              )
 
     if args.return_tcf:
-        plt.plot(np.arange(len(_pow['tcf_velocities'])) * args.ts / 1000,
-                 _pow['tcf_velocities'])
+        plt.plot(np.arange(len(_pow['tcf_power'])) * args.ts / 1000,
+                 _pow['tcf_power'])
         plt.xlabel(r'$\tau$ in ps')
         plt.ylabel('TCF in ...')
         plt.title('Time-correlation function of atomic velocities')
@@ -189,8 +188,8 @@ def main():
             np.savetxt(
                   'tcf_' + args.f,
                   np.array((
-                      np.arange(len(_pow['tcf_velocities'])) * args.ts,
-                      _pow['tcf_velocities']
+                      np.arange(len(_pow['tcf_power'])) * args.ts,
+                      _pow['tcf_power']
                       )).T,
                   header='time in fs, time-correlation function of velocities'
                   )

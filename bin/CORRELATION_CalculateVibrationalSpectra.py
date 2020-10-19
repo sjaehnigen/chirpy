@@ -110,10 +110,10 @@ def main():
     parser.add_argument(
             "--filter_strength",
             help="Strength of signal filter (welch) for TCF pre-processing."
-                 "Give -1 to remove the implicit size-dependent triangular "
+                 "Give <0 to remove the implicit size-dependent triangular "
                  "filter",
-            default=0,
-            type=int,
+            default=-1,
+            type=float,
             )
     parser.add_argument(
             "--return_tcf",
@@ -188,7 +188,6 @@ def main():
                                     mode='abs_cd',
                                     ts=args.ts * constants.femto,
                                     flt_pow=args.filter_strength,
-                                    return_tcf=args.return_tcf,
                                     # --- example
                                     origin=origin,
                                     cutoff=_cutoff,
@@ -200,7 +199,7 @@ def main():
         _voa['tcf_va'].append(_tmp['tcf_abs'])
         _voa['tcf_vcd'].append(_tmp['tcf_cd'])
 
-    _voa['omega'] = _tmp['omega']
+    _voa['freq'] = _tmp['freq']
     _voa['va'] = np.array(_voa['va']).sum(axis=0) / len(origins)
     _voa['vcd'] = np.array(_voa['vcd']).sum(axis=0) / len(origins)
     _voa['tcf_va'] = np.array(_voa['tcf_va']).sum(axis=0) / len(origins)
@@ -214,7 +213,7 @@ def main():
        'vcd': ('Vibrational circular dichroism spectrum', r'$\Delta$A in ...'),
     }
     for _i in filter(args.__dict__.get, ['va', 'vcd']):
-        plt.plot(_voa['omega'] * constants.E_Hz2cm_1, _voa[_i])
+        plt.plot(_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])
         plt.xlim(*args.xrange)
         plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
         plt.title(labels[_i][0])
@@ -224,7 +223,7 @@ def main():
         if args.save:
             np.savetxt(
                 _i + '_' + args.f,
-                np.array((_voa['omega'] * constants.E_Hz2cm_1, _voa[_i])).T,
+                np.array((_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])).T,
                 header='omega in cm-1, %s density' % _i
                 )
 

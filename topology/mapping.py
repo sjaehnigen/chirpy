@@ -220,6 +220,7 @@ def _pbc_shift(_d, cell):
 
     if not any([_a <= 0.0 for _a in cell[:3]]):
         if not all([_a == 90.0 for _a in cell[3:]]):
+            _warnings.warn('Found non-tetragonal lattice.', stacklevel=2)
             cell_vec = get_cell_vec(cell)
             _c = ceb(_d, cell_vec)
             return np.tensordot(np.around(_c), cell_vec, axes=1)
