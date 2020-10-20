@@ -156,9 +156,4 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
         return ACF_res
 
     else:
-        #oACF = np.array([_acf for _acf in ACF if np.prod(_acf[:min_length]) !=
-        #    0.0])
-        #if len(oACF) == 0:
-       #     return np.zeros_like(ACF[0])
-        # return np.mean(oACF, axis=0)
         return np.average(ACF, axis=0, weights=ACF.sum(axis=-1))

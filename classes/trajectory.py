@@ -727,7 +727,8 @@ class _XYZ():
                            force_centering=kwargs.get('force_centering', False)
                            )
 
-        self._sync_class(check_orthonormality=False)
+        # DISABLED 2020-10-20
+        # self._sync_class(check_orthonormality=False)
 
     def _pos_aa(self, *args):
         if len(args) == 0:
@@ -748,6 +749,7 @@ class _XYZ():
         if len(args) == 0:
             self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
             if self.vel_au.size == 0:
+                # ToDo: slow
                 # --- vel_au has to be set!
                 self.data = _np.concatenate((self.pos_aa,
                                              _np.zeros_like(self.pos_aa)),
@@ -767,14 +769,18 @@ class _XYZ():
 
     def _sync_class(self):
         # ToDo: kwargs for consistency with Modes
+        # ToDo: slow (problem in iterator)
         try:
             self.masses_amu = constants.symbols_to_masses(self.symbols)
         except KeyError:
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
                            RuntimeWarning, stacklevel=2)
-        self._pos_aa()
-        self._vel_au()
+        # DISABLED 2020-10-20
+#        self._pos_aa()
+#        self._vel_au()
+        self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+        self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
     def _is_equal(self, other, atol=1e-08, noh=True):

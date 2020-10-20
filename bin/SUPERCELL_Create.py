@@ -34,7 +34,7 @@ def main():
             "--cell_aa_deg",
             nargs=6,
             help="Cell parametres a b c al be ga in angstrom/degree \
-(None = guess from atom spread).",
+(None = read from file or guess from atom spread).",
             default=None,
             type=float
             )

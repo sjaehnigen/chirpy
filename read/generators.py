@@ -108,7 +108,7 @@ def _reader(FN, _nlines, _kernel, **kwargs):
                              'do not yield any data!')
         else:
             for _d in data:
-                    yield _d
+                yield _d
 
 
 def _dummy_kernel(frame, **kwargs):

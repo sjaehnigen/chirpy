@@ -20,6 +20,7 @@ import numpy as np
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import warnings
+from concurrent_iterator.process import Producer
 
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
@@ -112,7 +113,7 @@ def xyzIterator(FN, **kwargs):
                       'by CPMD with wrong velocity units (not atomic units). '
                       'Proceed with care!', stacklevel=2)
 
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -130,7 +131,7 @@ def cpmdIterator(FN, **kwargs):
     else:
         _nlines = len([_k for _k in symbols])  # type-independent
 
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
 
 
 def arcIterator(FN, **kwargs):
@@ -142,7 +143,7 @@ def arcIterator(FN, **kwargs):
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip().split()[0]) + 1
 
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
 
 
 # --- complete readers

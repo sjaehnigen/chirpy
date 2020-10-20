@@ -86,35 +86,36 @@ def main():
     largs = vars(args)
     if args.fn_vel is not None:
         args.fn = args.fn_vel
-    _load = system.Supercell(args.fn, **largs)
-    _w = np.array(_load.XYZ.masses_amu)
 
-    if args.element is not None:
-        _s = np.array(_load.XYZ.symbols)[args.subset]
-        _ind = np.argwhere(_s == args.element).flatten()
-        if args.subset is None:
-            args.subset = args.subset[_ind]
-        else:
-            args.subset = _ind
-
-    print('Analysed atoms (symbols):\n%s' %
-          np.array(_load.XYZ.symbols)[args.subset])
+    _load = system.Supercell(args.fn, **largs).XYZ
 
     def get_v():
         try:
             while True:
-                next(_load.XYZ)
+                next(_load)
                 if args.fn_vel is not None:
-                    _v = _load.XYZ.pos_aa
+                    _v = _load.pos_aa
                 else:
-                    _v = _load.XYZ.vel_au
+                    _v = _load.vel_au
                 yield _v
 
         except StopIteration:
             pass
 
+    _w = np.array(_load.masses_amu)
+
+    if args.element is not None:
+        _e = np.array(_load.symbols) == args.element
+        _s = np.zeros_like(_e).astype(bool)
+        _s[args.subset] = True
+        args.subset = np.argwhere(_e * _s).flatten()
+
+    print('Analysed atoms (symbols):\n%s' %
+          np.array(_load.symbols)[args.subset])
+
     _vel_au = np.array([_v[args.subset] for _v in get_v()])
     e_kin_au = statistical_mechanics.kinetic_energies(_vel_au, _w[args.subset])
+
     _n_f_dof = 6
     if args.element is not None:
         warnings.warn('Element mode: Switching off conservation of '
@@ -138,7 +139,8 @@ def main():
                             option='velocity'
                             ) for _m in _w[args.subset]]
     X = np.linspace(0, np.amax(_vel_au), 200)
-    PDF = np.array([list(map(_ii, X)) for _ii in _ideal]).sum(axis=0) / len(_ideal)
+    PDF = np.array([list(map(_ii, X))
+                    for _ii in _ideal]).sum(axis=0) / len(_ideal)
     plt.plot(X, PDF, label=f'Maxwell-Boltzmann (T={args.T}K)')
 
     plt.xlabel('Velocity in a.u.')
@@ -149,7 +151,6 @@ def main():
     plt.title(title)
     plt.legend(loc='upper right')
     plt.show()
-
 
 
 if __name__ == "__main__":
