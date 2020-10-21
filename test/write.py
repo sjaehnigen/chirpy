@@ -90,6 +90,23 @@ class TestCoordinates(unittest.TestCase):
         self.assertTrue(np.array_equal(data, data2))
         os.remove(self.dir + "/out.xyz")
 
+    def test_arcWriter(self):
+        data, symbols, indices, types, connectivity, comments = \
+            r_coordinates.arcReader(self.dir + '/water.arc')
+        w_coordinates.arcWriter(self.dir + '/out.arc', data, symbols, types,
+                                connectivity, comments)
+        data2, symbols2, indices2, types2, connectivity2, comments2 = \
+            r_coordinates.arcReader(self.dir + '/out.arc')
+
+        self.assertTupleEqual(symbols, symbols2)
+        self.assertTupleEqual(types, types2)
+        self.assertTupleEqual(connectivity, connectivity2)
+        self.assertTupleEqual(indices, indices2)
+        self.assertListEqual(comments, comments2)
+        self.assertTrue(np.array_equal(data, data2))
+
+        os.remove(self.dir + "/out.arc")
+
     def test_pdbWriter(self):
         data, names, symbols, res, cell_aa_deg, title =\
             r_coordinates.pdbReader(self.dir + '/test_simple.pdb')

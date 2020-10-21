@@ -27,7 +27,7 @@ from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
 from ..read.coordinates import arcIterator as _arcIterator
-from ..write.coordinates import xyzWriter, pdbWriter
+from ..write.coordinates import xyzWriter, pdbWriter, arcWriter
 from ..write.modes import xvibsWriter
 
 from ..interface.orca import orcaReader
@@ -472,6 +472,8 @@ class _XYZ():
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
         names = kwargs.get('names')  # atom names
         residues = kwargs.get('residues')  # resid + num
+        types = kwargs.get('types')
+        connectivity = kwargs.get('connectivity')
 
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
@@ -577,9 +579,6 @@ class _XYZ():
                                               bz2=False,
                                               )
                               )
-                # --- stored but unused so far
-                self.connectivity = connectivity
-                self.types = types
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
@@ -697,9 +696,13 @@ class _XYZ():
 
         # --- optional
         if names is not None:
-            self.names = kwargs.get('names', tuple(names))
+            self.names = tuple(names)
         if residues is not None:
-            self.residues = kwargs.get('residues', tuple(residues))
+            self.residues = tuple(residues)
+        if types is not None:
+            self.types = tuple(types)
+        if connectivity is not None:
+            self.connectivity = tuple(connectivity)
 
         self._sync_class(check_orthonormality=False)
 
@@ -1049,6 +1052,22 @@ class _XYZ():
                       loc_self.symbols,
                       getattr(loc_self, 'comments'),
                       **_extract_keys(kwargs, append=False)
+                      )
+
+        elif fmt in ["arc", "tinker"]:
+            arcWriter(fn,
+                      getattr(loc_self, attr),
+                      loc_self.symbols,
+                      comments=getattr(loc_self, 'comments'),
+                      **_extract_keys(kwargs,
+                                      append=False,
+                                      types=getattr(loc_self,
+                                                    'types',
+                                                    []),
+                                      connectivity=getattr(loc_self,
+                                                           'connectivity',
+                                                           [])
+                                      )
                       )
 
         elif fmt == 'xvibs':
@@ -1418,21 +1437,33 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         frame = next(self._gen)
 
-        if self._fmt in ['xyz', 'tinker']:
+        def check_topo(k, f):
+            return getattr(self._topology, k, f)
+
+        if self._fmt == 'xyz':
             out = {
                     'data': frame[0],
-                    'symbols': getattr(self._topology, 'symbols', frame[1]),
+                    'symbols': check_topo('symbols', frame[1]),
+                    'comments': frame[-1],
+                    }
+
+        if self._fmt == 'tinker':
+            out = {
+                    'data': frame[0],
+                    'symbols': check_topo('symbols', frame[1]),
+                    'types': check_topo('types', frame[3]),
+                    'connectivity': check_topo('connectivity', frame[4]),
                     'comments': frame[-1],
                     }
 
         if self._fmt == 'pdb':
             out = {
                     'data': frame[0],
-                    'symbols': getattr(self._topology, 'symbols', frame[2]),
+                    'symbols': check_topo('symbols', frame[2]),
                     'comments': str(frame[-1]),  # if no title: 'None'
                     'cell_aa_deg': frame[-2],
-                    'names': getattr(self._topology, 'names', frame[1]),
-                    'residues': getattr(self._topology, 'residues', frame[3]),
+                    'names': check_topo('names', frame[1]),
+                    'residues': check_topo('residues', frame[3]),
                     }
 
         if self._fmt == 'cpmd':

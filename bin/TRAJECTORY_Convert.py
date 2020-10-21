@@ -167,7 +167,9 @@ def main():
         i_fmt = args.fn.split('.')[-1].lower()
     if o_fmt is None:
         o_fmt = args.f.split('.')[-1].lower()
-    elif args.f == 'out.xyz':
+    elif o_fmt == 'tinker':
+        o_fmt = 'arc'
+    if args.f == 'out.xyz':
         args.f = 'out.' + o_fmt
 
     # --- Caution when passing all arguments to object!

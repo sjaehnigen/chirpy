@@ -16,6 +16,9 @@
 # ------------------------------------------------------
 
 
+from itertools import zip_longest
+
+
 def _write_xyz_frame(filename, data, symbols, comment, append=False):
     """WriteFrame(filename, data, symbols, comment, append=False)
     Input:
@@ -74,7 +77,8 @@ def xyzWriter(fn, data, symbols, comments, append=False):
         raise AttributeError('Wrong data shape!', data.shape)
 
 
-def _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
+def _write_arc_frame(fn, data, symbols, numbers,
+                     types=[], connectivity=[],
                      comment=None, append=False):
     """
     Input:
@@ -98,10 +102,16 @@ def _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
 
     # --- corpus
 
-    for _n, _s, _d, _t, _c in zip(numbers, symbols, data, types, connectivity):
-        _line = '{:>6d}  {:3s}' + 3 * '{:>12.6f}' + '{:>6d}' +\
-            len(_c)*'{:>6d}' + '\n'
-        obuffer += _line.format(_n, _s, *_d, _t, *_c)
+    for _n, _s, _d, _t, _c in zip_longest(numbers, symbols, data,
+                                          types, connectivity,
+                                          fillvalue=None):
+        _line = '{:>6d}  {:3s}' + 3 * '{:>12.6f}'
+        obuffer += _line.format(_n, _s, *_d)
+        if _t is not None:
+            obuffer += '{:>6d}'.format(_t)
+        if _c is not None:
+            obuffer += (len(_c)*'{:>6d}').format(*_c)
+        obuffer += '\n'
 
     # --- type
     fmt = 'w'
@@ -111,7 +121,7 @@ def _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
         f.write(obuffer)
 
 
-def arcWriter(fn, data, symbols, numbers, types, connectivity,
+def arcWriter(fn, data, symbols, types=[], connectivity=[],
               comments=None, append=False):
     """
        Input:
@@ -125,6 +135,7 @@ def arcWriter(fn, data, symbols, numbers, types, connectivity,
 
         Return: None"""
 
+    numbers = list(range(1, len(symbols)+1))
     if len(data.shape) == 2:
         # ---frame
         _write_arc_frame(fn, data, symbols, numbers, types, connectivity,
