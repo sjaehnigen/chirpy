@@ -18,10 +18,10 @@
 import numpy as _np
 import warnings as _warnings
 
-from .core import _CORE, AttrDict
+from . import _CORE, AttrDict
+from .. import tracked_extract_keys as _tracked_extract_keys
+from .. import equal as _equal
 from .trajectory import XYZ, XYZFrame, VibrationalModes
-from ..snippets import tracked_extract_keys as _tracked_extract_keys
-from ..snippets import equal as _equal
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
 from ..physics import constants

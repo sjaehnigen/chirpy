@@ -17,7 +17,7 @@
 
 import numpy as _np
 
-from .core import _CORE
+from . import _CORE
 from .volume import ScalarField as _ScalarField
 
 

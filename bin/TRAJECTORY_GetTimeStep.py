@@ -20,7 +20,7 @@ import argparse
 import numpy as np
 
 from chirpy.classes import system
-from chirpy.snippets import extract_keys
+from chirpy import extract_keys
 
 
 def main():

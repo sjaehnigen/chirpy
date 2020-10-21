@@ -95,7 +95,7 @@ def main():
             "--origin_id",
             nargs='+',
             help="IDs of kinds whose positions to be sampled in the "
-                 "distributed gauge (default: all kinds) "
+                 "distributed gauge (default: every particle in MOMENTS) "
                  "(id starting from 0).",
             type=int,
             default=None,
@@ -109,7 +109,7 @@ def main():
             )
     parser.add_argument(
             "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing."
+            help="Strength of signal filter (welch) for TCF pre-processing. "
                  "Give <0 to remove the implicit size-dependent triangular "
                  "filter",
             default=-1,
@@ -152,7 +152,7 @@ def main():
 
     largs = vars(args)
     largs.update({'fmt': args.input_format})
-    _load = trajectory.MOMENTS(args.fn, **largs)
+    _load = trajectory.MOMENTS(largs.pop('fn'), **largs)
 
     if not any([args.va, args.vcd]):
         warnings.warn("Neither --va nor --vcd argument set! Did nothing.",
@@ -191,7 +191,7 @@ def main():
                                     # --- example
                                     origin=origin,
                                     cutoff=_cutoff,
-                                    cell=_cell
+                                    cell_au_deg=_cell
                                     )
 
         _voa['va'].append(_tmp['abs'])

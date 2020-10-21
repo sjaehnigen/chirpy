@@ -18,7 +18,7 @@
 
 import numpy as np
 import warnings
-from ..classes.core import AttrDict
+from ..classes import AttrDict
 
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 

@@ -132,7 +132,7 @@ def main():
         args.range = (0, 1, float('inf'))
 
     largs = vars(args)
-    _load = system.Supercell(args.fn, **largs)
+    _load = system.Supercell(largs.pop('fn'), **largs)
 
     if args.fn_vel is not None:
         # --- A little inefficient to load args.fn first as it will no

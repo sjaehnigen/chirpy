@@ -25,7 +25,7 @@ import warnings
 
 from chirpy.classes import volume, trajectory, field
 from chirpy.physics import constants
-from chirpy.snippets import extract_keys
+from chirpy import extract_keys
 
 
 def main():

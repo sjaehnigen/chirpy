@@ -122,7 +122,8 @@ def xyzIterator(FN, **kwargs):
         warnings.warn('It seems as if you are reading an XYZ file generated '
                       'by CPMD. Check velocity units!', stacklevel=2)
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                    maxsize=20, chunksize=4)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -140,7 +141,8 @@ def cpmdIterator(FN, **kwargs):
     else:
         _nlines = len([_k for _k in symbols])  # type-independent
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                    maxsize=20, chunksize=4)
 
 
 def arcIterator(FN, **kwargs):
@@ -152,7 +154,8 @@ def arcIterator(FN, **kwargs):
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip().split()[0]) + 1
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                    maxsize=20, chunksize=4)
 
 
 # --- complete readers

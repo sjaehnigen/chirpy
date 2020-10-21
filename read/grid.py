@@ -19,6 +19,7 @@
 import numpy as np
 from itertools import islice
 from .generators import _reader, _open
+from concurrent_iterator.process import Producer
 
 
 def _cube(frame, **kwargs):
@@ -80,7 +81,8 @@ def cubeIterator(FN, **kwargs):
         if _natoms < 0:
             _nlines += 1
 
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                    maxsize=20, chunksize=4)
 
 
 def cubeReader(FN, **kwargs):

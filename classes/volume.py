@@ -21,7 +21,7 @@ from scipy.interpolate import interpn as _interpn
 from scipy.integrate import simps as _simps
 import warnings as _warnings
 
-from .core import _CORE
+from . import _CORE
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential

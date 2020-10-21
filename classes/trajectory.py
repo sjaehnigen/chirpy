@@ -19,8 +19,8 @@ import copy as _copy
 import numpy as _np
 import warnings as _warnings
 
-from .core import _CORE, _ITERATOR
-from ..snippets import extract_keys as _extract_keys
+from . import _CORE, _ITERATOR
+from .. import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
 from ..read.coordinates import xyzIterator as _xyzIterator
@@ -1152,10 +1152,13 @@ class _MOMENTS():
        to _XYZ but more general.
        Supports CPMD input only.
        Everything in atomic units (including the positions and cell).
-       (BETA)
-       WORK IN PROGRESS...
        '''
     def _read_input(self, *args, **kwargs):
+        self.style = kwargs.get('style', 'CPMD 4.1')
+        if self.style != 'CPMD 4.1':
+            raise NotImplementedError('ChirPy supports only the CPMD 4.1 '
+                                      'convention as moments style')
+
         self.cell_au_deg = kwargs.get('cell_au_deg')
 
         if len(args) > 1:

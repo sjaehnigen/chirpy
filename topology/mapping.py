@@ -281,6 +281,19 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
     return dist_array <= crit_aa
 
 
+def nearest_neighbour(p0, p1=None, cell=None, ignore=None,
+                      return_distances=False):
+    if p1 is None:
+        p1 = p0
+    _dists = distance_matrix(p0, p1, cell=cell)
+    if ignore is not None:
+        _dists[:, ignore] = np.inf
+    if not return_distances:
+        return np.argmin(_dists, axis=1)
+    else:
+        return np.argmin(_dists, axis=1), np.amin(_dists, axis=1)
+
+
 def close_neighbours(p0, cell=None, crit=0.0):
     _dM = distance_matrix(p0, cell=cell)
     return [(_i, [(_j, _dM[_i, _j]) for _j in np.argwhere(_idM).flatten()])
