@@ -23,6 +23,7 @@ from . import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
+from ..read.grid import cubeReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
@@ -35,15 +36,7 @@ from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import write_moldenvib_file
 from ..interface.gaussian import g09Reader
 
-from ..topology.mapping import align_atoms as _align_atoms
-from ..topology.mapping import dec as _dec
-from ..topology.mapping import dist_crit_aa as _dist_crit_aa
-from ..topology.mapping import wrap as _wrap
-from ..topology.mapping import cowt as _cowt
-from ..topology.mapping import join_molecules as _join_molecules
-from ..topology.mapping import distance_matrix as _distance_matrix
-from ..topology.mapping import distance_pbc as _distance_pbc
-from ..topology.mapping import close_neighbours as _close_neighbours
+from ..topology import mapping
 from ..topology.dissection import read_topology_file
 
 from ..physics import constants
@@ -171,15 +164,15 @@ class _FRAME(_CORE):
     def split(self, mask, select=None):
         '''select ... list or tuple of ids'''
         _data = [_np.moveaxis(_d, 0, -2)
-                 for _d in _dec(_np.moveaxis(self.data, -2, 0), mask)]
-        _symbols = _dec(self.symbols, mask)
+                 for _d in mapping.dec(_np.moveaxis(self.data, -2, 0), mask)]
+        _symbols = mapping.dec(self.symbols, mask)
 
         _DEC = (_data, _symbols)
 
         # --- ToDo: Generalise optional attributes
         for _l in ['names', 'residues']:
             if hasattr(self, _l):
-                _dl = _dec(getattr(self, _l), mask)
+                _dl = mapping.dec(getattr(self, _l), mask)
                 _DEC += (_dl,)
 
         def create_obj(_d, _s, *optargs):
@@ -232,14 +225,14 @@ class _FRAME(_CORE):
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')
 
-        com1 = _cowt(obj1.pos_aa, obj1.masses_amu, axis=-2)
-        com2 = _cowt(obj2.pos_aa, obj2.masses_amu, axis=-2)
+        com1 = mapping.cowt(obj1.pos_aa, obj1.masses_amu, axis=-2)
+        com2 = mapping.cowt(obj2.pos_aa, obj2.masses_amu, axis=-2)
 
         assign = _np.zeros((obj1.n_atoms,)).astype(int)
         for s in _np.unique(obj1.symbols):
             i1 = _np.array(obj1.symbols) == s
             i2 = _np.array(obj2.symbols) == s
-            ass = _np.argmin(_distance_matrix(
+            ass = _np.argmin(mapping.distance_matrix(
                                 obj1.pos_aa[i1] - com1[None],
                                 obj2.pos_aa[i2] - com2[None],
                                 cell=obj1.cell_aa_deg
@@ -370,9 +363,9 @@ class _MODES(_FRAME):
 
     def _check_orthonormality(self):
         atol = 5.E-5
-        com_motion = _np.linalg.norm(_cowt(self.modes,
-                                           self.masses_amu,
-                                           axis=1),
+        com_motion = _np.linalg.norm(mapping.cowt(self.modes,
+                                                  self.masses_amu,
+                                                  axis=1),
                                      axis=-1)
 
         with _warnings.catch_warnings():
@@ -503,6 +496,29 @@ class _XYZ():
                                                                     )
                                                     )
 
+            elif fmt in ["cube", "cub"]:
+                data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                        cubeReader(fn, **_extract_keys(kwargs, bz2=False))
+                _dims = data.shape[1:]
+                del data
+                # --- ToDo: to be discussed: adding origin
+                data = (pos_au + origin_au) * constants.l_au2aa
+                symbols = constants.numbers_to_symbols(numbers)
+                cell_aa_deg = mapping.get_cell_l_deg(
+                        cell_vec_au * constants.l_au2aa,
+                        multiply=_dims
+                        )
+
+                if cell_aa_deg is not None:
+                    if self.cell_aa_deg is None:
+                        self.cell_aa_deg = cell_aa_deg
+
+                    elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
+                        _warnings.warn('Overwriting cell parametres '
+                                       'of CUBE file!',
+                                       RuntimeWarning,
+                                       stacklevel=2)
+
             elif fmt == "pdb":
                 data, names, symbols, residues, cell_aa_deg, title = \
                         pdbReader(fn)
@@ -514,10 +530,8 @@ class _XYZ():
                         self.cell_aa_deg = cell_aa_deg
 
                     elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
-                        _warnings.warn('The given cell parametres are '
-                                       'different from those of the '
-                                       'PDB file! '
-                                       'Ignoring the latter.',
+                        _warnings.warn('Overwriting cell parametres '
+                                       'of PDB file!',
                                        RuntimeWarning,
                                        stacklevel=2)
 
@@ -529,10 +543,8 @@ class _XYZ():
                     self.cell_aa_deg = cell_aa_deg
 
                 elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
-                    _warnings.warn('The given cell parametres are '
-                                   'different from those of the '
-                                   'CIF file! '
-                                   'Ignoring the latter.',
+                    _warnings.warn('Overwriting cell parametres '
+                                   'of CIF file!',
                                    RuntimeWarning,
                                    stacklevel=2)
 
@@ -813,17 +825,18 @@ class _XYZ():
                                         ))
             _s_pos = getattr(self, a)
 
-            _o_pos = _align_atoms(_o_pos, _np.array(self.masses_amu),
-                                  ref=_s_pos)[0]
+            _o_pos = mapping.align_atoms(_o_pos, _np.array(self.masses_amu),
+                                         ref=_s_pos)[0]
             _bool = []
             for _s in set(self.symbols):
                 _ind = _np.array(self.symbols) == _s
                 if _s != 'H' or not noh:
-                    a = _distance_pbc(_s_pos[_ind],
-                                      _o_pos[_ind],
-                                      cell=self.cell_aa_deg)
+                    a = mapping.distance_pbc(_s_pos[_ind],
+                                             _o_pos[_ind],
+                                             cell=self.cell_aa_deg)
                     a = _np.linalg.norm(a, axis=-1)
-                    _bool.append(_np.amax(a) <= _dist_crit_aa([_s])[0] + atol)
+                    _bool.append(
+                           _np.amax(a) <= mapping.dist_crit_aa([_s])[0] + atol)
 
             return bool(_np.prod(_bool))
 
@@ -836,10 +849,10 @@ class _XYZ():
     # --- join the next two methods?
     def wrap_atoms(self):
         if self._type == 'frame':
-            self._pos_aa(_wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
-                               self.cell_aa_deg)[0])
+            self._pos_aa(mapping.wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
+                                      self.cell_aa_deg)[0])
         else:
-            self._pos_aa(_wrap(self.pos_aa, self.cell_aa_deg))
+            self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
     def wrap_molecules(self, mol_map, weight='mass'):
         w = _np.ones((self.n_atoms))
@@ -847,7 +860,7 @@ class _XYZ():
             w = self.masses_amu
 
         if self._type == 'trajectory':
-            _p, mol_com_aa = _join_molecules(
+            _p, mol_com_aa = mapping.join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 self.cell_aa_deg,
@@ -856,7 +869,7 @@ class _XYZ():
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
         else:
-            _p, mol_com_aa = _join_molecules(
+            _p, mol_com_aa = mapping.join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 self.cell_aa_deg,
@@ -897,12 +910,12 @@ class _XYZ():
         else:
             self._align_ref = align_ref
 
-        _p, _data = _align_atoms(_p,
-                                 wt,
-                                 ref=self._align_ref,
-                                 subset=align_coords,
-                                 data=[_v],
-                                 )
+        _p, _data = mapping.align_atoms(_p,
+                                        wt,
+                                        ref=self._align_ref,
+                                        subset=align_coords,
+                                        data=[_v],
+                                        )
 
         if self._type == 'frame':
             self._pos_aa(_p[0])
@@ -913,10 +926,10 @@ class _XYZ():
             self._vel_au(_data[0])
 
         if hasattr(self, '_centered_coords') and force_centering:
-            _ref = _cowt(self.pos_aa,
-                         wt,
-                         subset=self._centered_coords,
-                         axis=self.axis_pointer)
+            _ref = mapping.cowt(self.pos_aa,
+                                wt,
+                                subset=self._centered_coords,
+                                axis=self.axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
 
     def center_coordinates(self, center_coords, weight='mass', wrap=False):
@@ -940,7 +953,7 @@ class _XYZ():
         if wrap and isinstance(center_coords, list):
             if self._type == 'frame':
                 _p = _np.array([_p])
-            _p = _join_molecules(
+            _p = mapping.join_molecules(
                     _p,
                     _np.zeros((_p.shape[1])).astype(int),
                     self.cell_aa_deg,
@@ -948,9 +961,9 @@ class _XYZ():
             if self._type == 'frame':
                 _p = _p[0]
 
-        _ref = _cowt(_p,
-                     wt[center_coords],
-                     axis=self.axis_pointer)
+        _ref = mapping.cowt(_p,
+                            wt[center_coords],
+                            axis=self.axis_pointer)
 
         self.center_position(_ref, self.cell_aa_deg)
 
@@ -1140,7 +1153,7 @@ class _XYZ():
               % tuple([round(dim, 4) for dim in dim_qm]))
 
         if self._type == 'frame':
-            amax = _np.amax(_distance_matrix(
+            amax = _np.amax(mapping.distance_matrix(
                                     self.data[:, :3],
                                     cell=self.cell_aa_deg
                                     ))
@@ -1314,9 +1327,9 @@ class _MOMENTS():
 
 class XYZFrame(_XYZ, _FRAME):
     def _check_distances(self):
-        _too_close = _close_neighbours(self.data[:, :3],
-                                       cell=self.cell_aa_deg,
-                                       crit=0.5)
+        _too_close = mapping.close_neighbours(self.data[:, :3],
+                                              cell=self.cell_aa_deg,
+                                              crit=0.5)
 
         for _i in _too_close:
             for _j in _i[1]:

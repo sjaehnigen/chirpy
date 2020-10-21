@@ -78,19 +78,20 @@ def cowt(pos, wt, axis=-2, subset=slice(None)):
     return np.sum(_p[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
 
 
-def get_cell_l_deg(cell_vec):
+def get_cell_l_deg(cell_vec, multiply=(1, 1, 1)):
     '''Convert cell vectors into box info. Unit of l (length) equal to the one
        used in cell vector.
        cell_vec as 3×3 array
        '''
+    _m = np.array(multiply)
     return np.concatenate((
-                np.linalg.norm(cell_vec, axis=-1),
-                np.array([
-                    angle(cell_vec[1], cell_vec[2]),
-                    angle(cell_vec[0], cell_vec[2]),
-                    angle(cell_vec[0], cell_vec[1])
-                    ]) * 180./np.pi
-                ))
+        np.linalg.norm(cell_vec * _m[:, None], axis=-1),
+        np.array([
+            angle(cell_vec[1], cell_vec[2]),
+            angle(cell_vec[0], cell_vec[2]),
+            angle(cell_vec[0], cell_vec[1])
+            ]) * 180./np.pi
+        ))
 
 
 def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
