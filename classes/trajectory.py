@@ -22,10 +22,11 @@ import warnings as _warnings
 from .core import _CORE, _ITERATOR
 from ..snippets import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
-from ..read.coordinates import xyzReader, pdbReader, cifReader
+from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
 from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
+from ..read.coordinates import arcIterator as _arcIterator
 from ..write.coordinates import xyzWriter, pdbWriter
 from ..write.modes import xvibsWriter
 
@@ -566,6 +567,19 @@ class _XYZ():
                 else:
                     raise ValueError('File %s does not contain atom '
                                      'information!' % fn)
+
+            elif fmt in ['tinker', 'arc', 'vel']:
+                fmt = "tinker"
+                data, symbols, indices, types, connectivity, comments =\
+                    arcReader(fn,
+                              **_extract_keys(kwargs,
+                                              range=_fr,
+                                              bz2=False,
+                                              )
+                              )
+                # --- stored but unused so far
+                self.connectivity = connectivity
+                self.types = types
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
@@ -1353,6 +1367,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             if self._fmt == "xyz":
                 self._gen = _xyzIterator(fn, **kwargs)
 
+            elif self._fmt in ["arc", 'vel', 'tinker']:
+                self._fmt = "tinker"
+                self._gen = _arcIterator(fn, **kwargs)
+
             elif self._fmt == "pdb":
                 self._gen = _pdbIterator(fn)  # **kwargs
 
@@ -1400,11 +1418,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         frame = next(self._gen)
 
-        if self._fmt == 'xyz':
+        if self._fmt in ['xyz', 'tinker']:
             out = {
                     'data': frame[0],
-                    'symbols': getattr(self._topology, 'symbols', frame[2]),
-                    'comments': frame[2],
+                    'symbols': getattr(self._topology, 'symbols', frame[1]),
+                    'comments': frame[-1],
                     }
 
         if self._fmt == 'pdb':

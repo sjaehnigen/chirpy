@@ -219,14 +219,6 @@ def cpmd_kinds_from_file(fn, **kwargs):
     return tuple(range(_i))
 
 
-def fortran_float(a):
-    '''Work in progress ...
-       1.E-7 --> 1.0D-07'''
-    if not isinstance(a, float):
-        raise TypeError('Requires a float as input!')
-    return
-
-
 def _nextline_parser(SEC, KEY, ARG, section_input):
     def _fmt(s):
         return '%10.5f' % float(s)

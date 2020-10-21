@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - fortranformat=0.2.5
   - ipython=7.16.*
   - jupyter=1.0.*
   - jupyter_core=4.6.*
@@ -16,6 +17,6 @@ dependencies:
   - python=3.8.*
   - scipy=1.5.*
       - pip:
-    - pyqt5==5.15.*
     - concurrent-iterator==0.2.*
+    - pyqt5==5.15.*
 

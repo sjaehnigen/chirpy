@@ -21,6 +21,7 @@ import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import warnings
 from concurrent_iterator.process import Producer
+import fortranformat as ff
 
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
@@ -35,14 +36,14 @@ def _xyz(frame, **kwargs):
     _atomnumber = int(next(frame).strip())
 
     if kwargs.get('n_lines') != _atomnumber + 2:
-        raise ValueError('Inconsistent XYZ file!')
+        raise ValueError('inconsistent XYZ file')
 
     comment = next(frame).rstrip('\n')
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
     if len(data) != kwargs.get("n_lines") - 2:
-        raise ValueError('Tried to read broken or incomplete file!')
+        raise ValueError('broken or incomplete file')
 
     return np.array(data).astype(float), symbols, comment
 
@@ -81,16 +82,25 @@ def _arc(frame, **kwargs):
     comment = ' '.join(_head[1:])
 
     if kwargs.get('n_lines') != _atomnumber + 1:
-        raise ValueError('Inconsistent XYZ file!')
+        raise ValueError('inconsistent XYZ file')
 
+    # --- FORTRAN conversion of numbers; we read single items, choosing broad
+    #     range hence.
+    _ff = ff.FortranRecordReader('(F160.16)')
     _split = (_l.strip().split() for _l in frame)
 
     numbers, symbols, data, types, connectivity =\
-        zip(*[(int(_l[0]), _l[1], _l[2:5], int(_l[5]), list(map(int, _l[6:])))
+        zip(*[(int(_l[0]),
+              _l[1],
+              [_ff.read(_i)[0] for _i in _l[2:5]],
+              [int(_i) for _i in _l[5:6]],
+              list(map(int, _l[6:])))
               for _l in _split])
+    # --- flatten
+    types = tuple([_it for _t in types for _it in _t])
 
     if len(data) != kwargs.get("n_lines") - 1:
-        raise ValueError('Tried to read broken or incomplete file!')
+        raise ValueError('broken or incomplete file')
 
     return np.array(data).astype(float), symbols, numbers, types,\
         connectivity, comment
@@ -110,10 +120,9 @@ def xyzIterator(FN, **kwargs):
         _comment = _f.readline().strip()
     if 'CPMD' in _comment or 'GEOMETRY' in FN:
         warnings.warn('It seems as if you are reading an XYZ file generated '
-                      'by CPMD with wrong velocity units (not atomic units). '
-                      'Proceed with care!', stacklevel=2)
+                      'by CPMD. Check velocity units!', stacklevel=2)
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -131,7 +140,7 @@ def cpmdIterator(FN, **kwargs):
     else:
         _nlines = len([_k for _k in symbols])  # type-independent
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
 
 
 def arcIterator(FN, **kwargs):
@@ -143,7 +152,7 @@ def arcIterator(FN, **kwargs):
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip().split()[0]) + 1
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=100)
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs), maxsize=20)
 
 
 # --- complete readers
@@ -192,7 +201,7 @@ def pdbIterator(FN):
         cell_aa_deg = u.dimensions
         title = u.trajectory.title
         if np.prod(cell_aa_deg) == 0.0:
-            warnings.warn('No or invalid cell specified in pdb file!',
+            warnings.warn('no or invalid cell specified in pdb file',
                           RuntimeWarning)
             cell_aa_deg = None
         if len(title) == 0:

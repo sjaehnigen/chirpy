@@ -20,7 +20,6 @@ import os
 import numpy as np
 import warnings
 
-# --- Done
 from ..read import modes as r_modes
 from ..read import coordinates as r_coordinates
 from ..read import grid as r_grid
@@ -318,6 +317,80 @@ class TestCoordinates(unittest.TestCase):
           data,
           np.genfromtxt(self.dir + '/indanol_ref').reshape(1, 40, 3)
           ))
+
+    def test_arcReader(self):
+        # --- xyz
+        # --- Check Fortran number conversion
+        data, symbols, numbers, types, connectivity, comments = \
+            r_coordinates.arcReader(self.dir + '/water.vel')
+        self.assertTrue(np.array_equal(
+            data,
+            np.genfromtxt(self.dir + '/tinker_vel').reshape(10, 3, 3)
+            ))
+        data, symbols, numbers, types, connectivity, comments = \
+            r_coordinates.arcReader(self.dir + '/water.arc')
+        self.assertTrue(np.array_equal(
+            data,
+            np.genfromtxt(self.dir + '/tinker_pos').reshape(10, 3, 3)
+            ))
+        self.assertIsInstance(comments, list)
+        self.assertTupleEqual(
+                symbols,
+                ('O', 'H', 'H')
+                )
+        [self.assertIsInstance(_c, str) for _c in comments]
+
+        data, symbols, numbers, types, connectivity, comments = \
+            r_coordinates.arcReader(self.dir + '/TAI.xyz')
+
+        self.assertTupleEqual(
+                connectivity,
+                (
+                    [2, 6, 11],
+                    [1, 3, 13],
+                    [2, 4, 7],
+                    [3, 5, 8],
+                    [4, 6, 9],
+                    [1, 5, 10],
+                    [3],
+                    [4],
+                    [5],
+                    [6],
+                    [1, 12, 16, 19],
+                    [11],
+                    [2, 14, 15, 16],
+                    [13],
+                    [13],
+                    [11, 13, 17, 21],
+                    [16],
+                    [19],
+                    [11, 18, 20],
+                    [19],
+                    [16, 22],
+                    [21]
+                    )
+                )
+        self.assertTupleEqual(
+                types,
+                (304, 305, 303, 302, 301, 300, 310, 309, 308, 307, 59, 60, 57,
+                 58, 58, 55, 56, 66, 65, 66, 230, 231)
+                )
+
+        # Some Negatives
+        # with self.assertRaises(ValueError):
+
+    def test_bz2(self):
+        # --- general iterator test (also valid for cpmd, cube, etc.)
+        rdata, rsymbols, rcomments = \
+                r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz',
+                                        bz2=False)
+        data, symbols, comments = \
+            r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz.bz2',
+                                    bz2=True)
+        [self.assertIsInstance(_c, str) for _c in comments]
+        self.assertTrue(np.array_equal(data, rdata))
+        self.assertTupleEqual(symbols, rsymbols)
+        self.assertListEqual(comments, rcomments)
 
 
 class TestGrid(unittest.TestCase):

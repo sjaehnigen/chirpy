@@ -39,3 +39,14 @@ class TestBinaries(unittest.TestCase):
                         'Molecular moments reproduced incorrectly (see TEST)'
                         )
         os.remove('TEST')
+
+    def test_trajectory_convert(self):
+        os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
+                  % (2 * (self.dir + '/../read_write',)) +
+                  '-f out.xyz')
+        self.assertTrue(filecmp.cmp('out.xyz',
+                                    self.dir + '/trajectory.xyz',
+                                    shallow=False),
+                        'Trajectory reproduced incorrectly (see out.xyz)'
+                        )
+        os.remove('out.xyz')
