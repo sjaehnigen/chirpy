@@ -36,7 +36,7 @@ from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import write_moldenvib_file
 from ..interface.gaussian import g09Reader
 
-from ..topology import mapping
+from ..topology import mapping, motion
 from ..topology.dissection import read_topology_file
 
 from ..physics import constants
@@ -457,8 +457,8 @@ class _XYZ():
        attributes for changes.'''
 
     def _read_input(self, *args, **kwargs):
-        align_coords = kwargs.pop('align_coords', None)
-        center_coords = kwargs.pop('center_coords', None)
+        align_coords = kwargs.pop('align_coords', False)
+        center_coords = kwargs.pop('center_coords', False)
         wrap = kwargs.get('wrap', False)
         weight = kwargs.get('weight', 'mass')
         # wrap_molecules = kwargs.get('wrap_molecules', False)
@@ -690,9 +690,9 @@ class _XYZ():
 
         comments = list(comments)
         if self._type == 'frame':
-            _f = kwargs.get("frame", 0)
-            data = data[_f]
-            comments = comments[_f]
+            # --- NB: frame selection has been made above
+            data = data[0]
+            comments = comments[0]
 
         if self._type == 'modes':
             if 'omega_cgs' not in locals():
@@ -718,13 +718,12 @@ class _XYZ():
 
         self._sync_class(check_orthonormality=False)
 
-        if center_coords is not None:
+        if bool(center_coords):
+            selection = None
             if isinstance(center_coords, list):
-                if center_coords[0] in ['True', 'False']:
-                    center_coords = bool(center_coords[0])
-                else:
-                    center_coords = [int(_a) for _a in center_coords]
-            self.center_coordinates(center_coords, weight=weight, wrap=wrap)
+                selection = center_coords
+            self.center_coordinates(selection=selection,
+                                    weight=weight, wrap=wrap)
 
         if wrap:
             self.wrap_atoms()
@@ -737,12 +736,10 @@ class _XYZ():
         #                            RuntimeWarning, stacklevel=2)
         #         self.wrap_atoms()
 
-        if align_coords is not None:
+        if bool(align_coords):
+            selection = None
             if isinstance(align_coords, list):
-                if align_coords[0] in ['True', 'False']:
-                    align_coords = bool(align_coords[0])
-                else:
-                    align_coords = [int(_a) for _a in align_coords]
+                selection = align_coords
             if wrap:  # or wrap_molecules:
                 _warnings.warn('Disabling wrapping for atom alignment!',
                                stacklevel=2)
@@ -750,7 +747,7 @@ class _XYZ():
                 wrap = False
                 wrap_molecules = False
             self.align_coordinates(
-                           align_coords,
+                           selection=selection,
                            weight=weight,
                            align_ref=kwargs.get('align_ref'),
                            force_centering=kwargs.get('force_centering', False)
@@ -760,6 +757,7 @@ class _XYZ():
         # self._sync_class(check_orthonormality=False)
 
     def _pos_aa(self, *args):
+        '''Update positions'''
         if len(args) == 0:
             self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
         elif len(args) == 1:
@@ -775,6 +773,7 @@ class _XYZ():
                             % self._pos_aa.__name__)
 
     def _vel_au(self, *args):
+        '''Update velocities'''
         if len(args) == 0:
             self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
             if self.vel_au.size == 0:
@@ -878,22 +877,18 @@ class _XYZ():
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
 
-    def align_coordinates(self, align_coords, weight='mass', align_ref=None,
+    def align_coordinates(self, selection=None, weight='mass', align_ref=None,
                           force_centering=False):
         '''Aligns positions and rotates (but does not correct)
            velocities.
            '''
-        if not isinstance(align_coords, list):
-            if isinstance(align_coords, bool):
-                if align_coords:
-                    align_coords = slice(None)
-                else:
-                    return
+        if not isinstance(selection, list):
+            if selection is None:
+                selection = slice(None)
             else:
-                raise TypeError('Expecting a bool or a list of atoms '
-                                'for alignment!')
+                raise TypeError('expected None or list of atoms as selection')
 
-        self._aligned_coords = align_coords
+        self._aligned_coords = selection
         wt = _np.ones((self.n_atoms))
         if weight == 'mass':
             wt = self.masses_amu
@@ -906,14 +901,14 @@ class _XYZ():
             _v = self.vel_au
 
         if align_ref is None:
-            self._align_ref = _p[0, align_coords]
+            self._align_ref = _copy.deepcopy(_p[0, selection])
         else:
             self._align_ref = align_ref
 
         _p, _data = mapping.align_atoms(_p,
                                         wt,
                                         ref=self._align_ref,
-                                        subset=align_coords,
+                                        subset=selection,
                                         data=[_v],
                                         )
 
@@ -932,25 +927,25 @@ class _XYZ():
                                 axis=self.axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
 
-    def center_coordinates(self, center_coords, weight='mass', wrap=False):
-        if not isinstance(center_coords, list):
-            if isinstance(center_coords, bool):
-                if center_coords:
-                    center_coords = slice(None)
-                else:
-                    return
+    def center_coordinates(self, selection=None, weight='mass', wrap=False):
+        if not isinstance(selection, list):
+            if selection is None:
+                selection = slice(None)
             else:
-                raise TypeError('Expecting a bool or a list of atoms '
-                                'for centering!')
-        self._centered_coords = center_coords
+                raise TypeError('expected None or list of atoms as selection')
+
+        self._centered_coords = selection
         wt = _np.ones((self.n_atoms))
         if weight == 'mass':
             wt = self.masses_amu
 
-        _p = self.pos_aa[center_coords]
+        if self._type == 'frame':
+            _p = self.pos_aa[selection]
+        elif self._type == 'trajectory':
+            _p = self.pos_aa[:, selection]
 
         # ---join subset (only for frame)
-        if wrap and isinstance(center_coords, list):
+        if wrap and isinstance(selection, list):
             if self._type == 'frame':
                 _p = _np.array([_p])
             _p = mapping.join_molecules(
@@ -962,7 +957,7 @@ class _XYZ():
                 _p = _p[0]
 
         _ref = mapping.cowt(_p,
-                            wt[center_coords],
+                            wt[selection],
                             axis=self.axis_pointer)
 
         self.center_position(_ref, self.cell_aa_deg)
@@ -1048,6 +1043,40 @@ class _XYZ():
             self._modes(_mod)
 
         self._pos_aa(_pos)
+
+    def clean_velocities(self, weights='mass'):
+        '''Remove spurious linear and angular momenta from trajectory.
+           Positions are not changed.
+          '''
+        wt = _np.ones((self.n_atoms))
+        if weights == 'mass':
+            wt = self.masses_amu
+
+        _wt = wt
+        if self._type == 'frame':
+            _p = self.pos_aa.reshape((1, ) + self.pos_aa.shape)
+            _v = self.vel_au.reshape((1, ) + self.vel_au.shape)
+        elif self._type == 'trajectory':
+            _p = self.pos_aa
+            _v = self.vel_au
+
+        _o = mapping.cowt(_p*constants.l_aa2au,
+                          _wt,
+                          axis=self.axis_pointer)
+
+        _AV, _I = motion.angular_momenta(_p*constants.l_aa2au, _v, _wt,
+                                         origin=_o, moI=True)
+        _AV /= _I[:, None]
+        _lever = _p*constants.l_aa2au - _o[:, None]
+        _v -= _np.cross(_AV[:, None], _lever, axis=-1)
+
+        _LV = motion.linear_momenta(_v, _wt / sum(_wt))
+        _v -= _LV[:, None]
+
+        if self._type == 'frame':
+            self._vel_au(_v[0])
+        elif self._type == 'trajectory':
+            self._vel_au(_v)
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')  # not supported for all formats
@@ -1550,6 +1579,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         # remember reference
         kwargs.update({'align_ref': self._frame._align_ref})
         self._mask(self, 'align_coordinates', *args, **kwargs)
+
+    def clean_velocities(self, *args, **kwargs):
+        self._frame.clean_velocities(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'clean_velocities', *args, **kwargs)
 
     def center_coordinates(self, *args, **kwargs):
         self._frame.center_coordinates(*args, **kwargs)

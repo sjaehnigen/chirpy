@@ -89,6 +89,12 @@ def main():
             default="AOShiny"
             )
     parser.add_argument(
+            "--frame",
+            help="For vectors: select frame.",
+            type=int,
+            default=0
+            )
+    parser.add_argument(
             "--skip",
             help="For trajectories: use every <skip>th timestep.",
             type=int,
@@ -122,6 +128,7 @@ def main():
     i_fmt = args.input_format
     largs = {}
     largs['range'] = (0, args.skip, 1e99)
+    largs['frame'] = args.frame
     if i_fmt is not None:
         largs.update({'fmt': i_fmt})
 
@@ -163,6 +170,8 @@ def main():
                                                sparse=args.sparse,
                                                scale=args.scale,
                                                normalise='max')
+    else:
+        raise ValueError(f'unknown property {args.property}')
 
     # --- ARROWS for VMD
     # N.B.: It is WAY faster to source the tcl file from the vmd command line

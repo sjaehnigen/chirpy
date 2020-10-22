@@ -105,6 +105,61 @@ class TestTrajectory(unittest.TestCase):
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)
         self.assertTrue(np.allclose(traj_e.data, ref.data))
 
+    def test_alignment(self):
+        _ref = self.dir + '/trajectory_aligned.xyz'
+        _out = 'out_align.xyz'
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz')
+        traj.align_coordinates()
+        traj_ref = trajectory.XYZ(_ref)
+        self.assertTrue(np.allclose(traj.data, traj_ref.data))
+
+        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        traj.align_coordinates(selection=list(range(12)))
+        traj.write(_out)
+        self.assertTrue(
+               filecmp.cmp(_out, _ref, shallow=False),
+               f'Trajectory reproduced incorrectly: {_ref})'
+               )
+        os.remove(_out)
+
+    def test_centering(self):
+        _ref = self.dir + '/trajectory_centered_at_O.xyz'
+        _out = 'out_center.xyz'
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            traj.center_coordinates()
+        traj_ref = trajectory.XYZ(_ref)
+        self.assertTrue(np.allclose(traj.data, traj_ref.data))
+
+        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            traj.center_coordinates(selection=list(range(12)))
+        traj.write(_out)
+        self.assertTrue(
+               filecmp.cmp(_out, _ref, shallow=False),
+               f'Trajectory reproduced incorrectly: {_ref})'
+               )
+        os.remove(_out)
+
+    def test_clean_velocities(self):
+        _ref = self.dir + '/trajectory_cleaned.xyz'
+        _out = 'out_clean.xyz'
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz')
+        traj.clean_velocities()
+        traj_ref = trajectory.XYZ(_ref)
+        self.assertTrue(np.allclose(traj.data, traj_ref.data))
+
+        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        traj.clean_velocities()
+        traj.write(_out)
+        self.assertTrue(
+               filecmp.cmp(_out, _ref, shallow=False),
+               f'Trajectory reproduced incorrectly: {_ref})'
+               )
+        os.remove(_out)
+
 
 class TestSystem(unittest.TestCase):
     # --- insufficiently tested

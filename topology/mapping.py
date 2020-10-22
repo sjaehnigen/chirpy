@@ -413,6 +413,8 @@ def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
     _s_pos_ref = np.moveaxis(_i_s_pos_ref - com_ref[(None,)], 0, -2)
     _i_pos_mob = np.moveaxis(pos_mob, -2, 0)
     pos_mob = np.moveaxis(_i_pos_mob - com_mob[(None,)], 0, -2)
+    # --- repeat
+    _s_pos_mob = pos_mob[:, _sub]
     del _i_s_pos_ref, _i_pos_mob
 
     for frame, P in enumerate(_s_pos_mob):

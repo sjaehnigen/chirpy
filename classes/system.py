@@ -110,8 +110,8 @@ class _SYSTEM(_CORE):
             self.define_molecules()
         self.wrap_molecules()
         self.XYZ.center_coordinates(
-                [_is for _is, _i in enumerate(self.mol_map)
-                 if _i == index],
+                selection=[_is for _is, _i in enumerate(self.mol_map)
+                           if _i == index],
                 weight=weight,
                 )
         self.wrap_molecules()

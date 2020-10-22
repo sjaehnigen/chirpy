@@ -88,8 +88,8 @@ def main():
             "--center_coords",
             nargs='+',
             help="Center atom list (id starting from 0) in cell \
-                    and wrap or \'True\' for selecting all atoms.",
-            default=None,
+                    and wrap or True for selecting all atoms.",
+            default=False,
             )
     parser.add_argument(
             "--center_molecule",
@@ -101,10 +101,9 @@ def main():
     parser.add_argument(
             "--align_coords",
             nargs='+',
-            help="Align atom list (id starting from 0)  or \'True\' \
+            help="Align atom list (id starting from 0) or True \
                     for selecting all atoms.",
-            type=int,
-            default=None,
+            default=False,
             )
     parser.add_argument(
             "--force_centering",
@@ -148,6 +147,23 @@ def main():
             )
     args = parser.parse_args()
 
+    # --- ToDo: workaround
+    if bool(args.center_coords):
+        if args.center_coords[0] == 'True':
+            args.center_coords = True
+        elif args.center_coords[0] == 'False':
+            args.center_coords = False
+        else:
+            args.center_coords = [int(_a) for _a in args.center_coords]
+
+    if bool(args.align_coords):
+        if args.align_coords[0] == 'True':
+            args.align_coords = True
+        elif args.align_coords[0] == 'False':
+            args.align_coords = False
+        else:
+            args.align_coords = [int(_a) for _a in args.align_coords]
+
     if args.fn_topo is None:
         del args.fn_topo
 
@@ -175,8 +191,8 @@ def main():
     # --- Caution when passing all arguments to object!
     largs = vars(args)
 
-    if args.align_coords is not None:
-        if args.center_coords is not None or args.center_molecule is not None:
+    if bool(args.align_coords):
+        if bool(args.center_coords) or args.center_molecule is not None:
             warnings.warn('Using centering/wrapping and aligning in one call '
                           'may not yield the desired result (use two '
                           'consecutive calls if this is the case).',
@@ -202,9 +218,6 @@ def main():
         largs.update({'skip': []})
 
     if args.fn_vel is not None:
-        if args.align_coords is not None:
-            warnings.warn('Atom alignment including external velocities still '
-                          'in beta stage. Proceed with caution!')
         nargs = {}
         for _a in [
             'range',
@@ -220,9 +233,9 @@ def main():
         # --- repeat alignment call after merge to include velocities into
         #     iterator mask
         # ToDo: (IS THIS NECESSARY?)
-        if args.align_coords is not None:
+        if bool(args.align_coords):
             _load.XYZ.align_coordinates(
-                    args.align_coords,
+                    selection=args.align_coords,
                     weight=args.weight,
                     force_centering=args.force_centering,
                     align_ref=_load.XYZ._frame._align_ref)
