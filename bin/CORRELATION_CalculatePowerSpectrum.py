@@ -113,6 +113,13 @@ def main():
             type=float,
             )
     parser.add_argument(
+            "--noplot",
+            default=False,
+            action='store_true',
+            help="Do not plot results."
+            )
+
+    parser.add_argument(
             "-f",
             help="Output file name",
             default='power.dat'
@@ -163,13 +170,15 @@ def main():
                                 flt_pow=args.filter_strength,
                                 )
 
-    plt.plot(_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])
-    plt.xlim(*args.xrange)
+    # --- plot
+    if not args.noplot:
+        plt.plot(_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])
+        plt.xlim(*args.xrange)
 
-    plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
-    plt.ylabel('Power in ...')
-    plt.title('Power spectrum')
-    plt.show()
+        plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
+        plt.ylabel('Power in ...')
+        plt.title('Power spectrum')
+        plt.show()
     if args.save:
         np.savetxt(
              args.f,
@@ -178,12 +187,14 @@ def main():
              )
 
     if args.return_tcf:
-        plt.plot(np.arange(len(_pow['tcf_power'])) * args.ts / 1000,
-                 _pow['tcf_power'])
-        plt.xlabel(r'$\tau$ in ps')
-        plt.ylabel('TCF in ...')
-        plt.title('Time-correlation function of atomic velocities')
-        plt.show()
+        if not args.noplot:
+            plt.plot(np.arange(len(_pow['tcf_power'])) * args.ts / 1000,
+                     _pow['tcf_power'])
+            plt.xlabel(r'$\tau$ in ps')
+            plt.ylabel('TCF in ...')
+            plt.title('Time-correlation function of atomic velocities')
+            plt.show()
+
         if args.save:
             np.savetxt(
                   'tcf_' + args.f,

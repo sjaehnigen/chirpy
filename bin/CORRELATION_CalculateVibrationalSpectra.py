@@ -109,7 +109,7 @@ def main():
             )
     parser.add_argument(
             "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing. "
+            help="Strength of signal filter (welch) for TCF pre-processing."
                  "Give <0 to remove the implicit size-dependent triangular "
                  "filter",
             default=-1,
@@ -210,8 +210,6 @@ def main():
     _voa['vcd'] = np.array(_voa['vcd']).sum(axis=0) / len(origins)
     _voa['tcf_va'] = np.array(_voa['tcf_va']).sum(axis=0) / len(origins)
     _voa['tcf_vcd'] = np.array(_voa['tcf_vcd']).sum(axis=0) / len(origins)
-
-    print('Done')
 
     # --- plot
     labels = {
