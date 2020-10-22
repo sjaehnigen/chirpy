@@ -30,8 +30,8 @@ class TestBinaries(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_cpmd_assemble_moments(self):
-        os.system('CPMD_AssembleMoments.py %s/TOPOLOGY.pdb %s/TRAJECTORY '
+    def test_moments_assemble_molecules(self):
+        os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY.pdb %s/TRAJECTORY '
                   '%s/MOMENTS -f TEST' % (3*(self.dir,)))
         self.assertTrue(filecmp.cmp('TEST',
                                     self.dir + '/MOL',

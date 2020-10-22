@@ -22,6 +22,7 @@ from scipy.integrate import simps as _simps
 import warnings as _warnings
 
 from . import _CORE
+from .. import extract_keys
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
@@ -129,8 +130,9 @@ class ScalarField(_CORE):
     @classmethod
     def from_object(cls, obj, **kwargs):
         '''Use kwargs to transfer new attribute values'''
-        nargs = {}
-        nargs.update(_copy.deepcopy(vars(obj)))
+        nargs = extract_keys(_copy.deepcopy(vars(obj)),
+                             data=None, cell_vec_au=None,
+                             origin_au=None, pos_au=None, numbers=None)
         nargs.update(kwargs)
         return cls.from_data(**nargs)
 
@@ -139,20 +141,17 @@ class ScalarField(_CORE):
         return cls.from_data(data=domain.expand(), **kwargs)
 
     @classmethod
-    def from_data(cls, **kwargs):
-        cell_vec_au = kwargs.get('cell_vec_au')
-        data = kwargs.get('data')
-        if any([cell_vec_au is None, data is None]):
-            raise TypeError('Please give both, cell_vec_au and data!')
+    def from_data(cls, data, cell_vec_au,
+                  origin_au=None, pos_au=None, numbers=None):
         obj = cls.__new__(cls)
-        # quick workaround to find out if vectorfield
+        # --- quick workaround to find out if vectorfield
         if data.shape[0] == 3:
             obj.comments = 3 * [('no_comment', 'no_comment')]
         else:
             obj.comments = ('no_comment', 'no_comment')
-        obj.origin_au = kwargs.get('origin_au', _np.zeros((3)))
-        obj.pos_au = kwargs.get('pos_au', _np.zeros((0, 3)))
-        obj.numbers = kwargs.get('numbers', _np.zeros((0, )))
+        obj.origin_au = origin_au  # or _np.zeros((3))
+        obj.pos_au = pos_au  # or _np.zeros((0, 3))
+        obj.numbers = numbers  # or _np.zeros((0, ))
         obj.cell_vec_au = cell_vec_au
         obj.data = data
         # Check for optional data
@@ -392,14 +391,14 @@ class ScalarField(_CORE):
 
         return tuple(r)
 
-    def rotate(self, R, rotate_grid=False, **kwargs):
+    def rotate(self, R, rotate_grid=False, rot_origin_au=None):
         '''Rotate entire object including atomic positions either by
            interpolation of data keeping grid points and cell vectors
            unchanged (default: rotate_grid=False), or by rotating cell
            vectors and origin (rotate_grid=True).
            R ... rotation matrix of shape (3, 3)
            '''
-        _o = kwargs.get('rot_origin_au', self.origin_au)
+        _o = rot_origin_au or self.origin_au
 
         self.pos_au = rotate_vector(self.pos_au, R, origin=_o)
 

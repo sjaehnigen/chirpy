@@ -23,8 +23,6 @@ from scipy.interpolate import UnivariateSpline
 
 from ..physics import constants
 
-# ToDo: NEEDS Routine to include arrow tip in total vector length
-
 
 class VMDPaths():
     def __init__(self, positions_aa, auto_smooth=True):
@@ -66,29 +64,25 @@ class VMDPaths():
                              axis=-1) >= cutoff_aa  # integrate curved path
         self.pos_aa = self.pos_aa[:, ind]
 
-    @staticmethod
-    def tmp_normalise(obj, norm=None, thresh=1.E-8, **kwargs):
-        from ..classes.volume import ScalarField
-        '''Norm has to be a ScalarField object (can be of different shape) or
-           float.
-           If no norm is given, the method uses np.linalg.norm of vector field
-           (give axis in kwargs).'''
+    @classmethod
+    def from_vector(cls, origins_aa, vectors_aa,
+                    scale=1,
+                    thresh=0.0
+                    ):
+        '''Generate VMD object from vector array
+           origins_aa/vectors_aa ... numpy arrays of shape (n_vectors, 3)
+           scale ... int or numpy array of shape (n_vectors) to multiply
+                     vectors with
+           thresh ... exclude regions of where vector norm is smaller than
+                      value (before scaling)
+           '''
+        _ind = np.linalg.norm(vectors_aa, axis=-1) > thresh
+        _p0 = origins_aa.T
+        _p1 = _p0 + vectors_aa.T * scale
 
-        # --- create empty object with the correct grid
-        _N = ScalarField.from_object(obj, data=obj.grid())
-        if norm is None:
-            _N.data = np.linalg.norm(obj.data, **kwargs)
-        elif isinstance(norm, float):
-            _N.data += norm
-        else:
-            # --- __add__ interpolates different grids
-            _N += norm
+        _p = np.array([_p0.T, _p1.T])
 
-        with np.errstate(divide='ignore'):
-            _N_inv = np.where(_N.data < thresh, 0.0, np.divide(1.0, _N.data))
-
-        obj.data *= _N_inv
-        return obj
+        return cls(_p[:, _ind], auto_smooth=False)
 
     @classmethod
     def from_vector_field(cls, obj,
@@ -96,7 +90,8 @@ class VMDPaths():
                           scale=1,
                           length=1,
                           normalise=None,
-                          thresh=0.0
+                          thresh=0.0,
+                          verbose=False
                           ):
         '''Generate VMD object from VectorField object
            normalise ... None/max/local
@@ -104,20 +99,24 @@ class VMDPaths():
                       value (before normalisation)
            '''
 
+        # -- apply sparse and thresh
         _obj = obj.sparse(sparse)
         _ind = np.linalg.norm(_obj.data, axis=0) > thresh
+        _p = _obj.pos_grid()[:, _ind].reshape((3, -1))
 
+        # --- continue with original obj
         if normalise is not None:
             if normalise == 'max':
-                _obj = cls.tmp_normalise(_obj, np.amax(
-                                    np.linalg.norm(_obj.data, axis=0)))
+                obj.normalise(np.amax(np.linalg.norm(obj.data, axis=0)))
             elif normalise == 'local':
-                _obj = cls.tmp_normalise(_obj, axis=0)
+                obj.normalise(axis=0)
+            # --- repeat scaling
+            obj.data *= constants.l_aa2au
 
-        _p = _obj.pos_grid()[:, _ind].reshape((3, -1))
-        print(f"Seeding {_p.shape[-1]} points.")
+        if verbose:
+            print(f"Seeding {_p.shape[-1]} points.")
 
-        pos_au = obj.streamlines(  # NB: using original obj
+        pos_au = obj.streamlines(
                     _p.T,
                     sparse=1,  # sparsity of interpolation
                     forward=True,
@@ -156,7 +155,7 @@ class VMDPaths():
         '''Add cone to the ends of paths given through positions of
         shape (n_points p. path[, n_paths], 3)'''
         if length is None:
-            length = 5 * radius
+            length = 8 * radius
 
         def arr_head_sense(p, depth):
             '''unit vector of pointing cone'''
@@ -191,7 +190,7 @@ class VMDPaths():
                   width=1,
                   rgb=(0.5, 0.5, 0.5),
                   arrow=False,
-                  arrow_radius=0.075,
+                  arrow_radius=None,
                   arrow_length=None,
                   arrow_resolution=30,
                   ):
@@ -200,6 +199,10 @@ class VMDPaths():
         tool = 'line'
         options = f'width {width} style {style}'
         self.reduce(cutoff_aa=cutoff_aa)
+        if arrow_length is None:
+            arrow_length = 0.064 * width
+        if arrow_radius is None:
+            arrow_radius = arrow_length / 8
 
         with open(fn, 'w') as f:
             _col = self._get_color_id()
@@ -235,6 +238,8 @@ class VMDPaths():
         self.reduce(cutoff_aa=cutoff_aa)
         if arrow_radius is None:
             arrow_radius = 3 * radius
+        if arrow_length is None:
+            arrow_length = 8 * arrow_radius
 
         with open(fn, 'w') as f:
             _col = self._get_color_id()
@@ -251,25 +256,3 @@ class VMDPaths():
                                              length=arrow_length,
                                              resolution=arrow_resolution))
             f.write("display resetview\n")
-
-# [f.write("draw sphere {%8.2f %8.2f %8.2f} radius %f resolution %d\n"
-# %(t1[0], t1[1], t1[2], rad, res)) for t1 in p1]
-
-# draw color black
-# draw materials off
-# draw cylinder {6 6 4} {6 6 4.2} radius 7.2 resolution 50
-# color change rgb tan 0.0 0.4 0.0
-# draw color tan
-# draw materials off
-# draw cylinder {6 6 4} {6 6 10} radius 0.1 resolution 50
-# draw cone {6 6 10} {6 6 11} radius 0.3 resolution 50
-# draw materials off
-# draw text {5.3 6 11.2} "r" size 2 thickness 5
-# draw text {5.0 6 11.5} "z" size 1 thickness 3
-# draw color orange
-# draw materials off
-# draw cylinder {6 6 4} {10.243 10.243 4} radius 0.1 resolution 50
-# draw cone {10.243 10.243 4} {10.950 10.950 4} radius 0.3 resolution 50
-# draw materials off
-# draw text {11.332 11.232 3.0} "r" size 2 thickness 5
-# draw text {11.032 11.232 3.3} "xy" size 1 thickness 3

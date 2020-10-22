@@ -1202,6 +1202,7 @@ class _MOMENTS():
                                                                     bz2=False,
                                                                     )
                                                     )
+                data[:, :, :3] *= constants.l_aa2au
 
             elif fmt == "cpmd" or any([_t in fn for _t in [
                                      'MOMENTS']]):
@@ -1215,7 +1216,6 @@ class _MOMENTS():
 
                 symbols = data_dict['symbols']
                 data = data_dict['data']
-                data[:, :, :3] *= constants.l_au2aa
 
                 comments = data_dict['comments']
 
@@ -1419,7 +1419,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._gen = _cpmdIterator(fn, **kwargs)
 
             else:
-                raise ValueError('Unknown format: %s.' % self._fmt)
+                raise ValueError('Unknown trajectory format: %s.' % self._fmt)
 
             self._topology = XYZFrame(fn, **kwargs)
 

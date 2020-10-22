@@ -298,7 +298,6 @@ class MolecularCrystal(_BoxObject):
         #       (reason?: original mol map wrong due to too small cell)
 
         _MOL.define_molecules(silent=True)
-        print('')
         _MOL.sort_atoms(_np.argsort(_MOL.mol_map, kind='stable'))
         if verbose:
             _MOL.print_info()

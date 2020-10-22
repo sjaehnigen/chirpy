@@ -36,8 +36,6 @@ from chirpy.test import \
 # bin
 
 # --- NOT (yet) tested
-# snippets
-# external
 # visualise
 
 

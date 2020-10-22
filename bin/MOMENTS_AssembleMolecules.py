@@ -27,10 +27,11 @@ from chirpy.interface import cpmd
 
 def main():
     parser = argparse.ArgumentParser(
-            description="Process CPMD MOMENTS output of electronic (Wannier)\
+            description="Process MOMENTS output of electronic (Wannier)\
                          states and add (classical) nuclear contributions to\
                          generate molecular moments based on a given\
-                         topology.",
+                         topology.\
+                         Supports only CPMD input and output.",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument(
@@ -39,25 +40,25 @@ def main():
             )
     parser.add_argument(
             "TRAJECTORY",
-            help="TRAJECTORY file from CPMD"
+            help="TRAJECTORY"
             )
     parser.add_argument(
             "MOMENTS",
-            help="MOMENTS file from CPMD"
+            help="MOMENTS"
             )
     parser.add_argument(
             "--range",
             nargs=3,
-            help="Frame range for reading CPMD files.",
+            help="Frame range for reading files.",
             default=None,
             type=int,
             )
-    parser.add_argument(
-            "--hag",
-            action='store_true',
-            default=False,
-            help="Use heavy atom gauge (BETA; work in progress)."
-            )
+#     parser.add_argument(
+#             "--hag",
+#             action='store_true',
+#             default=False,
+#             help="Use heavy atom gauge (BETA; work in progress)."
+#             )
     parser.add_argument(
             "-f",
             help="Output file name",
@@ -87,7 +88,7 @@ def main():
     _cell[:3] *= constants.l_aa2au
 
     for _iframe, (_p_fr, _m_fr) in enumerate(zip(_traj.XYZ, _moms_e)):
-        # --- generate classic nuclear moments
+        # --- generate classical nuclear moments
         gauge_n = OriginGauge(
                trajectory.MOMENTSFrame.from_classical_nuclei(_traj.XYZ._frame),
                cell=_cell

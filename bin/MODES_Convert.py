@@ -67,7 +67,8 @@ def main():
             )
     parser.add_argument(
             "--T",
-            help="Temperature for calculation of nuclear velocities (xyz output only).",
+            help="Temperature for calculation of nuclear velocities "
+                 "(xyz output only).",
             type=float,
             default=300,
             )

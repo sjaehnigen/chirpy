@@ -40,6 +40,7 @@ def cpmdReader(FN, **kwargs):
          GEOMETRY
          TRAJECTORY
          MOMENTS
+         MOL
          MOLVIB
          APT
          AAT
@@ -53,7 +54,8 @@ def cpmdReader(FN, **kwargs):
                             'TRAJSAVED',
                             'GEOMETRY',
                             'TRAJECTORY',
-                            'MOMENTS'
+                            'MOMENTS',
+                            'MOL'
                             ]]):
         if ('symbols' in kwargs or 'numbers' in kwargs):
             numbers = kwargs.get('numbers')

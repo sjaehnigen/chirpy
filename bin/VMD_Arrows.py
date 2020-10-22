@@ -2,8 +2,9 @@
 
 import argparse
 
-from chirpy.classes import trajectory
+from chirpy.classes import trajectory, volume
 from chirpy.interface import vmd
+from chirpy.physics import constants
 
 
 def main():
@@ -14,10 +15,40 @@ def main():
             )
     parser.add_argument(
             "fn",
-            help="Input file (trajectory, modes, velocities, etc.).",
+            help="Input file (trajectory, modes etc.).",
             )
     parser.add_argument(
-            "--type",
+            "--input_format",
+            help="Input file format (e.g. xyz, pdb, cpmd; optional).",
+            default=None,
+            )
+    parser.add_argument(
+            "--property",
+            help="Choose content of FN to be visualised: "
+                 "positions (trajectory/path), "
+                 "mode (specified through --mode), "
+                 "velocities (frame)"
+                 "moments_c (frame)"
+                 "moments_m (frame)"
+                 "vectorfield",
+            default='positions'
+            )
+    parser.add_argument(
+            "--mode",
+            help="Choosen mode (see --property).",
+            type=int,
+            default=0
+            )
+    parser.add_argument(
+            "--scale",
+            help="Scale vectors (velocities, moments, mode, ...; "
+                 "see --property). For velocities this keyword corresponds to "
+                 "the time step in fs",
+            type=float,
+            default=1.0
+            )
+    parser.add_argument(
+            "--style",
             help="Choose 'lines' or 'icons'",
             default='lines'
             )
@@ -55,7 +86,7 @@ def main():
     parser.add_argument(
             "--material",
             help="Draw material for icons",
-            default="Diffuse"
+            default="AOShiny"
             )
     parser.add_argument(
             "--skip",
@@ -64,10 +95,16 @@ def main():
             default=1
             )
     parser.add_argument(
+            "--sparse",
+            help="For vectorfield: use every <sparse>th grid point.",
+            type=int,
+            default=2
+            )
+    parser.add_argument(
             "--cutoff_aa",
             help="Minimum length of arrow for being drawn in angstrom",
             type=float,
-            default=0.5
+            default=0.1
             )
     parser.add_argument(
             "--no_smooth",
@@ -82,23 +119,54 @@ def main():
             )
 
     args = parser.parse_args()
+    i_fmt = args.input_format
+    largs = {}
+    largs['range'] = (0, args.skip, 1e99)
+    if i_fmt is not None:
+        largs.update({'fmt': i_fmt})
 
-    traj = trajectory._XYZTrajectory(args.fn, range=(0, args.skip, 1e99))
+    if args.property == 'positions':
+        traj = trajectory._XYZTrajectory(args.fn, **largs)
+        paths = vmd.VMDPaths(traj.pos_aa, auto_smooth=not args.no_smooth)
 
-    # ToDo: Modes and velocities
-    #          for _m in args.modelist:
-    #              _fn_out = '%03d_' % _m + args.f
-    #              _load.Modes.get_mode(_m).make_trajectory(
-    #                                          n_images=args.n_images,
-    #                                          ts_fs=args.ts,
-    #                                          ).write(_fn_out,
-    #                                                  fmt='xyz')
+    elif args.property == 'velocities':
+        traj = trajectory.XYZFrame(args.fn, **largs)
+        paths = vmd.VMDPaths.from_vector(traj.pos_aa,
+                                         traj.vel_au*constants.v_au2aaperfs,
+                                         scale=args.scale)
+
+    elif args.property == 'mode':
+        traj = trajectory.VibrationalModes(args.fn, **largs)
+        # --- ToDO: allow combination of modes with modelist
+        paths = vmd.VMDPaths.from_vector(traj.pos_aa[args.mode],
+                                         traj.modes[args.mode],
+                                         scale=args.scale)
+
+    elif args.property == 'moments_c':
+        traj = trajectory.MOMENTSFrame(args.fn, **largs)
+        paths = vmd.VMDPaths.from_vector(traj.pos_au*constants.l_au2aa,
+                                         traj.c_au*constants.v_au2aaperfs,
+                                         scale=args.scale)
+
+    elif args.property == 'moments_m':
+        traj = trajectory.MOMENTSFrame(args.fn, **largs)
+        paths = vmd.VMDPaths.from_vector(traj.pos_au*constants.l_au2aa,
+                                         traj.m_au*constants.v_au2aaperfs,
+                                         scale=args.scale)
+
+    elif args.property == 'vectorfield':
+        traj = volume.VectorField(args.fn, **largs)
+        # --- scale for max-norm
+        args.scale *= 0.01
+        args.cutoff_aa *= 0.01
+        paths = vmd.VMDPaths.from_vector_field(traj,
+                                               sparse=args.sparse,
+                                               scale=args.scale,
+                                               normalise='max')
 
     # --- ARROWS for VMD
     # N.B.: It is WAY faster to source the tcl file from the vmd command line
     # ("source file.tcl") than loading it at startup ("-e file.tcl")!
-
-    paths = vmd.VMDPaths(traj.pos_aa, auto_smooth=not args.no_smooth)
 
     # --- OUTPUT
     if args.f is None:
@@ -110,17 +178,18 @@ def main():
     if args.rgb is not None:
         nargs['rgb'] = tuple(args.rgb)
 
-    if args.type == 'lines':
+    if args.style == 'lines':
         paths.draw_line(_stem + 'lines.tcl',
                         sparse=1,  # args.skip,
                         arrow=not args.no_head,
                         cutoff_aa=args.cutoff_aa,
                         arrow_resolution=args.resolution,
-                        arrow_radius=args.radius,
+                        # arrow_radius=args.radius,
+                        width=args.linewidth,
                         **nargs
                         )
 
-    if args.type == 'icons':
+    if args.style == 'icons':
         nargs['material'] = args.material
         paths.draw_tube(_stem + 'icons.tcl',
                         sparse=1,  # args.skip,

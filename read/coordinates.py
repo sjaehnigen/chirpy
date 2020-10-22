@@ -67,7 +67,8 @@ def _cpmd(frame, **kwargs):
     if 'GEOMETRY' in filetype:
         return np.array(data).astype(float)
 
-    elif any([f in filetype for f in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']]):
+    elif any([f in filetype for f in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS',
+                                      'MOL']]):
         return np.array(data).astype(float)[:, 1:]
 
     else:
