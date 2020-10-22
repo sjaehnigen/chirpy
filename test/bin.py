@@ -50,3 +50,20 @@ class TestBinaries(unittest.TestCase):
                         'Trajectory reproduced incorrectly (see out.xyz)'
                         )
         os.remove('out.xyz')
+
+    def test_correlation_vibrational(self):
+        os.system(
+            'CORRELATION_CalculateVibrationalSpectra.py %s/MOL2 ' % self.dir
+            + '--cell_aa_deg 12.072 12.342 11.576 90.00 90.00 90.00 '
+            + '--ts 4 --return_tcf --va --vcd --cutoff 0 --filter_strength -1 '
+            + '--xrange 2000 500 --save --noplot'
+            )
+
+        for _file in ['tcf_va_spectrum.dat', 'tcf_vcd_spectrum.dat',
+                      'va_spectrum.dat', 'vcd_spectrum.dat']:
+            self.assertTrue(
+               filecmp.cmp(_file, self.dir + '/' + _file, shallow=False),
+               f'Spectrum/TCF reproduced incorrectly: {self.dir + "/" +_file})'
+               )
+            os.remove(_file)
+    # def test_correlation_power(self):

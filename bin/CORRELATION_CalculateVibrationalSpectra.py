@@ -136,6 +136,13 @@ def main():
             type=float,
             )
     parser.add_argument(
+            "--noplot",
+            default=False,
+            action='store_true',
+            help="Do not plot results."
+            )
+
+    parser.add_argument(
             "-f",
             help="Output file name",
             default='spectrum.dat'
@@ -178,7 +185,6 @@ def main():
     _voa['vcd'] = []
     _voa['tcf_va'] = []
     _voa['tcf_vcd'] = []
-    print('Calculating spectra...')
     # --- ToDo: differ mode according to args
     origins = _p.swapaxes(0, 1)[args.origin_id]
     for origin in origins:
@@ -213,12 +219,13 @@ def main():
        'vcd': ('Vibrational circular dichroism spectrum', r'$\Delta$A in ...'),
     }
     for _i in filter(args.__dict__.get, ['va', 'vcd']):
-        plt.plot(_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])
-        plt.xlim(*args.xrange)
-        plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
-        plt.title(labels[_i][0])
-        plt.ylabel(labels[_i][1])
-        plt.show()
+        if not args.noplot:
+            plt.plot(_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])
+            plt.xlim(*args.xrange)
+            plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
+            plt.title(labels[_i][0])
+            plt.ylabel(labels[_i][1])
+            plt.show()
 
         if args.save:
             np.savetxt(
@@ -228,12 +235,13 @@ def main():
                 )
 
         if args.return_tcf:
-            plt.plot(np.arange(len(_voa['tcf_' + _i])) * args.ts / 1000,
-                     _voa['tcf_' + _i])
-            plt.xlabel(r'$\tau$ in ps')
-            plt.ylabel('TCF in ...')
-            plt.title('Time-correlation function for ' + _i)
-            plt.show()
+            if not args.noplot:
+                plt.plot(np.arange(len(_voa['tcf_' + _i])) * args.ts / 1000,
+                         _voa['tcf_' + _i])
+                plt.xlabel(r'$\tau$ in ps')
+                plt.ylabel('TCF in ...')
+                plt.title('Time-correlation function for ' + _i)
+                plt.show()
             if args.save:
                 np.savetxt(
                      'tcf_' + _i + '_' + args.f,
