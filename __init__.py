@@ -15,8 +15,12 @@
 #
 # ------------------------------------------------------
 
+import sys
 import warnings
 import numpy as _np
+
+if sys.version_info[:2] < (3, 8):
+    raise RuntimeError("Python version >= 3.8 required.")
 
 
 def extract_keys(dict1, **defaults):
