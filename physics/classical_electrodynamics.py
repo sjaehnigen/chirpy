@@ -49,31 +49,39 @@ def electric_quadrupole_moment(pos_au, charges_au):
 def electric_dipole_shift_origin(charges_au, trans_au, **kwargs):
     '''Compute differential term of origin shift
        charges_au ... atomic charges
-       trans_au ... translation vector
+       trans_au ... translation vector from old to new origin
        '''
+    if len(charges_au.shape) == 1:
+        return -trans_au * charges_au[None]
+
     if len(charges_au.shape) == 2:
-        return trans_au * charges_au[:, None]
+        return -trans_au * charges_au[:, None]
 
     if len(charges_au.shape) == 3:
-        return trans_au * charges_au[:, :, None]
+        return -trans_au * charges_au[:, :, None]
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au, **kwargs):
     '''Compute differential term of origin shift
        c_au ... current dipole moment
-       trans_au ... translation vector
+       trans_au ... translation vector from old to new origin
        NB: No cgs-convention
        '''
+    if len(c_au.shape) == 1:
+        return -0.5 * np.sum(eijk[:, :, :]
+                             * trans_au[:, None, None]
+                             * c_au[None, :, None],
+                             axis=(0, 1))
     if len(c_au.shape) == 2:
-        return 0.5 * np.sum(eijk[None, :, :, :]
-                            * trans_au[:, :, None, None]
-                            * c_au[:, None, :, None],
-                            axis=(1, 2))
+        return -0.5 * np.sum(eijk[None, :, :, :]
+                             * trans_au[:, :, None, None]
+                             * c_au[:, None, :, None],
+                             axis=(1, 2))
     if len(c_au.shape) == 3:
-        return 0.5 * np.sum(eijk[None, None, :, :, :]
-                            * trans_au[:, :, :, None, None]
-                            * c_au[:, :, None, :, None],
-                            axis=(2, 3))  # sum over mols (axis 1) done later
+        return -0.5 * np.sum(eijk[None, None, :, :, :]
+                             * trans_au[:, :, :, None, None]
+                             * c_au[:, :, None, :, None],
+                             axis=(2, 3))  # sum over mols (axis 1) done later
 
 
 def switch_electric_origin_gauge(mu_au, charges_au, o_a_au, o_b_au,
@@ -83,8 +91,8 @@ def switch_electric_origin_gauge(mu_au, charges_au, o_a_au, o_b_au,
        Accepts cell_au_deg argument to account for periodic boundaries.
        Expects atomic units (no cgs-convention).
 
-       mu_au      ... electric dipole moment of shape (N, 3)
-       charges_au ... charges of shape (N)
+       mu_au      ... electric dipole moment of shape (N, 3) or (3)
+       charges_au ... charges of shape (N) or float
        with N being the number of kinds/atoms/states.
 
        o_a_au ... old origin(s) of shape (N, 3) or (3)
@@ -92,12 +100,10 @@ def switch_electric_origin_gauge(mu_au, charges_au, o_a_au, o_b_au,
 
        Returns: An updated array of mu_au
        '''
-    if len(o_a_au.shape) == 1:
-        o_a_au = np.tile(o_a_au.shape, (mu_au.shape[0], 1))
 
     _trans = mapping.distance_pbc(o_a_au, o_b_au, cell=cell_au_deg)
 
-    return mu_au - electric_dipole_shift_origin(charges_au, _trans)
+    return mu_au + electric_dipole_shift_origin(charges_au, _trans)
 
 
 def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
@@ -106,7 +112,7 @@ def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
        Accepts cell_au_deg argument to account for periodic boundaries.
        Expects atomic units (no cgs-convention).
 
-       c_au ... current dipole moment
+       c_au ... current dipole moment of shape (N, 3) or (3)
        m_au ... magnetic dipole moment (before the gauge transformation)
        Both of shape (N, 3) with N being the number of kinds/atoms/states.
 
@@ -115,12 +121,10 @@ def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
 
        Returns: An updated array of m_au
        '''
-    if len(o_a_au.shape) == 1:
-        o_a_au = np.tile(o_a_au.shape, (c_au.shape[0], 1))
 
     _trans = mapping.distance_pbc(o_a_au, o_b_au, cell=cell_au_deg)
 
-    return m_au - magnetic_dipole_shift_origin(c_au, _trans)
+    return m_au + magnetic_dipole_shift_origin(c_au, _trans)
 
 
 def coulomb(r0, r, q, cell=None, thresh=1.E-8):

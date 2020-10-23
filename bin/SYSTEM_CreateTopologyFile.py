@@ -40,7 +40,7 @@ def main():
             nargs='+',
             help="Center atom list (id starting from 0) in cell \
                     and wrap or \'True\' for selecting all atoms.",
-            default=None,
+            default=False,
             )
     parser.add_argument(
             "--center_molecule",
@@ -70,6 +70,13 @@ def main():
         )
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
+    if bool(args.center_coords):
+        if args.center_coords[0] == 'True':
+            args.center_coords = True
+        elif args.center_coords[0] == 'False':
+            args.center_coords = False
+        else:
+            args.center_coords = [int(_a) for _a in args.center_coords]
 
     i_fmt = args.input_format
     if i_fmt is None:

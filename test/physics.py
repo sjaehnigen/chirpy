@@ -21,9 +21,9 @@ from math import isclose
 import numpy as np
 import warnings
 
-from ..physics import constants, statistical_mechanics, spectroscopy
+from ..physics import constants, statistical_mechanics, spectroscopy, \
+    classical_electrodynamics
 from ..classes import trajectory
-# classical_electrodynamics
 # kspace, modern_theory_of_magnetisation
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
@@ -192,3 +192,53 @@ class TestSpectroscopy(unittest.TestCase):
                 1.0,
                 places=2
                 )
+
+
+class TestClassicalElectrodyanmics(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    # def test_switch_magnetic_origin_gauge(self):
+    def test_switch_magnetic_origin_gauge(self):
+        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+                np.array([1.2, 3, -1]),
+                np.array([1., 2., 0.]),
+                np.array([-1., 0., 0.1]),
+                np.array([-1., 1., -0.1])
+                )
+        self.assertListEqual(_m.tolist(), [1.2, 2.12, 0.6])
+
+        # -- periodic
+        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+                np.array([1.2, 3, -1]),
+                np.array([1., 2., 0.]),
+                np.array([-1., 0., 0.1]),
+                np.array([-1., 1., -0.1]),
+                cell_au_deg=np.array([10., 0.7, 10., 90., 90., 90.])
+                )
+        self.assertListEqual(np.round(_m, decimals=2).tolist(),
+                             [0.85, 2.12, 0.18])
+
+        # -- one origin ---> multiple origins
+        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+                np.array([[1.2, 3, -1], [1.2, 3, -1]]),
+                np.array([[1., 2., 0.], [1., 2., 0.]]),
+                np.array([-1., 0., 0.1]),
+                np.array([[-1., 1., -0.1], [-1., 3., -0.1]])
+                )
+        self.assertListEqual(np.round(_m, decimals=2).tolist(),
+                             [[1.2, 2.12, 0.6], [2.2, 2.12, 1.8]])
+
+        # -- multiple origins ---> one origin
+        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+                np.array([[1.2, 3, -1], [1.2, 3, -1]]),
+                np.array([[1., 2., 0.], [1., 2., 0.]]),
+                np.array([[-1., 0., 0.1], [-1., -2., 0.1]]),
+                np.array([-1., 1., -0.1])
+                )
+        self.assertListEqual(np.round(_m, decimals=2).tolist(),
+                             [[1.2, 2.12, 0.6], [2.2, 2.12, 1.8]])

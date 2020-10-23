@@ -40,6 +40,20 @@ class TestBinaries(unittest.TestCase):
                         )
         os.remove('TEST')
 
+    def test_system_create_topology(self):
+        for _f in ['topo-1.restart', 'topo.xyz']:
+            os.system(f'SYSTEM_CreateTopologyFile.py {self.dir}/{_f}' +
+                      ' --cell_aa_deg 25.520 25.520 25.520 90.00 90.00 90.00'
+                      )
+            self.assertTrue(filecmp.cmp('out.pdb',
+                                        f'{self.dir}/topo.pdb',
+                                        shallow=False),
+                            f'Topology {self.dir}/topo.pdb reproduced '
+                            f'incorrectly from {self.dir}/{_f}'
+                            )
+            filecmp.clear_cache()
+            os.remove('out.pdb')
+
     def test_trajectory_convert(self):
         os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +

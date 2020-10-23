@@ -62,6 +62,3 @@ class TestImports(unittest.TestCase):
 
     def test_import_10_visualise(self):
         self.import_submodules('chirpy.visualise')
-
-    def test_import_10_external(self):
-        self.import_submodules('chirpy.external')

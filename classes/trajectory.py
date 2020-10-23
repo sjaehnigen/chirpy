@@ -303,7 +303,9 @@ class _MODES(_FRAME):
 
         if not hasattr(self, 'IR_kmpmol'):
             # --- in km/mol
-            self.IR_kmpmol = _np.zeros((self.n_modes))
+            _warnings.warn('No IR intensities found. Setting to one.',
+                           stacklevel=2)
+            self.IR_kmpmol = _np.ones((self.n_modes))
 
         if hasattr(self, 'APT_au'):
             # --- first step to generate eivec
