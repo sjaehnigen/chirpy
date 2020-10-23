@@ -1,19 +1,32 @@
-#!/usr/bin/env python
-# ------------------------------------------------------
+# -------------------------------------------------------------------
 #
 #  ChirPy
 #
 #    A buoyant python package for analysing supramolecular
 #    and electronic structure, chirality and dynamics.
 #
+#    https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
-#  Developers:
-#    2010-2016  Arne Scherrer
-#    since 2014 Sascha Jähnigen
 #
-#  https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
+#  Copyright (c) 2010-2020, The ChirPy Developers.
 #
-# ------------------------------------------------------
+#
+#  Released under the GNU General Public Licence, v3
+#
+#   ChirPy is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.
+#   If not, see <https://www.gnu.org/licenses/>.
+#
+# -------------------------------------------------------------------
 
 import unittest
 import os
@@ -21,9 +34,9 @@ from math import isclose
 import numpy as np
 import warnings
 
-from ..physics import constants, statistical_mechanics, spectroscopy, \
+from chirpy.physics import constants, statistical_mechanics, spectroscopy, \
     classical_electrodynamics
-from ..classes import trajectory
+from chirpy.classes import trajectory
 # kspace, modern_theory_of_magnetisation
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'

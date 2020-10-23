@@ -1,23 +1,40 @@
 #!/usr/bin/env python
-# ------------------------------------------------------
+# -------------------------------------------------------------------
 #
 #  ChirPy
 #
 #    A buoyant python package for analysing supramolecular
 #    and electronic structure, chirality and dynamics.
 #
+#    https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
-#  Developers:
-#    2010-2016  Arne Scherrer
-#    since 2014 Sascha Jähnigen
 #
-#  https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
+#  Copyright (c) 2010-2020, The ChirPy Developers.
 #
-# ------------------------------------------------------
+#
+#  Released under the GNU General Public Licence, v3
+#
+#   ChirPy is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published
+#   by the Free Software Foundation, either version 3 of the License.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.
+#   If not, see <https://www.gnu.org/licenses/>.
+#
+# -------------------------------------------------------------------
 
 import unittest
+import sys
 
-from chirpy.test import \
+from chirpy.version import __version__
+
+import \
     imports,\
     read,\
     write,\
@@ -40,7 +57,15 @@ from chirpy.test import \
 
 
 if __name__ == '__main__':
+    try:
+        _verbosity = int(sys.argv[1])
+    except IndexError:
+        _verbosity = 1
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
+
+    print(f'You are using ChirPy version {__version__}.')
+    print(70 * '-')
+    print('Running TestSuite')
 
     # initialize the test suite
     loader = unittest.TestLoader()
@@ -59,6 +84,6 @@ if __name__ == '__main__':
     suite.addTests(loader.loadTestsFromModule(bin))
 
     # initialize a runner, pass it your suite and run it
-    runner = unittest.TextTestRunner(verbosity=1)
+    runner = unittest.TextTestRunner(verbosity=_verbosity)
 
     result = runner.run(suite)
