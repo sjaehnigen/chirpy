@@ -40,23 +40,23 @@ _warnings.warn('amu = atomic mass unit', stacklevel=2)
 _warnings.warn('Modules in physics expect atomic units for all variables. '
                'Make sure to convert input before calling the methods!',
                stacklevel=2)
-_warnings.warn('Derived units follow the unit convention rigorously.',
+_warnings.warn('Derived units follow the convention rigorously.',
                stacklevel=2)
 
 # --- atomic units
-velocities = 'au'
-energies = 'au'
+velocity = 'au'
+energy = 'au'
 magnetic_dipole = ('au', 'no-cgs')
 current_dipole = 'au'
 current = 'au'
 electric_field = 'au'
 magnetic_field = ('au', 'no-cgs')
 hessian = 'au'
-vibrational_modes = 'au'
+vibrational_mode = 'au'
 frequency = 'au'
 
 # --- other
 time = 'fs'
 temperature = 'K'
-positions = 'aa'
-masses = 'amu'
+length = 'aa'
+mass = 'amu'

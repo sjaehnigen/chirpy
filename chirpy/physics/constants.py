@@ -309,3 +309,34 @@ def symbols_to_rvdw(symbols):
 numbers_to_masses = symbols_to_masses
 numbers_to_valence_charges = symbols_to_valence_charges
 numbers_to_rvdw = symbols_to_rvdw
+
+
+def get_conversion_factor(name, unit):
+    '''Return factor to convert given unit into default unit according to
+       chirpy.version.<name>.
+       name ... type of magnitude (positions, velocities, etc.)
+       '''
+    _db = {
+            'length': {
+                'aa': 1.,
+                'au': l_au2aa,
+                'si': 1E10,
+                },
+            'velocity': {
+                'au': 1.,
+                'aa': l_aa2au,  # time in a.u.
+                'aaperfs': 1/v_au2aaperfs,
+                'si': v_si2au
+                },
+            # 'moment_v': {  # "velocity form"
+            #     'au': 1.
+            #     },
+            }
+    try:
+        return _db[name][unit]
+    except KeyError:
+        if name in _db:
+            raise ValueError(f'Could not find unit \'{unit}\' for \'{name}\'.')
+        else:
+            raise ValueError(f'Unknown magnitude \'{name}\' in units.')
+        return 1.

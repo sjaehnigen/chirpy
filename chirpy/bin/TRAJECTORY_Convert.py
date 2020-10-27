@@ -241,6 +241,9 @@ def main():
                    ]:
             nargs[_a] = largs.get(_a)
 
+        if i_fmt in ['tinker', 'arc', 'vel']:
+            nargs['units'] = ('velocity', 'aaperfs')
+
         _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 

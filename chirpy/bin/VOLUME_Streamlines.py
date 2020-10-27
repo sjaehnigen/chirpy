@@ -213,7 +213,6 @@ def main():
     # --- OUTPUT
     _stem = args.f
 
-    # --- convert positions to angstrom (velocities in a.u.!)
     trajectory._XYZTrajectory(
                              data=traj,
                              symbols=traj.shape[1]*['C'],
@@ -227,9 +226,6 @@ def main():
                              ).write(_stem + '_atoms.xyz')
 
     if args.decompose:
-        traj_div[:, :, :3] *= constants.l_au2aa
-        traj_rot[:, :, :3] *= constants.l_au2aa
-        traj_hom[:, :, :3] *= constants.l_au2aa
         trajectory._XYZTrajectory(
                              data=traj_div,
                              symbols=traj_div.shape[1]*['C'],

@@ -1141,7 +1141,7 @@ class _XYZ():
                 raise AttributeError('Cannot find modes for molden output!')
             write_moldenvib_file(fn,
                                  loc_self.symbols,
-                                 loc_self.pos_aa[1] * constants.l_aa2au,
+                                 loc_self.pos_aa[1],
                                  loc_self.eival_cgs,
                                  loc_self.modes,
                                  )
@@ -1175,7 +1175,6 @@ class _XYZ():
                 loc_self.sort()
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)
-            loc_self.data[:3] *= constants.l_aa2au
             loc_self.data[3:] *= factor
             cpmdWriter(fn,
                        loc_self.data.swapaxes(0, -1),
@@ -1388,7 +1387,7 @@ class XYZFrame(_XYZ, _FRAME):
 
         _img = _np.arange(-(n_images // 2), n_images // 2 + 1)
         _pos_aa = _np.tile(self.pos_aa, (n_images, 1, 1))
-        _vel_aa = _np.tile(self.vel_au * constants.t_fs2au * constants.l_au2aa,
+        _vel_aa = _np.tile(self.vel_au * constants.v_au2aaperfs,
                            (n_images, 1, 1))
         _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
 

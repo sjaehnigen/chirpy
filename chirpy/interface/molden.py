@@ -69,9 +69,10 @@ def read_moldenvib_file(filename):
     return symbols, coords_aa, freqs, modes
 
 
-def write_moldenvib_file(filename, symbols, coords, freqs, modes):
+def write_moldenvib_file(filename, symbols, coords_aa, freqs, modes):
     n_modes = freqs.shape[0]
     n_atoms = len(symbols)
+    coords = coords_aa*constants.l_aa2au
     format = '%15f'*3
     format += '\n'
     f = open(filename, 'w')

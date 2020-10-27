@@ -60,7 +60,8 @@ def cpmdReader(FN, **kwargs):
       '''
 
     if 'filetype' not in kwargs:
-        kwargs['filetype'] = FN
+        # --- try guess
+        kwargs['filetype'] = FN.split('/')[-1]
     filetype = kwargs.get('filetype')
 
     if any([_f in filetype for _f in [

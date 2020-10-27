@@ -75,7 +75,8 @@ class TestBinaries(unittest.TestCase):
         self.assertTrue(filecmp.cmp('out.xyz',
                                     self.dir + '/trajectory.xyz',
                                     shallow=False),
-                        'Trajectory reproduced incorrectly (see out.xyz)'
+                        f'Trajectory {self.dir}/trajectory.xyz reproduced '
+                        f'incorrectly in out.xyz'
                         )
         os.remove('out.xyz')
 

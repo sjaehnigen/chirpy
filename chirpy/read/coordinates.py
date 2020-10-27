@@ -48,7 +48,7 @@ from ..physics import constants
 def _xyz(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
-    units = kwargs.get('units')
+    convert = kwargs.get('convert', 1.)
     n_lines = kwargs.get('n_lines')
     _atomnumber = int(next(frame).strip())
 
@@ -62,12 +62,13 @@ def _xyz(frame, **kwargs):
     if len(data) != n_lines - 2:
         raise ValueError('broken or incomplete file')
 
-    return np.array(data).astype(float), symbols, comment
+    return np.array(data).astype(float)*convert, symbols, comment
 
 
 def _cpmd(frame, **kwargs):
     '''Kernel for processing cpmd frame.'''
 
+    convert = kwargs.get('convert', 1.)
     n_lines = kwargs.get('n_lines')
     filetype = kwargs.get('filetype')
     # --- is this a python bug?
@@ -85,20 +86,21 @@ def _cpmd(frame, **kwargs):
     if 'GEOMETRY' in filetype:
         _data = np.array(data).astype(float)
 
-    elif any([f in filetype for f in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS',
-                                      'MOL']]):
+    elif filetype in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']:
         _data = np.array(data).astype(float)[:, 1:]
 
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
-    _data[:, :3] *= constants.l_au2aa
-    return _data
+    # --- convert positions
+    # _data[:, :3] *= constants.l_au2aa
+    return _data*convert
 
 
 def _arc(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
+    convert = kwargs.get('convert', 1.)
     n_lines = kwargs.get('n_lines')
     _head = next(frame).strip().split()
     _atomnumber = int(_head[0])
@@ -125,12 +127,24 @@ def _arc(frame, **kwargs):
     if len(data) != n_lines - 1:
         raise ValueError('broken or incomplete file')
 
-    return np.array(data).astype(float), symbols, numbers, types,\
+    return np.array(data).astype(float)*convert, symbols, numbers, types,\
         connectivity, comment
 
 
-# --- iterators
+# --- unit parser for iterators
 
+def _convert(units):
+    if isinstance(units, list):
+        convert = np.array([constants.get_conversion_factor(_i, _j)
+                            for _i, _j in units])
+    elif isinstance(units, tuple):
+        convert = constants.get_conversion_factor(*units)
+    else:
+        raise ValueError('invalid units')
+    return convert
+
+
+# --- iterators
 
 def xyzIterator(FN, **kwargs):
     '''Iterator for xyzReader
@@ -144,6 +158,11 @@ def xyzIterator(FN, **kwargs):
     if 'CPMD' in _comment or 'GEOMETRY' in FN:
         warnings.warn('It seems as if you are reading an XYZ file generated '
                       'by CPMD. Check velocity units!', stacklevel=2)
+        if 'units' not in kwargs:
+            kwargs['units'] = 3*[('length', 'aa')]+3*[('velocity', 'aa')]
+
+    if (units := kwargs.pop('units', 'default')) != 'default':
+        kwargs['convert'] = _convert(units)
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)
@@ -157,12 +176,26 @@ def cpmdIterator(FN, **kwargs):
     _kernel = _cpmd
     symbols = kwargs.pop('symbols', None)
     if 'filetype' not in kwargs:
-        kwargs['filetype'] = FN
+        # --- try guess
+        if (_F := FN.split('/')[-1]) == 'MOL':
+            kwargs['filetype'] = 'MOMENTS'
+        else:
+            kwargs['filetype'] = _F
 
     if symbols is None:
         _nlines = 1
     else:
         _nlines = len([_k for _k in symbols])  # type-independent
+
+    # --- units
+    if (units := kwargs.pop('units', 'default')) != 'default':
+        kwargs['convert'] = _convert(units)
+    elif kwargs['filetype'] in ['TRAJECTORY', 'GEOMETRY']:
+        kwargs['convert'] = _convert(3*[('length', 'au')] +
+                                     3*[('velocity', 'au')])
+    elif kwargs['filetype'] == 'MOMENTS':
+        kwargs['convert'] = _convert(3*[('length', 'au')] +
+                                     6*[('velocity', 'au')])
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)
@@ -177,12 +210,14 @@ def arcIterator(FN, **kwargs):
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip().split()[0]) + 1
 
+    if (units := kwargs.pop('units', 'default')) != 'default':
+        kwargs['convert'] = _convert(units)
+
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)
 
 
 # --- complete readers
-
 
 def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once.
@@ -203,8 +238,8 @@ def arcReader(FN, **kwargs):
     return np.array(data), symbols[0], numbers[0], types[0], connectivity[0],\
         list(comments)
 
-# ------ external readers
 
+# ------ external readers
 
 def pdbIterator(FN):
     '''Iterator for pdbReader relying on MDAnalysis
