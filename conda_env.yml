@@ -16,7 +16,7 @@ dependencies:
   - pycifrw=4.4.*
   - python=3.8.*
   - scipy=1.5.*
-      - pip:
+  - pip:
     - concurrent-iterator==0.2.*
     - pyqt5==5.15.*
 
