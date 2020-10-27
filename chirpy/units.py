@@ -40,6 +40,8 @@ _warnings.warn('amu = atomic mass unit', stacklevel=2)
 _warnings.warn('Modules in physics expect atomic units for all variables. '
                'Make sure to convert input before calling the methods!',
                stacklevel=2)
+_warnings.warn('Derived units follow the unit convention rigorously.',
+               stacklevel=2)
 
 # --- atomic units
 velocities = 'au'

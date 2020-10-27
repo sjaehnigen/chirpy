@@ -48,16 +48,18 @@ from ..physics import constants
 def _xyz(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
+    units = kwargs.get('units')
+    n_lines = kwargs.get('n_lines')
     _atomnumber = int(next(frame).strip())
 
-    if kwargs.get('n_lines') != _atomnumber + 2:
+    if n_lines != _atomnumber + 2:
         raise ValueError('inconsistent XYZ file')
 
     comment = next(frame).rstrip('\n')
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
-    if len(data) != kwargs.get("n_lines") - 2:
+    if len(data) != n_lines - 2:
         raise ValueError('broken or incomplete file')
 
     return np.array(data).astype(float), symbols, comment
@@ -66,6 +68,7 @@ def _xyz(frame, **kwargs):
 def _cpmd(frame, **kwargs):
     '''Kernel for processing cpmd frame.'''
 
+    n_lines = kwargs.get('n_lines')
     filetype = kwargs.get('filetype')
     # --- is this a python bug?
     # --- generator needs at least one call of next() to work properly
@@ -76,7 +79,7 @@ def _cpmd(frame, **kwargs):
         _l = _l.strip().split()
         data.append(_l)
 
-    if len(data) != kwargs.get("n_lines"):
+    if len(data) != n_lines:
         raise ValueError('Tried to read broken or incomplete file!')
 
     if 'GEOMETRY' in filetype:
@@ -96,11 +99,12 @@ def _cpmd(frame, **kwargs):
 def _arc(frame, **kwargs):
     '''Kernel for processing xyz frame.'''
 
+    n_lines = kwargs.get('n_lines')
     _head = next(frame).strip().split()
     _atomnumber = int(_head[0])
     comment = ' '.join(_head[1:])
 
-    if kwargs.get('n_lines') != _atomnumber + 1:
+    if n_lines != _atomnumber + 1:
         raise ValueError('inconsistent XYZ file')
 
     # --- FORTRAN conversion of numbers; we read single items, choosing broad
@@ -118,7 +122,7 @@ def _arc(frame, **kwargs):
     # --- flatten
     types = tuple([_it for _t in types for _it in _t])
 
-    if len(data) != kwargs.get("n_lines") - 1:
+    if len(data) != n_lines - 1:
         raise ValueError('broken or incomplete file')
 
     return np.array(data).astype(float), symbols, numbers, types,\
