@@ -1,6 +1,7 @@
 pythonbase
 __pycache__
-*pyc
-*swp
+*py[cod]
 *~
+*.bak
+*.sw[a-z]
 !.gitignore
