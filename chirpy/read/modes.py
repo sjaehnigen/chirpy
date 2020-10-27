@@ -35,7 +35,11 @@ import warnings as _warnings
 from ..physics import constants
 
 
-def xvibsReader(fn, **kwargs):
+def xvibsReader(fn, au=False, mw=False):
+    '''Read an XVIBS file containing Cartesian displacements in angstrom.
+       au=True/mw=True change convention by expecting atomic units and/or
+       mass-weighted displacements, respectively
+       '''
     with open(fn, 'r') as f:
         inbuffer = f.read()
     pos_natoms = inbuffer.index('NATOMS')
@@ -65,10 +69,6 @@ def xvibsReader(fn, **kwargs):
         modes[i] = np.array([float(e) for e in tmp])
     modes = modes.reshape((n_modes, n_atoms, 3))
 
-    # --- mw should be convention be False!
-    mw = kwargs.get('mw', False)
-    # --- assume atomic units in file (should be False!)
-    au = kwargs.get('au', False)
     if mw:
         _warnings.warn('Convention violation: '
                        'Assuming mass-weighted coordinates.',

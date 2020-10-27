@@ -43,12 +43,13 @@ from ..physics import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.analysis import divrot
+from ..topology import mapping
 from ..visualise import print_info
 
 
 class ScalarField(_CORE):
     def __init__(self, *args, **kwargs):
-
+        self._print_info = [print_info.print_cell]
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
                             % self.__class__.__name__)
@@ -63,7 +64,7 @@ class ScalarField(_CORE):
 
             self._fmt = fmt
             if fmt == "cube":
-                data, self.origin_au, self.cell_vec_au, pos_au, self.numbers, \
+                data, self.origin_aa, self.cell_vec_aa, pos_aa, self.numbers, \
                     comments = cubeReader(fn, **kwargs)
                 if data.shape[0] > 1:
                     _warnings.warn(
@@ -71,15 +72,15 @@ class ScalarField(_CORE):
                         stacklevel=2)
                 # No support of multiple frames for now
                 self.data = data[0]
-                self.pos_au = pos_au[0]
+                self.pos_aa = pos_aa[0]
                 self.comments = comments[0]
 
             elif fmt == 'npy':
                 test = ScalarField.from_data(data=_np.load(fn), **kwargs)
                 self.comments = test.comments
-                self.origin_au = test.origin_au
-                self.cell_vec_au = test.cell_vec_au
-                self.pos_au = test.pos_au
+                self.origin_aa = test.origin_aa
+                self.cell_vec_aa = test.cell_vec_aa
+                self.pos_aa = test.pos_aa
                 self.numbers = test.numbers
                 self.data = test.data
 
@@ -104,48 +105,47 @@ class ScalarField(_CORE):
             self = self.sparse(sparse)
 
     def _sync_class(self):
+        # --- backward compatibility to version < 0.17.1
+        for _a in ['pos', 'cell_vec', 'origin']:
+            self._print_info = [print_info.print_cell]
+            if not hasattr(self, _a+'_aa') and hasattr(self, _a+'_au'):
+                _warnings.warn('Since version 0.17.1. the default length unit '
+                               'in ChirPy is '
+                               f'angstrom. \'{_a}_au\' is an '
+                               'outdated attribute and should no longer be '
+                               f'used; use \'{_a}_aa\' instead.',
+                               FutureWarning, stacklevel=2)
+                setattr(self, _a+'_aa',
+                        getattr(self, _a+'_au')*constants.l_au2aa)
+                delattr(self, _a+'_au')
+
         self.n_x = self.data.shape[-3]
         self.n_y = self.data.shape[-2]
         self.n_z = self.data.shape[-1]
         try:
-            self.n_atoms = self.pos_au.shape[0]
+            self.n_atoms = self.pos_aa.shape[0]
             if self.n_atoms != len(self.numbers):
                 raise ValueError('List of atom positions and numbers do '
                                  'not match: %d, %d'
                                  % (self.n_atoms, len(self.numbers)))
 
             self.symbols = constants.numbers_to_symbols(self.numbers)
-            self.voxel = _np.dot(self.cell_vec_au[0],
-                                 _np.cross(self.cell_vec_au[1],
-                                           self.cell_vec_au[2]))
+            self.voxel = _np.dot(self.cell_vec_aa[0],
+                                 _np.cross(self.cell_vec_aa[1],
+                                           self.cell_vec_aa[2]))
+            self.cell_aa_deg = mapping.get_cell_l_deg(
+                                     self.cell_vec_aa,
+                                     multiply=self.data.shape[-3:]
+                                     )
         except AttributeError:
             pass
-
-    def print_info(self):
-        print_info.print_header(self)
-        print(' x '.join(map('{:d}'.format, self.data.shape[-3:])))
-        print('%d Atoms' % self.n_atoms)
-        # print('\n'.join(self.comments))
-        print('\n')
-        print(77 * '–')
-        print('Origin (a.u.)'
-              + ' '.join(map('{:10.5f}'.format, self.origin_au)))
-        print(77 * '-')
-        print(' grid vector (A) (a.u.) '
-              + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[0])))
-        print(' grid vector (B) (a.u.) '
-              + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[1])))
-        print(' grid vector (C) (a.u.) '
-              + ' '.join(map('{:10.5f}'.format, self.cell_vec_au[2])))
-        print(77 * '–')
-        print('')
 
     @classmethod
     def from_object(cls, obj, **kwargs):
         '''Use kwargs to transfer new attribute values'''
         nargs = extract_keys(_copy.deepcopy(vars(obj)),
-                             data=None, cell_vec_au=None,
-                             origin_au=None, pos_au=None, numbers=None)
+                             data=None, cell_vec_aa=None,
+                             origin_aa=None, pos_aa=None, numbers=None)
         nargs.update(kwargs)
         return cls.from_data(**nargs)
 
@@ -154,18 +154,18 @@ class ScalarField(_CORE):
         return cls.from_data(data=domain.expand(), **kwargs)
 
     @classmethod
-    def from_data(cls, data, cell_vec_au,
-                  origin_au=None, pos_au=None, numbers=None):
+    def from_data(cls, data, cell_vec_aa,
+                  origin_aa=None, pos_aa=None, numbers=None):
         obj = cls.__new__(cls)
         # --- quick workaround to find out if vectorfield
         if data.shape[0] == 3:
             obj.comments = 3 * [('no_comment', 'no_comment')]
         else:
             obj.comments = ('no_comment', 'no_comment')
-        obj.origin_au = origin_au  # or _np.zeros((3))
-        obj.pos_au = pos_au  # or _np.zeros((0, 3))
+        obj.origin_aa = origin_aa  # or _np.zeros((3))
+        obj.pos_aa = pos_aa  # or _np.zeros((0, 3))
         obj.numbers = numbers  # or _np.zeros((0, ))
-        obj.cell_vec_au = cell_vec_au
+        obj.cell_vec_aa = cell_vec_aa
         obj.data = data
         # Check for optional data
         # for key, value in kwargs.items():
@@ -191,7 +191,7 @@ class ScalarField(_CORE):
                          ), -1, 0
                      )
         p_trans = other._rtransform(_np.moveaxis(new.pos_grid(), 0, -1)
-                                    - other.origin_au)
+                                    - other.origin_aa)
         i_values = _np.moveaxis(
                      _np.moveaxis(
                          _np.moveaxis(
@@ -225,8 +225,8 @@ class ScalarField(_CORE):
                 )][0]
 
         err_keys = [
-                'origin_au',
-                'cell_vec_au',
+                'origin_aa',
+                'cell_vec_aa',
                 'voxel',
                 ]
         wrn_keys = [
@@ -304,13 +304,13 @@ class ScalarField(_CORE):
 
     def _rtransform(self, p):
         '''transform position (relative to origin) into grid index'''
-        return ceb(_copy.deepcopy(p), self.cell_vec_au)
+        return ceb(_copy.deepcopy(p), self.cell_vec_aa)
 
     def _ltransform(self, i):
         '''transform grid index into position'''
         return _np.einsum('ni, ji -> nj',
                           _copy.deepcopy(i),
-                          self.cell_vec_au
+                          self.cell_vec_aa
                           )
 
     def ind_grid(self):
@@ -328,7 +328,7 @@ class ScalarField(_CORE):
         return _np.einsum(
                 'inmo, ji -> jnmo',
                 pos_grid,
-                self.cell_vec_au) + self.origin_au[:, None, None, None]
+                self.cell_vec_aa) + self.origin_aa[:, None, None, None]
 
     def sparse(self, sp, dims='xyz'):
         '''Returns a new object with sparse grid according to sp (integer).'''
@@ -339,7 +339,7 @@ class ScalarField(_CORE):
             new.data = _np.moveaxis(_np.moveaxis(new.data, _i, 0)[::sp],
                                     0,
                                     _i)
-            new.cell_vec_au[_i] *= sp
+            new.cell_vec_aa[_i] *= sp
 
         if 'x' in dims:
             _apply(-3)
@@ -362,8 +362,8 @@ class ScalarField(_CORE):
                                         )[_r[0]:_r[1]],
                                      0,
                                      _i)
-            self.origin_au = _copy.deepcopy(
-                    self.origin_au + self._ltransform(
+            self.origin_aa = _copy.deepcopy(
+                    self.origin_aa + self._ltransform(
                         _np.roll(_np.array([[1.0, 0.0, 0.0]]), _i) * _r[0])[0]
                     )
 
@@ -404,16 +404,17 @@ class ScalarField(_CORE):
 
         return tuple(r)
 
-    def rotate(self, R, rotate_grid=False, rot_origin_au=None):
+    def rotate(self, R, rotate_grid=False, rot_origin_aa=None):
         '''Rotate entire object including atomic positions either by
            interpolation of data keeping grid points and cell vectors
            unchanged (default: rotate_grid=False), or by rotating cell
            vectors and origin (rotate_grid=True).
            R ... rotation matrix of shape (3, 3)
            '''
-        _o = rot_origin_au or self.origin_au
+        if (_o := rot_origin_aa) is None:
+            _o = self.origin_aa
 
-        self.pos_au = rotate_vector(self.pos_au, R, origin=_o)
+        self.pos_aa = rotate_vector(self.pos_aa, R, origin=_o)
 
         if not rotate_grid:
             self.data = rotate_griddata(self.pos_grid(), self.data, R,
@@ -422,8 +423,8 @@ class ScalarField(_CORE):
         else:
             _warnings.warn('Rotating grid may lead to problems with the '
                            'Gaussian Cube format convention!', stacklevel=2)
-            self.cell_vec_au = rotate_vector(self.cell_vec_au, R)
-            self.origin_au = rotate_vector(self.origin_au, R, origin=_o)
+            self.cell_vec_aa = rotate_vector(self.cell_vec_aa, R)
+            self.origin_aa = rotate_vector(self.origin_aa, R, origin=_o)
 
     def write(self, fn, **kwargs):
         fmt = kwargs.get('fmt', fn.split('.')[-1])
@@ -433,8 +434,8 @@ class ScalarField(_CORE):
                               'Attribute %s not (yet) part of object!' % attr)
         if fmt == "cube":
             comments = kwargs.get('comments', self.comments)
-            pos_au = kwargs.get('pos_au', self.pos_au)
-            n_atoms = pos_au.shape[0]
+            pos_aa = kwargs.get('pos_aa', self.pos_aa)
+            n_atoms = pos_aa.shape[0]
             numbers = kwargs.get('numbers', self.numbers)
             # insert routine to get numbers from symbols: in derived class
             # constants.symbols_to_numbers(symbols)
@@ -444,16 +445,17 @@ class ScalarField(_CORE):
             cubeWriter(fn,
                        comments,
                        numbers,
-                       pos_au,
-                       self.cell_vec_au,
+                       pos_aa,
+                       self.cell_vec_aa,
                        data,
-                       origin_au=self.origin_au)
+                       origin_aa=self.origin_aa)
         else:
             raise ValueError('Unknown format (Not implemented).')
 
 
 class VectorField(ScalarField):
     def __init__(self, *args, **kwargs):
+        self._print_info = [print_info.print_cell]
         if len(args) not in [0, 1, 3]:
             raise TypeError(
                     "File reader of %s takes only 0, 1, or 3 arguments!"
@@ -486,9 +488,9 @@ class VectorField(ScalarField):
             self.comments = _np.array([x.comments, y.comments, z.comments])
             self.data = _np.array([x.data, y.data, z.data])
             for _a in [
-                    'origin_au',
-                    'cell_vec_au',
-                    'pos_au',
+                    'origin_aa',
+                    'cell_vec_aa',
+                    'pos_aa',
                     'n_atoms',
                     'numbers',
                     'voxel',
@@ -529,7 +531,12 @@ class VectorField(ScalarField):
                     ext_p0=None,
                     ext_v=None,
                     ):
-        '''pn...starting points of shape (n_points, 3)'''
+        '''Compute streamlines from given starting points (pn) in angstrom.
+           This routine does not convert the unit of the vector field data,
+           but expects for velocities
+           <pn unit (always angstrom)> per <timestep unit (usually fs)>.
+           pn...starting points of shape (n_points, 3)
+           '''
         def get_value(p):
             return self._rtransform(_interpn(points,
                                              values,
@@ -564,7 +571,7 @@ class VectorField(ScalarField):
         ext_t = list()
 
         if backward:
-            pn = self._rtransform(_copy.deepcopy(p0) - self.origin_au)
+            pn = self._rtransform(_copy.deepcopy(p0) - self.origin_aa)
             vn = get_value(pn.swapaxes(0, 1))
             traj.append(_np.concatenate((self._ltransform(pn),
                                          self._ltransform(vn)),
@@ -596,7 +603,7 @@ class VectorField(ScalarField):
                     ext_t = ext_t[::-1]
 
         if forward:
-            pn = self._rtransform(_copy.deepcopy(p0) - self.origin_au)
+            pn = self._rtransform(_copy.deepcopy(p0) - self.origin_aa)
             vn = get_value(pn.swapaxes(0, 1))
             traj.append(_np.concatenate((self._ltransform(pn),
                                          self._ltransform(vn)),
@@ -621,7 +628,7 @@ class VectorField(ScalarField):
 
         result = {}
         result['streamlines'] = _np.array(traj)
-        result['streamlines'][:, :, :3] += self.origin_au
+        result['streamlines'][:, :, :3] += self.origin_aa
         if ext:
             result['particles'] = _np.array(ext_t)
 
@@ -632,30 +639,30 @@ class VectorField(ScalarField):
         pass
 
     @staticmethod
-    def _helmholtz_components(data, cell_vec_au):
-        div, rot = divrot(data, cell_vec_au)
-        V = _k_potential(div, _np.array(cell_vec_au))[1]/(4*_np.pi)
-        A1 = _k_potential(rot[0], _np.array(cell_vec_au))[1]
-        A2 = _k_potential(rot[1], _np.array(cell_vec_au))[1]
-        A3 = _k_potential(rot[2], _np.array(cell_vec_au))[1]
+    def _helmholtz_components(data, cell_vec_aa):
+        div, rot = divrot(data, cell_vec_aa)
+        V = _k_potential(div, _np.array(cell_vec_aa))[1]/(4*_np.pi)
+        A1 = _k_potential(rot[0], _np.array(cell_vec_aa))[1]
+        A2 = _k_potential(rot[1], _np.array(cell_vec_aa))[1]
+        A3 = _k_potential(rot[2], _np.array(cell_vec_aa))[1]
         A = _np.array([A1, A2, A3])/(4*_np.pi)
         irrotational_field = -_np.array(_np.gradient(V,
-                                                     cell_vec_au[0][0],
-                                                     cell_vec_au[1][1],
-                                                     cell_vec_au[2][2]))
-        solenoidal_field = divrot(A, cell_vec_au)[1]
+                                                     cell_vec_aa[0][0],
+                                                     cell_vec_aa[1][1],
+                                                     cell_vec_aa[2][2]))
+        solenoidal_field = divrot(A, cell_vec_aa)[1]
 
         return irrotational_field, solenoidal_field, div, rot
 
     def divergence_and_rotation(self):
-        self.div, self.rot = divrot(self.data, self.cell_vec_au)
+        self.div, self.rot = divrot(self.data, self.cell_vec_aa)
 
     def helmholtz_decomposition(self):
         irr = self.__class__.from_object(self)
         sol = self.__class__.from_object(self)
         hom = self.__class__.from_object(self)
         irr.data, sol.data, div, rot = self._helmholtz_components(
-                                                   self.data, self.cell_vec_au)
+                                                   self.data, self.cell_vec_aa)
 
         self.div = ScalarField(self, data=div)
         self.rot = VectorField(self, data=rot)
@@ -671,31 +678,31 @@ class VectorField(ScalarField):
         attr = kwargs.get('attribute', 'data')
         if fmt == "cube":
             comments = kwargs.get('comments', self.comments)
-            pos_au = kwargs.get('pos_au', self.pos_au)
+            pos_aa = kwargs.get('pos_aa', self.pos_aa)
             numbers = kwargs.get('numbers', self.numbers)
-            cell_vec_au = kwargs.get('cell_vec_au', self.cell_vec_au)
-            origin_au = kwargs.get('origin_au', self.origin_au)
+            cell_vec_aa = kwargs.get('cell_vec_aa', self.cell_vec_aa)
+            origin_aa = kwargs.get('origin_aa', self.origin_aa)
             data = getattr(self, attr)
             cubeWriter(fn1,
                        comments[0],
                        numbers,
-                       pos_au,
-                       cell_vec_au,
+                       pos_aa,
+                       cell_vec_aa,
                        data[0],
-                       origin_au=origin_au)
+                       origin_aa=origin_aa)
             cubeWriter(fn2,
                        comments[1],
                        numbers,
-                       pos_au,
-                       cell_vec_au,
+                       pos_aa,
+                       cell_vec_aa,
                        data[1],
-                       origin_au=origin_au)
+                       origin_aa=origin_aa)
             cubeWriter(fn3,
                        comments[2],
                        numbers,
-                       pos_au,
-                       cell_vec_au,
+                       pos_aa,
+                       cell_vec_aa,
                        data[2],
-                       origin_au=origin_au)
+                       origin_aa=origin_aa)
         else:
             raise ValueError(f'Unknown format {fmt}.')

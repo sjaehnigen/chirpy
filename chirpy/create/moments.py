@@ -34,6 +34,7 @@ import copy as _copy
 from ..classes import _CORE
 from ..topology import mapping
 from ..physics import classical_electrodynamics as ed
+from ..physics import constants
 
 
 class OriginGauge(_CORE):
@@ -43,50 +44,53 @@ class OriginGauge(_CORE):
        the following order ("CPMD 4.1 convention"; see MOMENTS.style):
            origin, current dipole moment, magnetic dipole moment
 
-       It is recommended that all data is in atomic units.
+       All data is in atomic units (position input in angstrom).
        '''
     def __init__(self, moments, cell=None):
         if (_name := moments.__class__.__name__) not in ['MOMENTS',
                                                          'MOMENTSFrame']:
             raise TypeError(f'unsupported object: {_name}')
 
-        self.r = moments.data[:, :3]
-        self.c = moments.data[:, 3:6]
-        self.m = moments.data[:, 6:9]
-        self.cell = cell
+        self.r_au = moments.data[:, :3] * constants.l_aa2au
+        self.c_au = moments.data[:, 3:6]
+        self.m_au = moments.data[:, 6:9]
+        self.cell_au_deg = _copy.deepcopy(cell)
+        self.cell_au_deg[:3] *= constants.l_aa2au
         # --- heavy-atom gauge (not implemented)
         self.hag = False
 
     def __add__(self, other):
-        if not _np.allclose(self.cell, other.cell):
+        if not _np.allclose(self.cell_au_deg, other.cell_au_deg):
             raise ValueError('the objects do not agree in cell')
         new = _copy.deepcopy(self)
 
-        new.r = _np.concatenate((self.r, other.r))
-        new.c = _np.concatenate((self.c, other.c))
-        new.m = _np.concatenate((self.m, other.m))
+        new.r_au = _np.concatenate((self.r_au, other.r_au))
+        new.c_au = _np.concatenate((self.c_au, other.c_au))
+        new.m_au = _np.concatenate((self.m_au, other.m_au))
 
         return new
 
     def switch_origin_gauge(self, origins, assignment, number_of_types=None):
-        if (_n_origins := len(origins)) > len(self.r):
+        '''origins in angstrom'''
+        if (_n_o := len(origins)) > len(self.r_au):
             raise ValueError('new number of origins cannot be greater than '
                              'the old one (assignment failure)')
         # --- decompose according to assignment
         _rd, _cd, _md = map(
                 lambda x: mapping.dec(x, assignment, n_ind=number_of_types),
-                [self.r, self.c, self.m]
+                [self.r_au, self.c_au, self.m_au]
                 )
 
         # --- process gauge-dependent properties
         # --- --- magnetic dipole
-        _md_p = [ed.switch_magnetic_origin_gauge(_c, _m, _r, _o,
-                                                 cell_au_deg=self.cell)
+        _md_p = [ed.switch_magnetic_origin_gauge(_c, _m, _r,
+                                                 _o*constants.l_aa2au,
+                                                 cell_au_deg=self.cell_au_deg)
                  for _o, _r, _c, _m in zip(origins, _rd, _cd, _md)]
         # --- --- electric dipole
         # --- --- multipole
 
         # --- sum contributions
-        self.r = origins
-        self.c = _np.array([_cd[_i].sum(axis=0) for _i in range(_n_origins)])
-        self.m = _np.array([_md_p[_i].sum(axis=0) for _i in range(_n_origins)])
+        self.r_au = origins
+        self.c_au = _np.array([_cd[_i].sum(axis=0) for _i in range(_n_o)])
+        self.m_au = _np.array([_md_p[_i].sum(axis=0) for _i in range(_n_o)])

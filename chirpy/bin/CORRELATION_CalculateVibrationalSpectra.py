@@ -187,7 +187,6 @@ def main():
                       axis=-1
                       )
 
-    _cutoff = args.cutoff * constants.l_aa2au
     if args.cell_aa_deg is not None:
         _cell = np.array(args.cell_aa_deg)
         _cell[:3] *= constants.l_aa2au
@@ -204,13 +203,13 @@ def main():
     for origin in origins:
         _tmp = spectroscopy._spectrum_from_tcf(
                                     _c, _m,
-                                    positions=_p,
+                                    positions=_p*constants.l_aa2au,
                                     mode='abs_cd',
                                     ts=args.ts * constants.femto,
                                     flt_pow=args.filter_strength,
                                     # --- example
-                                    origin=origin,
-                                    cutoff=_cutoff,
+                                    origin=origin*constants.l_aa2au,
+                                    cutoff=args.cutoff*constants.l_aa2au,
                                     cell_au_deg=_cell
                                     )
 

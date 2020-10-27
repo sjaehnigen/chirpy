@@ -44,6 +44,7 @@ from ..physics.classical_electrodynamics import coulomb as _coulomb
 from ..physics.classical_electrodynamics import coulomb_grid as _coulomb_grid
 from ..physics.classical_electrodynamics import coulomb_kspace \
         as _coulomb_kspace
+from ..physics import constants
 from ..topology.grid import regularisation as _regularisation
 
 
@@ -62,7 +63,12 @@ class MagneticField(_VectorField):
         charge = kwargs.get('charge', -1)
         if kwargs.get('kspace', False):
             _sys.stdout.flush()
-            B1 = _biot_savart_kspace(j.data, j.cell_au, j.voxel)
+            # B1 = _biot_savart_kspace(j.data, j.cell_vec_aa, j.voxel) \
+            #     * constants.l_aa2au**4
+            # --- equivalent to:
+            B1 = _biot_savart_kspace(j.data,
+                                     j.cell_vec_aa*constants.l_aa2au,
+                                     j.voxel*constants.l_aa2au**3)
 
         else:
             # ---
@@ -71,7 +77,10 @@ class MagneticField(_VectorField):
 
             # --- Some definitions
             def _parallel_f(R, B, n):
-                B[n] = _biot_savart_grid(R, j.data, j.pos_grid(), j.voxel)
+                B[n] = _biot_savart_grid(R*constants.l_aa2au,
+                                         j.data,
+                                         j.pos_grid()*constants.l_aa2au,
+                                         j.voxel*constants.l_aa2au**3)
 
             def _collect():
                 for _ip in range(_npoints):
@@ -79,8 +88,8 @@ class MagneticField(_VectorField):
                     del result_dict[_ip]
 
             # --- Get R
-            R = kwargs.get('R', j.pos_grid())
-            _npoints = _np.prod(R.shape[1:])
+            R_aa = kwargs.get('R_aa', j.pos_grid())
+            _npoints = _np.prod(R_aa.shape[1:])
 
             if verbose:
                 print("No. of grid points: %d" % _npoints)
@@ -88,7 +97,7 @@ class MagneticField(_VectorField):
                 print('Calculating B field on %d core(s)...' % nprocs)
 
             # --- Init
-            B1 = _np.zeros_like(R)
+            B1 = _np.zeros_like(R_aa)
             # --- Start parallel process
             _n = 0
             manager = Manager()
@@ -101,7 +110,7 @@ class MagneticField(_VectorField):
                     _sys.stdout.flush()
                 _p = Process(
                         target=_parallel_f,
-                        args=(cls._read_vec(R, _ip), result_dict, _ip)
+                        args=(cls._read_vec(R_aa, _ip), result_dict, _ip)
                         )
                 jobs.append(_p)
                 _p.start()
@@ -118,12 +127,12 @@ class MagneticField(_VectorField):
             B1 *= charge
             if verbose:
                 print("Done.           ")
-        nargs = vars(j)
-        nargs.update({'data': B1})
-        return cls.from_data(**nargs)
+
+        return cls.from_object(j, data=B1)
 
     @classmethod
     def from_moving_point_charges(cls, P_au, V_au, Q, **kwargs):
+        # --- ToDo: change units to angstrom, TEST
         '''
         P_au/V_au...positions velocities (N,3)
         Q...charge (in e)
@@ -187,7 +196,9 @@ class ElectricField(_VectorField):
         charge = kwargs.get('charge', -1)
         if kwargs.get('kspace', False):
             _sys.stdout.flush()
-            E1 = _coulomb_kspace(rho.data, rho.cell_au, rho.voxel)
+            E1 = _coulomb_kspace(rho.data,
+                                 rho.cell_vec_aa*constants.l_aa2au,
+                                 rho.voxel*constants.l_aa2au**3)
 
         else:
             # ---
@@ -195,7 +206,10 @@ class ElectricField(_VectorField):
 
             # --- Some definitions
             def _parallel_f(R, E, n):
-                E[n] = _coulomb_grid(R, rho.data, rho.pos_grid(), rho.voxel)
+                E[n] = _coulomb_grid(R*constants.l_aa2au,
+                                     rho.data,
+                                     rho.pos_grid()*constants.l_aa2au,
+                                     rho.voxel*constants.l_aa2au**3)
 
             def _collect():
                 for _ip in range(_npoints):
@@ -203,15 +217,15 @@ class ElectricField(_VectorField):
                     del result_dict[_ip]
 
             # --- Get R
-            R = kwargs.get('R', rho.pos_grid())
-            _npoints = _np.prod(R.shape[1:])
+            R_aa = kwargs.get('R_aa', rho.pos_grid())
+            _npoints = _np.prod(R_aa.shape[1:])
             if verbose:
                 print("No. of grid points: %d" % _npoints)
             if verbose:
                 print('Calculating E field on %d core(s)...' % nprocs)
 
             # --- Init
-            E1 = _np.zeros_like(R)
+            E1 = _np.zeros_like(R_aa)
             # --- Start parallel process
             _n = 0
             manager = Manager()
@@ -224,7 +238,7 @@ class ElectricField(_VectorField):
                     _sys.stdout.flush()
                 _p = Process(
                         target=_parallel_f,
-                        args=(cls._read_vec(R, _ip), result_dict, _ip)
+                        args=(cls._read_vec(R_aa, _ip), result_dict, _ip)
                         )
                 jobs.append(_p)
                 _p.start()
@@ -241,14 +255,14 @@ class ElectricField(_VectorField):
             E1 *= charge
             if verbose:
                 print("Done.           ")
-        nargs = vars(rho)
-        nargs.update({'data': E1})
-        return cls.from_data(**nargs)
+
+        return cls.from_object(rho, data=E1)
 
     @classmethod
     def from_point_charges(cls, P_au, Q, **kwargs):
+        # --- ToDo: change units to angstrom, TEST
         '''
-        P_au...positions velocities (N,3)
+        P_au...positions (N,3)
         Q...charges (N) (in e)
         R...of shape (3, n_positions)
         '''

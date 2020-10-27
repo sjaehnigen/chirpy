@@ -49,7 +49,8 @@ class TestBinaries(unittest.TestCase):
         self.assertTrue(filecmp.cmp('TEST',
                                     self.dir + '/MOL',
                                     shallow=False),
-                        'Molecular moments reproduced incorrectly (see TEST)'
+                        f'Molecular moments {self.dir}/MOL reproduced '
+                        f'incorrectly in TEST'
                         )
         os.remove('TEST')
 
@@ -90,7 +91,7 @@ class TestBinaries(unittest.TestCase):
                       'va_spectrum.dat', 'vcd_spectrum.dat']:
             self.assertTrue(
                filecmp.cmp(_file, self.dir + '/' + _file, shallow=False),
-               f'Spectrum/TCF reproduced incorrectly: {self.dir + "/" +_file})'
-               )
+               f'Spectrum/TCF reproduced incorrectly: {self.dir + "/" +_file}'
+               f' in {_file}.')
             os.remove(_file)
     # def test_correlation_power(self):

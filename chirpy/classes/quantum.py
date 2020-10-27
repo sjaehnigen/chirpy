@@ -161,16 +161,16 @@ class ElectronDensity(_ScalarField):
                     _np.argmin(
                         _np.linalg.norm(
                             pos_grid -
-                            self.pos_au[iatom, :, None, None, None],
+                            self.pos_aa[iatom, :, None, None, None],
                             axis=0)), self.data.shape)
             jatom = _np.argmax(basin[ind])
             aim_atoms.append(AIMAtom(
                                 basin[:, :, :, jatom],
                                 comments=self.comments,
                                 numbers=[self.numbers[iatom]],
-                                pos_au=self.pos_au[iatom].reshape((1, 3)),
-                                cell_vec_au=self.cell_vec_au,
-                                origin_au=self.origin_au
+                                pos_aa=self.pos_aa[iatom].reshape((1, 3)),
+                                cell_vec_aa=self.cell_vec_aa,
+                                origin_aa=self.origin_aa
                                 ))
         self.aim_atoms = _np.array(aim_atoms)
 
@@ -183,6 +183,7 @@ class ElectronDensity(_ScalarField):
 class AIMAtom(_Domain3D):
     def __init__(self, basin, **transfer):
         '''Use transfer dict to hand over metadata (e.g. for cube output)'''
+        self._print_info = []
         self.__dict__.update(transfer)
         self.grid_shape = basin.shape
         self.indices = _np.where(basin != 0)

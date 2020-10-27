@@ -38,6 +38,8 @@ import fortranformat as ff
 
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
+
+from ..physics import constants
 # close_neighbours
 
 
@@ -78,14 +80,17 @@ def _cpmd(frame, **kwargs):
         raise ValueError('Tried to read broken or incomplete file!')
 
     if 'GEOMETRY' in filetype:
-        return np.array(data).astype(float)
+        _data = np.array(data).astype(float)
 
     elif any([f in filetype for f in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS',
                                       'MOL']]):
-        return np.array(data).astype(float)[:, 1:]
+        _data = np.array(data).astype(float)[:, 1:]
 
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
+
+    _data[:, :3] *= constants.l_au2aa
+    return _data
 
 
 def _arc(frame, **kwargs):
@@ -249,7 +254,7 @@ def pdbReader(FN, **kwargs):
 
 def cifReader(fn):
     '''Read CIF file and return a filled unit cell.
-       BETA'''
+       '''
     def _measurement2float(number):
         def _convert(st):
             return float(st.replace('(', '').replace(')', ''))

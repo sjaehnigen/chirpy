@@ -149,22 +149,22 @@ class TestGrid(unittest.TestCase):
         pass
 
     def test_cubeWriter(self):
-        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+        data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                 r_grid.cubeReader(self.dir + '/test-1.cube')
         w_grid.cubeWriter(self.dir + '/out.cube',
                           comments[0],
                           numbers,
-                          pos_au[0],
-                          cell_vec_au,
+                          pos_aa[0],
+                          cell_vec_aa,
                           data[0],
-                          origin_au=origin_au)
-        data2, origin_au2, cell_vec_au2, pos_au2, numbers2, comments2 = \
+                          origin_aa=origin_aa)
+        data2, origin_aa2, cell_vec_aa2, pos_aa2, numbers2, comments2 = \
             r_grid.cubeReader(self.dir + '/out.cube')
 
         self.assertTrue(np.array_equal(data, data2))
-        self.assertTrue(np.array_equal(origin_au, origin_au2))
-        self.assertTrue(np.array_equal(cell_vec_au, cell_vec_au2))
-        self.assertTrue(np.array_equal(pos_au, pos_au2))
+        self.assertTrue(np.array_equal(origin_aa, origin_aa2))
+        self.assertTrue(np.array_equal(cell_vec_aa, cell_vec_aa2))
+        self.assertTrue(np.array_equal(pos_aa, pos_aa2))
         self.assertTupleEqual(numbers, numbers2)
         self.assertListEqual(comments, comments2)
         os.remove(self.dir + "/out.cube")

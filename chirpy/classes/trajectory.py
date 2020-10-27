@@ -512,15 +512,15 @@ class _XYZ():
                                                     )
 
             elif fmt in ["cube", "cub"]:
-                data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+                data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                         cubeReader(fn, **_extract_keys(kwargs, bz2=False))
                 _dims = data.shape[1:]
                 del data
                 # --- ToDo: to be discussed: adding origin
-                data = (pos_au + origin_au) * constants.l_au2aa
+                data = (pos_aa + origin_aa)
                 symbols = constants.numbers_to_symbols(numbers)
                 cell_aa_deg = mapping.get_cell_l_deg(
-                        cell_vec_au * constants.l_au2aa,
+                        cell_vec_aa,
                         multiply=_dims
                         )
 
@@ -590,8 +590,6 @@ class _XYZ():
                 if 'symbols' in data_dict:
                     symbols = data_dict['symbols']
                     data = data_dict['data']
-                    data[:, :, :3] *= constants.l_au2aa
-
                     comments = data_dict['comments']
                 else:
                     raise ValueError('File %s does not contain atom '
@@ -616,7 +614,7 @@ class _XYZ():
                     if 'modes' in data_dict:
                         modes = data_dict['modes']
                         n_modes = modes.shape[0]
-                        pos_aa = data_dict['pos_au'] * constants.l_au2aa
+                        pos_aa = data_dict['pos_aa']
                         omega_cgs = data_dict['omega_cgs']
                         comments = _np.array(omega_cgs).astype(str)
                         data = _np.concatenate((
@@ -643,7 +641,7 @@ class _XYZ():
                     symbols = data_dict['symbols']
                     if 'modes' in data_dict:
                         modes = data_dict['modes']
-                        pos_aa = data_dict['coords']  # * constants.l_au2aa
+                        pos_aa = data_dict['pos_aa']
                         n_modes = modes.shape[0]
                         n_atoms = pos_aa.shape[0]
                         modes = modes.reshape((n_modes, n_atoms, 3))
@@ -1216,7 +1214,7 @@ class _MOMENTS():
             raise NotImplementedError('ChirPy supports only the CPMD 4.1 '
                                       'convention as moments style')
 
-        self.cell_au_deg = kwargs.get('cell_au_deg')
+        self.cell_aa_deg = kwargs.get('cell_aa_deg')
 
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
@@ -1246,7 +1244,6 @@ class _MOMENTS():
                                                                     bz2=False,
                                                                     )
                                                     )
-                data[:, :, :3] *= constants.l_aa2au
 
             elif fmt == "cpmd" or any([_t in fn for _t in [
                                      'MOMENTS']]):
@@ -1283,8 +1280,8 @@ class _MOMENTS():
                 raise TypeError('%s needs file or data argument!' %
                                 self.__class__.__name__)
 
-        if self.cell_au_deg is None:
-            self.cell_au_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+        if self.cell_aa_deg is None:
+            self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
         comments = list(comments)
         if self._type == 'frame':
@@ -1298,12 +1295,12 @@ class _MOMENTS():
         self._sync_class()
 
     def _sync_class(self):
-        self._pos_au()
+        self._pos_aa()
         self._c_au()
         self._m_au()
         if self.m_au.size == 0:
-            self.m_au = _np.zeros_like(self.pos_au)
-        # self.cell_au_deg = _np.array(self.cell_au_deg)
+            self.m_au = _np.zeros_like(self.pos_aa)
+        # self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')
@@ -1321,20 +1318,20 @@ class _MOMENTS():
         else:
             raise ValueError('Unknown format: %s.' % fmt)
 
-    def _pos_au(self, *args):
+    def _pos_aa(self, *args):
         if len(args) == 0:
-            self.pos_au = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+            self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
         elif len(args) == 1:
-            if args[0].shape != self.pos_au.shape:
+            if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
             _tmp = self.data.swapaxes(0, -1)
             _tmp[:3] = args[0].swapaxes(0, -1)
             self.data = _tmp.swapaxes(0, -1)
-            self._pos_au()
+            self._pos_aa()
         else:
             raise TypeError('Too many arguments for %s!'
-                            % self._pos_au.__name__)
+                            % self._pos_aa.__name__)
 
     def _c_au(self, *args):
         '''Current dipole moments'''
@@ -1410,17 +1407,17 @@ class MOMENTSFrame(_MOMENTS, _FRAME):
     @classmethod
     def from_classical_nuclei(cls, obj, **kwargs):
         '''Convert XYZFrame into _MOMENTS'''
-        _pos = obj.data[:, :3] * constants.l_aa2au
+        _pos = obj.data[:, :3]
         _vel = obj.data[:, 3:6]
         ZV = _np.array(constants.symbols_to_valence_charges(obj.symbols))
         _c = _current_dipole_moment(_vel, ZV)
         _m = _np.zeros_like(_c)
 
         return cls(
-                data=_np.concatenate((_pos, _c, _m), axis=-1),
-                symbols=obj.symbols,
-                **kwargs
-                )
+               data=_np.concatenate((_pos, _c, _m), axis=-1),
+               symbols=obj.symbols,
+               **kwargs
+               )
 
 
 class XYZ(_XYZ, _ITERATOR, _FRAME):
@@ -1527,7 +1524,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     }
 
         if self._fmt == 'cpmd':
-            frame[:, :3] *= constants.l_au2aa
             out = {
                     'data': frame,
                     'symbols': self._topology.symbols,

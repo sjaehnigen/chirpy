@@ -32,6 +32,8 @@
 import numpy as np
 import warnings
 
+from ..physics import constants
+
 
 def orcaReader(fn):
     '''Reads ORCA 4.3 files. Currently supported:
@@ -107,7 +109,7 @@ def read_hessian_file(fn):
 
     data = {}
     data['symbols'] = symbols
-    data['pos_au'] = pos_au
+    data['pos_aa'] = pos_au * constants.l_au2aa
     data['omega_cgs'] = omega_cgs
     data['modes'] = modes_res
     data['T'] = spec[:, 2:]  # in sqrt(km/mol)

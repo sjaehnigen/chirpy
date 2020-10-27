@@ -40,6 +40,8 @@ def print_header(obj):
 
 
 def print_cell(obj):
+    if not hasattr(obj, 'cell_aa_deg'):
+        return
     print(77 * '–')
     print('CELL ' + ' '.join(map('{:10.5f}'.format, obj.cell_aa_deg)))
     print(f'{detect_lattice(obj.cell_aa_deg)}'.upper())

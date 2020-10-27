@@ -93,8 +93,7 @@ def g09Reader(filename, run=1):
                 tmp = tmp[1:]
             coords.append([float(e) for e in tmp])
         coords = np.array(coords)
-        # --- ToDo: change key to pos_aa / pos_au
-        properties['coords'] = coords
+        properties['pos_aa'] = coords
         properties['symbols'] = symbols
         properties['n_atoms'] = len(symbols)
         return properties
@@ -119,6 +118,7 @@ def g09Reader(filename, run=1):
                 ind = col * (col + 1) // 2 + row
                 hessian[col][row] = tmp[ind]
                 hessian[row][col] = tmp[ind]
+        # --- ToDo: Check what is the unit of Hessian in G09 (assume Eh/aa**2)
         properties['hessian'] = hessian
         return properties
 
@@ -148,9 +148,9 @@ def g09Reader(filename, run=1):
                 in_coords_aa.append([
                     float(e) for e in line.strip().split(',')[2:]])
             in_coords_aa = np.array(in_coords_aa)
-            properties['in_coords_aa'] = in_coords_aa
+            properties['in_pos_aa'] = in_coords_aa
     else:
-        properties['in_coords_aa'] = properties['coords']
+        properties['in_pos_aa'] = properties['pos_aa']
 
     pos1 = inbuffer.rfind('- Thermochemistry -')
     pos2 = inbuffer.rfind('Molecular mass')
@@ -161,9 +161,9 @@ def g09Reader(filename, run=1):
         properties['masses'].append(float(line.split()[-1]))
 
     pos1 = inbuffer.rfind('Standard orientation:')
-    properties['std_coords'] = np.zeros((n_atoms, 3))
+    properties['std_pos_aa'] = np.zeros((n_atoms, 3))
     for i, line in enumerate(inbuffer[pos1:].split('\n')[5:n_atoms+5]):
-        properties['std_coords'][i] = np.array(
+        properties['std_pos_aa'][i] = np.array(
                 [float(e) for e in line.strip().split()[-3:]])
 
     # --- post-processing
@@ -250,11 +250,8 @@ def read_g09_md(filename, masses):
         energies = np.array(energies)
         pos = frames[:, :, :3]*constants.l_au2aa
         vel = frames[:, :, 3:]*constants.t_au  # /np.sqrt(constants.m_amu_au)
-        # atomic_mass_unit = 1822.88848367 #*constants.m_p_si)
         for i_at in range(n_atoms):
             vel[:, i_at, :] /= np.sqrt(masses[i_at])
-            # np.sqrt(atomic_mass_unit)*constants.t_fs2au
-            # *1E-12 # sqrt(amu)*bohr/sec to a.u.
     return pos, vel, energies
 
 
@@ -356,7 +353,7 @@ def LorentzianConvolution(x, freqs, inten, w):
 
 
 def calculate_normal_modes(n_atoms, masses, coords, hessian,
-                         p_tra=True, p_rot=True):
+                           p_tra=True, p_rot=True):
     sder, cmc = Projection(n_atoms, masses, coords, hessian, p_tra, p_rot)
     e_vec, e_val, mwe_vec = diagonalize_dynamical_matrix(n_atoms, masses, sder)
     omit = (int(p_tra) + int(p_rot)) * 3

@@ -138,7 +138,7 @@ def cpmdReader(FN, **kwargs):
 def cpmdWriter(fn, data, append=False, **kwargs):
     '''Writes a CPMD TRAJECTORY or MOMENTS file including the frame column.
        Expects data of shape (n_frames, n_atoms, n_fields) in
-       atomic units.
+       atomic units or angstrom (positions).
 
        Accepts frame=<int> or frames=<list> as optional frame info.
 
@@ -167,15 +167,20 @@ def cpmdWriter(fn, data, append=False, **kwargs):
 
     with open(fn, mode) as f:
         for fr, _d in zip(frames, data):
+            _d[:, :3] *= constants.l_aa2au
             for _dd in _d:
-                line = '%7d  ' % fr + '  '.join(map('{:22.14f}'.format, _dd))
+                line = '%7d  ' % fr \
+                    + '  '.join(map('{:22.14f}'.format,
+                                _dd[:3]*constants.l_aa2au)) + '  '\
+                    + '  '.join(map('{:22.14f}'.format, _dd[3:]))
+
                 f.write(line+'\n')
 
     if bool_atoms and mode != 'a':
         symbols = kwargs.pop('symbols', ())
         if data.shape[1] != len(symbols):
             raise ValueError('symbols and positions are not consistent!',
-                             data.shape[1], symbols)
+                             symbols, data.shape[1])
         if sorted(symbols) != list(symbols):
             raise ValueError('CPMD requires sorted data!')
 
@@ -276,7 +281,8 @@ _cpmd_keyword_logic = {
         'CG-FACTOR': ([], float),
         'NMR': (['NOVIRT', 'PSI0', 'CURRENT'], None),
         'MAGNETIC': (['VERBOSE'], None),
-        'VOA': (['AT', 'MD', 'CURRENT', 'ORBITALS', 'DENSITY', 'HALFMESH'], None),
+        'VOA': (['AT', 'MD', 'CURRENT', 'ORBITALS', 'DENSITY', 'HALFMESH'],
+                None),
         'EPR': ([], [str, str]),
         'POLAK': ([], None),
     },
@@ -508,7 +514,10 @@ class CPMDinput():
             return out
 
         @classmethod
-        def from_data(cls, symbols, pos_au, pp='MT_BLYP KLEINMAN-BYLANDER'):
+        def from_data(cls, symbols, pos_aa, pp='MT_BLYP KLEINMAN-BYLANDER'):
+            warnings.warn('version 0.17.1 and later require position input in '
+                          'angstrom!', stacklevel=2)
+            pos_au = pos_aa * constants.l_aa2au
             elements = sorted(set(symbols))
             symbols = np.array(symbols)
 
@@ -651,6 +660,8 @@ class CPMDjob():
         _L = []
 
         if hasattr(self, 'TRAJECTORY'):
+            warnings.warn('using obsolete TRAJECTORY: verifiy units of '
+                          'positions!')
             _getlist = [
                         self.get_positions(),
                         self.get_kinds(),

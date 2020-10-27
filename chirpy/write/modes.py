@@ -30,6 +30,8 @@
 
 
 def xvibsWriter(filename, n_atoms, numbers, pos_aa, freqs, modes):
+    '''Write an XVIBS file with Cartesian displacements in angstrom'''
+
     obuffer = '&XVIB\n NATOMS\n %d\n COORDINATES\n' % n_atoms
     for n, r in zip(numbers, pos_aa):
         obuffer += ' %d  %16.12f  %16.12f  %16.12f\n' % tuple([n] + list(r))

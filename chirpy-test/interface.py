@@ -35,6 +35,7 @@ import warnings
 import filecmp
 
 from chirpy.interface import cpmd
+from chirpy.physics import constants
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
@@ -55,9 +56,12 @@ class TestCPMD(unittest.TestCase):
                                    filetype=_i,
                                    symbols=['X']*_n[1])['data']
 
-            self.assertTrue(np.array_equal(
+            data[:, :, :3] *= constants.l_aa2au
+
+            self.assertTrue(np.allclose(
                 data,
-                np.genfromtxt(self.dir + '/data_' + _i).reshape(_n)
+                np.genfromtxt(self.dir + '/data_' + _i).reshape(_n),
+                atol=0.0
                 ))
 
         # Some Negatives
@@ -74,9 +78,11 @@ class TestCPMD(unittest.TestCase):
                                symbols=['X']*_n[1],
                                range=(2, 3, 8),
                                )['data']
-        self.assertTrue(np.array_equal(
+        data[:, :, :3] *= constants.l_aa2au
+        self.assertTrue(np.allclose(
             data,
-            np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3]
+            np.genfromtxt(self.dir + '/data_TRAJECTORY').reshape(_n)[2:8:3],
+            atol=0
             ))
 
     def test_cpmdWriter(self):
@@ -97,7 +103,7 @@ class TestCPMD(unittest.TestCase):
                                     symbols=cpmd.cpmd_kinds_from_file(self.dir
                                                                       + '/OUT')
                                     )['data']
-        self.assertTrue(np.array_equal(data, data2))
+        self.assertTrue(np.allclose(data, data2, atol=0.0))
         os.remove(self.dir + "/OUT")
 
     def test_cpmdjob(self):

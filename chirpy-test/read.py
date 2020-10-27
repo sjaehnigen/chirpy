@@ -416,12 +416,12 @@ class TestGrid(unittest.TestCase):
         pass
 
     def test_cubeReader(self):
-        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+        data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                 r_grid.cubeReader(self.dir + '/test-1.cube')
         self.assertIsInstance(data, np.ndarray)
-        self.assertIsInstance(origin_au, np.ndarray)
-        self.assertIsInstance(cell_vec_au, np.ndarray)
-        self.assertIsInstance(pos_au, np.ndarray)
+        self.assertIsInstance(origin_aa, np.ndarray)
+        self.assertIsInstance(cell_vec_aa, np.ndarray)
+        self.assertIsInstance(pos_aa, np.ndarray)
         self.assertIsInstance(comments, list)
         [self.assertIsInstance(_c, tuple) for _c in comments]
         self.assertTupleEqual(
@@ -432,15 +432,18 @@ class TestGrid(unittest.TestCase):
             data,
             np.genfromtxt(self.dir + '/data_volume_1').reshape(1, 6, 6, 6)
             ))
+        self.assertListEqual((origin_aa*constants.l_aa2au).tolist(),
+                             [-10.507273, -8.971296, -12.268080]
+                             )
 
-        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+        data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
             r_grid.cubeReader(self.dir + '/test-2.cube')
         self.assertTupleEqual(data.shape, (1, 10, 10, 10))
-        data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+        data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
             r_grid.cubeReader(self.dir + '/test-4.cube')
         self.assertTupleEqual(data.shape, (2, 6, 6, 6))
 
         # Some Negatives
         with self.assertRaises(ValueError):
-            data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+            data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                     r_grid.cubeReader(self.dir + '/test-3.cube')

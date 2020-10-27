@@ -129,7 +129,7 @@ class VMDPaths():
         if verbose:
             print(f"Seeding {_p.shape[-1]} points.")
 
-        pos_au = obj.streamlines(
+        pos_aa = obj.streamlines(
                     _p.T,
                     sparse=1,  # sparsity of interpolation
                     forward=True,
@@ -138,7 +138,7 @@ class VMDPaths():
                     timestep=scale
                     )['streamlines'][:, :, :3]
 
-        return cls(pos_au*constants.l_au2aa, auto_smooth=False)
+        return cls(pos_aa, auto_smooth=False)
 
     @staticmethod
     def _draw_bit(p0, p1, tool='line', options='', overlap=0.0):

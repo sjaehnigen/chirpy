@@ -173,7 +173,10 @@ class _CORE():
         print(77 * '–')
         print('')
 
-        for _func in self.print_info:
+        if not hasattr(self, '_print_info'):
+            return
+
+        for _func in self._print_info:
             _func(self)
 
 
@@ -409,6 +412,9 @@ _attributes = {
             'cell_vec_au',
             'origin_au',
             'pos_au',
+            'cell_vec_aa',
+            'origin_aa',
+            'pos_aa',
             'numbers',
             'comments'
             ],
@@ -417,6 +423,9 @@ _attributes = {
             'cell_vec_au',
             'origin_au',
             'pos_au',
+            'cell_vec_aa',
+            'origin_aa',
+            'pos_aa',
             'numbers',
             'comments'
             ],
@@ -443,10 +452,11 @@ def convert_object(source, target):
 
     obj = target.__new__(target)
     for attr in _attributes[target.__name__]:
-        value = getattr(src, attr)
-        if value is None:
-            raise AttributeError(f'{source} does not contain the {attr} '
-                                 'attribute!')
-        setattr(obj, attr, value)
+        try:
+            value = getattr(src, attr)
+            setattr(obj, attr, value)
+        except AttributeError:
+            warnings.warn(f'{source} object has no attribute \'{attr}\'',
+                          RuntimeWarning, stacklevel=2)
 
     return obj

@@ -99,7 +99,7 @@ def main():
     n_map = np.array(_traj.mol_map)
 
     _cell = _traj.cell_aa_deg
-    _cell[:3] *= constants.l_aa2au
+    # _cell[:3] *= constants.l_aa2au
 
     for _iframe, (_p_fr, _m_fr) in enumerate(zip(_traj.XYZ, _moms_e)):
         # --- generate classical nuclear moments
@@ -110,7 +110,8 @@ def main():
 
         # --- load Wannier data and get nearest atom assignment
         gauge_e = OriginGauge(_moms_e, cell=_cell)
-        e_map = n_map[mapping.nearest_neighbour(gauge_e.r, gauge_n.r,
+        e_map = n_map[mapping.nearest_neighbour(gauge_e.r_au*constants.l_au2aa,
+                                                gauge_n.r_au*constants.l_au2aa,
                                                 cell=_cell)]
 
         # --- combine nuclear and electronic contributions
@@ -118,7 +119,7 @@ def main():
         assignment = np.concatenate((e_map, n_map))
 
         # --- switch to molecular origins
-        _com = _traj.XYZ.mol_com_aa * constants.l_aa2au
+        _com = _traj.XYZ.mol_com_aa  # * constants.l_aa2au
         gauge.switch_origin_gauge(_com, assignment)
 
         # --- write output
@@ -128,7 +129,9 @@ def main():
 
         cpmd.cpmdWriter(
                  args.f,
-                 np.array([np.concatenate((_com, gauge.c, gauge.m), axis=-1)]),
+                 np.array([np.concatenate((gauge.r_au*constants.l_au2aa,
+                                           gauge.c_au,
+                                           gauge.m_au), axis=-1)]),
                  frame=_iframe,
                  append=append,
                  write_atoms=False)

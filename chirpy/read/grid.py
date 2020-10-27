@@ -31,8 +31,9 @@
 
 import numpy as np
 from itertools import islice
-from .generators import _reader, _open
 from concurrent_iterator.process import Producer
+from .generators import _reader, _open
+from ..physics import constants
 
 
 def _cube(frame, **kwargs):
@@ -73,7 +74,8 @@ def _cube(frame, **kwargs):
     except ValueError:
         raise ValueError('Tried to read broken or incomplete file!')
 
-    return data, origin_au, cell_vec_au, pos_au, numbers, comments
+    return data, origin_au*constants.l_au2aa, cell_vec_au*constants.l_au2aa, \
+        pos_au*constants.l_au2aa, numbers, comments
 
 
 def cubeIterator(FN, **kwargs):
@@ -100,8 +102,8 @@ def cubeIterator(FN, **kwargs):
 
 def cubeReader(FN, **kwargs):
     '''Read complete XYZ file at once'''
-    data, origin_au, cell_vec_au, pos_au, numbers, comments = \
+    data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
         zip(*cubeIterator(FN, **kwargs))
 
-    return np.array(data), origin_au[0], cell_vec_au[0],\
-        np.array(pos_au), numbers[0], list(comments)
+    return np.array(data), origin_aa[0], cell_vec_aa[0],\
+        np.array(pos_aa), numbers[0], list(comments)
