@@ -1250,7 +1250,7 @@ class _MOMENTS():
                 fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn, **kwargs)
+                        'symbols': cpmd_kinds_from_file(fn)
                         })
                 data_dict = cpmdReader(fn, **kwargs)
                 self._data_dict = data_dict
@@ -1455,7 +1455,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn, **kwargs)
+                        'symbols': cpmd_kinds_from_file(fn)
                         })
                 self._gen = _cpmdIterator(fn, **kwargs)
 
@@ -1689,7 +1689,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                         _warnings.filterwarnings('ignore',
                                                  category=UserWarning)
                         kwargs.update({
-                            'symbols': cpmd_kinds_from_file(fn, **kwargs)
+                            'symbols': cpmd_kinds_from_file(fn)
                             })
                 self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
 

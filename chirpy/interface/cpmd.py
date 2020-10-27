@@ -220,7 +220,7 @@ def write_atomic_tensor(at_filename, atomic_tensor):
                                              atomic_tensor[i, j]))
 
 
-def cpmd_kinds_from_file(fn, **kwargs):
+def cpmd_kinds_from_file(fn):
     '''Accepts MOMENTS or TRAJECTORY file and returns the number
        of lines per frame, based on analysis of the first frame'''
 

@@ -43,9 +43,10 @@ def g09Reader(filename, run=1):
         inbuffer = f.read()
     archives = inbuffer.count('Normal termination of Gaussian')
     if archives == 0:
-        raise ValueError('No normal termination found!')
+        raise ValueError('found unnormal termination of Gaussian')
     if archives != run:
-        raise ValueError('Found %d runs instead of %d!' % (archives, run))
+        raise ValueError('found %d Gaussian runs instead of %d in file %s'
+                         % (archives, run, filename))
     positions = [0]
     for i in range(run):
         tmp = inbuffer.index('Normal termination of Gaussian', positions[-1]+1)
@@ -177,7 +178,7 @@ def g09Reader(filename, run=1):
         res = calculate_normal_modes(
                 properties['n_atoms'],
                 properties['masses'],
-                properties['coords'],
+                properties['pos_aa'],
                 properties['hessian'],
                 p_tra,
                 p_rot

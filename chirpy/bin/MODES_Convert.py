@@ -51,7 +51,8 @@ def main():
             )
     parser.add_argument(
             "--output_format",
-            help="Output file format (e.g. xvibs, molden, posvel; optional).",
+            help="Output file format (e.g. xvibs, molden, posvel (alias: xyz),\
+                  traj; optional).",
             default=None,
             )
     parser.add_argument(
