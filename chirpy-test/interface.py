@@ -33,6 +33,7 @@ import os
 import numpy as np
 import warnings
 import filecmp
+import copy
 
 from chirpy.interface import cpmd
 from chirpy.physics import constants
@@ -86,25 +87,36 @@ class TestCPMD(unittest.TestCase):
             ))
 
     def test_cpmdWriter(self):
-        data = cpmd.cpmdReader(self.dir + '/TRAJECTORY',
-                               filetype='TRAJECTORY',
-                               symbols=['X']*208)['data']
+        data_r = cpmd.cpmdReader(self.dir + '/TRAJECTORY',
+                                 filetype='TRAJECTORY',
+                                 symbols=['X']*208)['data']
 
-        cpmd.cpmdWriter(self.dir + '/OUT', data, write_atoms=False)
+        _outfile = 'OUT_cpmd_w'
+        # --- important in case writer manipulates input
+        data = copy.deepcopy(data_r)
         with self.assertRaises(ValueError):
             # --- sorted data
-            cpmd.cpmdWriter(self.dir + '/OUT', data, symbols=['X', 'Y']*104,
+            cpmd.cpmdWriter(_outfile, data, symbols=['X', 'Y']*104,
                             write_atoms=True)
+        cpmd.cpmdWriter(_outfile, data,
+                        frames=np.arange(data.shape[0]).astype(int)+1,
+                        write_atoms=False)
 
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=UserWarning)
-            data2 = cpmd.cpmdReader(self.dir + '/OUT',
+            data2 = cpmd.cpmdReader(_outfile,
                                     filetype='TRAJECTORY',
-                                    symbols=cpmd.cpmd_kinds_from_file(self.dir
-                                                                      + '/OUT')
+                                    symbols=cpmd.cpmd_kinds_from_file(_outfile)
                                     )['data']
-        self.assertTrue(np.allclose(data, data2, atol=0.0))
-        os.remove(self.dir + "/OUT")
+        self.assertTrue(np.allclose(data_r, data2, atol=0.0))
+        self.assertTrue(filecmp.cmp(_outfile,
+                                    self.dir + '/TRAJECTORY',
+                                    shallow=False),
+                        f'CPMD file {self.dir}/TRAJECTORY reproduced '
+                        f'incorrectly in {_outfile}'
+                        )
+
+        os.remove(_outfile)
 
     def test_cpmdjob(self):
         # --- insufficiently tested

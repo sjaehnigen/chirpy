@@ -138,7 +138,7 @@ def cpmdReader(FN, **kwargs):
 def cpmdWriter(fn, data, append=False, **kwargs):
     '''Writes a CPMD TRAJECTORY or MOMENTS file including the frame column.
        Expects data of shape (n_frames, n_atoms, n_fields) in
-       atomic units or angstrom (positions).
+       atomic units and angstrom (positions [col 0-2]).
 
        Accepts frame=<int> or frames=<list> as optional frame info.
 
@@ -167,7 +167,6 @@ def cpmdWriter(fn, data, append=False, **kwargs):
 
     with open(fn, mode) as f:
         for fr, _d in zip(frames, data):
-            _d[:, :3] *= constants.l_aa2au
             for _dd in _d:
                 line = '%7d  ' % fr \
                     + '  '.join(map('{:22.14f}'.format,

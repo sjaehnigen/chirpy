@@ -50,7 +50,7 @@ class TestBinaries(unittest.TestCase):
                                     self.dir + '/MOL',
                                     shallow=False),
                         f'Molecular moments {self.dir}/MOL reproduced '
-                        f'incorrectly in TEST'
+                        'incorrectly in TEST'
                         )
         os.remove('TEST')
 

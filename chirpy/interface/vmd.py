@@ -34,8 +34,6 @@ import copy
 
 from scipy.interpolate import UnivariateSpline
 
-from ..physics import constants
-
 
 class VMDPaths():
     def __init__(self, positions_aa, auto_smooth=True):
@@ -123,8 +121,6 @@ class VMDPaths():
                 obj.normalise(np.amax(np.linalg.norm(obj.data, axis=0)))
             elif normalise == 'local':
                 obj.normalise(axis=0)
-            # --- repeat scaling
-            obj.data *= constants.l_aa2au
 
         if verbose:
             print(f"Seeding {_p.shape[-1]} points.")

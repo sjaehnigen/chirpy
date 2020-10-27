@@ -75,11 +75,11 @@ class Sphere(_CORE):
            BETA
            '''
 
-        # NB: Manipulation of x is retained outside of this function!
-
         def get_d(orig, _pos):
             return np.linalg.norm(distance_pbc(orig, _pos, cell=cell), axis=-1)
 
+        # --- never manipulate input
+        _x = copy.deepcopy(x)
         keep = copy.deepcopy(x)
 
         if len(pos.shape) > 3:
@@ -96,9 +96,9 @@ class Sphere(_CORE):
                             (pos.shape, self.pos.shape))
 
         _slc = (slice(None),) * len(_d.shape) + (None,)
-        x *= self.edge(_d)[_slc]
+        _x *= self.edge(_d)[_slc]
 
         if inverse:
-            return keep - x
+            return keep - _x
         else:
-            return x
+            return _x

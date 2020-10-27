@@ -70,9 +70,11 @@ class OriginGauge(_CORE):
 
         return new
 
-    def switch_origin_gauge(self, origins, assignment, number_of_types=None):
+    def switch_origin_gauge(self, origins_aa, assignment,
+                            number_of_types=None):
         '''origins in angstrom'''
-        if (_n_o := len(origins)) > len(self.r_au):
+        origins_au = origins_aa * constants.l_aa2au
+        if (_n_o := len(origins_aa)) > len(self.r_au):
             raise ValueError('new number of origins cannot be greater than '
                              'the old one (assignment failure)')
         # --- decompose according to assignment
@@ -84,13 +86,13 @@ class OriginGauge(_CORE):
         # --- process gauge-dependent properties
         # --- --- magnetic dipole
         _md_p = [ed.switch_magnetic_origin_gauge(_c, _m, _r,
-                                                 _o*constants.l_aa2au,
+                                                 _o,
                                                  cell_au_deg=self.cell_au_deg)
-                 for _o, _r, _c, _m in zip(origins, _rd, _cd, _md)]
+                 for _o, _r, _c, _m in zip(origins_au, _rd, _cd, _md)]
         # --- --- electric dipole
         # --- --- multipole
 
         # --- sum contributions
-        self.r_au = origins
+        self.r_au = origins_au
         self.c_au = _np.array([_cd[_i].sum(axis=0) for _i in range(_n_o)])
         self.m_au = _np.array([_md_p[_i].sum(axis=0) for _i in range(_n_o)])
