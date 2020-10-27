@@ -134,9 +134,9 @@ def main():
                                                      args.density + ".cube"))
         kwargs.update({_k: getattr(_topo, _k)
                        for _k in ['comments',
-                                  'origin_au',
-                                  'cell_vec_au',
-                                  'pos_au',
+                                  'origin_aa',
+                                  'cell_vec_aa',
+                                  'pos_aa',
                                   'numbers']
                        })
     # ----------------------------------------------------------------------

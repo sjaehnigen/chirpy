@@ -193,7 +193,7 @@ def main():
         del rho
 
     j.helmholtz_decomposition()
-    j.data = j.solenoidal_field
+    j.data = j.solenoidal_field.data
     if args.j_crop is not None:
         j.crop(args.j_crop)
     j = j.sparse(args.j_sparse)
@@ -206,7 +206,7 @@ def main():
                                       numbers=j.numbers,
                                       fmt='cpmd',
                                       filetype='GEOMETRY')
-            if not np.allclose(j.pos_au, nuc.pos_aa*constants.l_aa2au):
+            if not np.allclose(j.pos_aa, nuc.pos_aa):
                 raise ValueError("The given cube files do not correspond to %s!" % args.geofile)
             # Compatibility warning: In CPMD xyz velocities are given in aa per t_au! Multiplication by l_aa2au compulsory!
             # Or use CPMD format
@@ -246,7 +246,7 @@ def main():
             smear_charges = True
 
         if args.mode == "atom":
-            R = j.pos_au.T
+            R = j.pos_aa.T
             smear_charges = False
     # else:
     #     R = np.array(args.r).T.astype(float)
@@ -259,7 +259,7 @@ def main():
     if not args.nuclei_only:
         B1 = field.MagneticField.from_current(
                 j,
-                R=R,
+                R_aa=R,
                 verbose=args.verbose,
                 nprocs=args.nprocs,
                 kspace=args.kspace,
@@ -267,7 +267,8 @@ def main():
 
     if not args.electrons_only:
         B2 = field.MagneticField.from_moving_point_charges(
-                j.pos_au,
+                # --- ToDo: units of from_moving_point_charges()
+                j.pos_aa * constants.l_aa2au,
                 vel_au,
                 Q,
                 R=R,
@@ -275,7 +276,7 @@ def main():
                 verbose=args.verbose,
                 nprocs=args.nprocs,
                 kspace=args.kspace,
-                **extract_keys(vars(j), cell_vec_au=None, origin_au=None, numbers=None, pos_au=None)
+                **extract_keys(vars(j), cell_vec_aa=None, origin_aa=None, numbers=None, pos_aa=None)
                 )
 
     _S.append(time.time())

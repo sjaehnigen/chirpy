@@ -181,13 +181,13 @@ def main():
 
     elif args.property == 'moments_c':
         traj = trajectory.MOMENTSFrame(args.fn, **largs)
-        paths = vmd.VMDPaths.from_vector(traj.pos_au*constants.l_au2aa,
+        paths = vmd.VMDPaths.from_vector(traj.pos_aa,
                                          traj.c_au*constants.v_au2aaperfs,
                                          scale=args.scale)
 
     elif args.property == 'moments_m':
         traj = trajectory.MOMENTSFrame(args.fn, **largs)
-        paths = vmd.VMDPaths.from_vector(traj.pos_au*constants.l_au2aa,
+        paths = vmd.VMDPaths.from_vector(traj.pos_aa,
                                          traj.m_au*constants.v_au2aaperfs,
                                          scale=args.scale)
 

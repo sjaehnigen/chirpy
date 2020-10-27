@@ -119,10 +119,9 @@ def main():
             )
     parser.add_argument(
             "--step",
-            help="Propagation time step in atomic units (41.341 a.u. \
-                  corresponds to 1 fs).",
+            help="Propagation time step in fs.",
             type=float,
-            default=41.341
+            default=1.0
             )
     parser.add_argument(
             "--direction",
@@ -186,15 +185,15 @@ def main():
         _part = trajectory.XYZFrame(args.particles)
         export_args.update({
                 'external_object': True,
-                'ext_p0': copy.deepcopy(_part.pos_aa * constants.l_aa2au),
-                'ext_v': copy.deepcopy(_part.vel_au),
+                'ext_pos_aa': copy.deepcopy(_part.pos_aa),
+                'ext_vel_au': copy.deepcopy(_part.vel_au),
                 })
     export_args.update({
                 "sparse": args.sparse,
                 "forward": args.direction in ["forward", "both"],
                 "backward": args.direction in ["backward", "both"],
                 "length": args.length,
-                "timestep": args.step
+                "timestep_fs": args.step
                 })
 
     # --- generate streamlines
@@ -215,14 +214,12 @@ def main():
     _stem = args.f
 
     # --- convert positions to angstrom (velocities in a.u.!)
-    traj[:, :, :3] *= constants.l_au2aa
     trajectory._XYZTrajectory(
                              data=traj,
                              symbols=traj.shape[1]*['C'],
                              comments=traj.shape[0]*['C']
                              ).write(_stem + '.xyz')
     if args.particles is not None:
-        atoms[:, :, :3] *= constants.l_au2aa
         trajectory._XYZTrajectory(
                              data=atoms,
                              symbols=_part.symbols,

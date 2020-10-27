@@ -184,7 +184,7 @@ class TestSpectroscopy(unittest.TestCase):
         ts = 2
         POW = spectroscopy.power_from_tcf(
                                   _load.vel_au,
-                                  ts=ts,
+                                  ts_au=ts,
                                   weights=_load.masses_amu*constants.m_amu_au,
                                   average_atoms=False,
                                   cc_mode='A',

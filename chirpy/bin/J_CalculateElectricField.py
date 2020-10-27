@@ -42,10 +42,6 @@ from chirpy import extract_keys
 
 
 def main():
-    if int(np.version.version.split('.')[1]) < 14:
-        print('ERROR: You have to use a numpy version >= 1.14.0! You are using %s.'%np.version.version)
-        sys.exit(1)
-
     parser=argparse.ArgumentParser(
         description="Calculate the electric field from an electron and nuclear charge density.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -186,11 +182,11 @@ def main():
         try:
             nuc = trajectory.XYZFrame(args.geofile, numbers=rho.numbers, fmt='cpmd',
                     filetype='GEOMETRY')
-            if not np.allclose(rho.pos_au, nuc.pos_aa*constants.l_aa2au):
+            if not np.allclose(rho.pos_aa, nuc.pos_aa):
                 raise ValueError("The given cube files do not correspond to %s!" % args.geofile)
             #Compatibility warning: In CPMD xyz velocities are given in aa per t_au! Multiplication by l_aa2au compulsory!
             #Or use CPMD format
-            pos_au = rho.pos_au
+            pos_aa = rho.pos_aa * constants.l_aa2au
             if args.use_valence_charges:
                 _key = "valence_charges"
             else:
@@ -199,7 +195,7 @@ def main():
             print('Nuclear Positions/Charges')
             print(77 * '–')
             print( '%4s '%'#' + ' '.join( "%12s" % _s for _s in ['p_x', 'p_y', 'p_z', 'Q']))
-            for _i, (_v, _q) in enumerate(zip(pos_au, Q)):
+            for _i, (_v, _q) in enumerate(zip(pos_aa, Q)):
                 print( '%4d '%_i
                     + ' '.join(map('{:12.5g}'.format, _v)) + ' '
                     + '{:12.5g}'.format(_q)
@@ -223,7 +219,7 @@ def main():
            smear_charges = True
 
        if args.mode == "atom":
-           R = rho.pos_au.T
+           R = rho.pos_aa.T
            smear_charges = False
     #else:
     #    R = np.array(args.r).T.astype(float)
@@ -236,7 +232,7 @@ def main():
     if not args.nuclei_only:
         E1 = field.ElectricField.from_charge_density(
                 rho,
-                R=R,
+                R_aa=R,
                 verbose=args.verbose,
                 nprocs=args.nprocs,
                 kspace=args.kspace,
@@ -244,14 +240,15 @@ def main():
 
     if not args.electrons_only:
         E2 = field.ElectricField.from_point_charges(
-                pos_au,
+                # --- ToDo: units of from_point_charges()
+                pos_aa * constants.l_aa2au,
                 Q,
                 R=R,
                 verbose=args.verbose,
                 nprocs=args.nprocs,
                 kspace=args.kspace,
                 smear_charges = smear_charges,
-                **extract_keys(vars(rho), cell_vec_au=None, origin_au=None, numbers=None, pos_au=None)
+                **extract_keys(vars(rho), cell_vec_aa=None, origin_aa=None, numbers=None, pos_aa=None)
                 )
 
     _S.append(time.time())

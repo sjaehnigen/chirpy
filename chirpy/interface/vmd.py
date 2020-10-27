@@ -131,7 +131,7 @@ class VMDPaths():
                     forward=True,
                     backward=True,
                     length=length,
-                    timestep=scale
+                    timestep_fs=scale
                     )['streamlines'][:, :, :3]
 
         return cls(pos_aa, auto_smooth=False)

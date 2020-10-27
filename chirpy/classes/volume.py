@@ -521,21 +521,24 @@ class VectorField(ScalarField):
         raise NotImplementedError(
                 'Use the ScalarField method for each component!')
 
-    def streamlines(self, p0,
+    def streamlines(self, starting_points_aa,
                     sparse=4,
                     forward=True,
                     backward=True,
                     length=400,
-                    timestep=0.5,
+                    timestep_fs=0.5,
                     external_object=False,
-                    ext_p0=None,
-                    ext_v=None,
+                    ext_pos_aa=None,
+                    ext_vel_au=None,
+                    # unit_vel='au',
                     ):
-        '''Compute streamlines from given starting points (pn) in angstrom.
-           This routine does not convert the unit of the vector field data,
-           but expects for velocities
-           <pn unit (always angstrom)> per <timestep unit (usually fs)>.
-           pn...starting points of shape (n_points, 3)
+        '''Compute streamlines from given starting points.
+
+           vector field data and velocities in "velocity atomic units"
+           timestep in fs
+
+           starting_points_aa ... array of shape (n_points, 3) in angstrom
+           Output velocities are in atomic units.
            '''
         def get_value(p):
             return self._rtransform(_interpn(points,
@@ -545,20 +548,32 @@ class VectorField(ScalarField):
                                              bounds_error=False,
                                              fill_value=None))
 
-        dt = timestep
+        # --- Todo: Centralise
+        # if unit_vel == 'au':
+        _uv = constants.v_au2aaperfs
+        # else:
+        #     raise NotImplementedError('Does not support velocity unit other'
+        #                              'than \'au\'')
+
+        p0 = _copy.deepcopy(starting_points_aa)
+        dt = timestep_fs
         ext = external_object
         if ext:
-            if any([ext_p0 is None, ext_v is None]):
+            if any([ext_pos_aa is None, ext_vel_au is None]):
                 _warnings.warn('Missing external object for set keyword! '
                                'Please give ext_p and ext_v.',
                                RuntimeWarning, stacklevel=2)
                 ext = False
 
-            if ext_p0.shape != ext_v.shape:
+            if ext_pos_aa.shape != ext_vel_au.shape:
                 _warnings.warn('External object with inconsistent ext_p and '
                                'ext_v! Skippping.',
                                RuntimeWarning, stacklevel=2)
                 ext = False
+
+        if ext:
+            ext_p0 = _copy.deepcopy(ext_pos_aa)
+            ext_v = _copy.deepcopy(ext_vel_au)
 
         v_field = self.data[:, ::sparse, ::sparse, ::sparse]
 
@@ -583,13 +598,13 @@ class VectorField(ScalarField):
                                              axis=-1))
 
             for t in range(length):
-                pn -= vn * dt
+                pn -= vn * _uv * dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((self._ltransform(pn),
                                              self._ltransform(vn)),
                                             axis=-1))
                 if ext:
-                    ext_p -= ext_v * dt
+                    ext_p -= ext_v * _uv * dt
                     ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
                                                   _copy.deepcopy(ext_v)),
                                                  axis=-1))
@@ -615,13 +630,13 @@ class VectorField(ScalarField):
                                              axis=-1))
 
             for t in range(length):
-                pn += vn * dt
+                pn += vn * _uv * dt
                 vn = get_value(pn.swapaxes(0, 1))
                 traj.append(_np.concatenate((self._ltransform(pn),
                                              self._ltransform(vn)),
                                             axis=-1))
                 if ext:
-                    ext_p += ext_v * dt
+                    ext_p += ext_v * _uv * dt
                     ext_t.append(_np.concatenate((_copy.deepcopy(ext_p),
                                                   _copy.deepcopy(ext_v)),
                                                  axis=-1))

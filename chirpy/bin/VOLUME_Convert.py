@@ -52,6 +52,11 @@ def main():
             default=False,
             )
     parser.add_argument(
+            "--norm",
+            help="Scalar field or float specifying the norm of volume data",
+            default=None
+            )
+    parser.add_argument(
             "--sparsity",
             help="Reduce the meshsize by factor.",
             type=int,
@@ -85,7 +90,18 @@ def main():
     if args.auto_crop:
         system.auto_crop(thresh=args.crop_thresh)
 
-    system.write(*args.f)
+    if args.norm is not None:
+        try:
+            _norm = float(args.norm)
+        except ValueError:
+            _norm = volume.ScalarField(args.norm)
+
+        system.normalise(norm=_norm, thresh=args.crop_thresh)
+
+    if len(args.f) == 1 and args.f[0].split('.')[-1] == 'obj':
+        system.dump(args.f[0])
+    else:
+        system.write(*args.f)
 
 
 if(__name__ == "__main__"):

@@ -53,15 +53,14 @@ class MagneticField(_VectorField):
         pass
 
     @classmethod
-    def from_current(cls, j, **kwargs):
+    def from_current(cls, j,
+                     kspace=False, R_aa=None,
+                     charge=-1, nprocs=1, verbose=False):
         '''Calculate B under the magnetostatic approximation
            (Biot-Savart law)
            '''
-        verbose = kwargs.get('verbose', False)
-        nprocs = kwargs.get('nprocs', 1)
         # --- default: electrons moving (charge -1)
-        charge = kwargs.get('charge', -1)
-        if kwargs.get('kspace', False):
+        if kspace:
             _sys.stdout.flush()
             # B1 = _biot_savart_kspace(j.data, j.cell_vec_aa, j.voxel) \
             #     * constants.l_aa2au**4
@@ -88,7 +87,8 @@ class MagneticField(_VectorField):
                     del result_dict[_ip]
 
             # --- Get R
-            R_aa = kwargs.get('R_aa', j.pos_grid())
+            if R_aa is None:
+                R_aa = j.pos_grid()
             _npoints = _np.prod(R_aa.shape[1:])
 
             if verbose:
@@ -188,13 +188,11 @@ class MagneticField(_VectorField):
 
 class ElectricField(_VectorField):
     @classmethod
-    def from_charge_density(cls, rho, **kwargs):
+    def from_charge_density(cls, rho,
+                            kspace=False, R_aa=None,
+                            charge=-1, nprocs=1, verbose=False):
         '''Calculate E under the electrostatic approximation (Coulomb's law)'''
-        verbose = kwargs.get('verbose', False)
-        nprocs = kwargs.get('nprocs', 1)
-        # --- default: electrons moving (charge -1)
-        charge = kwargs.get('charge', -1)
-        if kwargs.get('kspace', False):
+        if kspace:
             _sys.stdout.flush()
             E1 = _coulomb_kspace(rho.data,
                                  rho.cell_vec_aa*constants.l_aa2au,
@@ -217,7 +215,8 @@ class ElectricField(_VectorField):
                     del result_dict[_ip]
 
             # --- Get R
-            R_aa = kwargs.get('R_aa', rho.pos_grid())
+            if R_aa is None:
+                R_aa = rho.pos_grid()
             _npoints = _np.prod(R_aa.shape[1:])
             if verbose:
                 print("No. of grid points: %d" % _npoints)

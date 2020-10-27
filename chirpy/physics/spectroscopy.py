@@ -94,15 +94,15 @@ def circular_dichroism_from_transition_moments(etdm_au, mtdm_au):
     return (etdm_au * mtdm_au).sum(axis=-1) * prefactor_au
 
 
-def power_from_tcf(velocities, weights=1.0,
-                   flt_pow=-1,
+def power_from_tcf(velocities_au, weights=1.0,
+                   flt_pow=-1, ts_au=41.341,
                    average_atoms=True, **kwargs):
     '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
 
        Expects atomic units for the correct prefactors.
 
-       ts ... timestep in a.u.
+       ts_au ... timestep in a.u.
 
        The output is averaged over the no. of atoms/species.
        Returns dictionary with (all in a.u.):
@@ -115,15 +115,20 @@ def power_from_tcf(velocities, weights=1.0,
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
                        'input data!', stacklevel=2)
+
     kwargs.update({'flt_pow': flt_pow})
-    n_frames, n_atoms, n_dims = velocities.shape
+    if 'ts' in kwargs:
+        raise KeyError('ts argument must not be used here. Please specify '
+                       'ts_au!')
+    kwargs.update(dict(ts=ts_au))
+    n_frames, n_atoms, n_dims = velocities_au.shape
 
     if not hasattr(weights, '__len__'):
         wgh = np.ones(n_atoms * n_dims) * weights
     else:
         wgh = np.repeat(weights, n_dims)
 
-    _velocities = velocities.reshape((n_frames, -1))
+    _velocities = velocities_au.reshape((n_frames, -1))
     f, S, R = zip(*[spectral_density(_v, **kwargs)
                     for _v in _velocities.T])
 
@@ -151,7 +156,7 @@ def absorption_from_tcf(*args, **kwargs):
 
        Expects atomic units for the correct prefactors.
 
-       ts ... timestep in a.u.
+       ts_au ... timestep in a.u.
 
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
@@ -193,17 +198,18 @@ def circular_dichroism_from_tcf(*args, **kwargs):
 def _spectrum_from_tcf(*args,
                        T_K=300,
                        mode='abs_cd',
-                       origin=np.zeros((3)),
+                       origin_au=np.zeros((3)),
                        cell_au_deg=None,
-                       positions=None,
+                       positions_au=None,
                        return_moments=False,
                        gauge_transport=True,
-                       cutoff=None,
-                       cutoff_bg=None,
+                       cutoff_au=None,
+                       cutoff_bg_au=None,
                        cut_type='soft',
                        cut_type_bg='hard',
                        clip_sphere=[],
                        flt_pow=-1,
+                       ts_au=41.341,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
@@ -218,9 +224,9 @@ def _spectrum_from_tcf(*args,
        Specify the gauge origin with origin= (optional)
        No support of trajectory iterators.
 
-       Expects atomic units (but it is not mandatory).
+       Expects atomic units.
 
-       ts ... timestep in a.u.
+       ts_au ... timestep in a.u.
 
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
@@ -233,10 +239,15 @@ def _spectrum_from_tcf(*args,
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
                        'input data!', stacklevel=2)
+
     kwargs.update({'flt_pow': flt_pow})
+    if 'ts' in kwargs:
+        raise KeyError('ts argument must not be used here. Please specify '
+                       'ts_au!')
+    kwargs.update(dict(ts=ts_au))
     cell = cell_au_deg
     r_moments = return_moments
-    pos = positions
+    pos = copy.deepcopy(positions_au)
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
@@ -285,12 +296,12 @@ def _spectrum_from_tcf(*args,
 
     elif len(cur_dipoles.shape) == 3:
         if pos is None:
-            raise TypeError('Please give positions arguments for moments of '
+            raise TypeError('Please give positions_au argument for moments of '
                             f'shape {cur_dipoles.shape}')
 
         # --- map origin on frames if frame dim is missing
-        if len(origin.shape) == 1:
-            origin = np.tile(origin, (pos.shape[0], 1))
+        if len(origin_au.shape) == 1:
+            origin_au = np.tile(origin_au, (pos.shape[0], 1))
 
         # --- cutoff spheres --------------------------------------------------
         if not isinstance(clip_sphere, list):
@@ -298,18 +309,18 @@ def _spectrum_from_tcf(*args,
 
         # --- master sphere (cutoff) ==> applied ON TOP OF clip spheres
         _cut_sphere = []
-        if cutoff is not None:
+        if cutoff_au is not None:
             _cut_sphere.append(Sphere(
-                                 origin,
-                                 cutoff,
+                                 origin_au,
+                                 cutoff_au,
                                  edge=cut_type
                                  ))
 
         _cut_sphere_bg = []
-        if cutoff_bg is not None:
+        if cutoff_bg_au is not None:
             _cut_sphere_bg.append(Sphere(
-                                    origin,
-                                    cutoff_bg,
+                                    origin_au,
+                                    cutoff_bg_au,
                                     edge=cut_type_bg
                                     ))
         # ---------------------------------------------------------------------
@@ -341,7 +352,8 @@ def _spectrum_from_tcf(*args,
 
             # --- calculate gauge-transport
             if gauge_transport:
-                _m = switch_magnetic_origin_gauge(_c, _m, pos, origin[:, None],
+                _m = switch_magnetic_origin_gauge(_c, _m, pos,
+                                                  origin_au[:, None],
                                                   cell_au_deg=cell)
             else:
                 _warnings.warn('Omitting gauge transport term in CD mode!',

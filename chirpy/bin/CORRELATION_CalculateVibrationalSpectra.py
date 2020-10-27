@@ -203,13 +203,13 @@ def main():
     for origin in origins:
         _tmp = spectroscopy._spectrum_from_tcf(
                                     _c, _m,
-                                    positions=_p*constants.l_aa2au,
+                                    positions_au=_p*constants.l_aa2au,
                                     mode='abs_cd',
-                                    ts=args.ts * constants.femto,
+                                    ts_au=args.ts * constants.t_fs2au,
                                     flt_pow=args.filter_strength,
                                     # --- example
-                                    origin=origin*constants.l_aa2au,
-                                    cutoff=args.cutoff*constants.l_aa2au,
+                                    origin_au=origin*constants.l_aa2au,
+                                    cutoff_au=args.cutoff*constants.l_aa2au,
                                     cell_au_deg=_cell
                                     )
 
@@ -226,12 +226,15 @@ def main():
 
     # --- plot
     labels = {
-       'va': ('Vibrational absorption spectrum', 'A in ...'),
-       'vcd': ('Vibrational circular dichroism spectrum', r'$\Delta$A in ...'),
+       'va': ('Vibrational absorption spectrum',
+              'A in L / (cm · mol)'),
+       'vcd': ('Vibrational circular dichroism spectrum',
+               r'$\Delta$A in L / (cm · mol)'),
     }
     for _i in filter(args.__dict__.get, ['va', 'vcd']):
         if not args.noplot:
-            plt.plot(_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])
+            plt.plot(_voa['freq'] * constants.E_aufreq2cm_1,
+                     _voa[_i] * constants.Abs_au2L_per_cm_mol)
             plt.xlim(*args.xrange)
             plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
             plt.title(labels[_i][0])
@@ -241,7 +244,8 @@ def main():
         if args.save:
             np.savetxt(
                 _i + '_' + args.f,
-                np.array((_voa['freq'] * constants.E_Hz2cm_1, _voa[_i])).T,
+                np.array((_voa['freq'] * constants.E_aufreq2cm_1,
+                          _voa[_i] * constants.Abs_au2L_per_cm_mol)).T,
                 header='omega in cm-1, %s density' % _i
                 )
 

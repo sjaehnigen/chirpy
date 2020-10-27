@@ -179,26 +179,29 @@ def main():
     _vel = np.array([_load.XYZ.vel_au[args.subset] for _fr in _load.XYZ])
     _pow = spectroscopy.power_from_tcf(
                                 _vel,
-                                ts=args.ts * constants.femto,
+                                ts_au=args.ts * constants.t_fs2au,
                                 weights=_load.XYZ.masses_amu,
                                 flt_pow=args.filter_strength,
                                 )
 
     # --- plot
+    _POW_au2kJpermol = constants.E_au2J * constants.avog / constants.kilo
     if not args.noplot:
-        plt.plot(_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])
+        plt.plot(_pow['freq'] * constants.E_aufreq2cm_1,
+                 _pow['power'] * _POW_au2kJpermol)
         plt.xlim(*args.xrange)
 
         plt.xlabel(r'$\tilde\nu$ in cm$^{-1}$')
-        plt.ylabel('Power in ...')
+        plt.ylabel('Power in kJ / mol')
         plt.title('Power spectrum')
         plt.show()
     if args.save:
         np.savetxt(
-             args.f,
-             np.array((_pow['freq'] * constants.E_Hz2cm_1, _pow['power'])).T,
-             header='omega in cm-1, power spectral density'
-             )
+           args.f,
+           np.array((_pow['freq'] * constants.E_aufreq2cm_1,
+                     _pow['power'] * _POW_au2kJpermol)).T,
+           header='omega in cm-1, power spectral density'
+           )
 
     if args.return_tcf:
         if not args.noplot:
