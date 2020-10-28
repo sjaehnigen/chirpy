@@ -14,8 +14,7 @@ stages:
     #   script:
     #   - pwd
     #   - ls -l
-    #   - python -m mypy bild/file.py
-    #   - python -m mypy bild/directory.py
+    #   - python -m mypy file.py
 
 flake8:
   stage: Syntax
