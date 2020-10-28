@@ -31,6 +31,7 @@
 import unittest
 import os
 import filecmp
+import numpy as np
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
@@ -90,9 +91,17 @@ class TestBinaries(unittest.TestCase):
 
         for _file in ['tcf_va_spectrum.dat', 'tcf_vcd_spectrum.dat',
                       'va_spectrum.dat', 'vcd_spectrum.dat']:
+
             self.assertTrue(
-               filecmp.cmp(_file, self.dir + '/' + _file, shallow=False),
+               np.allclose(
+                           np.loadtxt(_file),
+                           np.loadtxt(self.dir + '/' + _file),
+                           atol=0.0
+                           ),
+               # self.assertTrue(
+               #    filecmp.cmp(_file, self.dir + '/' + _file, shallow=False),
                f'Spectrum/TCF reproduced incorrectly: {self.dir + "/" +_file}'
-               f' in {_file}.')
+               f' in {_file}.'
+               )
             os.remove(_file)
     # def test_correlation_power(self):
