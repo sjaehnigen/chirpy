@@ -63,6 +63,8 @@ class Sphere(_CORE):
             self.edge = lambda d: (d <= self.r).astype(float)
         elif edge == 'soft':
             self.edge = partial(fermi_cutoff_function, R_cutoff=self.r, D=D)
+        else:
+            raise ValueError(f'unknown edge \'{edge}\'')
 
     def clip_section_observable(self, x, pos, cell=None, inverse=False):
         '''Apply sphere on observable x using.

@@ -31,7 +31,7 @@
 
 import numpy as np
 from ..classes import _PALARRAY
-from ..physics.statistical_mechanics import time_correlation_function
+from ..physics.statistical_mechanics import time_correlation_function as tcf
 from .mapping import ishydrogenbond
 
 
@@ -137,13 +137,13 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
         segments = cumulate_hydrogen_bonding_events(h, min_length)
         if len(segments) == 0:
             return np.zeros_like(h)
-        B = np.mean([time_correlation_function(_s) for _s in segments],
+        B = np.mean([tcf(_s) for _s in segments],
                     axis=0
                     )
         return B / B[0]
 
     def _acf_i(h):
-        B = time_correlation_function(h)
+        B = tcf(h)
         return B / B[0]
 
     # --- generate HB occurence trajectory (parallel run)
@@ -161,7 +161,6 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
 
     if mode == 'intermittent':
         ACF = _PALARRAY(_acf_i, _wH).run()
-    # print('Done with ACF...')
 
     if no_average:
         ACF_res = np.zeros((n_donors, n_acceptors, n_frames))

@@ -102,7 +102,7 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
 
 def time_correlation_function(*args,
                               flt_pow=-1.E-16,
-                              cc_mode='AB',
+                              mode='AB',
                               sum_dims=True
                               ):
     '''Calculate the time-correlation function (TCF) of a signal and
@@ -181,23 +181,17 @@ def time_correlation_function(*args,
     #   BC = 0
     #   ABC = A
     fR = np.zeros_like(val1)
-    if 'A' in cc_mode or 'C' in cc_mode:
+    if 'A' in mode or 'C' in mode:
         fR += R[n_frames-1:]
-    if 'B' in cc_mode:
+    if 'B' in mode:
         fR += R[:n_frames][::-1]
-    if 'C' in cc_mode:
+    if 'C' in mode:
         fR -= R[:n_frames][::-1]
-    if cc_mode == 'AB':
+    if mode == 'AB':
         fR = fR / 2.
 
-    if cc_mode == 'full':
+    if mode == 'full':
         fR = np.roll(R, len(R) // 2)
-        # fR = R
-    else:
-        # --- avoid double index 0 after vstack
-        #     --> otherwise ugly phase shift in spectra
-        #     --> not necessary for index -1 (cc = 0)
-        fR = np.vstack((fR, fR[:0:-1]))  # [::-1]
 
     if not sum_dims:
         return fR
@@ -224,6 +218,10 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     kwargs.update({'sum_dims': True})
 
     R = time_correlation_function(*args, **kwargs)
+    # --- avoid double index 0 after vstack
+    #     --> otherwise ugly phase shift in spectra
+    #     --> not necessary for index -1 (cc = 0)
+    R = np.hstack((R, R[:0:-1]))  # [::-1]
 
     n = R.shape[0]
     S = np.fft.rfft(R, n=n).real * factor * ts

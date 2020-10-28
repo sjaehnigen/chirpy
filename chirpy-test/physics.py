@@ -187,7 +187,7 @@ class TestSpectroscopy(unittest.TestCase):
                                   ts_au=ts,
                                   weights=_load.masses_amu*constants.m_amu_au,
                                   average_atoms=False,
-                                  cc_mode='A',
+                                  mode='A',
                                   flt_pow=-1,
                                   )
 
