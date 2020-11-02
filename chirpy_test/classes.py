@@ -47,6 +47,7 @@ def _func(x0, x1):
     r0 = np.linalg.norm(r0, axis=-2)
     return r0.T
 
+
 class TestCore(unittest.TestCase):
     def setUp(self):
         pass
@@ -69,7 +70,7 @@ class TestCore(unittest.TestCase):
         r0[np.tril_indices(13, -1)] = 0.0
         self.assertTrue(np.allclose(S, r0))
 
-        JOB = _PALARRAY(_func, d0, d1, axis=3, n_cores=6)
+        JOB = _PALARRAY(_func, d0, d1, axis=3)
         S = JOB.run()
         r0 = d0[:, :, :, :, None] + d1[:, :, :, None, :].swapaxes(1, 2)
         r0 = np.linalg.norm(r0, axis=1).swapaxes(0, 1)
