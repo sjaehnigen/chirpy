@@ -65,6 +65,7 @@ if __name__ == '__main__':
     print(f'You are using ChirPy version {__version__}.')
     print(70 * '-')
     print('Running TestSuite')
+    sys.stdout.flush()
 
     # initialize the test suite
     loader = unittest.TestLoader()

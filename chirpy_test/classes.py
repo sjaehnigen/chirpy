@@ -41,6 +41,12 @@ from chirpy.classes import system, quantum, trajectory, _PALARRAY
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
+def _func(x0, x1):
+    # --- some example array manipulation
+    r0 = x0 + x1.swapaxes(1, 2)
+    r0 = np.linalg.norm(r0, axis=-2)
+    return r0.T
+
 class TestCore(unittest.TestCase):
     def setUp(self):
         pass
@@ -49,14 +55,6 @@ class TestCore(unittest.TestCase):
         pass
 
     def test_palarray(self):
-        global _func
-
-        def _func(x0, x1):
-            # --- some example array manipulation
-            r0 = x0 + x1.swapaxes(1, 2)
-            r0 = np.linalg.norm(r0, axis=-2)
-            return r0.T
-
         d0 = np.random.rand(8, 8, 8, 13)
         d1 = np.random.rand(8, 8, 8, 17)
         JOB = _PALARRAY(_func, d0, repeat=2, axis=3, n_cores=1)
