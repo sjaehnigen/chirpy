@@ -74,7 +74,6 @@ class Sphere(_CORE):
            Expects x of shape ([FR,] N, [1 ...]) and pos{itions} of shape
            ([FR, N,] 3) that have to correspond to Sphere position's shape.
            cell: [a, b, c, al, be, ga]
-           BETA
            '''
 
         def get_d(orig, _pos):

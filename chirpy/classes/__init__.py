@@ -35,6 +35,7 @@ import numpy as np
 import multiprocessing
 from multiprocessing import Pool
 from itertools import product, combinations_with_replacement
+from functools import partial
 
 
 class AttrDict(dict):
@@ -63,17 +64,20 @@ class _PALARRAY():
     def __init__(self, func, *data, repeat=1,
                  n_cores=multiprocessing.cpu_count(),
                  upper_triangle=False,
-                 axis=0):
+                 axis=0,
+                 **kwargs):
         '''Parallel array process setup.
            With executable func(*args) and set of data arrays, data,
            whereas len(data) = len(args).
+
+           kwargs contains global keyword arguments that are passed to func.
 
            Calculate upper_triangle matrix only, if len(data)==1 and repeat==2
            (optional).
 
            Output: array of shape (len(data[0], len(data[1]), ...)'''
 
-        self.f = func
+        self.f = partial(func, **kwargs)
         self.pool = Pool(n_cores)
 
         self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])

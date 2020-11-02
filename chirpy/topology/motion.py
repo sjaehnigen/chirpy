@@ -74,10 +74,58 @@ def angular_momenta(positions, velocities, wt, subset=slice(None), axis=-2,
         return angmoms
 
 
-# --- for _PALARRAY (MacOS)
-global func0
-global _acf_c
-global _acf_i
+# --- for _PALARRAY
+def _func0(p,
+           donor,
+           acceptor,
+           hydrogen,
+           dist_crit,
+           angle_crit,
+           cell,
+           ):
+
+    return ishydrogenbond(
+                    p,
+                    donor,
+                    acceptor,
+                    hydrogen,
+                    dist_crit=dist_crit,
+                    angle_crit=angle_crit,
+                    cell=cell,
+                    )
+
+
+def _cumulate_hydrogen_bonding_events(_H):
+    '''Split timeline into individual HB events and move them to t=0
+       (zero padding).
+
+       min_length:       minimum period in frames to count HB connection
+       '''
+    n_frames = _H.shape[0]
+    _diff = np.diff(_H, axis=0, prepend=0)
+    _edges = np.argwhere(_diff == 1).flatten()
+
+    segments = np.array([np.pad(_s, (0, n_frames - len(_s)))
+                         for _s in np.split(_H,
+                                            axis=0,
+                                            indices_or_sections=_edges)[1:]
+                         ])
+    return segments
+
+
+def _acf_c(h):
+    segments = _cumulate_hydrogen_bonding_events(h)
+    if len(segments) == 0:
+        return np.zeros_like(h)
+    B = np.mean([tcf(_s) for _s in segments],
+                axis=0
+                )
+    return B / B[0]
+
+
+def _acf_i(h):
+    B = tcf(h)
+    return B / B[0]
 
 
 def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
@@ -104,53 +152,16 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
        individual pairs with shape (n_donors, n_acceptors)).
        '''
 
-    def cumulate_hydrogen_bonding_events(_H):
-        '''Split timeline into individual HB events and move them to t=0
-           (zero padding).
-
-           min_length:       minimum period in frames to count HB connection
-           '''
-        n_frames = _H.shape[0]
-        _diff = np.diff(_H, axis=0, prepend=0)
-        _edges = np.argwhere(_diff == 1).flatten()
-
-        segments = np.array([np.pad(_s, (0, n_frames - len(_s)))
-                             for _s in np.split(_H,
-                                                axis=0,
-                                                indices_or_sections=_edges)[1:]
-                             ])
-        return segments
-
-    global func0
-    global _acf_c
-    global _acf_i
-
-    def func0(p):
-        return ishydrogenbond(
-                        p,
-                        donor,
-                        acceptor,
-                        hydrogen,
-                        dist_crit=dist_crit,
-                        angle_crit=angle_crit,
-                        cell=cell
-                        )
-
-    def _acf_c(h):
-        segments = cumulate_hydrogen_bonding_events(h)
-        if len(segments) == 0:
-            return np.zeros_like(h)
-        B = np.mean([tcf(_s) for _s in segments],
-                    axis=0
-                    )
-        return B / B[0]
-
-    def _acf_i(h):
-        B = tcf(h)
-        return B / B[0]
-
     # --- generate HB occurence trajectory (parallel run)
-    H = _PALARRAY(func0, positions).run()
+    # H = _PALARRAY(_func0, positions).run()
+    H = _PALARRAY(_func0, positions,
+                  donor=donor,
+                  acceptor=acceptor,
+                  hydrogen=hydrogen,
+                  dist_crit=dist_crit,
+                  angle_crit=angle_crit,
+                  cell=cell
+                  ).run()
     # print('Done with HB occurrence...')
 
     n_frames, n_donors, n_acceptors = H.shape
