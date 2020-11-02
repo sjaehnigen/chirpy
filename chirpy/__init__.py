@@ -31,6 +31,11 @@
 import sys
 import warnings
 import numpy as _np
+import multiprocessing as mp
+
+if __name__ == '__main__':
+    mp.set_start_method('spawn')
+
 
 if sys.version_info[:2] < (3, 8):
     raise RuntimeError("Python version >= 3.8 required.")
