@@ -175,7 +175,11 @@ class _FRAME(_CORE):
         return _np.prod(ie), ie
 
     def split(self, mask, select=None):
-        '''select ... list or tuple of ids'''
+        '''Split atoms set according to given mask and
+           optionally select mask entry (overwrites input object).
+           If select is None, returns a list of new objects.
+
+           select ... list or tuple of ids'''
         _data = [_np.moveaxis(_d, 0, -2)
                  for _d in mapping.dec(_np.moveaxis(self.data, -2, 0), mask)]
         _symbols = mapping.dec(self.symbols, mask)
@@ -1105,7 +1109,7 @@ class _XYZ():
             xyzWriter(fn,
                       getattr(loc_self, attr),
                       loc_self.symbols,
-                      getattr(loc_self, 'comments'),
+                      comments=getattr(loc_self, 'comments'),
                       **_extract_keys(kwargs, append=False)
                       )
 

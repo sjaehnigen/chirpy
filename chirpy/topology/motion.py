@@ -74,11 +74,16 @@ def angular_momenta(positions, velocities, wt, subset=slice(None), axis=-2,
         return angmoms
 
 
+# --- for _PALARRAY (MacOS)
+global func0
+global _acf_c
+global _acf_i
+
+
 def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
                                     dist_crit=3.0,
                                     angle_crit=130,
                                     cell=None,
-                                    min_length=1,
                                     mode='intermittent',
                                     no_average=False):
     '''Compute auto-correlation function of hydrogen bond occurrence between
@@ -91,8 +96,6 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
        dist_crit:        float in units of positions
        angle_crit:       float in degrees
        cell:             a b c al be ga
-       min_length:       minimum period in frames to count HB connection
-                         (continuous mode only)
        mode:             intermittent/continuous
 
        returns:
@@ -101,7 +104,7 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
        individual pairs with shape (n_donors, n_acceptors)).
        '''
 
-    def cumulate_hydrogen_bonding_events(_H, min_length):
+    def cumulate_hydrogen_bonding_events(_H):
         '''Split timeline into individual HB events and move them to t=0
            (zero padding).
 
@@ -115,7 +118,7 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
                              for _s in np.split(_H,
                                                 axis=0,
                                                 indices_or_sections=_edges)[1:]
-                             if np.sum(_s) >= min_length])
+                             ])
         return segments
 
     global func0
@@ -134,7 +137,7 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
                         )
 
     def _acf_c(h):
-        segments = cumulate_hydrogen_bonding_events(h, min_length)
+        segments = cumulate_hydrogen_bonding_events(h)
         if len(segments) == 0:
             return np.zeros_like(h)
         B = np.mean([tcf(_s) for _s in segments],
@@ -153,7 +156,7 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
     n_frames, n_donors, n_acceptors = H.shape
     _wH = np.array([_h
                     for _h in H.reshape((n_frames, -1)).T.astype(float)
-                    if np.sum(_h) > min_length])
+                    if np.sum(_h) > 0])
 
     # --- correlate (parallel run)
     if mode == 'continuous':
@@ -164,7 +167,8 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
 
     if no_average:
         ACF_res = np.zeros((n_donors, n_acceptors, n_frames))
-        ACF_res[H.sum(axis=0) > min_length] = ACF
+        # ACF_res[H.sum(axis=0) > min_length] = ACF
+        ACF_res = ACF
         return ACF_res
 
     else:

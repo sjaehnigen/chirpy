@@ -191,7 +191,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         xyzWriter(fn + '_ATOMS.xyz',
                   data[0, :, :3] / constants.l_aa2au,
                   symbols,
-                  fn)
+                  comments=fn)
 
 
 # ToDo: OLD CODE

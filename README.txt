@@ -16,7 +16,7 @@ It provides:
     ... (work in progress)
 
 
-Tests can then be run by calling run.py in test/
+Tests can then be run by calling run.py in chirpt_test/
 
     python run.py 
 

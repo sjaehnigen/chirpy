@@ -477,7 +477,7 @@ def isHB(*args, **kwargs):
     return ishydrogenbond(*args, **kwargs)
 
 
-def ishydrogenbond(positions, donor, acceptor, hydrogen,
+def ishydrogenbond(positions, donor, acceptor, hydrogens,
                    cell=None,
                    dist_crit=3.0,
                    angle_crit=130):
@@ -495,6 +495,7 @@ def ishydrogenbond(positions, donor, acceptor, hydrogen,
        '''
 
     _angle_crit = angle_crit / 180 * np.pi
+    _hyd = np.array(hydrogens)
 
     if len(positions.shape) != 2:
         raise ValueError('Expected shape length 2 for positions, got %s: %s'
@@ -515,7 +516,7 @@ def ishydrogenbond(positions, donor, acceptor, hydrogen,
         _ai = acceptor[_a]
         _di = donor[_d]
 
-        _dist_dah = distance_matrix(positions[[_di, _ai]], positions[hydrogen],
+        _dist_dah = distance_matrix(positions[[_di, _ai]], positions[_hyd],
                                     cell=cell)
         _pre_h = np.argwhere(_dist_dah[0] <= dist_crit_dha / 2.).flatten()
 
@@ -523,7 +524,7 @@ def ishydrogenbond(positions, donor, acceptor, hydrogen,
             _warnings.warn('No hydrogen atom found at donor %d' % _di)
 
         _h = np.argmin(_dist_dah[1, _pre_h])
-        _hi = hydrogen[_pre_h][_h]
+        _hi = _hyd[_pre_h][_h]
 
         if _dist_dah[:, _pre_h[_h]].sum(axis=0) <= dist_crit_dha:
             _angle_dah = angle_pbc(*positions[[_di, _hi, _ai]], cell=cell)

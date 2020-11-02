@@ -64,7 +64,7 @@ def _write_xyz_frame(filename, data, symbols, comment, append=False):
         f.write(obuffer)
 
 
-def xyzWriter(fn, data, symbols, comments, append=False):
+def xyzWriter(fn, data, symbols, comments=None, append=False):
     """WriteXYZFile(filename, data, symbols, comments, append=False)
        Input:
         1. fn: File to write
@@ -74,17 +74,24 @@ def xyzWriter(fn, data, symbols, comments, append=False):
         5. append: Append to file (optional, default = False)
 
         Output: None"""
+
     if len(data.shape) == 2:
         # ---frame
+        if comments is None:
+            comments = ''
         _write_xyz_frame(fn, data, symbols,
                          comments, append=append)
 
     elif len(data.shape) == 3:
         # --- trajectory
-        n_frames = len(comments)
+        n_frames = len(data)
         for fr in range(n_frames):
+            if comments is None:
+                comment = ''
+            else:
+                comment = comments[fr]
             _write_xyz_frame(fn, data[fr], symbols,
-                             comments[fr], append=append or fr != 0)
+                             comment, append=append or fr != 0)
 
     else:
         raise AttributeError('Wrong data shape!', data.shape)
