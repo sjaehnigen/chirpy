@@ -1299,6 +1299,7 @@ class _MOMENTS():
 
     def _sync_class(self):
         self._pos_aa()
+        self.pos_au = self.pos_aa * constants.l_aa2au
         self._c_au()
         self._m_au()
         if self.m_au.size == 0:
