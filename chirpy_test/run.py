@@ -45,15 +45,6 @@ import classes
 import create
 import bin
 
-# --- INSUFFICIENT tests for
-# physics
-# create
-# classes
-# bin
-
-# --- NOT (yet) tested
-# visualise
-
 
 if __name__ == '__main__':
     try:
