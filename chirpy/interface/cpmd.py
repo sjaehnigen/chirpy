@@ -189,7 +189,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
                                   pp=kwargs.get('pp'),
                                   ).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
-                  data[0, :, :3] / constants.l_aa2au,
+                  data[0, :, :3],
                   symbols,
                   comments=fn)
 
