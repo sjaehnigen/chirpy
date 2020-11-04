@@ -190,12 +190,13 @@ def cpmdIterator(FN, **kwargs):
     # --- units
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
-    elif kwargs['filetype'] in ['TRAJECTORY', 'GEOMETRY']:
-        kwargs['convert'] = _convert(3*[('length', 'au')] +
-                                     3*[('velocity', 'au')])
     elif kwargs['filetype'] == 'MOMENTS':
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      6*[('velocity', 'au')])
+    # elif kwargs['filetype'] in ['TRAJECTORY', 'GEOMETRY']:
+    else:
+        kwargs['convert'] = _convert(3*[('length', 'au')] +
+                                     3*[('velocity', 'au')])
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)

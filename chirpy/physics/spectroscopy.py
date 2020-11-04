@@ -404,10 +404,10 @@ def _spectrum_from_tcf(*args,
                 data['m'] = _m
             if len(_cut_sphere_bg) != 0:
                 data['c_bg'] = _c_bg
-                data['c_tot'] = _c - _c_bg
+                data['c_fg'] = _c - _c_bg
                 if 'cd' in mode:
                     data['m_bg'] = _m_bg
-                    data['m_tot'] = _m - _m_bg
+                    data['m_fg'] = _m - _m_bg
 
     else:
         raise TypeError('data with wrong shape!',

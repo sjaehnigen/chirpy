@@ -232,12 +232,18 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     #                in place:
     #                EXAMPLE: \int_{-\infty}^{\infty} d\omega
     #                         dw = 2 pi * 1 / (dt * n)
-    #                         here: dt = ts = 1
-    #                         numerical sum over omega corresponds to
+
+    #                         if numerical sum over omega corresponds to
     #                         \int_{0}^{\infty} d\omega --> factor 2 needed
     #                         (for symmetric/even integrand)
-    #                         it follows: w_factor = dw * 2 = 2 pi * 2 / n
+    #                           w_factor = dw * 2 = 2 pi * 2 / n
+    #
+    #                         else if numerical sum over omega corresponds to
+    #                         \int_{-\infty}^{\infty} d\omega
+    #                           w_factor = dw = 2 pi / n
+    #
     #                         NB: f[1] = 1 / (dt * n)
+    #                         here: dt = ts = 1
     #
     #                In spectroscopy the prefactor is often used in
     #                forward FT with exp(-iwt).
