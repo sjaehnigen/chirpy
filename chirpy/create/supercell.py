@@ -235,7 +235,7 @@ class _BoxObject(_CORE):
     def write(self, fn, **kwargs):
         wrap_molecules = kwargs.pop("wrap_molecules", False)
         _SC = self.create(**kwargs)
-        _SC.wrap_atoms()
+        _SC.wrap()
         if wrap_molecules:
             _SC.define_molecules()
             _SC.wrap_molecules()

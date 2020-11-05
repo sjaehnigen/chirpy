@@ -743,7 +743,7 @@ class _XYZ():
                                     weight=weight, wrap=wrap)
 
         if wrap:
-            self.wrap_atoms()
+            self.wrap()
         # if wrap_molecules:
         #     try:
         #         self.wrap_molecules(kwargs['mol_map'])
@@ -751,7 +751,7 @@ class _XYZ():
         #         with _warnings.catch_warnings():
         #             _warnings.warn('Could not find mol_map for wrapping!',
         #                            RuntimeWarning, stacklevel=2)
-        #         self.wrap_atoms()
+        #         self.wrap()
 
         if bool(align_coords):
             selection = None
@@ -863,7 +863,7 @@ class _XYZ():
         return _np.prod(ie), ie
 
     # --- join the next two methods?
-    def wrap_atoms(self):
+    def wrap(self):
         if self._type == 'frame':
             self._pos_aa(mapping.wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
                                       self.cell_aa_deg)[0])
@@ -989,7 +989,7 @@ class _XYZ():
                          - pos[:, None, :])
 
         if wrap:
-            self.wrap_atoms()
+            self.wrap()
 
     def rotate(self, R, origin_aa=_np.zeros(3)):
         '''Rotate atomic positions and velocities
@@ -1218,6 +1218,7 @@ class _MOMENTS():
                                       'convention as moments style')
 
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
+        wrap = kwargs.get('wrap', False)
 
         if len(args) > 1:
             raise TypeError("File reader of %s takes at most 1 argument!"
@@ -1249,7 +1250,7 @@ class _MOMENTS():
                                                     )
 
             elif fmt == "cpmd" or any([_t in fn for _t in [
-                                     'MOMENTS']]):
+                                     'MOL', 'MOMENTS']]):
                 fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     kwargs.update({
@@ -1296,6 +1297,8 @@ class _MOMENTS():
         self.comments = comments
         self.data = data
         self._sync_class()
+        if wrap:
+            self.wrap()
 
     def _sync_class(self):
         self._pos_aa()
@@ -1305,6 +1308,13 @@ class _MOMENTS():
         if self.m_au.size == 0:
             self.m_au = _np.zeros_like(self.pos_aa)
         # self.cell_aa_deg = _np.array(self.cell_aa_deg)
+
+    def wrap(self):
+        if self._type == 'frame':
+            self._pos_aa(mapping.wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
+                                      self.cell_aa_deg)[0])
+        else:
+            self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')
@@ -1325,6 +1335,7 @@ class _MOMENTS():
     def _pos_aa(self, *args):
         if len(args) == 0:
             self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+            self.pos_au = self.pos_aa * constants.l_aa2au
         elif len(args) == 1:
             if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
@@ -1615,6 +1626,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'wrap_molecules', *args, **kwargs)
 
+    def wrap(self, *args, **kwargs):
+        self._frame.wrap(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'wrap', *args, **kwargs)
+
     def split(self, *args, **kwargs):
         '''split is faster with fully loaded trajectory'''
         if 'select' not in kwargs:
@@ -1686,7 +1702,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             self._fmt = fmt
 
             # self._topology = XYZFrame(fn, **kwargs)
-            if self._fmt == "cpmd" or 'MOMENTS' in fn:
+            if self._fmt == "cpmd" or fn in ['MOL', 'MOMENTS']:
                 self._fmt = "cpmd"
                 if 'symbols' not in kwargs:
                     with _warnings.catch_warnings():

@@ -108,7 +108,7 @@ def main():
     if args.wrap_molecules:
         _load.wrap_molecules()
     else:
-        _load.wrap_atoms()
+        _load.wrap()
     _load.write(args.f)
 
 

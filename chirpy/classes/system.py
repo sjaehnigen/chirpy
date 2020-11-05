@@ -136,8 +136,8 @@ class _SYSTEM(_CORE):
 
         self.XYZ.wrap_molecules(self.mol_map)
 
-    def wrap_atoms(self):
-        self.XYZ.wrap_atoms()
+    def wrap(self, **kwargs):
+        self.XYZ.wrap(**kwargs)
 
     def extract_molecules(self, mols):
         '''Split XYZ through topology and select molecule(s) according to given

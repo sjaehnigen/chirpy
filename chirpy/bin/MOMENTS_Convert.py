@@ -74,6 +74,13 @@ def main():
             default=None,
             )
     parser.add_argument(
+            "--wrap",
+            action='store_true',
+            help="Wrap moments in cell (does not affect magnetic moments).",
+            default=False
+            )
+
+    parser.add_argument(
             "-f",
             help="Output file name",
             default='out.cpmd'

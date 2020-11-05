@@ -65,7 +65,7 @@ class TestSupercell(unittest.TestCase):
 
         b = c.create(verbose=False, multiply=(1, 2, 2))
         b.sort_atoms()
-        b.wrap_atoms()
+        b.wrap()
         b.write('out.pdb')
 
         self.assertTrue(filecmp.cmp("out.pdb",
