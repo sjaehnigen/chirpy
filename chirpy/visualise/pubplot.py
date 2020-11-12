@@ -144,8 +144,8 @@ def set_mutliple_y_axes(ax, sep, n_axes,
 
         # _minor_base = np.linspace(_m[0], _m[1], int((_m[1]-_m[0])/_m[2])+1)
         # _major_base = np.linspace(_M[0], _M[1], int((_M[1]-_M[0])/_M[2])+1)
-        _minor_base = np.linspace(*_m)
-        _major_base = np.linspace(*_M)
+        _minor_base = np.round(np.linspace(*_m), decimals=6)
+        _major_base = np.round(np.linspace(*_M), decimals=6)
         _minor_tick_rel_pos += (_minor_base - _i * sep + _o).tolist()
         _major_tick_rel_pos += (_major_base - _i * sep + _o).tolist()
         _major_tick_labels += _major_base.tolist()
@@ -158,6 +158,7 @@ def set_mutliple_y_axes(ax, sep, n_axes,
     if auxiliary_axis:
         aux_ax = ax.twinx()
         aux_ax.set_ylim(ax.get_ylim())
+        return aux_ax
 
 
 def multiplot(
