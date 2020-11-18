@@ -89,13 +89,13 @@ def main():
     parser.add_argument(
             "--wrap",
             action='store_true',
-            help="Wrap atoms in cell.",
+            help="Wrap atoms into cell.",
             default=False
             )
     parser.add_argument(
             "--wrap_molecules",
             action='store_true',
-            help="Wrap molecules in cell (requires topology).",
+            help="Wrap molecules into cell (requires topology).",
             default=False
             )
     parser.add_argument(

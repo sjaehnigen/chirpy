@@ -37,6 +37,7 @@ from .mapping import distance_pbc
 # def _voigt():
 #    pass
 
+
 def _gaussian(r, sigma, dim=1):
     '''Convolution with a normalised Gaussian function. Integrates to one.'''
     _N = 1 / (2.*np.pi * sigma**2) ** (dim/2)
@@ -75,15 +76,15 @@ def _lorentzian_std(r, width, dim=1):
     return 1 / (1 + _x**2)
 
 
-def regularisation(p, grid, *args, **kwargs):
+def regularisation(p, grid, *args, mode='gaussian', cell_aa_deg=None):
     '''Regularisation of singularities on a grid.
        Default mode uses Gaussian smear function.
+       Requires *args according to chosen function.
        Expects positions p of shape (N [,dim}) with N being
        the number of points and
        pos_grid of shape ([dim,] X, [Y, Z, ...]).
        Explicit dim axis can be omitted for dim=1.
        '''
-    mode = kwargs.pop("mode", "gaussian")
     if mode == 'gaussian':
         _F = _gaussian
     elif mode == 'lorentzian':
@@ -108,12 +109,15 @@ def regularisation(p, grid, *args, **kwargs):
 
     _slc = (slice(None),) + dim * (None,)
 
+    if cell_aa_deg is not None:
+        cell_aa_deg = cell_aa_deg[_slc]
+
     return np.array(
             [_F(np.linalg.norm(
                 distance_pbc(
                         _p[_slc],
                         grid,
-                        cell=kwargs.get("cell_aa_deg")
+                        cell=cell_aa_deg
                         ),
                 axis=0
                 ),

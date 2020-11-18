@@ -32,6 +32,7 @@ import numpy as _np
 import copy as _copy
 from scipy.interpolate import interpn as _interpn
 from scipy.integrate import simps as _simps
+from scipy.ndimage import gaussian_filter1d
 import warnings as _warnings
 
 from . import _CORE
@@ -162,14 +163,24 @@ class ScalarField(_CORE):
             obj.comments = 3 * [('no_comment', 'no_comment')]
         else:
             obj.comments = ('no_comment', 'no_comment')
-        obj.origin_aa = origin_aa  # or _np.zeros((3))
-        obj.pos_aa = pos_aa  # or _np.zeros((0, 3))
-        obj.numbers = numbers  # or _np.zeros((0, ))
+
+        if origin_aa is None:
+            origin_aa = _np.zeros((3))
+        if pos_aa is None:
+            pos_aa = _np.zeros((0, 3))
+        if numbers is None:
+            numbers = _np.zeros((0, ))
+
+        obj.origin_aa = origin_aa
+        obj.pos_aa = pos_aa
+        obj.numbers = numbers
         obj.cell_vec_aa = cell_vec_aa
         obj.data = data
+
         # Check for optional data
         # for key, value in kwargs.items():
         #     if not hasattr(obj, key): setattr(obj, key, value)
+
         obj._sync_class()
         return obj
 
@@ -322,13 +333,20 @@ class ScalarField(_CORE):
         return _np.array(_np.meshgrid(xaxis, yaxis, zaxis, indexing='ij'))
 
     def pos_grid(self):
-        '''Return grid point coordinates'''
+        '''Return grid point coordinates.
+           Slow.'''
         pos_grid = self.ind_grid()
 
         return _np.einsum(
                 'inmo, ji -> jnmo',
                 pos_grid,
                 self.cell_vec_aa) + self.origin_aa[:, None, None, None]
+
+    def smoothen(self, sigma):
+        '''Apply a sequence of 1D Gaussian filters to grid data'''
+        self.data = gaussian_filter1d(self.data, sigma, axis=-1)
+        self.data = gaussian_filter1d(self.data, sigma, axis=-2)
+        self.data = gaussian_filter1d(self.data, sigma, axis=-3)
 
     def sparse(self, sp, dims='xyz'):
         '''Returns a new object with sparse grid according to sp (integer).'''

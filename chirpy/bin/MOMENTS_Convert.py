@@ -76,7 +76,7 @@ def main():
     parser.add_argument(
             "--wrap",
             action='store_true',
-            help="Wrap moments in cell (does not affect magnetic moments).",
+            help="Wrap moments into cell (does not affect magnetic moments).",
             default=False
             )
 

@@ -870,7 +870,7 @@ class _XYZ():
         else:
             self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
-    def wrap_molecules(self, mol_map, weight='mass'):
+    def wrap_molecules(self, mol_map, weight='mass', algorithm='closest'):
         w = _np.ones((self.n_atoms))
         if weight == 'mass':
             w = self.masses_amu
@@ -881,6 +881,7 @@ class _XYZ():
                                 mol_map,
                                 self.cell_aa_deg,
                                 weights=w,
+                                algorithm=algorithm,
                                 )
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
@@ -890,6 +891,7 @@ class _XYZ():
                                 mol_map,
                                 self.cell_aa_deg,
                                 weights=w,
+                                algorithm=algorithm,
                                 )
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
@@ -1175,7 +1177,8 @@ class _XYZ():
 
         elif fmt == 'cpmd':
             if sorted(loc_self.symbols) != list(loc_self.symbols):
-                _warnings.warn('CPMD output with sorted atoms!', stacklevel=2)
+                _warnings.warn('CPMD output requires sorted atoms. '
+                               'Switching on auto-sort.', stacklevel=2)
                 loc_self.sort()
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)

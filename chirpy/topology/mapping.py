@@ -326,7 +326,10 @@ def connectivity(pos_aa, symbols, cell_aa_deg=None):
     return np.array([np.argwhere(_n).ravel() for _n in neighs])
 
 
-def join_molecules(pos_aa, mol_map, cell_aa_deg, weights=None):
+def join_molecules(pos_aa, mol_map, cell_aa_deg,
+                   weights=None,
+                   algorithm='closest',
+                   ):
     '''pos_aa (in angstrom) with shape ([n_frames,] n_atoms, three)
     Has still problems with cell-spanning molecules
     Molecules have to be numbered starting with 0!'''
@@ -343,23 +346,30 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg, weights=None):
     _pos_aa = dec(pos_aa, mol_map)
     mol_com_aa = []
     for _i, (_w, _p) in enumerate(zip(w, _pos_aa)):
-        # actually: needs connectivity pattern to wrap everything correctly
-        # the slightly expensive matrix analysis improves the result
-
         # --- ToDo: awkward check if _p has frames (frame 0 as reference)
         if len(_p.shape) == 3:
             _p_ref = _p[:, 0]
         else:
             _p_ref = _p
-        # --- find atom that is closest to its counterparts
-        # --- ToDo: NOT WORKING well for cell-spanning molecules
-        _r = np.argmin(np.linalg.norm(distance_matrix(
+        if algorithm == 'closest':
+            # --- find atom that is closest to its counterparts
+            # --- ToDo: NOT WORKING well for cell-spanning molecules
+            _r = np.argmin(np.linalg.norm(distance_matrix(
                                                       _p_ref,
                                                       cell=cell_aa_deg,
                                                       ),
-                                      axis=1))
-        # --- alternative: use the heaviest atom as reference
-        # _r = np.argmax(_w)
+                                          axis=1))
+        elif algorithm == 'heavy_atom':
+            # --- fast, but error-prone: use the heaviest atom as reference
+            _r = np.argmax(_w)
+
+        # elif algorithm == 'connectivity':
+        #     # --- thorough analysis of connectivity (needs symbols)
+        #     symbols = n_atoms * ('C',)
+        #     connectivity(_p_ref, symbols, cell=cell_aa_deg)
+        else:
+            raise ValueError(f'got unknown algorithm {algorithm} for joining '
+                             'molecules')
 
         # --- complete mols
         _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)

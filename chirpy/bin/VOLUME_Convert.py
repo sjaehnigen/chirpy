@@ -33,7 +33,6 @@
 import argparse
 from chirpy.classes import volume
 
-
 def main():
     '''Write scalar volume data into file'''
     parser = argparse.ArgumentParser(
@@ -55,6 +54,12 @@ def main():
             "--norm",
             help="Scalar field or float specifying the norm of volume data",
             default=None
+            )
+    parser.add_argument(
+            "--smoothen",
+            help="Apply Gaussian filter with given strength",
+            type=float,
+            default=0.0
             )
     parser.add_argument(
             "--sparsity",
@@ -97,6 +102,9 @@ def main():
             _norm = volume.ScalarField(args.norm)
 
         system.normalise(norm=_norm, thresh=args.crop_thresh)
+
+    if args.smoothen != 0.0:
+        system.smoothen(args.smoothen)
 
     if len(args.f) == 1 and args.f[0].split('.')[-1] == 'obj':
         system.dump(args.f[0])

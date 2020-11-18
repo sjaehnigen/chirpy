@@ -77,11 +77,17 @@ def main():
         default=None
         )
     parser.add_argument(
-        "--wrap_molecules",
-        action='store_true',
-        help="Wrap molecules instead of atoms in cell.",
-        default=False
-        )
+            "--keep_molecules",
+            action='store_true',
+            help="Do not re-write molecular assignment.",
+            default=False
+            )
+    parser.add_argument(
+            "--wrap_molecules",
+            action='store_true',
+            help="Wrap molecules instead of atoms into cell.",
+            default=False
+            )
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
     if bool(args.center_coords):
@@ -103,10 +109,11 @@ def main():
     if hasattr(_load, 'Modes'):
         del _load.Modes
 
-    _load.define_molecules()
+    if not args.keep_molecules:
+        _load.define_molecules()
 
     if args.wrap_molecules:
-        _load.wrap_molecules()
+        _load.wrap_molecules()  # algorithm='heavy_atom')
     else:
         _load.wrap()
     _load.write(args.f)

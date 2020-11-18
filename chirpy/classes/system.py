@@ -129,12 +129,12 @@ class _SYSTEM(_CORE):
                 )
         self.wrap_molecules()
 
-    def wrap_molecules(self):
+    def wrap_molecules(self, **kwargs):
         if self.mol_map is None:
             raise AttributeError('Wrap molecules requires a topology '
                                  '(mol_map)!')
 
-        self.XYZ.wrap_molecules(self.mol_map)
+        self.XYZ.wrap_molecules(self.mol_map, **kwargs)
 
     def wrap(self, **kwargs):
         self.XYZ.wrap(**kwargs)
