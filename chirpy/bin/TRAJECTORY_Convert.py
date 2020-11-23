@@ -33,7 +33,7 @@ import argparse
 import numpy as np
 import warnings
 
-from chirpy.classes import system
+from chirpy.classes import system, trajectory
 
 
 def main():
@@ -145,6 +145,12 @@ def main():
             default=False
             )
     parser.add_argument(
+            "--convert_to_moments",
+            action='store_true',
+            help="Write classical electro-magnetic moments instead.",
+            default=False,
+            )
+    parser.add_argument(
             "-f",
             help="Output file name",
             default='out.xyz'
@@ -196,7 +202,12 @@ def main():
     if i_fmt is None:
         i_fmt = args.fn.split('.')[-1].lower()
     if o_fmt is None:
-        o_fmt = args.f.split('.')[-1].lower()
+        if args.convert_to_moments and args.f in ['MOMENTS', 'MOL', 'ATOM']:
+            o_fmt = 'cpmd'
+        elif args.f in ['TRAJSAVED', 'TRAJECTORY']:
+            o_fmt = 'cpmd'
+        else:
+            o_fmt = args.f.split('.')[-1].lower()
     elif o_fmt == 'tinker':
         o_fmt = 'arc'
     if args.f == 'out.xyz':
@@ -263,10 +274,32 @@ def main():
         _load.extract_molecules(extract_molecules)
 
     if args.f not in ['None', 'False']:
-        largs = {}
-        if 'pp' in args:
-            largs = {'pp': args.pp}
-        _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
+        if args.convert_to_moments:
+            # --- BETA
+            for _iframe, _p_fr in enumerate(_load.XYZ):
+                _moment = trajectory.MOMENTSFrame.from_classical_nuclei(
+                        _load.XYZ._frame)
+                # --- write output
+                append = False
+                if _iframe > 0:
+                    append = True
+                largs = {'append': append, 'frame': _iframe}
+                _moment.write(args.f, fmt=o_fmt, **largs)
+
+                # cpmd.cpmdWriter(
+                #  args.f,
+                #  np.array([np.concatenate((gauge.r_au*constants.l_au2aa,
+                #                            gauge.c_au,
+                #                            gauge.m_au), axis=-1)]),
+                #  frame=_iframe,
+                #  append=append,
+                #  write_atoms=False)
+
+        else:
+            largs = {}
+            if 'pp' in args:
+                largs = {'pp': args.pp}
+            _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
 
 
 if __name__ == "__main__":

@@ -1188,7 +1188,7 @@ class _XYZ():
                        **kwargs)
 
         else:
-            raise ValueError('Unknown format: %s.' % fmt)
+            raise ValueError('Unknown format for TRAJECTORY: %s.' % fmt)
 
     def get_atom_spread(self):
         '''pos_aa: np.array of shape ([n_frames,] n_atoms, 3)'''
@@ -1333,7 +1333,7 @@ class _MOMENTS():
                        **kwargs)
 
         else:
-            raise ValueError('Unknown format: %s.' % fmt)
+            raise ValueError('Unknown format for MOMENTS: %s.' % fmt)
 
     def _pos_aa(self, *args):
         if len(args) == 0:

@@ -31,6 +31,7 @@
 
 import argparse
 import numpy as np
+import warnings
 
 from chirpy.create.moments import OriginGauge
 from chirpy.classes import system, trajectory
@@ -95,6 +96,11 @@ def main():
                                  fmt='cpmd',
                                  range=args.range
                                  )
+    # -- ToDo: Add test for neutrality of charge
+    if (_total_charge := _moms_e.n_atoms * (-2) +
+            constants.symbols_to_valence_charges(_traj.symbols).sum()) != 0.0:
+        warnings.warn(f'Got non-zero cell charge {_total_charge}!',
+                      RuntimeWarning, stacklevel=2)
 
     n_map = np.array(_traj.mol_map)
 

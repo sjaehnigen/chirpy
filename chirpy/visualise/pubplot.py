@@ -188,8 +188,8 @@ def multiplot(
        kwargs contains argument for pyplot
        '''
 
-    if not isinstance(y_a, list):
-        raise TypeError('Expected list for y_a!')
+    if not isinstance(y_a, (list, tuple)):
+        raise TypeError('Expected list or tuple for y_a!')
 
     global _shift  # unique variable also used by pub_label class
 
@@ -202,24 +202,36 @@ def multiplot(
         xlim = (np.amin(np.array(np.hstack(x_a))),
                 np.amax(np.array(np.hstack(x_a))))
 
-    if x_a.__class__ is not list:
-        x_a = [np.array([_x for _x in x_a])] * n_plots
-    if bool_a.__class__ is not list:
-        bool_a = [bool_a] * n_plots
-    if color_a.__class__ is not list:
-        color_a = [color_a] * n_plots
-    if style_a.__class__ is not list:
-        style_a = [style_a] * n_plots
-    if alpha_a.__class__ is not list:
-        alpha_a = [alpha_a] * n_plots
-    if lw_a.__class__ is not list:
-        lw_a = [lw_a] * n_plots
-    if std_alpha_a.__class__ is not list:
-        std_alpha_a = [std_alpha_a] * n_plots
-    if hatch_a.__class__ is not list:
-        hatch_a = [hatch_a] * n_plots
-    if offset_a.__class__ is not list:
-        offset_a = [offset_a] * n_plots
+    # --- ToDo: create class attributes
+    def _listify(xx):
+        if not isinstance(xx, (list, tuple)):
+            # return [np.array([_x for _x in xx])] * n_plots
+            return [xx] * n_plots
+        else:
+            return xx
+
+    # if not isinstance(x_a, (list, tuple)):  # x_a is different
+    #     x_a = [np.array([_x for _x in x_a])] * n_plots
+    x_a, \
+        bool_a, \
+        color_a, \
+        style_a, \
+        alpha_a, \
+        lw_a, \
+        std_alpha_a, \
+        hatch_a, \
+        offset_a, \
+        = map(_listify, [
+                         x_a,
+                         bool_a,
+                         color_a,
+                         style_a,
+                         alpha_a,
+                         lw_a,
+                         std_alpha_a,
+                         hatch_a,
+                         offset_a,
+                         ])
 
     fill = False
     if std_a is not None:

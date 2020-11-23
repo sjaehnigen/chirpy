@@ -38,7 +38,7 @@ from chirpy.classes import trajectory
 def main():
     '''Convert and process trajectory'''
     parser = argparse.ArgumentParser(
-            description="Convert and process trajectory",
+            description="Convert and process moments trajectory",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument(
@@ -92,7 +92,6 @@ def main():
             )
     args = parser.parse_args()
 
-    # ToDo: MOMENTS requires atoimc units for cell (cell_au_deg)
     if args.cell_aa_deg is None:
         del args.cell_aa_deg
     else:

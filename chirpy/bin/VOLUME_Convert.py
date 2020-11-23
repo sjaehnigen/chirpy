@@ -33,6 +33,7 @@
 import argparse
 from chirpy.classes import volume
 
+
 def main():
     '''Write scalar volume data into file'''
     parser = argparse.ArgumentParser(
