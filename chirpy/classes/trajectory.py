@@ -1495,6 +1495,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             # --- Load first frame w/o consuming it
             self._fr -= self._st
             next(self)
+            self._fr -= self._st
 
             # --- reset generator for the first time
             self._gen = self._gen_aux
@@ -1732,6 +1733,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             # --- Load first frame w/o consuming it
             self._fr -= self._st
             next(self)
+            self._fr -= self._st
 
             # --- reset generator for the first time
             self._gen = self._gen_aux

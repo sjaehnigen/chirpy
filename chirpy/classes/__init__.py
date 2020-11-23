@@ -200,9 +200,11 @@ class _ITERATOR():
         # --- keep kwargs for iterations
         self._kwargs.update(kwargs)
 
-        # --- Get first frame for free
+        # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
         self._fr -= self._st
         next(self)
+        self._fr -= self._st
+
         # --- reset generator for the first time
         self._gen = self._gen_aux
         del self._gen_init
