@@ -111,7 +111,7 @@ class TestTrajectory(unittest.TestCase):
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)
         self.assertTrue(np.allclose(traj_e.data, ref.data))
 
-        self.assertTrue(len(traj.expand().data), 0)
+        self.assertTrue(traj.expand() is None)
         traj.rewind()
         traj_e = traj.expand()
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)

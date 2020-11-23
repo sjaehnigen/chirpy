@@ -31,6 +31,7 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
+import itertools
 
 from . import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
@@ -1459,14 +1460,14 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fmt = fmt
 
             if self._fmt == "xyz":
-                self._gen = _xyzIterator(fn, **kwargs)
+                self._gen_init = _xyzIterator(fn, **kwargs)
 
             elif self._fmt in ["arc", 'vel', 'tinker']:
                 self._fmt = "tinker"
-                self._gen = _arcIterator(fn, **kwargs)
+                self._gen_init = _arcIterator(fn, **kwargs)
 
             elif self._fmt == "pdb":
-                self._gen = _pdbIterator(fn)  # **kwargs
+                self._gen_init = _pdbIterator(fn)  # **kwargs
 
             elif self._fmt == "cpmd" or any([_t in fn for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
@@ -1475,10 +1476,13 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     kwargs.update({
                         'symbols': cpmd_kinds_from_file(fn)
                         })
-                self._gen = _cpmdIterator(fn, **kwargs)
+                self._gen_init = _cpmdIterator(fn, **kwargs)
 
             else:
                 raise ValueError('Unknown trajectory format: %s.' % self._fmt)
+
+            # --- split generator
+            self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
 
             self._topology = XYZFrame(fn, **kwargs)
 
@@ -1491,7 +1495,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             # --- Load first frame w/o consuming it
             self._fr -= self._st
             next(self)
-            self._chaste = True
+
+            # --- reset generator for the first time
+            self._gen = self._gen_aux
+            del self._gen_init
+
             # --- Store original skip as it is consumed by generator
             if 'skip' in self._kwargs:
                 self._kwargs['_skip'] = self._kwargs['skip'].copy()
@@ -1501,15 +1509,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                             % self.__class__.__name__)
 
     def __next__(self):
-        if hasattr(self, '_chaste'):
-            # repeat first step of next() after __init__
-            # --- do nothing
-            if self._chaste:
-                # _warnings.warn("Currently loaded frame repeated after init.",
-                #               stacklevel=2)
-                self._chaste = False
-                return self._fr
-
         frame = next(self._gen)
 
         def check_topo(k, f):
@@ -1572,15 +1571,17 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
            entire trajectory
            (may take some time)
            '''
-        self._chaste = True
-        data, symbols, comments = zip(*[(self.data,
-                                         self.symbols,
-                                         self.comments) for _fr in self])
-        out = {
-                'data': _np.array(data),
-                'symbols': symbols[0],
-                'comments': list(comments)
-                 }
+        try:
+            data, symbols, comments = zip(*[(self.data,
+                                             self.symbols,
+                                             self.comments) for _fr in self])
+            out = {
+                    'data': _np.array(data),
+                    'symbols': symbols[0],
+                    'comments': list(comments)
+                     }
+        except ValueError:
+            return None
 
         self._kwargs.update(out)
 
@@ -1678,7 +1679,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         self._frame = _add(self._frame, other._frame)
         self.__dict__.update(self._frame.__dict__)
-        other._chaste = False
 
         self._mask(self, _func, other, **kwargs)
 
@@ -1714,10 +1714,14 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                         kwargs.update({
                             'symbols': cpmd_kinds_from_file(fn)
                             })
-                self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
+                self._gen_init = _cpmdIterator(fn,
+                                               filetype='MOMENTS', **kwargs)
 
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
+
+            # --- split generator
+            self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
 
             # --- keep kwargs for iterations
             self._kwargs.update(kwargs)
@@ -1728,7 +1732,10 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             # --- Load first frame w/o consuming it
             self._fr -= self._st
             next(self)
-            self._chaste = True
+
+            # --- reset generator for the first time
+            self._gen = self._gen_aux
+            del self._gen_init
 
         else:
             raise TypeError("File reader of %s takes exactly 1 argument!"
@@ -1739,7 +1746,6 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
            entire trajectory
            (may take some time)
            '''
-        self._chaste = True
         data = [self.data for _fr in self]
         out = {'data': _np.array(data)}
 

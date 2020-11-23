@@ -32,6 +32,7 @@ import pickle
 import itertools
 import warnings
 import numpy as np
+
 import multiprocessing
 from multiprocessing import Pool
 from itertools import product, combinations_with_replacement
@@ -187,17 +188,25 @@ class _CORE():
 class _ITERATOR():
     def __init__(self, *args, **kwargs):
         self._kernel = _CORE
-        self._gen = iter([])
+        self._gen_init = iter([])
+
         self._kwargs = {}
         # --- initialise list of masks
         self._kwargs['_masks'] = []
+
+        # --- split generator
+        self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
+
         # --- keep kwargs for iterations
         self._kwargs.update(kwargs)
 
-        # --- Load first frame w/o consuming it
+        # --- Get first frame for free
         self._fr -= self._st
         next(self)
-        self._chaste = True
+        # --- reset generator for the first time
+        self._gen = self._gen_aux
+        del self._gen_init
+
         # --- Store original skip information as it is consumed by generator
         self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
@@ -205,15 +214,6 @@ class _ITERATOR():
         return self
 
     def __next__(self):
-        if hasattr(self, '_chaste'):
-            # --- repeat first step of next() after __init__
-            # --- do nothing
-            if self._chaste:
-                # warnings.warn("Currently loaded frame repeated after init.",
-                #              stacklevel=2)
-                self._chaste = False
-                return self._fr
-
         frame = next(self._gen)
 
         out = {'data': frame}
@@ -243,16 +243,16 @@ class _ITERATOR():
         return a
 
     def __add__(self, other):
-        new = self
-        if new._topology._is_similar(other._topology)[0] == 1:
-            new._gen = itertools.chain(new._gen, other._gen)
+        new = self.__new__(self.__class__)
+        new.__dict__.update(self.__dict__)
+        if self._frame._is_similar(other._frame)[0] == 1:
+            new._gen = itertools.chain(self._gen, other._gen)
             return new
         else:
             raise ValueError('Cannot combine frames of different size!')
 
     def rewind(self):
         '''Reinitialises the iterator'''
-        self._chaste = False
         if '_skip' in self._kwargs:
             self._kwargs['skip'] = self._kwargs['_skip'].copy()
         self.__init__(self._fn, **self._kwargs)
@@ -282,9 +282,9 @@ class _ITERATOR():
                     kwargs.update(events[_fr])
             _fr += 1
 
-        if length is not None:
-            next(self)
-            self._chaste = True
+        # if length is not None:
+        #    next(self)
+        #     self._chaste = True
 
     @staticmethod
     def _mask(obj, func, *args, **kwargs):
@@ -319,7 +319,6 @@ class _ITERATOR():
 
         self._frame += other._frame
         self.__dict__.update(self._frame.__dict__)
-        other._chaste = False
 
         self._mask(self, _func, other, **kwargs)
 
