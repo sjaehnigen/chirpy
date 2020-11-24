@@ -59,7 +59,7 @@ def electric_quadrupole_moment(pos_au, charges_au):
                   ) / 2
 
 
-def electric_dipole_shift_origin(charges_au, trans_au, **kwargs):
+def electric_dipole_shift_origin(charges_au, trans_au):
     '''Compute differential term of origin shift
        charges_au ... atomic charges
        trans_au ... translation vector from old to new origin
@@ -74,7 +74,7 @@ def electric_dipole_shift_origin(charges_au, trans_au, **kwargs):
         return -trans_au * charges_au[:, :, None]
 
 
-def magnetic_dipole_shift_origin(c_au, trans_au, **kwargs):
+def magnetic_dipole_shift_origin(c_au, trans_au):
     '''Compute differential term of origin shift
        c_au ... current dipole moment
        trans_au ... translation vector from old to new origin

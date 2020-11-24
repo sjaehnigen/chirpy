@@ -32,7 +32,7 @@ import numpy as _np
 import copy as _copy
 
 from ..classes import _CORE
-from ..topology import mapping
+from ..topology import mapping as mp
 from ..physics import classical_electrodynamics as ed
 from ..physics import constants
 
@@ -55,7 +55,8 @@ class OriginGauge(_CORE):
         self.c_au = moments.data[:, 3:6]
         self.m_au = moments.data[:, 6:9]
         self.cell_au_deg = _copy.deepcopy(cell)
-        self.cell_au_deg[:3] *= constants.l_aa2au
+        if cell is not None:
+            self.cell_au_deg[:3] *= constants.l_aa2au
         # --- heavy-atom gauge (not implemented)
         self.hag = False
 
@@ -73,26 +74,49 @@ class OriginGauge(_CORE):
     def switch_origin_gauge(self, origins_aa, assignment,
                             number_of_types=None):
         '''origins in angstrom'''
-        origins_au = origins_aa * constants.l_aa2au
+        _O = _copy.deepcopy(origins_aa) * constants.l_aa2au
         if (_n_o := len(origins_aa)) > len(self.r_au):
             raise ValueError('new number of origins cannot be greater than '
                              'the old one (assignment failure)')
-        # --- decompose according to assignment
-        _rd, _cd, _md = map(
-                lambda x: mapping.dec(x, assignment, n_ind=number_of_types),
-                [self.r_au, self.c_au, self.m_au]
-                )
+
+        _R = _copy.deepcopy(self.r_au)
+        _C = _copy.deepcopy(self.c_au)
+        _M = _copy.deepcopy(self.m_au)
+        _CELL = self.cell_au_deg
+        lattice = mp.detect_lattice(_CELL)
+
+        if lattice not in ['cubic', 'orthorhombic', 'tetragonal']:
+            # --- convert positions to grid space
+            _O = mp.get_cell_coordinates(_O, self.cell_au_deg)
+            _R = mp.get_cell_coordinates(_R, self.cell_au_deg)
+            _C = mp.get_cell_coordinates(_C, self.cell_au_deg)
+            _M = mp.get_cell_coordinates(_M, self.cell_au_deg, angular=True)
+            _CELL = _np.array([1., 1., 1., 90., 90., 90.])
 
         # --- process gauge-dependent properties
+        # --- decompose according to assignment
+        _Rd, _Cd, _Md = map(
+                        lambda x: mp.dec(x, assignment, n_ind=number_of_types),
+                        [_R, _C, _M]
+                        )
+
         # --- --- magnetic dipole
-        _md_p = [ed.switch_magnetic_origin_gauge(_c, _m, _r,
-                                                 _o,
-                                                 cell_au_deg=self.cell_au_deg)
-                 for _o, _r, _c, _m in zip(origins_au, _rd, _cd, _md)]
+        _Md_p = [ed.switch_magnetic_origin_gauge(*_tup, cell_au_deg=_CELL)
+                 for _tup in zip(_Cd, _Md, _Rd, _O)]
         # --- --- electric dipole
         # --- --- multipole
 
-        # --- sum contributions
-        self.r_au = origins_au
-        self.c_au = _np.array([_cd[_i].sum(axis=0) for _i in range(_n_o)])
-        self.m_au = _np.array([_md_p[_i].sum(axis=0) for _i in range(_n_o)])
+        # --- sum parts
+        _M = _np.array([_Md_p[_i].sum(axis=0) for _i in range(_n_o)])
+        _C = _np.array([_Cd[_i].sum(axis=0) for _i in range(_n_o)])
+
+        if lattice not in ['cubic', 'orthorhombic', 'tetragonal']:
+            # --- back-convert position-dependent magnitudes to Cartesian space
+            _O = mp.get_cartesian_coordinates(_O, self.cell_au_deg)
+            _C = mp.get_cartesian_coordinates(_C, self.cell_au_deg)
+            _M = mp.get_cartesian_coordinates(_M, self.cell_au_deg,
+                                              angular=True)
+
+        self.r_au = _O
+        self.c_au = _C
+        self.m_au = _M
