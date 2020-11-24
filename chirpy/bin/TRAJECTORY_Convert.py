@@ -76,7 +76,7 @@ def main():
     parser.add_argument(
             "--fn_vel",
             help="Additional trajectory file with velocities (optional). "
-                 "Assumes atomic units. BETA",
+                 "Assumes atomic units.",
             default=None,
             )
     parser.add_argument(
@@ -275,7 +275,6 @@ def main():
 
     if args.f not in ['None', 'False']:
         if args.convert_to_moments:
-            # --- BETA
             for _iframe, _p_fr in enumerate(_load.XYZ):
                 _moment = trajectory.MOMENTSFrame.from_classical_nuclei(
                         _load.XYZ._frame)

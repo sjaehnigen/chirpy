@@ -146,7 +146,7 @@ def cell_volume(cell, n_fields=3):
 def detect_lattice(cell, priority=(0, 1, 2)):
     '''Obtain lattice system from cell measures.
        Does not care of axis order priority.
-       (Beta)'''
+       '''
     if cell is None or np.any(cell == 0.):
         _warnings.warn("Got empty cell!", RuntimeWarning, stacklevel=2)
         return None

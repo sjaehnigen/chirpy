@@ -41,7 +41,6 @@ def _gen(fn):
 
 def _open(*args, **kwargs):
     if kwargs.get('bz2'):
-        # --- BETA: overrides args[1:]
         return bz2.open(args[0], 'rt')
     else:
         return open(*args)

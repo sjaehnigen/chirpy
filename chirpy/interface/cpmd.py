@@ -482,7 +482,7 @@ class CPMDinput():
         def _parse_section_input(cls, section_input, fmt='angstrom'):
             '''Takes unprocessed lines from section without &<SECTION> and
                "&END" lines as section_input.
-               Beta: Limited LOC/LMAX support.'''
+               Limited LOC/LMAX support.'''
             _C = {}
             kinds = []
             channels = []
@@ -551,7 +551,6 @@ class CPMDinput():
 
 class CPMDjob():
     '''An actual representative of CPMDinput
-       BETA (work in progress...)
        '''
 
     def __init__(self, **kwargs):
@@ -752,7 +751,6 @@ class CPMDjob():
 #
 #     @classmethod
 #     def read(cls, fn, n_atoms, **kwargs):
-#         '''Beta: needs symbols'''
 #         data = np.array([_d for _d in cpmdIterator(
 #                                         fn,
 #                                         n_atoms,

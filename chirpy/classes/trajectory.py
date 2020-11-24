@@ -432,7 +432,6 @@ class _MODES(_FRAME):
 
     def _source_APT(self, fn):
         '''Requires file of APT in atomic units.
-           BETA
            '''
         self.APT_au = _np.loadtxt(fn).astype(float).reshape(self.n_atoms, 3, 3)
 
@@ -446,7 +445,6 @@ class _MODES(_FRAME):
 
     def _source_AAT(self, fn):
         '''Requires file of AAT in atomic units.
-           BETA
            '''
         self.AAT_au = _np.loadtxt(fn).astype(float).reshape(self.n_atoms, 3, 3)
 

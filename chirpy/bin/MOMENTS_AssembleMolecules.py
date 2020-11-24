@@ -72,7 +72,7 @@ def main():
 #             "--hag",
 #             action='store_true',
 #             default=False,
-#             help="Use heavy atom gauge (BETA; work in progress)."
+#             help="Use heavy atom gauge."
 #             )
     parser.add_argument(
             "-f",

@@ -52,7 +52,7 @@ def main():
     parser.add_argument(
             "--fn_vel",
             help="External trajectory file with velocities (optional). "
-                 "Less efficient. Assumes atomic units. BETA",
+                 "Less efficient. Assumes atomic units.",
             default=None,
             )
     parser.add_argument(

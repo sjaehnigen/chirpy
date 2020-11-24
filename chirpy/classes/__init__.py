@@ -403,8 +403,6 @@ class _ITERATOR():
         return self._kwargs['skip']
 
 
-# BETA: Work in progress
-
 _known_objects = {
         'VectorField': {
             'VectorField': [],
