@@ -48,7 +48,7 @@ def main():
             "--cell_aa_deg",
             nargs=6,
             help="Cell parametres a b c al be ga in angstrom/degree \
-(None = guess from atom spread).",
+                  (None = guess from atom spread).",
             default=None,
             type=float
             )
@@ -74,7 +74,6 @@ def main():
     if args.get_mols:
         nargs['define_molecules'] = args.get_mols
 
-    # --- ToDo: define type in arguments
     b = supercell.Solution.read(args.fn, **nargs)
     b.print_info()
 
