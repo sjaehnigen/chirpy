@@ -298,20 +298,32 @@ class _ITERATOR():
         if len(obj._kwargs['_masks']) > 10:
             warnings.warn('Too many masks on iterator!', stacklevel=2)
 
-    def merge(self, other, **kwargs):
-        '''Merge with other object by combining the two iterators other than
-           along principal axis (use "+") for that.
-           Specify axis 0 or 1 to combine atoms or data, respectively
-           (default: 0).
-           Other iterator should not be used anymore!
-           BETA'''
+    def merge(self, other, axis=-1, dim1=slice(0, 3), dim2=slice(0, 3)):
+        '''Merge horizontically with another iterator (of equal length).
+           Specify axis 0 or 1/-1 to combine atoms or data, respectively
+           (default: -1).
+           Specify cartesian dimensions to be used from data by dim1/dim2
+           (default: slice(0, 3)).
+           <Other> iterator must not be used anymore!
+           To concatenate iterators along the frame axis, use "+".
+           '''
 
-        def _func(obj1, obj2, **kwargs):
+        def _add(obj1, obj2):
+            '''combine two frames'''
+            obj1.axis_pointer = axis
+            obj2.axis_pointer = axis
+
+            obj1.data = obj1.data[:, dim1]
+            obj2.data = obj2.data[:, dim2]
+
+            obj1 += obj2
+            return obj1
+
+        def _func(obj1, obj2):
             # --- next(obj1) is called before loading mask
             try:
                 next(obj2)
-                obj1 += obj2
-                return obj1
+                return _add(obj1, obj2)
             except StopIteration:
                 with warnings.catch_warnings():
                     warnings.warn('Merged iterator exhausted!',
@@ -319,10 +331,10 @@ class _ITERATOR():
                                   stacklevel=1)
                 return obj1
 
-        self._frame += other._frame
+        self._frame = _add(self._frame, other._frame)
         self.__dict__.update(self._frame.__dict__)
 
-        self._mask(self, _func, other, **kwargs)
+        self._mask(self, _func, other)
 
     def mask_duplicate_frames(self, verbose=True, **kwargs):
         # ToDo: Generalise this function for all kinds of ITERATORS

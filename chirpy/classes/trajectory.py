@@ -1440,7 +1440,7 @@ class MOMENTSFrame(_MOMENTS, _FRAME):
 
 
 class XYZ(_XYZ, _ITERATOR, _FRAME):
-    '''A generator of XYZ frames (BETA).'''
+    '''A generator of XYZ frames.'''
     def __init__(self, *args, **kwargs):
         self._kernel = XYZFrame
         self._kwargs = {}
@@ -1645,47 +1645,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'split', *args, **kwargs)
 
-    def merge(self, other, axis=-1, dim1=[0, 1, 2], dim2=[0, 1, 2], **kwargs):
-        '''Merge horizontically with another iterator (of equal length).
-           Specify axis 0 or 1/-1 to combine atoms or data, respectively
-           (default: -1).
-           Specify cartesian dimensions to be used from data by dim1/dim2
-           (default: [0, 1, 2]).
-           <Other> iterator must not be used anymore!
-           To concatenate iterators along the frame axis, use "+".
-           BETA'''
-
-        def _add(obj1, obj2):
-            '''combine two frames'''
-            obj1.axis_pointer = axis
-            obj2.axis_pointer = axis
-
-            obj1.data = obj1.data[:, dim1]
-            obj2.data = obj2.data[:, dim2]
-
-            obj1 += obj2
-            return obj1
-
-        def _func(obj1, obj2, **kwargs):
-            # --- next(obj1) is called before loading mask
-            try:
-                next(obj2)
-                return _add(obj1, obj2)
-            except StopIteration:
-                with _warnings.catch_warnings():
-                    _warnings.warn('Merged iterator exhausted!',
-                                   RuntimeWarning,
-                                   stacklevel=1)
-                return obj1
-
-        self._frame = _add(self._frame, other._frame)
-        self.__dict__.update(self._frame.__dict__)
-
-        self._mask(self, _func, other, **kwargs)
-
 
 class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
-    '''A generator of MOMENT frames (BETA).'''
+    '''A generator of MOMENT frames.'''
     def __init__(self, *args, **kwargs):
         self._kernel = MOMENTSFrame
 
