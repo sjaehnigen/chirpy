@@ -40,7 +40,6 @@ from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 from ..physics import constants
-# close_neighbours
 
 
 # --- kernels
@@ -71,7 +70,6 @@ def _cpmd(frame, **kwargs):
     convert = kwargs.get('convert', 1.)
     n_lines = kwargs.get('n_lines')
     filetype = kwargs.get('filetype')
-    # --- is this a python bug?
     # --- generator needs at least one call of next() to work properly
     data = []
     data.append(next(frame).strip().split())
