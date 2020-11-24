@@ -811,9 +811,8 @@ class _XYZ():
             raise TypeError('Too many arguments for %s!'
                             % self._vel_au.__name__)
 
-    def _sync_class(self):
-        # ToDo: kwargs for consistency with Modes
-        # ToDo: slow (problem in iterator)
+    def _sync_class(self, **kwargs):
+        # kwargs for consistency with Modes
         try:
             self.masses_amu = constants.symbols_to_masses(self.symbols)
         except KeyError:
@@ -1397,7 +1396,7 @@ class XYZFrame(_XYZ, _FRAME):
 
     def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
-        _XYZ._sync_class(self)
+        _XYZ._sync_class(self, **kwargs)
 
     def make_trajectory(self, n_images=3, ts_fs=1):
         '''Create a XYZTrajectory object with <n_images>
