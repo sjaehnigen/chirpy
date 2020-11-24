@@ -53,7 +53,7 @@ if __name__ == '__main__':
         _verbosity = 1
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
 
-    print(f'You are using ChirPy version {__version__}.')
+    print(f'You are using ChirPy version {__version__}')
     print(70 * '-')
     print('Running TestSuite')
     sys.stdout.flush()
