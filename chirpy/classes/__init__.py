@@ -337,7 +337,6 @@ class _ITERATOR():
         self._mask(self, _func, other)
 
     def mask_duplicate_frames(self, verbose=True, **kwargs):
-        # ToDo: Generalise this function for all kinds of ITERATORS
         def split_comment(comment):
             if 'i = ' in comment:
                 return int(comment.split()[2].rstrip(','))
