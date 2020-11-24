@@ -42,7 +42,6 @@ from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
 from ..physics import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
-from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.analysis import divrot
 from ..topology import mapping
 from ..visualise import print_info
@@ -315,14 +314,16 @@ class ScalarField(_CORE):
 
     def _rtransform(self, p):
         '''transform position (relative to origin) into grid index'''
-        return ceb(_copy.deepcopy(p), self.cell_vec_aa)
+        return mapping.get_cell_coordinates(p, self.cell_aa_deg)
+        # return ceb(_copy.deepcopy(p), self.cell_vec_aa)
 
     def _ltransform(self, i):
         '''transform grid index into position'''
-        return _np.einsum('ni, ji -> nj',
-                          _copy.deepcopy(i),
-                          self.cell_vec_aa
-                          )
+        return mapping.get_cartesian_coordinates(i, self.cell_aa_deg)
+        # return _np.einsum('ni, ji -> nj',
+        #                   _copy.deepcopy(i),
+        #                   self.cell_vec_aa
+        #                   )
 
     def ind_grid(self):
         '''Return grid point indices'''

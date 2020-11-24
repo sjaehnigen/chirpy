@@ -148,7 +148,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
        Does not care of axis order priority.
        '''
     if cell is None or np.any(cell == 0.):
-        _warnings.warn("Got empty cell!", RuntimeWarning, stacklevel=2)
+        _warnings.warn("no periodic cell given!", RuntimeWarning, stacklevel=2)
         return None
 
     abc, albega = cell[:3], cell[3:]
@@ -242,6 +242,32 @@ def _pbc_shift(_d, cell):
             return np.around(_d/cell[:3]) * cell[:3]
     else:
         return np.zeros_like(_d)
+
+
+# --- ToDo: rename the next two methods
+def get_cell_coordinates(positions, cell, angular=False):
+    '''Transform Cartesian coordinates into cell vector basis.
+       angular=True for transformation of angular magnitudes
+       of the form p × p or p × v
+       '''
+    cell_vec = get_cell_vec(cell)
+    if angular:
+        cell_vec = np.linalg.det(cell_vec) * np.linalg.inv(cell_vec).T
+    return ceb(positions, cell_vec)
+
+
+def get_cartesian_coordinates(positions, cell, angular=False):
+    '''Transform cell coordinates into Cartesian basis
+       angular=True for transformation of angular magnitudes
+       of the form p × p or p × v
+       '''
+    cell_vec = get_cell_vec(cell)
+    if angular:
+        cell_vec = np.linalg.det(cell_vec) * np.linalg.inv(cell_vec).T
+    return np.einsum('ni, ij -> nj',
+                     positions,
+                     cell_vec
+                     )
 
 
 def distance_matrix(p0, p1=None, cell=None, cartesian=False):
