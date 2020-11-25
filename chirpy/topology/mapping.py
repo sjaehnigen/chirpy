@@ -349,7 +349,7 @@ def connectivity(pos_aa, symbols, cell_aa_deg=None):
                      (optional)
     '''
     neighs = neighbour_matrix(pos_aa, symbols, cell_aa_deg=cell_aa_deg)
-    return np.array([np.argwhere(_n).ravel() for _n in neighs])
+    return [np.argwhere(_n).ravel() for _n in neighs]
 
 
 def join_molecules(pos_aa, mol_map, cell_aa_deg,

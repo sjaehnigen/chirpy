@@ -56,6 +56,8 @@ vibrational_mode = 'au'
 frequency = 'au'
 
 # --- other
+angle = 'rad'
+cell = 'aa_deg'
 time = 'fs'
 temperature = 'K'
 length = 'aa'
