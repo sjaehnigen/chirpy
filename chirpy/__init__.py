@@ -82,3 +82,22 @@ def equal(a, b):
         return _np.all(a == b)
     else:
         return a == b
+
+
+def avg(x):
+    return _np.mean(x, axis=0)
+
+
+def cumavg(data):
+    return _np.cumsum(data, axis=0)/_np.arange(1, len(data)+1)
+
+
+def movavg(a, n=3):
+    ret = _np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+
+    # return ret[n - 1:] / n
+
+    # --- adaptive and keep size
+    ret[:n-1] = ret[:n-1] / _np.arange(1, n) * n
+    return ret / n
