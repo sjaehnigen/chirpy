@@ -316,6 +316,7 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
     dist_array[_hind] = 'Inf'
     dist_array[:, _hind] = 'Inf'
     dist_array[_hind, _hmin] = 0.0
+    dist_array[_hmin, _hind] = 0.0
     crit_aa = dist_crit_aa(symbols)
 
     return dist_array <= crit_aa
