@@ -38,7 +38,7 @@ _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
 class TestSupercell(unittest.TestCase):
-    # --- insufficiently tested
+    # --- ToDo: insufficiently tested
 
     def setUp(self):
         self.dir = _test_dir + '/create'
