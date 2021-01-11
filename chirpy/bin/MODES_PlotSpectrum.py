@@ -41,7 +41,7 @@ from chirpy.topology import grid
 def main():
     '''Plots vibrational modes.'''
     parser = argparse.ArgumentParser(
-        description="Plots vibrational modes.",
+        description="Plots vibrational modes as IR spectrum (optional: VCD).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
@@ -67,6 +67,18 @@ def main():
     parser.add_argument(
             "--save",
             help="Save results to file.",
+            action='store_true',
+            default=False,
+            )
+    parser.add_argument(
+            "--ignore_intensities",
+            help="Set mode intensities to 1.",
+            action='store_true',
+            default=False,
+            )
+    parser.add_argument(
+            "--vcd",
+            help="Plot VCD spectrum",
             action='store_true',
             default=False,
             )
@@ -102,6 +114,9 @@ def main():
     _n = int(abs(_x1 - _x0) / args.resolution)
     X = np.linspace(_x0, _x1, _n)
 
+    if args.ignore_intensities:
+        _load.Modes.IR_kmpmol = np.ones_like(_load.Modes.IR_kmpmol)
+
     data = {}
     data['va'] = (grid.regularisation(
                             _load.Modes.eival_cgs,
@@ -111,6 +126,16 @@ def main():
                             )
                   * _load.Modes.IR_kmpmol[:, None]
                   ).sum(axis=0)
+
+    if args.vcd:
+        data['vcd'] = (grid.regularisation(
+                            _load.Modes.eival_cgs,
+                            X,
+                            args.fwhm,
+                            mode=args.lineshape+"_std"
+                            )
+                       * _load.Modes.VCD_kmpmol[:, None]
+                       ).sum(axis=0)
 
     # --- plot
     labels = {

@@ -663,7 +663,11 @@ class _XYZ():
                             # self.APT_au = data_dict['Polar']
                             # self.AAT_au = data_dict['AAT']
                             # --- calculate it from tensors
-                            self.IR_kmpmol = data_dict['T**2']
+
+                            # --- units not verified, should be in a.u.
+                            self.IR_kmpmol = data_dict['intensities_kmpmol']
+                            self.VCD_kmpmol = \
+                                data_dict['rotational_strengths_kmpmol']
 
                         except KeyError:
                             pass

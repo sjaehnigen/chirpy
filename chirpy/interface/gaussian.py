@@ -193,6 +193,19 @@ def g09Reader(filename, run=1):
         properties['omega_cgs'] = e_val
         properties['cmc'] = cmc
 
+        # --- quick workaround
+        # ToDo; sort this out; freqs and omega_cgs not equal; all should be
+        # extracted from log file, i.e. no post-processing
+        freqs, inten = g09_extract_ir_data(filename)
+        freqs, rotstr = g09_extract_vcd_data(filename)
+
+        # --- overwrite generated freqs
+        # (hence they do only approx. correspond to modes)
+        properties['omega_cgs'] = freqs
+        # --- ToDo: units not verified
+        properties['intensities_kmpmol'] = inten
+        properties['rotational_strengths_kmpmol'] = rotstr
+
     return properties
 
 
