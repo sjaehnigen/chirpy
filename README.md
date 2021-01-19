@@ -1,22 +1,20 @@
 # ChirPy
 
-ChirPy (_chiral python_) is a python package for analysing supramolecular and 
+[ChirPy](https://hartree.chimie.ens.fr/sjaehnigen/chirpy) (_chiral python_) is a python package for analysing supramolecular and 
 electronic structure, chirality and dynamics.
-
-You find the [source](https://hartree.chimie.ens.fr/sjaehnigen/chirpy)
 
 It provides:
 
     ... (work in progress)
 
 
-Tests can then be run by calling run.py in chirpt_test/
+Tests can then be run by calling `run.py` in _chirpy_test/_
 
-    python run.py 
+`python run.py`
 
 or in bash terminal
 
-    ./run.py
+`./run.py`
 
 
-Thank you for reporting bugs and issues to the developers (see [AUTHORS.txt](https://hartree.chimie.ens.fr/sjaehnigen/chirpy/-/blob/master/AUTHORS.txt)).
+Thank you for reporting bugs and issues to the [developers](https://hartree.chimie.ens.fr/sjaehnigen/chirpy/-/blob/master/AUTHORS.txt)).
