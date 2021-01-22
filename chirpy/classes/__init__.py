@@ -188,7 +188,8 @@ class _CORE():
 class _ITERATOR():
     def __init__(self, *args, **kwargs):
         self._kernel = _CORE
-        self._gen_init = iter([])
+        # self._gen_init = iter([])
+        self._gen = iter([])
 
         self._kwargs = {}
         # --- initialise list of masks
@@ -251,7 +252,7 @@ class _ITERATOR():
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
-        self._fr -= self._st
+        # self._fr -= self._st
         next(self)
         warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
         self._fr -= self._st

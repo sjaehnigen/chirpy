@@ -43,7 +43,7 @@ from ..physics.kspace import k_potential as _k_potential
 from ..physics import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
 from ..mathematics.analysis import divrot
-from ..topology import mapping
+from ..topology import mapping as mp
 from ..visualise import print_info
 
 
@@ -111,8 +111,8 @@ class ScalarField(_CORE):
             if not hasattr(self, _a+'_aa') and hasattr(self, _a+'_au'):
                 _warnings.warn('Since version 0.17.1. the default length unit '
                                'in ChirPy is '
-                               f'angstrom. \'{_a}_au\' is an '
-                               'outdated attribute and should no longer be '
+                               f'angstrom. \'{_a}_au\' is '
+                               'deprecated and should no longer be '
                                f'used; use \'{_a}_aa\' instead.',
                                FutureWarning, stacklevel=2)
                 setattr(self, _a+'_aa',
@@ -133,7 +133,7 @@ class ScalarField(_CORE):
             self.voxel = _np.dot(self.cell_vec_aa[0],
                                  _np.cross(self.cell_vec_aa[1],
                                            self.cell_vec_aa[2]))
-            self.cell_aa_deg = mapping.get_cell_l_deg(
+            self.cell_aa_deg = mp.get_cell_l_deg(
                                      self.cell_vec_aa,
                                      multiply=self.data.shape[-3:]
                                      )
@@ -314,16 +314,17 @@ class ScalarField(_CORE):
 
     def _rtransform(self, p):
         '''transform position (relative to origin) into grid index'''
-        return mapping.get_cell_coordinates(p, self.cell_aa_deg)
-        # return ceb(_copy.deepcopy(p), self.cell_vec_aa)
+        return mp.get_cell_coordinates(
+                p,
+                mp.get_cell_l_deg(self.cell_vec_aa)
+                )
 
     def _ltransform(self, i):
         '''transform grid index into position'''
-        return mapping.get_cartesian_coordinates(i, self.cell_aa_deg)
-        # return _np.einsum('ni, ji -> nj',
-        #                   _copy.deepcopy(i),
-        #                   self.cell_vec_aa
-        #                   )
+        return mp.get_cartesian_coordinates(
+                i,
+                mp.get_cell_l_deg(self.cell_vec_aa)
+                )
 
     def ind_grid(self):
         '''Return grid point indices'''

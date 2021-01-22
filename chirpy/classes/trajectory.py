@@ -1482,8 +1482,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             else:
                 raise ValueError('Unknown trajectory format: %s.' % self._fmt)
 
-            # --- split generator
-            self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
+            # # --- split generator
+            self._gen = self._gen_init
+            # self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
 
             self._topology = XYZFrame(fn, **kwargs)
 
@@ -1492,15 +1493,19 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
             self._fr, self._st, buf = self._kwargs['range']
-
-            # --- Load first frame w/o consuming it
-            self._fr -= self._st
-            next(self)
             self._fr -= self._st
 
-            # --- reset generator for the first time
-            self._gen = self._gen_aux
-            del self._gen_init
+            # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
+            self.sneak()
+
+            # # --- Load first frame w/o consuming it
+            # self._fr -= self._st
+            # next(self)
+            # self._fr -= self._st
+
+            # # --- reset generator for the first time
+            # self._gen = self._gen_aux
+            # del self._gen_init
 
             # --- Store original skip as it is consumed by generator
             if 'skip' in self._kwargs:
@@ -1684,23 +1689,31 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
 
-            # --- split generator
-            self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
+            self._gen = self._gen_init
+            ## --- split generator
+            #self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
 
             # --- keep kwargs for iterations
             self._kwargs.update(kwargs)
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
             self._fr, self._st, buf = self._kwargs['range']
-
-            # --- Load first frame w/o consuming it
-            self._fr -= self._st
-            next(self)
             self._fr -= self._st
 
-            # --- reset generator for the first time
-            self._gen = self._gen_aux
-            del self._gen_init
+            # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
+            self.sneak()
+            # # --- Load first frame w/o consuming it
+            # self._fr -= self._st
+            # next(self)
+            # self._fr -= self._st
+
+            # # --- reset generator for the first time
+            # self._gen = self._gen_aux
+            # del self._gen_init
+
+            # --- Store original skip as it is consumed by generator
+            if 'skip' in self._kwargs:
+                self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
         else:
             raise TypeError("File reader of %s takes exactly 1 argument!"

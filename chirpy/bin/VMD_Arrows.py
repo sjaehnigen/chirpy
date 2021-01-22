@@ -96,7 +96,7 @@ def main():
             )
     parser.add_argument(
             "--radius",
-            help="Radius of icons (lines: radius of arrow head).",
+            help="Radius of icons (lines: radius of arrow head [DISABLED]).",
             type=float,
             default=0.008
             )
