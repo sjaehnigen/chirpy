@@ -252,9 +252,8 @@ class _ITERATOR():
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
-        # self._fr -= self._st
         next(self)
-        warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
+        # warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
         self._fr -= self._st
 
         # --- reset generator
