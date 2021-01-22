@@ -56,14 +56,14 @@ class _SYSTEM(_CORE):
 
         self.mol_map = kwargs.get("mol_map")
 
-        try:
-            if len(args) != 0:
-                self.read_fn(*args, **kwargs)
+        if len(args) != 0:
+            self.read_fn(*args, **kwargs)
+        else:
+            if (fn := kwargs.get('fn')) is not None:
+                self.read_fn(fn, **kwargs)
             else:
-                if (fn := kwargs.get('fn')) is not None:
-                    self.read_fn(fn, **kwargs)
-                else:
-                    self.XYZ = kwargs.pop('XYZ')
+                self.XYZ = kwargs.pop('XYZ')
+        try:
             self.cell_aa_deg = self.XYZ.cell_aa_deg
             self.symbols = self.XYZ.symbols
             # ToDo: Dict of atom kinds (with names)

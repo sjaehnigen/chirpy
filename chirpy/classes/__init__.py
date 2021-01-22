@@ -194,20 +194,11 @@ class _ITERATOR():
         # --- initialise list of masks
         self._kwargs['_masks'] = []
 
-        # --- split generator
-        self._gen, self._gen_aux = itertools.tee(self._gen_init, 2)
-
         # --- keep kwargs for iterations
         self._kwargs.update(kwargs)
 
         # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
-        self._fr -= self._st
-        next(self)
-        self._fr -= self._st
-
-        # --- reset generator for the first time
-        self._gen = self._gen_aux
-        del self._gen_init
+        self.sneak()
 
         # --- Store original skip information as it is consumed by generator
         self._kwargs['_skip'] = self._kwargs['skip'].copy()
@@ -253,6 +244,22 @@ class _ITERATOR():
         else:
             raise ValueError('Cannot combine frames of different size!')
 
+    def sneak(self):
+        '''Load next frame without exhausting iterator (important for loops)'''
+        # --- split generator
+        self._gen_old = self._gen
+        self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
+
+        # --- get free frame
+        self._fr -= self._st
+        next(self)
+        warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
+        self._fr -= self._st
+
+        # --- reset generator
+        self._gen = self._gen_aux
+        del self._gen_old
+
     def rewind(self):
         '''Reinitialises the iterator'''
         if '_skip' in self._kwargs:
@@ -284,9 +291,9 @@ class _ITERATOR():
                     kwargs.update(events[_fr])
             _fr += 1
 
-        # if length is not None:
-        #    next(self)
-        #     self._chaste = True
+        if length is not None:
+            # --- get next frame for free (NB: _fr is not updated!)
+            self.sneak()
 
     @staticmethod
     def _mask(obj, func, *args, **kwargs):

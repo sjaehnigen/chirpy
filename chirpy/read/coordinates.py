@@ -305,6 +305,11 @@ def cifReader(fn):
         _label = None
         for _l in _list:
             _label = _load.get(_l, _label)
+        if _label is None:
+            warnings.warn('could not find at least one item from '
+                          f'attribute list: {_list}. Broken file?',
+                          RuntimeWarning,
+                          stacklevel=2)
         return _label
 
     _read = _ReadCif(fn)
@@ -330,13 +335,13 @@ def cifReader(fn):
     if False:
         print(f'Asymmetric unit: {len(list(zip(x, y, z)))} atoms')
 
-    symbols = tuple(_load['_atom_site_type_symbol'])
-    names = tuple(_load['_atom_site_label'])
+    symbols = tuple(get_label(['_atom_site_type_symbol']))
+    names = tuple(get_label(['_atom_site_label']))
 
     _space_group_label = get_label([
             '_space_group_crystal_system',
             '_symmetry_cell_setting'
-            ])
+            ]).lower()
 
     if _space_group_label is None:
         warnings.warn('No space group label found in file!', stacklevel=2)
