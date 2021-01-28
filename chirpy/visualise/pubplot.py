@@ -31,6 +31,8 @@
 
 import numpy as np
 import warnings
+import copy
+
 from ..classes import AttrDict
 
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
@@ -169,14 +171,16 @@ def multiplot(
              style_a='-',
              alpha_a=1.0,
              lw_a=3,
-             std_alpha_a=0.25,
+             fill_alpha_a=0.25,
+             fill_color_a=None,
              exp=None,
              style_exp='-',
              alpha_exp=1.0,
              lw_exp=3,
              stack_plots=True,
-             pile_up=False,  # fill space between plots
-             hatch_a=None,  # pattern for pile_up
+             pile_up=False,  # fill space between plots (additive)
+             fill_between=False,  # fill space between plots (subtractive)
+             hatch_a=None,  # pattern for pile_up or fill_between
              offset_a=0.0,  # shift y
              sep=5,  # in %
              hspace=None,  # maually define shift between plots, overrrides sep
@@ -218,7 +222,8 @@ def multiplot(
         style_a, \
         alpha_a, \
         lw_a, \
-        std_alpha_a, \
+        fill_alpha_a, \
+        fill_color_a, \
         hatch_a, \
         offset_a, \
         = map(_listify, [
@@ -228,20 +233,27 @@ def multiplot(
                          style_a,
                          alpha_a,
                          lw_a,
-                         std_alpha_a,
+                         fill_alpha_a,
+                         fill_color_a,
                          hatch_a,
                          offset_a,
                          ])
 
-    fill = False
+    _fill = False
     if std_a is not None:
-        fill = True
+        _fill = True
 
-    if pile_up and any([stack_plots,  fill]):
-        warnings.warn('pile_up set: automatically setting stack_plots and fill'
-                      ' argument to False, respectively!', stacklevel=2)
+    if pile_up and any([stack_plots,  _fill, fill_between]):
+        warnings.warn('pile_up set: disabling stack_plots and/or fill_between'
+                      ' arguments, respectively!', stacklevel=2)
         stack_plots = False
-        fill = False
+        _fill = False
+        fill_between = False
+
+    if fill_between and std_a is not None:
+        warnings.warn('fill_between set: disabling std_a'
+                      ' argument', stacklevel=2)
+        _fill = False
 
     if any(len(_a) != n_plots for _a in [y_a,  bool_a]):
         raise ValueError('Inconsistent no. of plots in lists!')
@@ -269,9 +281,14 @@ def multiplot(
 
     if stack_plots:
         print(_shift)
-        _y_a = [_y-_shift*_i for _i, _y in enumerate(y_a)]
-        if exp is not None:
-            _e = e - n_plots*_shift
+        if not fill_between:
+            _y_a = [_y-_shift*_i for _i, _y in enumerate(y_a)]
+            if exp is not None:
+                _e = e - n_plots*_shift
+        else:
+            _y_a = y_a
+            if exp is not None:
+                _e = e - _shift
     else:
         _y_a = y_a
         if exp is not None:
@@ -291,8 +308,9 @@ def multiplot(
                 label='exp.')
 
     # --- plot data
-    if fill:
-        for _b, _x, _y, _st, _c, _al, _lw, _s, _fal, _o in zip(bool_a,
+    if _fill:
+        for _b, _x, _y, _st, _c, _al, _lw, _s, _fal, _fc, _o in zip(
+                                                               bool_a,
                                                                x_a,
                                                                _y_a,
                                                                style_a,
@@ -300,16 +318,52 @@ def multiplot(
                                                                alpha_a,
                                                                lw_a,
                                                                std_a,
-                                                               std_alpha_a,
+                                                               fill_alpha_a,
+                                                               fill_color_a,
                                                                offset_a):
             if _b:
-                ax.fill_between(_x, _y+_o+_s, _y+_o-_s, color=_c, alpha=_fal)
+                if _fc is None:
+                    _fc = _c
+                ax.fill_between(_x, _y+_o+_s, _y+_o-_s, color=_fc, alpha=_fal)
                 ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
-    if pile_up:
+
+    elif fill_between:
+        if n_plots <= 1:
+            raise ValueError('fill_between requires at least two data sets')
         if not np.allclose(np.unique(x_a),  x_a[0]):
-            raise ValueError('pile_up argument requires identical x content!')
+            raise ValueError('fill_between requires identical x attributes')
+
+        _y_1 = None
+        _o_1 = None
+        for _iset, (_b, _x, _y, _st, _ha, _c, _al, _lw, _fal, _fc, _o) in \
+            enumerate(
+                                                           zip(bool_a,
+                                                               x_a,
+                                                               _y_a,
+                                                               style_a,
+                                                               hatch_a,
+                                                               color_a,
+                                                               alpha_a,
+                                                               lw_a,
+                                                               fill_alpha_a,
+                                                               fill_color_a,
+                                                               offset_a)):
+            if _b:
+                if _fc is None:
+                    _fc = _c
+                if _iset > 0:
+                    ax.fill_between(_x, _y+_o, _y_1+_o_1, color=_fc, alpha=_fal,
+                                    lw=0, hatch=_ha)
+                ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
+            _y_1 = copy.deepcopy(_y)
+            _o_1 = copy.deepcopy(_o)
+
+    elif pile_up:
+        if not np.allclose(np.unique(x_a),  x_a[0]):
+            raise ValueError('pile_up requires identical x attributes')
         _last = np.zeros_like(_y_a[0])
-        for _b, _x, _y, _st, _ha, _c, _al, _lw, _fal, _o in zip(bool_a,
+        for _b, _x, _y, _st, _ha, _c, _al, _lw, _fal, _fc, _o in zip(
+                                                                bool_a,
                                                                 x_a,
                                                                 _y_a,
                                                                 style_a,
@@ -317,11 +371,14 @@ def multiplot(
                                                                 color_a,
                                                                 alpha_a,
                                                                 lw_a,
-                                                                std_alpha_a,
+                                                                fill_alpha_a,
+                                                                fill_color_a,
                                                                 offset_a):
             if _b:
+                if _fc is None:
+                    _fc = _c
                 ax.fill_between(_x, _last, _last + _y+_o,
-                                lw=0, color=_c, alpha=_fal,  hatch=_ha)
+                                lw=0, color=_fc, alpha=_fal,  hatch=_ha)
                 _last += _y+_o
                 ax.plot(_x, _last, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
     else:
