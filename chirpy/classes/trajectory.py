@@ -31,7 +31,6 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
-import itertools
 
 from . import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
@@ -1481,7 +1480,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             else:
                 raise ValueError('Unknown trajectory format: %s.' % self._fmt)
-
 
             self._topology = XYZFrame(fn, **kwargs)
 

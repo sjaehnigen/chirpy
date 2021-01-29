@@ -32,6 +32,9 @@
 from itertools import islice
 import numpy as np
 import bz2
+from tqdm import tqdm
+
+from .. import config
 
 
 def _gen(fn):
@@ -105,7 +108,7 @@ def _get(_it, kernel, **kwargs):
             break
 
 
-def _reader(FN, _nlines, _kernel, **kwargs):
+def _reader(FN, _nlines, _kernel, show_progress=True, **kwargs):
     '''Opens file, checks contents, and parses arguments,
        _kernel, and generator.'''
 
@@ -113,7 +116,10 @@ def _reader(FN, _nlines, _kernel, **kwargs):
 
     with _open(FN, 'r', **kwargs) as _f:
         _it = _gen(_f)
-        data = _get(_it, _kernel, **kwargs)
+        if config.__verbose__:
+            data = tqdm(_get(_it, _kernel, **kwargs), desc=FN)
+        else:
+            data = _get(_it, _kernel, **kwargs)
 
         if np.size(data) == 0:
             raise ValueError('Given input and arguments '

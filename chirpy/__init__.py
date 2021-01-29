@@ -40,8 +40,8 @@ if __name__ == '__main__':
 if sys.version_info[:2] < (3, 8):
     raise RuntimeError("Python version >= 3.8 required.")
 
-
 # --- code snippets
+
 
 def extract_keys(dict1, **defaults):
     '''Updates the key/value pairs of defaults with those of dict1.

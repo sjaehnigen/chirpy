@@ -38,6 +38,10 @@ from multiprocessing import Pool
 from itertools import product, combinations_with_replacement
 from functools import partial
 
+from tqdm import tqdm
+
+from .. import config
+
 
 class AttrDict(dict):
     '''Converts dictionary keys into attributes'''
@@ -253,7 +257,8 @@ class _ITERATOR():
 
         # --- get free frame
         next(self)
-        # warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
+        if config.__verbose__:
+            warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
         self._fr -= self._st
 
         # --- reset generator
