@@ -86,11 +86,9 @@ class _PALARRAY():
         self.pool = Pool(n_cores)
 
         self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])
+        self._length = np.prod([len(_d) for _d in data])**repeat
         self._ut = False
         self.repeat = repeat
-
-        # ToDo: memory warning:
-        # print(np.prod([len(_d) for _d in self.data]))
 
         if upper_triangle:
             self._ut = True
@@ -104,7 +102,14 @@ class _PALARRAY():
 
     def run(self):
         try:
-            result = np.array(self.pool.starmap(self.f, self.array))
+            if config.__verbose__:
+                result = np.array(list(tqdm(
+                             self.pool.istarmap(self.f, self.array),
+                             desc=f'{self.f.func.__name__} (PALARRAY)',
+                             total=self._length
+                             )))
+            else:
+                result = np.array(self.pool.starmap(self.f, self.array))
 
             _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:

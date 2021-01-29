@@ -32,6 +32,7 @@ import sys
 import warnings
 import numpy as _np
 import multiprocessing as mp
+import multiprocessing.pool as mpp
 
 if __name__ == '__main__':
     mp.set_start_method('spawn')
@@ -101,3 +102,30 @@ def movavg(a, n=3):
     # --- adaptive and keep size
     ret[:n-1] = ret[:n-1] / _np.arange(1, n) * n
     return ret / n
+
+
+# --- update multiprocessing
+#    ( https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm)
+
+def istarmap(self, func, iterable, chunksize=1):
+    '''starmap-version of imap
+    '''
+    self._check_running()
+    if chunksize < 1:
+        raise ValueError(
+            "Chunksize must be 1+, not {0:n}".format(
+                chunksize))
+
+    task_batches = mpp.Pool._get_tasks(func, iterable, chunksize)
+    result = mpp.IMapIterator(self)
+    self._taskqueue.put(
+        (
+            self._guarded_task_generation(result._job,
+                                          mpp.starmapstar,
+                                          task_batches),
+            result._set_length
+        ))
+    return (item for chunk in result for item in chunk)
+
+
+mpp.Pool.istarmap = istarmap

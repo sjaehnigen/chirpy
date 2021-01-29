@@ -32,17 +32,17 @@ import warnings
 from IPython import get_ipython
 
 
-__verbose__ = False
+__verbose__ = True
 
 
 def set_verbose(s):
     '''toggle chirpy runtime verbosity'''
     global __verbose__
     __verbose__ = bool(s)
-    warnings.warn('enabling chirpy verbosity', stacklevel=2)
 
 
 # --- check if run in ipython/jupyter notebook
 if get_ipython() is not None:
     if "IPKernelApp" in get_ipython().config:
+        warnings.warn('jupyter: enabling chirpy verbosity', stacklevel=2)
         set_verbose(True)

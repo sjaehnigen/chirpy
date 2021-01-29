@@ -51,6 +51,7 @@ if __name__ == '__main__':
         _verbosity = int(sys.argv[1])
     except IndexError:
         _verbosity = 1
+        chirpy.config.set_verbose(False)
     if _verbosity > 2:
         chirpy.config.set_verbose(True)
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
