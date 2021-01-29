@@ -28,6 +28,7 @@
 #
 # -------------------------------------------------------------------
 
+import sys
 import pickle
 import itertools
 import warnings
@@ -262,8 +263,8 @@ class _ITERATOR():
 
         # --- get free frame
         next(self)
-        if config.__verbose__:
-            warnings.warn(f'sneaked frame {self._fr}', stacklevel=2)
+        if self._fr != 0 and config.__verbose__:
+            print(f'sneaked frame {self._fr}', file=sys.stderr)
         self._fr -= self._st
 
         # --- reset generator
