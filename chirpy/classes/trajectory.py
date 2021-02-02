@@ -499,6 +499,7 @@ class _XYZ():
             self._fmt = fmt
             self._fn = fn
             if self._type == 'frame':
+                _it_verbose = False
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
                 kwargs.update({'range': _fr})
@@ -1491,7 +1492,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fr -= self._st
 
             # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
-            self.sneak()
+            self.sneak(verbose=False)
 
             # --- Store original skip as it is consumed by generator
             if 'skip' in self._kwargs:
@@ -1682,7 +1683,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             self._fr -= self._st
 
             # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
-            self.sneak()
+            self.sneak(verbose=False)
 
             # --- Store original skip as it is consumed by generator
             if 'skip' in self._kwargs:

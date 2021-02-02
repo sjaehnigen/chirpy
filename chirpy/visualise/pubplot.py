@@ -352,8 +352,8 @@ def multiplot(
                 if _fc is None:
                     _fc = _c
                 if _iset > 0:
-                    ax.fill_between(_x, _y+_o, _y_1+_o_1, color=_fc, alpha=_fal,
-                                    lw=0, hatch=_ha)
+                    ax.fill_between(_x, _y+_o, _y_1+_o_1, color=_fc,
+                                    alpha=_fal, lw=0, hatch=_ha)
                 ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
             _y_1 = copy.deepcopy(_y)
             _o_1 = copy.deepcopy(_o)

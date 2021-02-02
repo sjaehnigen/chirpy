@@ -108,7 +108,7 @@ def _get(_it, kernel, **kwargs):
             break
 
 
-def _reader(FN, _nlines, _kernel, show_progress=True, **kwargs):
+def _reader(FN, _nlines, _kernel, verbose=config.__verbose__, **kwargs):
     '''Opens file, checks contents, and parses arguments,
        _kernel, and generator.'''
 
@@ -116,7 +116,7 @@ def _reader(FN, _nlines, _kernel, show_progress=True, **kwargs):
 
     with _open(FN, 'r', **kwargs) as _f:
         _it = _gen(_f)
-        if config.__verbose__:
+        if verbose:
             data = tqdm(_get(_it, _kernel, **kwargs), desc=FN)
         else:
             data = _get(_it, _kernel, **kwargs)

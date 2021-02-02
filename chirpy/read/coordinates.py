@@ -221,7 +221,7 @@ def arcIterator(FN, **kwargs):
 def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once.
        Returns data, symbols, comments of current frame'''
-    data, symbols, comments = zip(*xyzIterator(FN, **kwargs))
+    data, symbols, comments = zip(*xyzIterator(FN, verbose=False, **kwargs))
     return np.array(data), symbols[0], list(comments)
 
 
@@ -230,7 +230,7 @@ def arcReader(FN, **kwargs):
        Returns data, symbols, numbers, types, and connectivity
        of current frame'''
     data, symbols, numbers, types, connectivity, comments =\
-        zip(*arcIterator(FN, **kwargs))
+        zip(*arcIterator(FN, verbose=False, **kwargs))
 
     # --- FUTURE: support of changes in type or connectivity (if Tinker
     # supports it)

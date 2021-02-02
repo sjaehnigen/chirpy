@@ -255,15 +255,15 @@ class _ITERATOR():
         else:
             raise ValueError('Cannot combine frames of different size!')
 
-    def sneak(self):
+    def sneak(self, verbose=config.__verbose__):
         '''Load next frame without exhausting iterator (important for loops)'''
         # --- split generator
         self._gen_old = self._gen
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
-        next(self)
-        if self._fr != 0 and config.__verbose__:
+        if verbose:
+            next(self)
             print(f'sneaked frame {self._fr}', file=sys.stderr)
         self._fr -= self._st
 
