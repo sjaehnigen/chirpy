@@ -32,7 +32,7 @@ from functools import partial
 import numpy as np
 import copy
 
-from . import _CORE
+from .core import _CORE
 from ..topology.dissection import fermi_cutoff_function
 from ..topology.mapping import distance_pbc
 

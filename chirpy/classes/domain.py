@@ -30,7 +30,7 @@
 
 import numpy as _np
 
-from . import _CORE
+from .core import _CORE
 from .volume import ScalarField as _ScalarField
 
 

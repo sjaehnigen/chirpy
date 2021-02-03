@@ -33,7 +33,7 @@ import numpy as np
 
 from .mapping import distance_pbc, cell_volume
 from ..mathematics.algebra import rotation_matrix
-from ..classes import _PALARRAY
+from ..classes.core import _PALARRAY
 
 
 def radial_distribution_function(positions,

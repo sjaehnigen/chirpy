@@ -37,7 +37,7 @@ from ..topology.dissection import assign_molecule as _assign_molecule
 from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import get_cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
-from ..classes import _CORE
+from ..classes.core import _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Molecule as _Molecule
 from ..physics import constants

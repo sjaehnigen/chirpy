@@ -30,7 +30,7 @@
 
 
 import numpy as np
-from ..classes import _PALARRAY
+from ..classes.core import _PALARRAY
 from ..physics.statistical_mechanics import time_correlation_function as tcf
 from .mapping import ishydrogenbond
 

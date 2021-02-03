@@ -34,7 +34,7 @@ import warnings
 import filecmp
 import numpy as np
 
-from chirpy.classes import system, quantum, trajectory, _PALARRAY
+from chirpy.classes import system, quantum, trajectory, core
 
 # volume, field, domain
 
@@ -58,19 +58,19 @@ class TestCore(unittest.TestCase):
     def test_palarray(self):
         d0 = np.random.rand(8, 8, 8, 13)
         d1 = np.random.rand(8, 8, 8, 17)
-        JOB = _PALARRAY(_func, d0, repeat=2, axis=3, n_cores=1)
+        JOB = core._PALARRAY(_func, d0, repeat=2, axis=3, n_cores=1)
         S = JOB.run()
         r0 = d0[:, :, :, :, None] + d0[:, :, :, None, :].swapaxes(1, 2)
         r0 = np.linalg.norm(r0, axis=1).swapaxes(0, 1)
         r0 = np.moveaxis(r0, -1, 0)
         r0 = np.moveaxis(r0, -1, 0)
         self.assertTrue(np.allclose(S, r0))
-        JOB = _PALARRAY(_func, d0, repeat=2, upper_triangle=True, axis=3)
+        JOB = core._PALARRAY(_func, d0, repeat=2, upper_triangle=True, axis=3)
         S = JOB.run()
         r0[np.tril_indices(13, -1)] = 0.0
         self.assertTrue(np.allclose(S, r0))
 
-        JOB = _PALARRAY(_func, d0, d1, axis=3)
+        JOB = core._PALARRAY(_func, d0, d1, axis=3)
         S = JOB.run()
         r0 = d0[:, :, :, :, None] + d1[:, :, :, None, :].swapaxes(1, 2)
         r0 = np.linalg.norm(r0, axis=1).swapaxes(0, 1)

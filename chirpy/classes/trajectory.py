@@ -32,7 +32,7 @@ import copy as _copy
 import numpy as _np
 import warnings as _warnings
 
-from . import _CORE, _ITERATOR
+from .core import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader

@@ -31,7 +31,7 @@
 import numpy as _np
 import copy as _copy
 
-from ..classes import _CORE
+from ..classes.core import _CORE
 from ..topology import mapping as mp
 from ..physics import classical_electrodynamics as ed
 from ..physics import constants

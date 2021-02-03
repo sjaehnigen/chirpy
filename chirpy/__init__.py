@@ -34,6 +34,8 @@ import numpy as _np
 import multiprocessing as mp
 import multiprocessing.pool as mpp
 
+from . import config
+
 if __name__ == '__main__':
     mp.set_start_method('spawn')
 

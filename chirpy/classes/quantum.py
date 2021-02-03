@@ -36,7 +36,7 @@ from scipy.ndimage.filters import maximum_filter, minimum_filter, \
 from scipy import signal as _signal
 import warnings as _warnings
 
-from . import _CORE
+from .core import _CORE
 from .volume import ScalarField as _ScalarField
 from .volume import VectorField as _VectorField
 from .domain import Domain3D as _Domain3D

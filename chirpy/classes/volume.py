@@ -35,7 +35,7 @@ from scipy.integrate import simps as _simps
 from scipy.ndimage import gaussian_filter1d
 import warnings as _warnings
 
-from . import _CORE
+from .core import _CORE
 from .. import extract_keys
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
