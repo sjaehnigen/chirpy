@@ -499,7 +499,6 @@ class _XYZ():
             self._fmt = fmt
             self._fn = fn
             if self._type == 'frame':
-                _it_verbose = False
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
                 kwargs.update({'range': _fr})
@@ -508,15 +507,19 @@ class _XYZ():
 
             if fmt == "xyz":
                 data, symbols, comments = xyzReader(fn,
-                                                    **_extract_keys(kwargs,
-                                                                    range=_fr,
-                                                                    bz2=False,
-                                                                    )
+                                                    **_extract_keys(
+                                                                kwargs,
+                                                                range=_fr,
+                                                                bz2=False,
+                                                                verbose=False,
+                                                                )
                                                     )
 
             elif fmt in ["cube", "cub"]:
                 data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
-                        cubeReader(fn, **_extract_keys(kwargs, bz2=False))
+                        cubeReader(fn, **_extract_keys(kwargs,
+                                                       bz2=False,
+                                                       verbose=False))
                 _dims = data.shape[1:]
                 del data
                 # --- ToDo: to be discussed: adding origin
@@ -539,7 +542,7 @@ class _XYZ():
 
             elif fmt == "pdb":
                 data, names, symbols, residues, cell_aa_deg, title = \
-                        pdbReader(fn)
+                        pdbReader(fn, **_extract_keys(kwargs, verbose=False))
                 n_atoms = len(symbols)
                 comments = kwargs.get('comments', title)
 
@@ -605,6 +608,7 @@ class _XYZ():
                               **_extract_keys(kwargs,
                                               range=_fr,
                                               bz2=False,
+                                              verbose=False,
                                               )
                               )
 

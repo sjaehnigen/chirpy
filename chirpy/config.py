@@ -28,6 +28,8 @@
 #
 # -------------------------------------------------------------------
 
+import sys
+import importlib
 import warnings
 from IPython import get_ipython
 
@@ -36,9 +38,14 @@ __verbose__ = True
 
 
 def set_verbose(s):
-    '''toggle chirpy runtime verbosity'''
+    '''Enable/disable chirpy runtime verbosity.'''
     global __verbose__
     __verbose__ = bool(s)
+    # --- apply changes to loaded modules, except for this config module
+    modules = tuple(sys.modules.values())
+    for module in modules:
+        if 'chirpy' in module.__name__ and 'config' not in module.__name__:
+            importlib.reload(module)
 
 
 # --- check if run in ipython/jupyter notebook

@@ -138,6 +138,12 @@ def main():
             help="Output file name",
             default='power.dat'
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
     args = parser.parse_args()
     if args.subset is None:
         args.subset = slice(None)

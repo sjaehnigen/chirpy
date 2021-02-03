@@ -82,7 +82,7 @@ def cpmdReader(FN, **kwargs):
                             "symbols.")
 
         data = {}
-        _load = np.array(tuple(cpmdIterator(FN, verbose=False, **kwargs)))
+        _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
         data['data'] = _load
         data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
         data['symbols'] = symbols

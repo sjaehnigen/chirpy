@@ -262,8 +262,8 @@ class _ITERATOR():
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
+        next(self)
         if verbose:
-            next(self)
             print(f'sneaked frame {self._fr}', file=sys.stderr)
         self._fr -= self._st
 
@@ -354,7 +354,7 @@ class _ITERATOR():
 
         self._mask(self, _func, other)
 
-    def mask_duplicate_frames(self, verbose=True, **kwargs):
+    def mask_duplicate_frames(self, verbose=config.__verbose__, **kwargs):
         def split_comment(comment):
             if 'i = ' in comment:
                 return int(comment.split()[2].rstrip(','))

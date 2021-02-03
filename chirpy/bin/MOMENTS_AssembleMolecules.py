@@ -79,6 +79,12 @@ def main():
             help="Output file name",
             default='MOL'
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
 
     args = parser.parse_args()
     if args.range is None:
@@ -90,11 +96,13 @@ def main():
                              fn_topo=args.TOPOLOGY,
                              # --- this is costly depending on no of mols
                              wrap_molecules=True,
+                             verbose=args.verbose,
                              )
 
     _moms_e = trajectory.MOMENTS(args.MOMENTS,
                                  fmt='cpmd',
-                                 range=args.range
+                                 range=args.range,
+                                 verbose=args.verbose,
                                  )
     # -- ToDo: Add test for neutrality of charge
     if (_total_charge := _moms_e.n_atoms * (-2) +

@@ -112,6 +112,12 @@ def main():
             type=int,
             default=1
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
     args = parser.parse_args()
 
     i_fmt = args.input_format

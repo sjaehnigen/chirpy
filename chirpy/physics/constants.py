@@ -210,6 +210,7 @@ X._density = 0.0
 X.density_caveat = ''
 elements[0] = X
 elements['X'] = X
+elements['0'] = X
 # --- van der Waals radii in pm for some elements
 _rvdw_list = [
     ('H',  110.0),

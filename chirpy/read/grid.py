@@ -103,7 +103,7 @@ def cubeIterator(FN, **kwargs):
 def cubeReader(FN, **kwargs):
     '''Read complete XYZ file at once'''
     data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
-        zip(*cubeIterator(FN, **kwargs))
+        zip(*cubeIterator(FN, verbose=False, **kwargs))
 
     return np.array(data), origin_aa[0], cell_vec_aa[0],\
         np.array(pos_aa), numbers[0], list(comments)

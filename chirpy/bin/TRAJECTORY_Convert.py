@@ -165,6 +165,12 @@ def main():
             help="Pseudopotential (for CPMD ATOMS section only).",
             default='MT_BLYP KLEINMAN-BYLANDER',
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
     args = parser.parse_args()
 
     # --- ToDo: workaround
@@ -229,7 +235,7 @@ def main():
             if skip[0] == 'True':
                 skip = bool(skip[0])
                 _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
-                skip = _load.XYZ.mask_duplicate_frames(verbose=False)
+                skip = _load.XYZ.mask_duplicate_frames(verbose=args.verbose)
                 largs.update({'skip': skip})
             else:
                 _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
@@ -249,6 +255,7 @@ def main():
             'fn_topo',
             'sort',
             'skip',
+            'verbose',
                    ]:
             nargs[_a] = largs.get(_a)
 

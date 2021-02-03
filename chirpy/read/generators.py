@@ -116,10 +116,7 @@ def _reader(FN, _nlines, _kernel, verbose=config.__verbose__, **kwargs):
 
     with _open(FN, 'r', **kwargs) as _f:
         _it = _gen(_f)
-        if verbose:
-            data = tqdm(_get(_it, _kernel, **kwargs), desc=FN)
-        else:
-            data = _get(_it, _kernel, **kwargs)
+        data = tqdm(_get(_it, _kernel, **kwargs), desc=FN, disable=not verbose)
 
         if np.size(data) == 0:
             raise ValueError('Given input and arguments '

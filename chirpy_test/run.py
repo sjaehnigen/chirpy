@@ -33,7 +33,7 @@ import unittest
 import sys
 
 from chirpy.version import __version__
-import chirpy
+from chirpy import config
 
 import imports
 import read
@@ -51,9 +51,10 @@ if __name__ == '__main__':
         _verbosity = int(sys.argv[1])
     except IndexError:
         _verbosity = 1
-        chirpy.config.set_verbose(False)
+    config.set_verbose(False)
     if _verbosity > 2:
-        chirpy.config.set_verbose(True)
+        config.set_verbose(True)
+
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
 
     print(f'You are using ChirPy version {__version__}')

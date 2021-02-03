@@ -90,6 +90,12 @@ def main():
             help="Output file format (e.g. xyz, pdb, cpmd; optional).",
             default='cpmd',
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
     args = parser.parse_args()
 
     if args.cell_aa_deg is None:
