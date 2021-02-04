@@ -195,13 +195,28 @@ def circular_dichroism_from_tcf(*args, **kwargs):
     return _spectrum_from_tcf(*args, **kwargs)
 
 
+def _apply_cut_sphere(x, pos, clip, cell=None, inverse=False):
+    if len(clip) != 0:
+        y = np.zeros_like(x)
+        for _tr in clip:
+            if not isinstance(_tr, Sphere):
+                raise TypeError('expected a list of Sphere objects as '
+                                'clip spheres!')
+            y += _tr.clip_section_observable(np.ones_like(x),
+                                             pos,
+                                             cell=cell,
+                                             inverse=inverse)
+    else:
+        y = np.ones_like(x)
+    return np.clip(y, 0, 1) * x
+
+
 def _spectrum_from_tcf(*args,
                        T_K=300,
                        mode='abs_cd',
                        origin_au=np.zeros((3)),
                        cell_au_deg=None,
                        positions_au=None,
-                       return_moments=False,
                        gauge_transport=True,
                        cutoff_au=None,
                        cutoff_bg_au=None,
@@ -246,7 +261,6 @@ def _spectrum_from_tcf(*args,
                        'ts_au!')
     kwargs.update(dict(ts=ts_au))
     cell = cell_au_deg
-    r_moments = return_moments
     pos = copy.deepcopy(positions_au)
 
     if mode not in ['abs', 'cd', 'abs_cd']:
@@ -315,40 +329,17 @@ def _spectrum_from_tcf(*args,
                                  cutoff_au,
                                  edge=cut_type
                                  ))
-
-        _cut_sphere_bg = []
-        if cutoff_bg_au is not None:
-            _cut_sphere_bg.append(Sphere(
-                                    origin_au,
-                                    cutoff_bg_au,
-                                    edge=cut_type_bg
-                                    ))
         # ---------------------------------------------------------------------
-
-        def _cut(x, pos, clip, inverse=False):
-            if len(clip) != 0:
-                y = np.zeros_like(x)
-                for _tr in clip:
-                    if not isinstance(_tr, Sphere):
-                        raise TypeError('expected a list of Sphere objects as '
-                                        'clip spheres!')
-                    y += _tr.clip_section_observable(np.ones_like(x),
-                                                     pos,
-                                                     cell=cell,
-                                                     inverse=inverse)
-            else:
-                y = np.ones_like(x)
-            return np.clip(y, 0, 1) * x
 
         _c = copy.deepcopy(cur_dipoles)
         # --- apply handed over spheres
-        _c = _cut(_c, pos, clip_sphere)
+        _c = _apply_cut_sphere(_c, pos, clip_sphere, cell=cell)
         # --- apply general cutoff
-        _c = _cut(_c, pos, _cut_sphere)
+        _c = _apply_cut_sphere(_c, pos, _cut_sphere, cell=cell)
         if 'cd' in mode:
             _m = copy.deepcopy(mag_dipoles)
-            _m = _cut(_m, pos, clip_sphere)
-            _m = _cut(_m, pos, _cut_sphere)
+            _m = _apply_cut_sphere(_m, pos, clip_sphere, cell=cell)
+            _m = _apply_cut_sphere(_m, pos, _cut_sphere, cell=cell)
 
             # --- calculate gauge-transport
             if gauge_transport:
@@ -359,59 +350,61 @@ def _spectrum_from_tcf(*args,
                 _warnings.warn('Omitting gauge transport term in CD mode!',
                                stacklevel=2)
 
-        if len(_cut_sphere_bg) != 0:
-            _c_bg = copy.deepcopy(_c)
-            _c_bg = _cut(_c_bg, pos, _cut_sphere_bg, inverse=True)
-            if 'cd' in mode:
-                _m_bg = copy.deepcopy(_m)
-                _m_bg = _cut(_m_bg, pos, _cut_sphere_bg, inverse=True)
-
         # --- get spectra
-        _result = []
+        data['c'] = _c
         if 'abs' in mode:
             freq, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
-            _cc = constants.current_current_prefactor_au(T_K)
-            if len(_cut_sphere_bg) != 0:
-                _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
-                _abs -= _tmp[1]
-                C_abs -= _tmp[2]
-            _result += [_abs*_cc, C_abs]
+            data['tcf_abs'] = C_abs
+            data['abs'] = _abs
 
         if 'cd' in mode:
             freq, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
-            _cm = constants.current_magnetic_prefactor_au(T_K, freq*2*np.pi)
-            if len(_cut_sphere_bg) != 0:
-                _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
-                _cd -= _tmp[1]
-                C_cd -= _tmp[2]
-            _result += [_cd*_cm, C_cd]
-        _result += [freq]
+            data['m'] = _m
+            data['tcf_cd'] = C_cd
+            data['cd'] = _cd
 
-        data['freq'] = _result.pop()
+        data['freq'] = freq
 
-        if 'cd' in mode:
-            data['tcf_cd'] = _result.pop()
-            data['cd'] = _result.pop()
-
-        if 'abs' in mode:
-            data['tcf_abs'] = _result.pop()
-            data['abs'] = _result.pop()
-
-        # --- write moments to dictionary (optional)
-        if r_moments:
-            data['c'] = _c
-            if 'cd' in mode:
-                data['m'] = _m
-            if len(_cut_sphere_bg) != 0:
-                data['c_bg'] = _c_bg
-                data['c_fg'] = _c - _c_bg
-                if 'cd' in mode:
-                    data['m_bg'] = _m_bg
-                    data['m_fg'] = _m - _m_bg
+        if cutoff_bg_au is not None:
+            data = _background_correction(data,
+                                          pos,
+                                          origin_au,
+                                          cutoff_bg_au,
+                                          cut_type_bg,
+                                          cell=None,
+                                          **kwargs)
+        if 'abs' in data:
+            data['abs'] *= constants.current_current_prefactor_au(T_K)
+        if 'cd' in data:
+            data['cd'] *= constants.current_magnetic_prefactor_au(T_K,
+                                                                  freq*2*np.pi)
 
     else:
-        raise TypeError('data with wrong shape!',
-                        cur_dipoles.shape)
+        raise TypeError('data with wrong shape!', cur_dipoles.shape)
+
+    return data
+
+
+def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
+                           cell=None, **kwargs):
+    '''Remove correlations of moments outside a given background cutoff'''
+    _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
+    _c_bg = _apply_cut_sphere(copy.deepcopy(data['c']), pos_au, _cut_sphere_bg,
+                              inverse=True, cell=cell)
+    if 'abs' in data:
+        _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
+        data['abs'] = _tmp[1]
+        data['tcf_abs'] -= _tmp[2]
+        data['c_bg'] = _c_bg
+
+    if 'cd' in data:
+        _m_bg = _apply_cut_sphere(copy.deepcopy(data['m']), pos_au,
+                                  _cut_sphere_bg,
+                                  inverse=True, cell=cell)
+        _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
+        data['cd'] = _tmp[1]
+        data['tcf_cd'] -= _tmp[2]
+        data['m_bg'] = _m_bg
 
     return data
 
