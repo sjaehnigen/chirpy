@@ -30,13 +30,14 @@
 
 import copy
 import numpy as np
-from functools import partial
 import warnings as _warnings
 
-from .classical_electrodynamics import switch_magnetic_origin_gauge
+from .classical_electrodynamics import magnetic_dipole_shift_origin
 from .statistical_mechanics import spectral_density
 from ..physics import constants
 from ..classes.object import Sphere
+from ..classes.core import _PALARRAY
+from ..topology.mapping import _pbc_shift
 
 
 def absorption_from_transition_moment(etdm_au):
@@ -282,6 +283,7 @@ def _spectrum_from_tcf(*args,
         if mag_dipoles.shape != cur_dipoles.shape:
             raise ValueError('shapes of given data do not agree',
                              cur_dipoles.shape, mag_dipoles.shape)
+
     data = {}
 
     if len(cur_dipoles.shape) == 2:
@@ -341,27 +343,25 @@ def _spectrum_from_tcf(*args,
             _m = _apply_cut_sphere(_m, pos, clip_sphere, cell=cell)
             _m = _apply_cut_sphere(_m, pos, _cut_sphere, cell=cell)
 
-            # --- calculate gauge-transport
-            if gauge_transport:
-                _m = switch_magnetic_origin_gauge(_c, _m, pos,
-                                                  origin_au[:, None],
-                                                  cell_au_deg=cell)
-            else:
-                _warnings.warn('Omitting gauge transport term in CD mode!',
-                               stacklevel=2)
-
         # --- get spectra
         data['c'] = _c
         if 'abs' in mode:
-            freq, _abs, C_abs = _get_tcf_spectrum(_c, **kwargs)
+            freq, _abs, C_abs = spectral_density(_c.sum(axis=1), **kwargs)
             data['tcf_abs'] = C_abs
             data['abs'] = _abs
 
         if 'cd' in mode:
-            freq, _cd, C_cd = _get_tcf_spectrum(_c, _m, **kwargs)
+            freq, _cd, C_cd = spectral_density(_c.sum(axis=1), _m.sum(axis=1),
+                                               **kwargs)
             data['m'] = _m
             data['tcf_cd'] = C_cd
             data['cd'] = _cd
+
+            if gauge_transport:
+                data['cd'] += compute_gauge_transport_term(_c, pos, cell, **kwargs)
+            else:
+                _warnings.warn('Omitting gauge transport term in CD mode!',
+                               stacklevel=2)
 
         data['freq'] = freq
 
@@ -385,123 +385,168 @@ def _spectrum_from_tcf(*args,
     return data
 
 
+def _compute_gauge_transport_term_ij(data_i, data_j, cell, **kwargs):
+    '''data arrays with last dimension:
+        positions xyz, current moments xyz
+        '''
+    c_i = data_i[:, 3:]
+    r_i = data_i[:, :3]
+    c_j = data_j[:, 3:]
+    r_j = data_j[:, :3]
+    a = c_i
+    b = - magnetic_dipole_shift_origin(
+                                    c_j,
+                                    r_j - 0.5*_pbc_shift(r_j - r_i, cell)
+                                    )
+    # return spectral_density(a, b, **kwargs)
+    result = spectral_density(a, b, **kwargs)[1]
+    return result
+
+
+def compute_gauge_transport_term(cur, pos, cell, **kwargs):
+    import tqdm
+
+    data_array = np.dstack((pos, cur)).swapaxes(0, 1)
+    # --- serial
+    n_frames, n_particles, n_dim = pos.shape
+    cd_GT = np.zeros((n_frames))
+    for _i in tqdm.tqdm(range(n_particles)):
+        for _j in range(n_particles):
+           cd_GT += _compute_gauge_transport_term_ij(data_array[_i],
+                                                  data_array[_j], cell=cell, **kwargs)
+
+    # --- parallel
+    #cd_GT = _PALARRAY(_compute_gauge_transport_term_ij, data_array, repeat=2,
+    #                  **kwargs).run().sum(axis=(0, 1))
+
+    #for _n in range(n_particles):
+#    for _t in range(1,n_steps):
+#        _rnopbc[_t,_n,:]=_r[_t-1,_n,:]+(_r[_t,_n,:]-_r[_t-1,_n,:]-_pbc_shift(_r[_t,_n,:]-_r[_t-1,_n,:], cell))
+    #freq, cd_GT, C_cd_GT = _PALARRAY(compute_gauge_transport_term_ij, data_array, repeat=2,
+    #                   **kwargs).run().sum(axis=(0, 1))
+    return cd_GT
+
+
 def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
-                           cell=None, **kwargs):
+                           cell_deg_au=None, **kwargs):
     '''Remove correlations of moments outside a given background cutoff'''
     _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
     _c_bg = _apply_cut_sphere(copy.deepcopy(data['c']), pos_au, _cut_sphere_bg,
-                              inverse=True, cell=cell)
+                              inverse=True, cell=cell_deg_au)
     if 'abs' in data:
-        _tmp = _get_tcf_spectrum(_c_bg, _c_bg, **kwargs)
-        data['abs'] = _tmp[1]
+        _tmp = spectral_density(_c_bg.sum(axis=1), **kwargs)
+        data['abs'] -= _tmp[1]
         data['tcf_abs'] -= _tmp[2]
         data['c_bg'] = _c_bg
 
     if 'cd' in data:
         _m_bg = _apply_cut_sphere(copy.deepcopy(data['m']), pos_au,
                                   _cut_sphere_bg,
-                                  inverse=True, cell=cell)
-        _tmp = _get_tcf_spectrum(_c_bg, _m_bg, **kwargs)
-        data['cd'] = _tmp[1]
+                                  inverse=True, cell=cell_deg_au)
+        _tmp = spectral_density(_c_bg.sum(axis=1), _m_bg.sum(axis=1), **kwargs)
+        data['cd'] -= _tmp[1]
         data['tcf_cd'] -= _tmp[2]
         data['m_bg'] = _m_bg
+      #  if gauge_transport:
+        data['cd'] -= compute_gauge_transport_term(_c_bg, pos_au,
+                cell_deg_au, **kwargs)
 
     return data
 
 
-def _get_tcf_spectrum(*args,
-                      subparticle0=None,
-                      subparticle1=None,
-                      subnotparticles=None,
-                      **kwargs):
-    '''Kernel for calculating spectral densities from
-       correlation of signals a (and b) with various options.
-       '''
-    # --- correlate moment of part with total moments, expects one integer
-    sub0 = subparticle0
-    sub1 = subparticle1
-    if sub1 is not None and sub0 is None:
-        sub0 = sub1
-        sub1 = None
-
-    # --- exclude these indices; expects list of integers
-    subnots = subnotparticles
-
-    a = args[0]
-    b = args[0]  # dummy
-    cross = False
-    if len(args) >= 2:
-        b = args[1]
-        cross = True
-
-    def _get_spectra(_a, _b, cross, **kwargs):
-        '''standard spectrum'''
-        _a = _a.sum(axis=1)
-        if not cross:
-            f, S_aa, R_aa = spectral_density(_a, **kwargs)
-            return f, S_aa, R_aa
-        else:
-            _b = _b.sum(axis=1)
-            f, S_ab, R_ab = spectral_density(_a, _b, **kwargs)
-            return f, S_ab, R_ab
-
-    def _get_subspectra(_a, _b, cross, _sub0, _sub1=None, **kwargs):
-        _a1 = _a[:, _sub0]
-        if _sub1 is None:
-            _a2 = _a.sum(axis=1)
-        else:
-            _a2 = _a[:, _sub1]
-        if not cross:
-            f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
-            return f, S_aa, R_aa
-        else:
-            _b1 = _b[:, _sub0]
-            if _sub1 is None:
-                _b2 = _b.sum(axis=1)
-            else:
-                _b2 = _b[:, _sub1]
-            f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
-            f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
-            S_ab = (S_ab1 + S_ab2) / 2
-            R_ab = (R_ab1 + R_ab2) / 2
-            return f, S_ab, R_ab
-
-    def _get_subnotspectra(_a, _b, cross, _subnot, **kwargs):
-        _a1 = _a.sum(axis=1)
-        _a2 = copy.deepcopy(_a)
-        _a2[:, _subnot] = np.array([0.0, 0.0, 0.0])
-        _a2 = _a2.sum(axis=1)
-        if not cross:
-            f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
-            return f, S_aa, R_aa
-        else:
-            _b1 = _b.sum(axis=1)
-            _b2 = copy.deepcopy(_b)
-            _b2[:, _subnot] = np.array([0.0, 0.0, 0.0])
-            _b2 = _b2.sum(axis=1)
-            f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
-            f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
-            S_ab = (S_ab1 + S_ab2) / 2
-            R_ab = (R_ab1 + R_ab2) / 2
-            return f, S_ab, R_ab
-
-    if sub0 is not None:
-        if not isinstance(sub0, int):
-            raise TypeError('Subparticle has to be an integer!')
-        if sub1 is not None:
-            if not isinstance(sub1, int):
-                raise TypeError('Subparticle has to be an integer!')
-            _get = partial(_get_subspectra, _sub0=sub0, _sub1=sub1)
-
-        else:
-            _get = partial(_get_subspectra, _sub0=sub0)
-
-    elif subnots is not None:
-        if not isinstance(subnots, list):
-            raise TypeError('Subnotparticles has to be a list!')
-        _get = partial(_get_subnotspectra, _subnot=subnots)
-
-    else:
-        _get = _get_spectra
-
-    return _get(a, b, cross, **kwargs)
+# def _get_tcf_spectrum(*args,
+#                       subparticle0=None,
+#                       subparticle1=None,
+#                       subnotparticles=None,
+#                       **kwargs):
+#     '''Kernel for calculating spectral densities from
+#        correlation of signals a (and b) with various options.
+#        '''
+#     # --- correlate moment of part with total moments, expects one integer
+#     sub0 = subparticle0
+#     sub1 = subparticle1
+#     if sub1 is not None and sub0 is None:
+#         sub0 = sub1
+#         sub1 = None
+#
+#     # --- exclude these indices; expects list of integers
+#     subnots = subnotparticles
+#
+#     a = args[0]
+#     b = args[0]  # dummy
+#     cross = False
+#     if len(args) >= 2:
+#         b = args[1]
+#         cross = True
+#
+#     def _get_spectra(_a, _b, cross, **kwargs):
+#         '''standard spectrum'''
+#         _a = _a.sum(axis=1)
+#         if not cross:
+#             f, S_aa, R_aa = spectral_density(_a, **kwargs)
+#             return f, S_aa, R_aa
+#         else:
+#             _b = _b.sum(axis=1)
+#             f, S_ab, R_ab = spectral_density(_a, _b, **kwargs)
+#             return f, S_ab, R_ab
+#
+#     def _get_subspectra(_a, _b, cross, _sub0, _sub1=None, **kwargs):
+#         _a1 = _a[:, _sub0]
+#         if _sub1 is None:
+#             _a2 = _a.sum(axis=1)
+#         else:
+#             _a2 = _a[:, _sub1]
+#         if not cross:
+#             f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
+#             return f, S_aa, R_aa
+#         else:
+#             _b1 = _b[:, _sub0]
+#             if _sub1 is None:
+#                 _b2 = _b.sum(axis=1)
+#             else:
+#                 _b2 = _b[:, _sub1]
+#             f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
+#             f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
+#             S_ab = (S_ab1 + S_ab2) / 2
+#             R_ab = (R_ab1 + R_ab2) / 2
+#             return f, S_ab, R_ab
+# 
+#     def _get_subnotspectra(_a, _b, cross, _subnot, **kwargs):
+#         _a1 = _a.sum(axis=1)
+#         _a2 = copy.deepcopy(_a)
+#         _a2[:, _subnot] = np.array([0.0, 0.0, 0.0])
+#         _a2 = _a2.sum(axis=1)
+#         if not cross:
+#             f, S_aa, R_aa = spectral_density(_a1, _a2, **kwargs)
+#             return f, S_aa, R_aa
+#         else:
+#             _b1 = _b.sum(axis=1)
+#             _b2 = copy.deepcopy(_b)
+#             _b2[:, _subnot] = np.array([0.0, 0.0, 0.0])
+#             _b2 = _b2.sum(axis=1)
+#             f, S_ab1, R_ab1 = spectral_density(_a1, _b2, **kwargs)
+#             f, S_ab2, R_ab2 = spectral_density(_a2, _b1, **kwargs)
+#             S_ab = (S_ab1 + S_ab2) / 2
+#             R_ab = (R_ab1 + R_ab2) / 2
+#             return f, S_ab, R_ab
+# 
+#     if sub0 is not None:
+#         if not isinstance(sub0, int):
+#             raise TypeError('Subparticle has to be an integer!')
+#         if sub1 is not None:
+#             if not isinstance(sub1, int):
+#                 raise TypeError('Subparticle has to be an integer!')
+#             _get = partial(_get_subspectra, _sub0=sub0, _sub1=sub1)
+# 
+#         else:
+#             _get = partial(_get_subspectra, _sub0=sub0)
+# 
+#     elif subnots is not None:
+#         if not isinstance(subnots, list):
+#             raise TypeError('Subnotparticles has to be a list!')
+#         _get = partial(_get_subnotspectra, _subnot=subnots)
+# 
+#     else:
+#         _get = _get_spectra
+# 
+#     return _get(a, b, cross, **kwargs)

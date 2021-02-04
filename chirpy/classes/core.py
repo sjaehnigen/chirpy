@@ -50,7 +50,7 @@ class _PALARRAY():
        (i.e. all combinations of indices)'''
 
     def __init__(self, func, *data, repeat=1,
-                 n_cores=multiprocessing.cpu_count(),
+                 n_cores=multiprocessing.cpu_count()//2,
                  upper_triangle=False,
                  axis=0,
                  **kwargs):
