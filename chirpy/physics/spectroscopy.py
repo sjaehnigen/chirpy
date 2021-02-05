@@ -31,13 +31,16 @@
 import copy
 import numpy as np
 import warnings as _warnings
+import tqdm
 
 from .classical_electrodynamics import magnetic_dipole_shift_origin
 from .statistical_mechanics import spectral_density
 from ..physics import constants
 from ..classes.object import Sphere
 from ..classes.core import _PALARRAY
-from ..topology.mapping import _pbc_shift
+from ..topology.mapping import distance_pbc
+
+from .. import config
 
 
 def absorption_from_transition_moment(etdm_au):
@@ -226,6 +229,9 @@ def _spectrum_from_tcf(*args,
                        clip_sphere=[],
                        flt_pow=-1,
                        ts_au=41.341,
+                       rmax_au=None,
+                       rcount=5,
+                       unwrap_pbc=True,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
@@ -243,6 +249,12 @@ def _spectrum_from_tcf(*args,
        Expects atomic units.
 
        ts_au ... timestep in a.u.
+
+       Computation of the gauge transport:
+         rmax_au,rcount ... consider only particles that appear at least
+                          <rcount> times within <rmax_au> a.u.
+         unwrap_pbc ... unwrap particles before the calculation
+
 
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
@@ -263,6 +275,7 @@ def _spectrum_from_tcf(*args,
     kwargs.update(dict(ts=ts_au))
     cell = cell_au_deg
     pos = copy.deepcopy(positions_au)
+    rmax = rmax_au
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
@@ -284,16 +297,19 @@ def _spectrum_from_tcf(*args,
             raise ValueError('shapes of given data do not agree',
                              cur_dipoles.shape, mag_dipoles.shape)
 
+    # --- end of argument parsing
     data = {}
 
     if len(cur_dipoles.shape) == 2:
-        freq, _abs, C_abs = spectral_density(
-                                cur_dipoles,
-                                cur_dipoles,
-                                **kwargs
-                                )
-
-        _cc = constants.current_current_prefactor_au(T_K)
+        if 'abs' in mode:
+            freq, _abs, C_abs = spectral_density(
+                                    cur_dipoles,
+                                    cur_dipoles,
+                                    **kwargs
+                                    )
+            data['freq'] = freq
+            data['abs'] = _abs
+            data['tcf_abs'] = C_abs
 
         if 'cd' in mode:
             # --- NB: no gauge-transport here!
@@ -302,13 +318,8 @@ def _spectrum_from_tcf(*args,
                                     mag_dipoles,
                                     **kwargs
                                     )
-            _cm = constants.current_magnetic_prefactor_au(T_K, freq*2*np.pi)
-            data['cd'] = _cd * _cm
+            data['cd'] = _cd
             data['tcf_cd'] = C_cd
-
-        data['freq'] = freq
-        data['abs'] = _abs * _cc
-        data['tcf_abs'] = C_abs
 
     elif len(cur_dipoles.shape) == 3:
         if pos is None:
@@ -358,7 +369,12 @@ def _spectrum_from_tcf(*args,
             data['cd'] = _cd
 
             if gauge_transport:
-                data['cd'] += compute_gauge_transport_term(_c, pos, cell, **kwargs)
+                data['cd'] += compute_gauge_transport_term(
+                                                       _c, pos, cell,
+                                                       rmax=rmax,
+                                                       rcount=rcount,
+                                                       unwrap_pbc=unwrap_pbc,
+                                                       **kwargs)
             else:
                 _warnings.warn('Omitting gauge transport term in CD mode!',
                                stacklevel=2)
@@ -366,70 +382,122 @@ def _spectrum_from_tcf(*args,
         data['freq'] = freq
 
         if cutoff_bg_au is not None:
-            data = _background_correction(data,
-                                          pos,
-                                          origin_au,
-                                          cutoff_bg_au,
-                                          cut_type_bg,
-                                          cell=None,
-                                          **kwargs)
-        if 'abs' in data:
-            data['abs'] *= constants.current_current_prefactor_au(T_K)
-        if 'cd' in data:
-            data['cd'] *= constants.current_magnetic_prefactor_au(T_K,
-                                                                  freq*2*np.pi)
-
+            data = _background(data,
+                               pos,
+                               origin_au,
+                               cutoff_bg_au,
+                               cut_type_bg,
+                               cell_deg_au=cell,
+                               gauge_transport=gauge_transport,
+                               rcount=rcount,
+                               rmax_au=rmax,
+                               unwrap_pbc=unwrap_pbc,
+                               **kwargs)
     else:
         raise TypeError('data with wrong shape!', cur_dipoles.shape)
+
+    if 'abs' in data:
+        data['abs'] *= constants.current_current_prefactor_au(T_K)
+    if 'cd' in data:
+        data['cd'] *= constants.current_magnetic_prefactor_au(T_K,
+                                                              freq*2*np.pi)
 
     return data
 
 
-def _compute_gauge_transport_term_ij(data_i, data_j, cell, **kwargs):
+def compute_gauge_transport_term_ij(data_i, data_j, cell, rmax=None, rcount=5,
+                                    **kwargs):
     '''data arrays with last dimension:
-        positions xyz, current moments xyz
-        '''
+       positions xyz, current moments xyz
+
+       rmax: consider only particles that appear at least rcount within rmax
+       '''
     c_i = data_i[:, 3:]
     r_i = data_i[:, :3]
     c_j = data_j[:, 3:]
     r_j = data_j[:, :3]
-    a = c_i
-    b = - magnetic_dipole_shift_origin(
+    # --- ToDo: this line is expensive, especially for non-tetragonal cells
+    _d_pbc = distance_pbc(r_i, r_j, cell)
+    if rmax is not None:
+        within_rmax = (np.linalg.norm(_d_pbc, axis=-1) <= rmax).sum() >= rcount
+    else:
+        within_rmax = True
+
+    # from ..topology.mapping import _pbc_shift
+    if within_rmax and np.abs(c_i).sum() + np.abs(c_j).sum() > 1.E-16:
+        a = c_i
+        b = -0.5 * magnetic_dipole_shift_origin(
                                     c_j,
-                                    r_j - 0.5*_pbc_shift(r_j - r_i, cell)
+                                    r_i + r_j + _d_pbc
+                                    # --- same as:
+                                    # 2 * r_j - _pbc_shift(r_j - r_i, cell)
                                     )
-    # return spectral_density(a, b, **kwargs)
-    result = spectral_density(a, b, **kwargs)[1]
-    return result
+        return spectral_density(a, b, **kwargs)[1]
+    else:
+        n_frames, n_dim = r_i.shape
+        return np.zeros(n_frames)
 
 
-def compute_gauge_transport_term(cur, pos, cell, **kwargs):
-    import tqdm
-
-    data_array = np.dstack((pos, cur)).swapaxes(0, 1)
-    # --- serial
+def compute_gauge_transport_term(cur, pos, cell,
+                                 rmax=None,
+                                 rcount=5,
+                                 unwrap_pbc=True,
+                                 serial=False,
+                                 **kwargs):
+    '''
+       rmax ... consider only particles that appear at least rcount within rmax
+       unwrap_pbc ... unwrap particles before the calculation
+       serial ... do not execute job in parallel
+    '''
     n_frames, n_particles, n_dim = pos.shape
-    cd_GT = np.zeros((n_frames))
-    for _i in tqdm.tqdm(range(n_particles)):
-        for _j in range(n_particles):
-           cd_GT += _compute_gauge_transport_term_ij(data_array[_i],
-                                                  data_array[_j], cell=cell, **kwargs)
+
+    if unwrap_pbc:
+        pos_nopbc = copy.deepcopy(pos)
+        for _n in tqdm.tqdm(range(n_particles),
+                            desc='unwrapping particles under PBC',
+                            disable=not config.__verbose__):
+            for _t in range(1, n_frames):
+                pos_nopbc[_t, _n] = pos[_t-1, _n] + distance_pbc(
+                                                        pos[_t-1, _n],
+                                                        pos[_t, _n],
+                                                        cell)
+
+        data_array = np.dstack((pos_nopbc, cur)).swapaxes(0, 1)
+    else:
+        data_array = np.dstack((pos, cur)).swapaxes(0, 1)
+
+    if serial:
+        cd_GT = np.zeros((n_frames))
+        for _i in tqdm.tqdm(range(n_particles)):
+            for _j in range(n_particles):
+                cd_GT += compute_gauge_transport_term_ij(
+                                              data_array[_i],
+                                              data_array[_j],
+                                              cell=cell,
+                                              rmax=rmax,
+                                              rcount=rcount,
+                                              **kwargs
+                                              )
 
     # --- parallel
-    #cd_GT = _PALARRAY(_compute_gauge_transport_term_ij, data_array, repeat=2,
-    #                  **kwargs).run().sum(axis=(0, 1))
+    else:
+        cd_GT = _PALARRAY(
+                      compute_gauge_transport_term_ij, data_array, repeat=2,
+                      cell=cell,
+                      rmax=rmax,
+                      rcount=rcount,
+                      **kwargs
+                      ).run().sum(axis=(0, 1))
 
-    #for _n in range(n_particles):
-#    for _t in range(1,n_steps):
-#        _rnopbc[_t,_n,:]=_r[_t-1,_n,:]+(_r[_t,_n,:]-_r[_t-1,_n,:]-_pbc_shift(_r[_t,_n,:]-_r[_t-1,_n,:], cell))
-    #freq, cd_GT, C_cd_GT = _PALARRAY(compute_gauge_transport_term_ij, data_array, repeat=2,
-    #                   **kwargs).run().sum(axis=(0, 1))
     return cd_GT
 
 
-def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
-                           cell_deg_au=None, **kwargs):
-    '''Remove correlations of moments outside a given background cutoff'''
+def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
+                cell_deg_au=None,
+                gauge_transport=True,
+                rmax_au=None,
+                **kwargs):
+    '''Compute spectral density outside a given background cutoff'''
     _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
     _c_bg = _apply_cut_sphere(copy.deepcopy(data['c']), pos_au, _cut_sphere_bg,
                               inverse=True, cell=cell_deg_au)
@@ -447,13 +515,16 @@ def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
         data['cd'] -= _tmp[1]
         data['tcf_cd'] -= _tmp[2]
         data['m_bg'] = _m_bg
-      #  if gauge_transport:
-        data['cd'] -= compute_gauge_transport_term(_c_bg, pos_au,
-                cell_deg_au, **kwargs)
+        if gauge_transport:
+            data['cd'] -= compute_gauge_transport_term(_c_bg, pos_au,
+                                                       cell_deg_au,
+                                                       rmax=rmax_au,
+                                                       **kwargs)
 
     return data
 
 
+# --- legacy code
 # def _get_tcf_spectrum(*args,
 #                       subparticle0=None,
 #                       subparticle1=None,
@@ -510,7 +581,7 @@ def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
 #             S_ab = (S_ab1 + S_ab2) / 2
 #             R_ab = (R_ab1 + R_ab2) / 2
 #             return f, S_ab, R_ab
-# 
+#
 #     def _get_subnotspectra(_a, _b, cross, _subnot, **kwargs):
 #         _a1 = _a.sum(axis=1)
 #         _a2 = copy.deepcopy(_a)
@@ -529,7 +600,7 @@ def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
 #             S_ab = (S_ab1 + S_ab2) / 2
 #             R_ab = (R_ab1 + R_ab2) / 2
 #             return f, S_ab, R_ab
-# 
+#
 #     if sub0 is not None:
 #         if not isinstance(sub0, int):
 #             raise TypeError('Subparticle has to be an integer!')
@@ -537,16 +608,16 @@ def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
 #             if not isinstance(sub1, int):
 #                 raise TypeError('Subparticle has to be an integer!')
 #             _get = partial(_get_subspectra, _sub0=sub0, _sub1=sub1)
-# 
+#
 #         else:
 #             _get = partial(_get_subspectra, _sub0=sub0)
-# 
+#
 #     elif subnots is not None:
 #         if not isinstance(subnots, list):
 #             raise TypeError('Subnotparticles has to be a list!')
 #         _get = partial(_get_subnotspectra, _subnot=subnots)
-# 
+#
 #     else:
 #         _get = _get_spectra
-# 
+#
 #     return _get(a, b, cross, **kwargs)
