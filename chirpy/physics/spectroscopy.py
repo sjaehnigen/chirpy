@@ -38,7 +38,7 @@ from .statistical_mechanics import spectral_density
 from ..physics import constants
 from ..classes.object import Sphere
 from ..classes.core import _PALARRAY
-from ..topology.mapping import distance_pbc
+from ..topology.mapping import distance_pbc, _pbc_shift
 
 from .. import config
 
@@ -229,8 +229,6 @@ def _spectrum_from_tcf(*args,
                        clip_sphere=[],
                        flt_pow=-1,
                        ts_au=41.341,
-                       rmax_au=None,
-                       rcount=5,
                        unwrap_pbc=True,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
@@ -251,8 +249,6 @@ def _spectrum_from_tcf(*args,
        ts_au ... timestep in a.u.
 
        Computation of the gauge transport:
-         rmax_au,rcount ... consider only particles that appear at least
-                          <rcount> times within <rmax_au> a.u.
          unwrap_pbc ... unwrap particles before the calculation
 
 
@@ -275,7 +271,6 @@ def _spectrum_from_tcf(*args,
     kwargs.update(dict(ts=ts_au))
     cell = cell_au_deg
     pos = copy.deepcopy(positions_au)
-    rmax = rmax_au
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
@@ -371,8 +366,6 @@ def _spectrum_from_tcf(*args,
             if gauge_transport:
                 data['cd'] += compute_gauge_transport_term(
                                                        _c, pos, cell,
-                                                       rmax=rmax,
-                                                       rcount=rcount,
                                                        unwrap_pbc=unwrap_pbc,
                                                        **kwargs)
             else:
@@ -389,8 +382,6 @@ def _spectrum_from_tcf(*args,
                                cut_type_bg,
                                cell_deg_au=cell,
                                gauge_transport=gauge_transport,
-                               rcount=rcount,
-                               rmax_au=rmax,
                                unwrap_pbc=unwrap_pbc,
                                **kwargs)
     else:
@@ -405,89 +396,69 @@ def _spectrum_from_tcf(*args,
     return data
 
 
-def compute_gauge_transport_term_ij(data_i, data_j, cell, rmax=None, rcount=5,
-                                    **kwargs):
-    '''data arrays with last dimension:
-       positions xyz, current moments xyz
-
-       rmax: consider only particles that appear at least rcount within rmax
+def gauge_transport_particle_i(_i, pos, cur, cell, **kwargs):
+    '''_i ... index of particle
+       pos/cur ... full arrays of shape (n_frames, n_particles, 3)
        '''
-    c_i = data_i[:, 3:]
-    r_i = data_i[:, :3]
-    c_j = data_j[:, 3:]
-    r_j = data_j[:, :3]
-    # --- ToDo: this line is expensive, especially for non-tetragonal cells
-    _d_pbc = distance_pbc(r_i, r_j, cell)
-    if rmax is not None:
-        within_rmax = (np.linalg.norm(_d_pbc, axis=-1) <= rmax).sum() >= rcount
-    else:
-        within_rmax = True
+    n_frames, n_particles, n_dim = pos.shape
+    a = cur[:, _i]
 
-    # from ..topology.mapping import _pbc_shift
-    if within_rmax and np.abs(c_i).sum() + np.abs(c_j).sum() > 1.E-16:
-        a = c_i
+    if np.abs(a).sum() > 1.E-16:
+        if cell is not None:
+            _delta = -_pbc_shift(pos - pos[:, _i, None], cell)
+        else:
+            _delta = np.zeros_like(pos)
+
         b = -0.5 * magnetic_dipole_shift_origin(
-                                    c_j,
-                                    r_i + r_j + _d_pbc
-                                    # --- same as:
-                                    # 2 * r_j - _pbc_shift(r_j - r_i, cell)
-                                    )
+                                    cur,
+                                    2 * pos + _delta
+                                    ).sum(axis=1)
         return spectral_density(a, b, **kwargs)[1]
     else:
-        n_frames, n_dim = r_i.shape
         return np.zeros(n_frames)
 
 
 def compute_gauge_transport_term(cur, pos, cell,
-                                 rmax=None,
-                                 rcount=5,
                                  unwrap_pbc=True,
-                                 serial=False,
+                                 parallel=True,
                                  **kwargs):
     '''
-       rmax ... consider only particles that appear at least rcount within rmax
        unwrap_pbc ... unwrap particles before the calculation
-       serial ... do not execute job in parallel
+       parallel ... execute job in parallel (_PALARRAY)
     '''
     n_frames, n_particles, n_dim = pos.shape
 
+    _pos = copy.deepcopy(pos)
     if unwrap_pbc:
-        pos_nopbc = copy.deepcopy(pos)
         for _n in tqdm.tqdm(range(n_particles),
                             desc='unwrapping particles under PBC',
                             disable=not config.__verbose__):
             for _t in range(1, n_frames):
-                pos_nopbc[_t, _n] = pos[_t-1, _n] + distance_pbc(
+                _pos[_t, _n] = pos[_t-1, _n] + distance_pbc(
                                                         pos[_t-1, _n],
                                                         pos[_t, _n],
                                                         cell)
 
-        data_array = np.dstack((pos_nopbc, cur)).swapaxes(0, 1)
-    else:
-        data_array = np.dstack((pos, cur)).swapaxes(0, 1)
-
-    if serial:
+    if not parallel:
         cd_GT = np.zeros((n_frames))
-        for _i in tqdm.tqdm(range(n_particles)):
-            for _j in range(n_particles):
-                cd_GT += compute_gauge_transport_term_ij(
-                                              data_array[_i],
-                                              data_array[_j],
-                                              cell=cell,
-                                              rmax=rmax,
-                                              rcount=rcount,
-                                              **kwargs
-                                              )
+        for _i in tqdm.tqdm(range(n_particles),
+                            desc='gauge_transport_particle_i'):
+            cd_GT += gauge_transport_particle_i(
+                                _i,
+                                pos=_pos,
+                                cur=cur,
+                                cell=cell,
+                                **kwargs)
 
-    # --- parallel
     else:
         cd_GT = _PALARRAY(
-                      compute_gauge_transport_term_ij, data_array, repeat=2,
+                      gauge_transport_particle_i,
+                      range(n_particles),
+                      pos=_pos,
+                      cur=cur,
                       cell=cell,
-                      rmax=rmax,
-                      rcount=rcount,
                       **kwargs
-                      ).run().sum(axis=(0, 1))
+                      ).run().sum(axis=0)
 
     return cd_GT
 
@@ -495,7 +466,6 @@ def compute_gauge_transport_term(cur, pos, cell,
 def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
                 cell_deg_au=None,
                 gauge_transport=True,
-                rmax_au=None,
                 **kwargs):
     '''Compute spectral density outside a given background cutoff'''
     _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
@@ -518,7 +488,6 @@ def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
         if gauge_transport:
             data['cd'] -= compute_gauge_transport_term(_c_bg, pos_au,
                                                        cell_deg_au,
-                                                       rmax=rmax_au,
                                                        **kwargs)
 
     return data
