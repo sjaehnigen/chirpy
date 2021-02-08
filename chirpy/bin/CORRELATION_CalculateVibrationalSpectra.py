@@ -37,6 +37,7 @@ from matplotlib import pyplot as plt
 
 from chirpy.classes import trajectory
 from chirpy.physics import spectroscopy, constants
+from chirpy import config
 
 
 def main():
@@ -177,6 +178,7 @@ def main():
     if args.range is None:
         args.range = (0, 1, float('inf'))
 
+    config.set_verbose(args.verbose)
     largs = vars(args)
     largs.update({'fmt': args.input_format})
     _load = trajectory.MOMENTS(largs.pop('fn'), **largs)
@@ -216,7 +218,7 @@ def main():
                                     # --- example
                                     origin_au=origin*constants.l_aa2au,
                                     cutoff_au=args.cutoff*constants.l_aa2au,
-                                    cell_au_deg=_cell
+                                    cell_au_deg=_cell,
                                     )
 
         _voa['va'].append(_tmp['abs'])

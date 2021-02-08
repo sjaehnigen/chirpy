@@ -33,6 +33,7 @@ import argparse
 import numpy as np
 
 from chirpy.classes import trajectory
+from chirpy import config
 
 
 def main():
@@ -97,6 +98,7 @@ def main():
             default=False,
             )
     args = parser.parse_args()
+    config.set_verbose(args.verbose)
 
     if args.cell_aa_deg is None:
         del args.cell_aa_deg
@@ -123,7 +125,7 @@ def main():
             if skip[0] == 'True':
                 skip = bool(skip[0])
                 _load = trajectory.MOMENTS(args.fn, fmt=i_fmt, **largs)
-                skip = _load.mask_duplicate_frames(verbose=False)
+                skip = _load.mask_duplicate_frames()
                 largs.update({'skip': skip})
             else:
                 _load = trajectory.MOMENTS(args.fn, fmt=i_fmt, **largs)

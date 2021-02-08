@@ -32,6 +32,7 @@
 
 import argparse
 from chirpy.classes import system
+from chirpy import config
 
 
 def main():
@@ -119,6 +120,7 @@ def main():
             default=False,
             )
     args = parser.parse_args()
+    config.set_verbose(args.verbose)
 
     i_fmt = args.input_format
     o_fmt = args.output_format

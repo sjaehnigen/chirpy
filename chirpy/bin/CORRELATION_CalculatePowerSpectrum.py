@@ -35,6 +35,7 @@ from matplotlib import pyplot as plt
 
 from chirpy.classes import system
 from chirpy.physics import spectroscopy, constants
+from chirpy import config
 
 
 def main():
@@ -157,6 +158,7 @@ def main():
         args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
     if args.range is None:
         args.range = (0, 1, float('inf'))
+    config.set_verbose(args.verbose)
 
     largs = vars(args)
     _load = system.Supercell(largs.pop('fn'), **largs)

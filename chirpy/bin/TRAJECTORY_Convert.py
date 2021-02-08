@@ -34,6 +34,7 @@ import numpy as np
 import warnings
 
 from chirpy.classes import system, trajectory
+from chirpy import config
 
 
 def main():
@@ -173,6 +174,7 @@ def main():
             )
     args = parser.parse_args()
 
+    config.set_verbose(args.verbose)
     # --- ToDo: workaround
     if bool(args.center_coords):
         if args.center_coords[0] == 'True':
@@ -235,7 +237,7 @@ def main():
             if skip[0] == 'True':
                 skip = bool(skip[0])
                 _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
-                skip = _load.XYZ.mask_duplicate_frames(verbose=args.verbose)
+                skip = _load.XYZ.mask_duplicate_frames()
                 largs.update({'skip': skip})
             else:
                 _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
@@ -255,7 +257,6 @@ def main():
             'fn_topo',
             'sort',
             'skip',
-            'verbose',
                    ]:
             nargs[_a] = largs.get(_a)
 

@@ -38,6 +38,7 @@ from chirpy.classes import system, trajectory
 from chirpy.topology import mapping
 from chirpy.physics import constants
 from chirpy.interface import cpmd
+from chirpy import config
 
 
 def main():
@@ -89,6 +90,7 @@ def main():
     args = parser.parse_args()
     if args.range is None:
         args.range = (0, 1, float('inf'))
+    config.set_verbose(args.verbose)
 
     _traj = system.Supercell(args.TRAJECTORY,
                              fmt='cpmd',
@@ -96,13 +98,11 @@ def main():
                              fn_topo=args.TOPOLOGY,
                              # --- this is costly depending on no of mols
                              wrap_molecules=True,
-                             verbose=args.verbose,
                              )
 
     _moms_e = trajectory.MOMENTS(args.MOMENTS,
                                  fmt='cpmd',
                                  range=args.range,
-                                 verbose=args.verbose,
                                  )
     # -- ToDo: Add test for neutrality of charge
     if (_total_charge := _moms_e.n_atoms * (-2) +
