@@ -34,7 +34,6 @@ import itertools
 import warnings
 import numpy as np
 
-import multiprocessing
 from multiprocessing import Pool
 from itertools import product, combinations_with_replacement
 from functools import partial
@@ -50,7 +49,7 @@ class _PALARRAY():
        (i.e. all combinations of indices)'''
 
     def __init__(self, func, *data, repeat=1,
-                 n_cores=multiprocessing.cpu_count()//2,
+                 n_cores=config.__pal_n_cores__,
                  upper_triangle=False,
                  axis=0,
                  **kwargs):

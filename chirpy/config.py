@@ -32,22 +32,42 @@ import sys
 import importlib
 import warnings
 from IPython import get_ipython
+import multiprocessing
 
 
+__pal_n_cores__ = multiprocessing.cpu_count()//2
 __verbose__ = True
+
+
+def _reload_modules():
+    # --- apply changes to loaded modules
+    modules = tuple(sys.modules.values())
+    for module in modules:
+        if 'chirpy.' in (module_name := module.__name__) \
+         and 'config' not in module_name:
+            importlib.reload(module)
+
+
+def set_pal_n_cores(s, reload_modules=True):
+    '''Enable/disable chirpy runtime verbosity.'''
+    global __pal_n_cores__
+    __pal_n_cores__ = int(s)
+    if __verbose__:
+        warnings.warn(f'setting __pal_n_cores__ to {__pal_n_cores__}',
+                      stacklevel=2)
+    if reload_modules:
+        _reload_modules()
 
 
 def set_verbose(s, reload_modules=True):
     '''Enable/disable chirpy runtime verbosity.'''
     global __verbose__
     __verbose__ = bool(s)
+    if __verbose__:
+        warnings.warn(f'setting __verbose__ to {__verbose__}',
+                      stacklevel=2)
     if reload_modules:
-        # --- apply changes to loaded modules
-        modules = tuple(sys.modules.values())
-        for module in modules:
-            if 'chirpy.' in (module_name := module.__name__) \
-             and 'config' not in module_name:
-                importlib.reload(module)
+        _reload_modules()
 
 
 # --- check if run in ipython/jupyter notebook
