@@ -230,6 +230,7 @@ def _spectrum_from_tcf(*args,
                        flt_pow=-1,
                        ts_au=41.341,
                        unwrap_pbc=True,
+                       parallel=True,
                        **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
@@ -250,6 +251,7 @@ def _spectrum_from_tcf(*args,
 
        Computation of the gauge transport:
          unwrap_pbc ... unwrap particles before the calculation
+         parallel ... execute job in parallel (_PALARRAY)
 
 
        Returns dictionary with (all in a.u.):
@@ -364,10 +366,13 @@ def _spectrum_from_tcf(*args,
             data['cd'] = _cd
 
             if gauge_transport:
-                data['cd'] += compute_gauge_transport_term(
+                _cd_GT, C_cd_GT = compute_gauge_transport_term(
                                                        _c, pos, cell,
                                                        unwrap_pbc=unwrap_pbc,
+                                                       parallel=parallel,
                                                        **kwargs)
+                data['cd'] += _cd_GT
+                data['tcf_cd'] += C_cd_GT
             else:
                 _warnings.warn('Omitting gauge transport term in CD mode!',
                                stacklevel=2)
@@ -383,6 +388,7 @@ def _spectrum_from_tcf(*args,
                                cell_deg_au=cell,
                                gauge_transport=gauge_transport,
                                unwrap_pbc=unwrap_pbc,
+                               parallel=parallel,
                                **kwargs)
     else:
         raise TypeError('data with wrong shape!', cur_dipoles.shape)
@@ -413,7 +419,7 @@ def gauge_transport_particle_i(_i, pos, cur, cell, **kwargs):
                                     cur,
                                     2 * pos + _delta
                                     ).sum(axis=1)
-        return spectral_density(a, b, **kwargs)[1]
+        return spectral_density(a, b, **kwargs)
     else:
         return np.zeros(n_frames)
 
@@ -440,32 +446,37 @@ def compute_gauge_transport_term(cur, pos, cell,
                                                         cell)
 
     if not parallel:
-        cd_GT = np.zeros((n_frames))
-        for _i in tqdm.tqdm(range(n_particles),
-                            desc='gauge_transport_particle_i'):
-            cd_GT += gauge_transport_particle_i(
-                                _i,
-                                pos=_pos,
-                                cur=cur,
-                                cell=cell,
-                                **kwargs)
+        freq, cd_GT, C_cd_GT = np.array([
+                     gauge_transport_particle_i(
+                      _i,
+                      pos=_pos,
+                      cur=cur,
+                      cell=cell,
+                      **kwargs) for _i in tqdm.tqdm(
+                                         range(n_particles),
+                                         desc='gauge_transport_particle_i'
+                                         )],
+                     dtype='object'
+                     ).swapaxes(0, 1)
 
     else:
-        cd_GT = _PALARRAY(
+        freq, cd_GT, C_cd_GT = _PALARRAY(
                       gauge_transport_particle_i,
                       range(n_particles),
                       pos=_pos,
                       cur=cur,
                       cell=cell,
                       **kwargs
-                      ).run().sum(axis=0)
+                      ).run().swapaxes(0, 1)
 
-    return cd_GT
+    return cd_GT.sum(axis=0), C_cd_GT.sum(axis=0)
 
 
 def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
                 cell_deg_au=None,
                 gauge_transport=True,
+                unwrap_pbc=True,
+                parallel=True,
                 **kwargs):
     '''Compute spectral density outside a given background cutoff'''
     _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
@@ -486,9 +497,16 @@ def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
         data['tcf_cd'] -= _tmp[2]
         data['m_bg'] = _m_bg
         if gauge_transport:
-            data['cd'] -= compute_gauge_transport_term(_c_bg, pos_au,
-                                                       cell_deg_au,
-                                                       **kwargs)
+            _cd_GT, C_cd_GT = compute_gauge_transport_term(
+                                                        _c_bg,
+                                                        pos_au,
+                                                        cell_deg_au,
+                                                        unwrap_pbc=unwrap_pbc,
+                                                        parallel=parallel,
+                                                        **kwargs
+                                                        )
+            data['cd'] -= _cd_GT
+            data['tcf_cd'] -= C_cd_GT
 
     return data
 

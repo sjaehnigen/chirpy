@@ -90,9 +90,10 @@ class _PALARRAY():
                              self.pool.istarmap(self.f, self.array),
                              desc=f'{self.f.func.__name__} (PALARRAY)',
                              total=self._length
-                             )))
+                             )), dtype='object')
             else:
-                result = np.array(self.pool.starmap(self.f, self.array))
+                result = np.array(self.pool.starmap(self.f, self.array),
+                                  dtype='object')
 
             _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:
