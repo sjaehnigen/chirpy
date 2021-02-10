@@ -203,9 +203,8 @@ def _apply_cut_sphere(x, pos, clip, cell=None, inverse=False):
     if len(clip) != 0:
         y = np.zeros_like(x)
         for _tr in clip:
-            if not isinstance(_tr, Sphere):
-                raise TypeError('expected a list of Sphere objects as '
-                                'clip spheres!')
+            if _tr.__class__.__name__ != 'Sphere':
+                raise TypeError('list does not contain ChirPy Spheres.')
             y += _tr.clip_section_observable(np.ones_like(x),
                                              pos,
                                              cell=cell,
@@ -222,6 +221,7 @@ def _spectrum_from_tcf(*args,
                        cell_au_deg=None,
                        positions_au=None,
                        gauge_transport=True,
+                       pseudo_isolated=False,
                        cutoff_au=None,
                        cutoff_bg_au=None,
                        cut_type='soft',
@@ -250,8 +250,15 @@ def _spectrum_from_tcf(*args,
        ts_au ... timestep in a.u.
 
        Computation of the gauge transport:
-         unwrap_pbc ... unwrap particles before the calculation
-         parallel ... execute job in parallel (_PALARRAY)
+         unwrap_pbc ... Unwrap particles before the calculation.
+         parallel ... Execute job in parallel (_PALARRAY).
+         pseudo_isolated ... Impose isolated supercell with origin_au as
+                             centre. This option accelerates the computation
+                             and is applicable especially to large supercells
+                             (e.g., as solvent bath).
+                             However, the inequality
+                                 cutoff <= ||cell_vector|| / 4.
+                             has to be fulfilled.
 
 
        Returns dictionary with (all in a.u.):
@@ -271,8 +278,6 @@ def _spectrum_from_tcf(*args,
         raise KeyError('ts argument must not be used here. Please specify '
                        'ts_au!')
     kwargs.update(dict(ts=ts_au))
-    cell = cell_au_deg
-    pos = copy.deepcopy(positions_au)
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)
@@ -319,17 +324,30 @@ def _spectrum_from_tcf(*args,
             data['tcf_cd'] = C_cd
 
     elif len(cur_dipoles.shape) == 3:
-        if pos is None:
+        if positions_au is None:
             raise TypeError('Please give positions_au argument for moments of '
                             f'shape {cur_dipoles.shape}')
 
         # --- map origin on frames if frame dim is missing
         if len(origin_au.shape) == 1:
-            origin_au = np.tile(origin_au, (pos.shape[0], 1))
+            origin_au = np.tile(origin_au, (positions_au.shape[0], 1))
+
+        # --- assume non-periodic boundaries
+        if pseudo_isolated and cell_au_deg is not None:
+            _warnings.warn('imposing non-periodic boundaries around origin_au',
+                           stacklevel=2)
+
+            pos = origin_au[:, None] + distance_pbc(origin_au[:, None],
+                                                    positions_au,
+                                                    cell_au_deg)
+            cell = None
+        else:
+            pos = copy.deepcopy(positions_au)
+            cell = cell_au_deg
 
         # --- cutoff spheres --------------------------------------------------
         if not isinstance(clip_sphere, list):
-            raise TypeError('expected list for keyword "clip_sphere%s"!')
+            raise TypeError('expected list for keyword "clip_sphere"!')
 
         # --- master sphere (cutoff) ==> applied ON TOP OF clip spheres
         _cut_sphere = []
@@ -380,12 +398,13 @@ def _spectrum_from_tcf(*args,
         data['freq'] = freq
 
         if cutoff_bg_au is not None:
-            data = _background(data,
+            data = _background_correction(
+                               data,
                                pos,
                                origin_au,
                                cutoff_bg_au,
                                cut_type_bg,
-                               cell_deg_au=cell,
+                               cell_au_deg=cell,
                                gauge_transport=gauge_transport,
                                unwrap_pbc=unwrap_pbc,
                                parallel=parallel,
@@ -402,7 +421,7 @@ def _spectrum_from_tcf(*args,
     return data
 
 
-def gauge_transport_particle_i(_i, pos, cur, cell, **kwargs):
+def gauge_transport_particle_i(_i, pos, cur, cell, **kwargs) -> tuple:
     '''_i ... index of particle
        pos/cur ... full arrays of shape (n_frames, n_particles, 3)
        '''
@@ -421,7 +440,7 @@ def gauge_transport_particle_i(_i, pos, cur, cell, **kwargs):
                                     ).sum(axis=1)
         return spectral_density(a, b, **kwargs)
     else:
-        return np.zeros(n_frames)
+        return np.zeros(n_frames), np.zeros(n_frames), np.zeros(2*n_frames-1)
 
 
 def compute_gauge_transport_term(cur, pos, cell,
@@ -433,6 +452,12 @@ def compute_gauge_transport_term(cur, pos, cell,
        parallel ... execute job in parallel (_PALARRAY)
     '''
     n_frames, n_particles, n_dim = pos.shape
+
+    if cell is None:
+        a = cur.sum(axis=1)
+        b = -magnetic_dipole_shift_origin(cur, pos).sum(axis=1)
+
+        return spectral_density(a, b, **kwargs)[1:]
 
     _pos = copy.deepcopy(pos)
     if unwrap_pbc:
@@ -460,28 +485,28 @@ def compute_gauge_transport_term(cur, pos, cell,
                      ).swapaxes(0, 1)
 
     else:
-        freq, cd_GT, C_cd_GT = _PALARRAY(
+        freq, cd_GT, C_cd_GT = tuple(zip(*_PALARRAY(
                       gauge_transport_particle_i,
                       range(n_particles),
                       pos=_pos,
                       cur=cur,
                       cell=cell,
                       **kwargs
-                      ).run().swapaxes(0, 1)
+                      ).run()))  # .swapaxes(0, 1)
 
-    return cd_GT.sum(axis=0), C_cd_GT.sum(axis=0)
+    return np.array(cd_GT).sum(axis=0), np.array(C_cd_GT).sum(axis=0)
 
 
-def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
-                cell_deg_au=None,
-                gauge_transport=True,
-                unwrap_pbc=True,
-                parallel=True,
-                **kwargs):
+def _background_correction(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
+                           cell_au_deg=None,
+                           gauge_transport=True,
+                           unwrap_pbc=True,
+                           parallel=True,
+                           **kwargs):
     '''Compute spectral density outside a given background cutoff'''
     _cut_sphere_bg = [Sphere(origin_au, cutoff_bg_au, edge=cut_type_bg)]
     _c_bg = _apply_cut_sphere(copy.deepcopy(data['c']), pos_au, _cut_sphere_bg,
-                              inverse=True, cell=cell_deg_au)
+                              inverse=True, cell=cell_au_deg)
     if 'abs' in data:
         _tmp = spectral_density(_c_bg.sum(axis=1), **kwargs)
         data['abs'] -= _tmp[1]
@@ -491,7 +516,7 @@ def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
     if 'cd' in data:
         _m_bg = _apply_cut_sphere(copy.deepcopy(data['m']), pos_au,
                                   _cut_sphere_bg,
-                                  inverse=True, cell=cell_deg_au)
+                                  inverse=True, cell=cell_au_deg)
         _tmp = spectral_density(_c_bg.sum(axis=1), _m_bg.sum(axis=1), **kwargs)
         data['cd'] -= _tmp[1]
         data['tcf_cd'] -= _tmp[2]
@@ -500,7 +525,7 @@ def _background(data, pos_au, origin_au, cutoff_bg_au, cut_type_bg,
             _cd_GT, C_cd_GT = compute_gauge_transport_term(
                                                         _c_bg,
                                                         pos_au,
-                                                        cell_deg_au,
+                                                        cell_au_deg,
                                                         unwrap_pbc=unwrap_pbc,
                                                         parallel=parallel,
                                                         **kwargs

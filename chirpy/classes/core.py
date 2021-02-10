@@ -57,6 +57,9 @@ class _PALARRAY():
            With executable func(*args) and set of data arrays, data,
            whereas len(data) = len(args).
 
+           If <func> returns multiple values, its annotation has to be set to
+           tuple.
+
            kwargs contains global keyword arguments that are passed to func.
 
            Calculate upper_triangle matrix only, if len(data)==1 and repeat==2
@@ -65,6 +68,7 @@ class _PALARRAY():
            Output: array of shape (len(data[0], len(data[1]), ...)'''
 
         self.f = partial(func, **kwargs)
+        self.multiple_returns = func.__annotations__.get('return') is tuple
         self.pool = Pool(n_cores)
 
         self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])
@@ -84,15 +88,18 @@ class _PALARRAY():
 
     def run(self):
         try:
+            _dtype = np.float
+            if self.multiple_returns:
+                _dtype = 'object'
             if config.__verbose__:
                 result = np.array(list(tqdm(
                              self.pool.istarmap(self.f, self.array),
                              desc=f'{self.f.func.__name__} (PALARRAY)',
                              total=self._length
-                             )), dtype='object')
+                             )), dtype=_dtype)
             else:
                 result = np.array(self.pool.starmap(self.f, self.array),
-                                  dtype='object')
+                                  dtype=_dtype)
 
             _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:

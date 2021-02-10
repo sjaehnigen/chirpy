@@ -51,11 +51,11 @@ class Sphere(_CORE):
         if not isinstance(radius, float):
             if isinstance(radius, np.ndarray):
                 if len(radius) != len(position):
-                    raise TypeError('Got wrong length for radius!', radius)
+                    raise TypeError('Got wrong length for radius.', radius)
                 radius = radius[:, None]
                 #  radius = radius[None, :]  # ?
             else:
-                raise TypeError('Expected float or numpy array for radius!')
+                raise TypeError('Expected float or numpy array as radius.')
 
         self.pos = position
         self.r = radius
@@ -93,7 +93,7 @@ class Sphere(_CORE):
             _d = get_d(self.pos[:, None], pos[:, :, None])
         else:
             raise TypeError('Clip reference shape %s does not agree with '
-                            'sphere position shape %s!' %
+                            'sphere position shape %s.' %
                             (pos.shape, self.pos.shape))
 
         _slc = (slice(None),) * len(_d.shape) + (None,)
