@@ -40,8 +40,7 @@ if __name__ == '__main__':
     mp.set_start_method('spawn')
 
 
-if sys.version_info[:2] < (3, 8):
-    raise RuntimeError("Python version >= 3.8 required.")
+assert sys.version_info[:2] >= (3, 8), "Python version >= 3.8 required."
 
 # --- code snippets
 

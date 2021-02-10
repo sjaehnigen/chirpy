@@ -33,7 +33,7 @@ import importlib
 import warnings
 from IPython import get_ipython
 import multiprocessing
-
+from .version import __version__
 
 __pal_n_cores__ = multiprocessing.cpu_count()//2
 __verbose__ = True
@@ -41,6 +41,10 @@ __verbose__ = True
 
 class ChirPy(UserWarning):
     pass
+
+
+def version_info():
+    return tuple([int(_v) for _v in __version__.split('.')])
 
 
 def _reload_modules():
