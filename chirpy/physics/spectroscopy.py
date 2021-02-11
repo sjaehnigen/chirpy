@@ -461,14 +461,10 @@ def compute_gauge_transport_term(cur, pos, cell,
 
     _pos = copy.deepcopy(pos)
     if unwrap_pbc:
-        for _n in tqdm.tqdm(range(n_particles),
+        for _t in tqdm.tqdm(range(n_frames),
                             desc='unwrapping particles under PBC',
                             disable=not config.__verbose__):
-            for _t in range(1, n_frames):
-                _pos[_t, _n] = pos[_t-1, _n] + distance_pbc(
-                                                        pos[_t-1, _n],
-                                                        pos[_t, _n],
-                                                        cell)
+            _pos[_t] = pos[_t-1] + distance_pbc(pos[_t-1], pos[_t], cell)
 
     if not parallel:
         freq, cd_GT, C_cd_GT = np.array([
