@@ -876,7 +876,7 @@ class _XYZ():
         else:
             self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
-    def wrap_molecules(self, mol_map, weight='mass', algorithm='closest'):
+    def wrap_molecules(self, mol_map, weight='mass', algorithm='connectivity'):
         w = _np.ones((self.n_atoms))
         if weight == 'mass':
             w = self.masses_amu
@@ -888,6 +888,7 @@ class _XYZ():
                                 self.cell_aa_deg,
                                 weights=w,
                                 algorithm=algorithm,
+                                symbols=self.symbols,
                                 )
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
@@ -898,6 +899,7 @@ class _XYZ():
                                 self.cell_aa_deg,
                                 weights=w,
                                 algorithm=algorithm,
+                                symbols=self.symbols,
                                 )
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa

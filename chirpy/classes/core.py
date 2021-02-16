@@ -91,16 +91,12 @@ class _PALARRAY():
             _dtype = np.float
             if self.multiple_returns:
                 _dtype = 'object'
-            #if config.__verbose__:
             result = np.array(list(tqdm(
                          self.pool.istarmap(self.f, self.array),
                          desc=f'{self.f.func.__name__} (PALARRAY)',
                          total=self._length,
                          disable=not config.__verbose__,
                          )), dtype=_dtype)
-            #else:
-            #    result = np.array(self.pool.starmap(self.f, self.array),
-            #                      dtype=_dtype)
 
             _l = self.repeat * tuple([len(_d) for _d in self.data])
             if self._ut:

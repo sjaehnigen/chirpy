@@ -66,13 +66,13 @@ class TestSupercell(unittest.TestCase):
         b = c.create(verbose=False, multiply=(1, 2, 2))
         b.sort_atoms()
         b.wrap()
-        b.write('out.pdb')
+        b.write('CREATE.pdb')
 
-        self.assertTrue(filecmp.cmp("out.pdb",
+        self.assertTrue(filecmp.cmp("CREATE.pdb",
                                     self.dir + "/782512_1x2x2.pdb",
                                     shallow=False),
-                        'Creator does not reproduce reference file '
-                        '782512_1x2x2.pdb (see out.pdb)!',
+                        f'{self.dir}/782512_1x2x2.pdb incorreclty reproduced'
+                        ' by CREATE.pdb',
                         )
 
-        os.remove('out.pdb')
+        os.remove('CREATE.pdb')

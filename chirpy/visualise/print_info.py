@@ -28,25 +28,31 @@
 #
 # -------------------------------------------------------------------
 
+import sys
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 
 def print_header(obj):
-    print('')
-    print(77 * '–')
-    print('%-12s' % obj.__class__.__name__)
-    print(77 * '–')
-    print('')
+    print(f'''
+{77 * '–'}
+{'%-12s' % obj.__class__.__name__}
+{77 * '–'}
+''',
+          file=sys.stderr)
 
 
 def print_cell(obj):
     if not hasattr(obj, 'cell_aa_deg'):
         return
-    print(77 * '–')
-    print('CELL ' + ' '.join(map('{:10.5f}'.format, obj.cell_aa_deg)))
-    print(f'{detect_lattice(obj.cell_aa_deg)}'.upper())
-    print(77 * '-')
     cell_vec_aa = get_cell_vec(obj.cell_aa_deg)
-    print(' A   ' + ' '.join(map('{:10.5f}'.format, cell_vec_aa[0])))
-    print(' B   ' + ' '.join(map('{:10.5f}'.format, cell_vec_aa[1])))
-    print(' C   ' + ' '.join(map('{:10.5f}'.format, cell_vec_aa[2])))
+
+    print(f'''
+{77 * '–'}
+CELL {' '.join(map('{:10.5f}'.format, obj.cell_aa_deg))}
+{detect_lattice(obj.cell_aa_deg).upper()}
+{77 * '-'}
+ A   {' '.join(map('{:10.5f}'.format, cell_vec_aa[0]))}
+ B   {' '.join(map('{:10.5f}'.format, cell_vec_aa[1]))}
+ C   {' '.join(map('{:10.5f}'.format, cell_vec_aa[2]))}
+''',
+          file=sys.stderr)

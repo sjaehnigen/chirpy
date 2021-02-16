@@ -212,7 +212,7 @@ def angle_pbc(p0, p1, p2, cell=None, signed=False):
         return angle(v0, v1)
 
 
-def distance_pbc(p0, p1, cell=None):
+def distance_pbc(p0, p1, cell=None, return_pbc_bool=False):
     '''p1 – p0 with or without periodic boundaries
        accepts cell argument (a b c al be ga).
        '''
@@ -220,10 +220,9 @@ def distance_pbc(p0, p1, cell=None):
     _d = p1 - p0
     if cell is not None:
         _d2 = _d - _pbc_shift(_d, cell)
-        # _d3 = min(list(_d.flatten()),
-        #           list(_d2.flatten()),
-        #           key=abs)
-        # _d = np.array(_d3).reshape(_d.shape)
+        if return_pbc_bool:
+            # return _d2, not np.allclose(_d, _d2)
+            return _d2, _d == _d2
         _d = _d2
     return _d
 
@@ -270,7 +269,8 @@ def get_cartesian_coordinates(positions, cell, angular=False):
                      )
 
 
-def distance_matrix(p0, p1=None, cell=None, cartesian=False):
+def distance_matrix(p0, p1=None, cell=None, cartesian=False,
+                    return_pbc_bool=False):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
 
@@ -292,34 +292,62 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False):
         raise MemoryError('Too many atoms for molecular recognition'
                           '(>10000 atom support in a future version)!'
                           )
-    dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
+    if return_pbc_bool:
+        dist_array, B = distance_pbc(p0[:, None], p1[None, :], cell=cell,
+                                     return_pbc_bool=return_pbc_bool)
+    else:
+        dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
 
     if cartesian:
-        return dist_array
+        _return = dist_array
     else:
-        return np.linalg.norm(dist_array, axis=-1)
+        _return = np.linalg.norm(dist_array, axis=-1)
+
+    if return_pbc_bool:
+        _return = _return, B
+
+    return _return
 
 
-def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None):
+def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None,
+                     return_distances=False, cartesian=False,
+                     return_pbc_bool=False):
     '''Create sparse matrix with entries 1 for neighbouring atoms.
        Expects positions in angstrom of shape (n_atoms, three).
        '''
     symbols = np.array(symbols)
-    dist_array = distance_matrix(pos_aa, cell=cell_aa_deg)
-    # ToDo: use diagonal method of numpy
-    dist_array[dist_array == 0.0] = 'Inf'
+    if return_pbc_bool:
+        dist_array, B = distance_matrix(pos_aa, cell=cell_aa_deg,
+                                        cartesian=cartesian,
+                                        return_pbc_bool=return_pbc_bool)
+    else:
+        dist_array = distance_matrix(pos_aa, cell=cell_aa_deg,
+                                     cartesian=cartesian)
+    # --- working copy
+    if cartesian:
+        _dist_array = np.linalg.norm(dist_array, axis=-1)
+    else:
+        _dist_array = copy.deepcopy(dist_array)
+    _dist_array[_dist_array == 0.0] = 'Inf'
+
     # --- ToDo: Do valency check instead
 
     # --- clean matrix for hydrogen atoms
     _hind = symbols == 'H'
-    _hmin = np.argmin(dist_array[_hind], axis=-1)
-    dist_array[_hind] = 'Inf'
-    dist_array[:, _hind] = 'Inf'
-    dist_array[_hind, _hmin] = 0.0
-    dist_array[_hmin, _hind] = 0.0
+    _hmin = np.argmin(_dist_array[_hind], axis=-1)
+    _dist_array[_hind] = 'Inf'
+    _dist_array[:, _hind] = 'Inf'
+    _dist_array[_hind, _hmin] = 0.0
+    _dist_array[_hmin, _hind] = 0.0
     crit_aa = dist_crit_aa(symbols)
 
-    return dist_array <= crit_aa
+    _return = _dist_array <= crit_aa
+    if return_distances:
+        _return = _return, dist_array
+    if return_pbc_bool:
+        _return = _return, B
+
+    return _return
 
 
 def nearest_neighbour(p0, p1=None, cell=None, ignore=None,
@@ -355,7 +383,9 @@ def connectivity(pos_aa, symbols, cell_aa_deg=None):
 
 def join_molecules(pos_aa, mol_map, cell_aa_deg,
                    weights=None,
-                   algorithm='closest',
+                   algorithm='connectivity',
+                   symbols=None,
+                   connectivity=None,
                    ):
     '''pos_aa (in angstrom) with shape ([n_frames,] n_atoms, three)
     Has still problems with cell-spanning molecules
@@ -370,48 +400,98 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
         weights = np.ones((n_atoms))
     w = dec(weights, mol_map)
 
+    try:
+        _sym = dec(symbols, mol_map)
+    except TypeError:
+        if algorithm == 'connectivity':
+            raise ValueError('connectivity requires symbols argument')
+        _sym = np.ones((n_atoms))
+
     _pos_aa = dec(pos_aa, mol_map)
     mol_com_aa = []
-    for _i, (_w, _p) in enumerate(zip(w, _pos_aa)):
+    for _i, (_w, _s, _p) in enumerate(zip(w, _sym, _pos_aa)):
         # --- ToDo: awkward check if _p has frames (frame 0 as reference)
         if len(_p.shape) == 3:
             _p_ref = _p[:, 0]
         else:
             _p_ref = _p
-        if algorithm == 'closest':
+        if algorithm == 'connectivity':
+            # --- ToDo: do not always recalculate D and N (store it in object)
+            (N, D), B = neighbour_matrix(_p_ref, _s,
+                                         cell_aa_deg=cell_aa_deg,
+                                         return_distances=True,
+                                         cartesian=True,
+                                         return_pbc_bool=True)
+            if B.all():  # --- molecule not broken
+                c_aa = cowt(_p_ref, _w, axis=0)
+                mol_com_aa.append(c_aa)
+                continue
             # --- find atom that is closest to its counterparts
-            # --- ToDo: NOT WORKING well for cell-spanning molecules
-            _r = np.argmin(np.linalg.norm(distance_matrix(
-                                                      _p_ref,
-                                                      cell=cell_aa_deg,
-                                                      ),
-                                          axis=1))
-        elif algorithm == 'heavy_atom':
-            # --- fast, but error-prone: use the heaviest atom as reference
-            _r = np.argmax(_w)
+            P = np.zeros_like(_p_ref)
+            _m_n_atoms = len(P)
+            n = np.zeros(_m_n_atoms).astype(bool)
+            # --- set reference particle
+            # --- closest to its neighbours
+            # _r = np.argmin(np.linalg.norm(D, axis=(1, 2)))
+            # --- w/ weighting
+            _r = np.argmin(np.linalg.norm(D, axis=(1, 2)) / _w)
+            # --- closests to cell center (for tetragonal cells)
+            # _r = np.argmin(np.linalg.norm(_p_ref - cell_aa_deg[None, :3]/2,
+            #                               axis=-1) / _w)
 
-        # elif algorithm == 'connectivity':
-        #     # --- thorough analysis of connectivity (needs symbols)
-        #     symbols = n_atoms * ('C',)
-        #     connectivity(_p_ref, symbols, cell=cell_aa_deg)
+            n[_r] = True
+            P[n] = _p_ref[n]
+            # --- LOOP
+            n0 = n
+            while n0.sum() < _m_n_atoms:
+                m = np.einsum('ij, i -> j', N, n0.astype(int))
+                n = m.astype(bool)
+                _NP = np.einsum('ijk, ij -> jk', P[n0, None] + D[n0], N[n0])
+                P[n] = _NP[n] / m[n, None]
+                n0 |= n
+
+            c_aa = cowt(P, _w, axis=0)
+            # --- ensure mol cowt lies within cell
+            #     (ToDo: choose _r such that this line is no required)
+            #       ---> actually possible? use B?
+            _delta = wrap(c_aa, cell_aa_deg) - c_aa
+            mol_com_aa.append(c_aa + _delta)
+            ind = np.array(mol_map) == _i
+            pos_aa[ind] = P + _delta[None]
+
+        # --- legacy code
+        # elif algorithm == 'closest':
+        #     # --- find atom that is closest to its counterparts
+        #     # --- ToDo: NOT WORKING well for cell-spanning molecules
+        #     _r = np.argmin(np.linalg.norm(distance_matrix(
+        #                                               _p_ref,
+        #                                               cell=cell_aa_deg,
+        #                                               ),
+        #                                   axis=1))
+        # elif algorithm == 'heavy_atom':
+        #     # --- fast, but error-prone: use the heaviest atom as reference
+        #     _r = np.argmax(_w)
+
         else:
             raise ValueError(f'got unknown algorithm {algorithm} for joining '
                              'molecules')
 
+        # --- legacy code (2)
         # --- complete mols
-        _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
-        c_aa = cowt(_p, _w, axis=0)
-        mol_com_aa.append(c_aa)
-        _p -= c_aa[None, :]
+        # _p -= _pbc_shift(_p - _p[_r, :], cell_aa_deg)
+        # c_aa = cowt(_p, _w, axis=0)
+        # mol_com_aa.append(c_aa)
+        # _p -= c_aa[None, :]
 
-    # --- wrap = performance bottleneck? --> definitely for non-tetragonal lat
-    mol_com_aa = wrap(np.array(mol_com_aa), cell_aa_deg)
+        # # --- wrap molecular com into cell
+        # #     (performance bottleneck?)
+        # mol_com_aa = wrap(np.array(mol_com_aa), cell_aa_deg)
 
-    # --- wrap set of pos
-    for _i, _com in enumerate(mol_com_aa):
-        # --- in-loop to retain order (np.argsort=unreliable)
-        ind = np.array(mol_map) == _i
-        pos_aa[ind] = _pos_aa[_i] + _com[None, :]
+        # # --- wrap set of pos
+        # for _i, _com in enumerate(mol_com_aa):
+        #     # --- in-loop to retain order (np.argsort=unreliable)
+        #     ind = np.array(mol_map) == _i
+        #     pos_aa[ind] = _pos_aa[_i] + _com[None, :]
 
     return np.moveaxis(pos_aa, 0, -2), np.moveaxis(np.array(mol_com_aa), 0, -2)
 

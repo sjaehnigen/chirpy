@@ -29,6 +29,7 @@
 #
 # -------------------------------------------------------------------
 
+import sys
 import argparse
 import numpy as np
 import warnings
@@ -281,6 +282,8 @@ def main():
     if extract_molecules is not None:
         _load.extract_molecules(extract_molecules)
 
+    if args.verbose:
+        print('Writing output...', file=sys.stderr)
     if args.f not in ['None', 'False']:
         if args.convert_to_moments:
             for _iframe, _p_fr in enumerate(_load.XYZ):
