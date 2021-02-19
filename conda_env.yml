@@ -18,5 +18,4 @@ dependencies:
   - scipy=1.*
   - pip:
     - concurrent-iterator==0.2.*
-    - pyqt5==5.*
 
