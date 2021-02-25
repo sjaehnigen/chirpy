@@ -332,8 +332,8 @@ class _ITERATOR():
                 with warnings.catch_warnings():
                     warnings.warn('Merged iterator exhausted!',
                                   RuntimeWarning,
-                                  stacklevel=1)
-                return obj1
+                                  stacklevel=2)
+                raise StopIteration('')
 
         self._frame = _add(self._frame, other._frame)
         self.__dict__.update(self._frame.__dict__)

@@ -279,7 +279,13 @@ def _get_property(kinds, key, fmt=None):
         except (KeyError, AttributeError):
             _warnings.warn('Cannot find %s for atom: %s !' % (key, _k),
                            RuntimeWarning, stacklevel=2)
-            _r = None
+            try:
+                _r = getattr(elements[_k[:-1]], key)
+                _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
+                               'Proceed with care!',
+                               stacklevel=2)
+            except (KeyError, AttributeError):
+                _r = None
         if fmt is not None:
             pr.append(fmt(_r))
         else:
