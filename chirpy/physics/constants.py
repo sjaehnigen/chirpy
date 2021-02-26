@@ -333,6 +333,7 @@ def get_conversion_factor(name, unit):
                 'au': 1.,
                 'aa': l_aa2au,  # time in a.u.
                 'aaperfs': 1/v_au2aaperfs,
+                'aaperps': 1/v_au2aaperfs/1000,
                 'si': v_si2au
                 },
             # 'moment_v': {  # "velocity form"

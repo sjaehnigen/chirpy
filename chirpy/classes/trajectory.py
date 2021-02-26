@@ -479,7 +479,7 @@ class _XYZ():
         wrap = kwargs.get('wrap', False)
         weight = kwargs.get('weight', 'mass')
         # wrap_molecules = kwargs.get('wrap_molecules', False)
-        self.cell_aa_deg = kwargs.get('cell_aa_deg')
+        f_cell_aa_deg = None
         names = kwargs.get('names')  # atom names
         residues = kwargs.get('residues')  # resid + num
         types = kwargs.get('types')
@@ -525,49 +525,20 @@ class _XYZ():
                 # --- ToDo: to be discussed: adding origin
                 data = (pos_aa + origin_aa)
                 symbols = constants.numbers_to_symbols(numbers)
-                cell_aa_deg = mapping.get_cell_l_deg(
+                f_cell_aa_deg = mapping.get_cell_l_deg(
                         cell_vec_aa,
                         multiply=_dims
                         )
 
-                if cell_aa_deg is not None:
-                    if self.cell_aa_deg is None:
-                        self.cell_aa_deg = cell_aa_deg
-
-                    elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
-                        _warnings.warn('Overwriting cell parametres '
-                                       'of CUBE file!',
-                                       RuntimeWarning,
-                                       stacklevel=2)
-
             elif fmt == "pdb":
-                data, names, symbols, residues, cell_aa_deg, title = \
+                data, names, symbols, residues, f_cell_aa_deg, title = \
                         pdbReader(fn, **_extract_keys(kwargs, verbose=False))
                 n_atoms = len(symbols)
                 comments = kwargs.get('comments', title)
 
-                if cell_aa_deg is not None:
-                    if self.cell_aa_deg is None:
-                        self.cell_aa_deg = cell_aa_deg
-
-                    elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
-                        _warnings.warn('Overwriting cell parametres '
-                                       'of PDB file!',
-                                       RuntimeWarning,
-                                       stacklevel=2)
-
             elif fmt == "cif":
-                data, names, symbols, cell_aa_deg, title = cifReader(fn)
+                data, names, symbols, f_cell_aa_deg, title = cifReader(fn)
                 comments = kwargs.get('comments', title)
-
-                if self.cell_aa_deg is None:
-                    self.cell_aa_deg = cell_aa_deg
-
-                elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
-                    _warnings.warn('Overwriting cell parametres '
-                                   'of CIF file!',
-                                   RuntimeWarning,
-                                   stacklevel=2)
 
             elif fmt == "xvibs":
                 nargs = _extract_keys(kwargs, mw=False, au=False)
@@ -603,14 +574,18 @@ class _XYZ():
 
             elif fmt in ['tinker', 'arc', 'vel']:
                 fmt = "tinker"
-                data, symbols, indices, types, connectivity, comments =\
-                    arcReader(fn,
-                              **_extract_keys(kwargs,
-                                              range=_fr,
-                                              bz2=False,
-                                              verbose=False,
-                                              )
-                              )
+                buf = arcReader(fn,
+                                **_extract_keys(kwargs,
+                                                range=_fr,
+                                                bz2=False,
+                                                verbose=False,
+                                                )
+                                )
+                data, symbols, indices, types, connectivity, comments = buf[:6]
+                try:
+                    f_cell_aa_deg = buf[6]
+                except IndexError:
+                    pass
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
@@ -685,7 +660,7 @@ class _XYZ():
                 symbols = _dict['symbols']
                 names = _dict['names']
                 comments = _dict['comments_topo']
-                self.cell_aa_deg = _dict['cell_aa_deg']
+                f_cell_aa_deg = _dict['cell_aa_deg']
                 data = _dict['data_topo']
 
             else:
@@ -709,9 +684,6 @@ class _XYZ():
                 raise TypeError('%s needs fn or data + symbols argument!' %
                                 self.__class__.__name__)
 
-        if self.cell_aa_deg is None:
-            self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
-
         comments = list(comments)
         if self._type == 'frame':
             # --- NB: frame selection has been made above
@@ -726,6 +698,9 @@ class _XYZ():
 
         # --- external metadata (i.e. from topology file)
         #     wins over fn, but not in the case of data
+        self.cell_aa_deg = kwargs.get('cell_aa_deg', f_cell_aa_deg)
+        if self.cell_aa_deg is None:
+            self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
         self.symbols = kwargs.get('symbols', tuple(symbols))
         self.comments = kwargs.get('comments', comments)
         self.data = data
@@ -1527,7 +1502,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'symbols': check_topo('symbols', frame[1]),
                     'types': check_topo('types', frame[3]),
                     'connectivity': check_topo('connectivity', frame[4]),
-                    'comments': frame[-1],
+                    'comments': frame[5],
+                    'cell_aa_deg': (frame[6:7] or ([],))[0],  # --- optional
                     }
 
         if self._fmt == 'pdb':

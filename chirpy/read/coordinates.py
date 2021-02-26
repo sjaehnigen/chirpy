@@ -96,16 +96,19 @@ def _cpmd(frame, **kwargs):
 
 
 def _arc(frame, **kwargs):
-    '''Kernel for processing xyz frame.'''
+    '''Kernel for processing arc frame.'''
 
     convert = kwargs.get('convert', 1.)
     n_lines = kwargs.get('n_lines')
+    CELL = kwargs.get('cell', False)
     _head = next(frame).strip().split()
     _atomnumber = int(_head[0])
     comment = ' '.join(_head[1:])
+    if CELL:
+        cell_aa_deg = list(map(float, next(frame).strip().split()))
 
-    if n_lines != _atomnumber + 1:
-        raise ValueError('inconsistent XYZ file')
+    if n_lines != _atomnumber + 1 + CELL:
+        raise ValueError('inconsistent ARC file')
 
     # --- FORTRAN conversion of numbers; we read single items, choosing broad
     #     range hence.
@@ -122,11 +125,15 @@ def _arc(frame, **kwargs):
     # --- flatten
     types = tuple([_it for _t in types for _it in _t])
 
-    if len(data) != n_lines - 1:
+    if len(data) != n_lines - 1 - CELL:
         raise ValueError('broken or incomplete file')
 
-    return np.array(data).astype(float)*convert, symbols, numbers, types,\
+    _return = np.array(data).astype(float)*convert, symbols, numbers, types,\
         connectivity, comment
+
+    if CELL:
+        _return += (cell_aa_deg,)
+    return _return
 
 
 # --- unit parser for iterators
@@ -208,9 +215,15 @@ def arcIterator(FN, **kwargs):
 
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip().split()[0]) + 1
+        if len(_f.readline().strip().split()) == 6:
+            # --- primitive check if there is a cell line
+            _nlines += 1
+            kwargs.update({'cell': True})
 
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
+    elif FN.split('.')[-1] == 'vel':
+        kwargs['convert'] = _convert(3*[('velocity', 'aaperps')])
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)
@@ -229,13 +242,21 @@ def arcReader(FN, **kwargs):
     '''Read complete ARC file at once.
        Returns data, symbols, numbers, types, and connectivity
        of current frame'''
-    data, symbols, numbers, types, connectivity, comments =\
-        zip(*arcIterator(FN, **kwargs))
+    buf = list(zip(*arcIterator(FN, **kwargs)))
 
-    # --- FUTURE: support of changes in type or connectivity (if Tinker
-    # supports it)
-    return np.array(data), symbols[0], numbers[0], types[0], connectivity[0],\
-        list(comments)
+    data, symbols, numbers, types, connectivity, comments = buf[:6]
+
+    _return = (np.array(data), symbols[0], numbers[0], types[0],
+               connectivity[0], list(comments))
+
+    try:  # --- cell
+        _return += (np.array(buf[6][0]),)
+    except IndexError:
+        pass
+
+    # --- ToDo: FUTURE: support of changes in type or connectivity (if Tinker
+    #                   supports it); and cell
+    return _return
 
 
 # ------ external readers

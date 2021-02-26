@@ -83,6 +83,12 @@ def main():
             default=False
             )
     parser.add_argument(
+            "--keep_positions",
+            action='store_true',
+            help="Do not modifiy positions at all (wrap, center, ...).",
+            default=False
+            )
+    parser.add_argument(
             "--wrap_molecules",
             action='store_true',
             help="Wrap molecules instead of atoms into cell.",
@@ -98,9 +104,16 @@ def main():
         else:
             args.center_coords = [int(_a) for _a in args.center_coords]
 
+    if args.keep_positions:
+        args.center_coords = False
+        args.center_molecule = None
+        args.wrap_molecules = False
+
     i_fmt = args.input_format
     if i_fmt is None:
         i_fmt = args.fn.split('.')[-1].lower()
+    if args.cell_aa_deg is None:
+        del args.cell_aa_deg
 
     _load = system.Molecule(**vars(args), fmt=i_fmt)
     _load.XYZ._check_distances()
@@ -114,7 +127,7 @@ def main():
 
     if args.wrap_molecules:
         _load.wrap_molecules()  # algorithm='heavy_atom')
-    else:
+    elif not args.keep_positions:
         _load.wrap()
     _load.write(args.f)
 
