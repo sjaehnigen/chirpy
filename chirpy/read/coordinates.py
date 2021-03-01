@@ -90,9 +90,7 @@ def _cpmd(frame, **kwargs):
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
-    # --- convert positions
-    # _data[:, :3] *= constants.l_au2aa
-    return _data*convert
+    return _data * convert
 
 
 def _arc(frame, **kwargs):

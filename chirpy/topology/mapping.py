@@ -38,6 +38,8 @@ from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
         signed_angle
 
+from .. import _unpack_tuple
+
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
 # Get rid of class dependence
@@ -299,14 +301,14 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False,
         dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
 
     if cartesian:
-        _return = dist_array
+        _return = (dist_array,)
     else:
-        _return = np.linalg.norm(dist_array, axis=-1)
+        _return = (np.linalg.norm(dist_array, axis=-1),)
 
     if return_pbc_bool:
-        _return = _return, B
+        _return += (B,)
 
-    return _return
+    return _unpack_tuple(_return)
 
 
 def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None,
@@ -341,13 +343,13 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None,
     _dist_array[_hmin, _hind] = 0.0
     crit_aa = dist_crit_aa(symbols)
 
-    _return = _dist_array <= crit_aa
+    _return = (_dist_array <= crit_aa,)
     if return_distances:
-        _return = _return, dist_array
+        _return += (dist_array,)
     if return_pbc_bool:
-        _return = _return, B
+        _return += (B,)
 
-    return _return
+    return _unpack_tuple(_return)
 
 
 def nearest_neighbour(p0, p1=None, cell=None, ignore=None,
@@ -417,11 +419,11 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
             _p_ref = _p
         if algorithm == 'connectivity':
             # --- ToDo: do not always recalculate D and N (store it in object)
-            (N, D), B = neighbour_matrix(_p_ref, _s,
-                                         cell_aa_deg=cell_aa_deg,
-                                         return_distances=True,
-                                         cartesian=True,
-                                         return_pbc_bool=True)
+            N, D, B = neighbour_matrix(_p_ref, _s,
+                                       cell_aa_deg=cell_aa_deg,
+                                       return_distances=True,
+                                       cartesian=True,
+                                       return_pbc_bool=True)
             if B.all():  # --- molecule not broken
                 c_aa = cowt(_p_ref, _w, axis=0)
                 mol_com_aa.append(c_aa)

@@ -86,25 +86,6 @@ def equal(a, b):
         return a == b
 
 
-def avg(x):
-    return _np.mean(x, axis=0)
-
-
-def cumavg(data):
-    return _np.cumsum(data, axis=0)/_np.arange(1, len(data)+1)
-
-
-def movavg(a, n=3):
-    ret = _np.cumsum(a, dtype=float)
-    ret[n:] = ret[n:] - ret[:-n]
-
-    # return ret[n - 1:] / n
-
-    # --- adaptive and keep size
-    ret[:n-1] = ret[:n-1] / _np.arange(1, n) * n
-    return ret / n
-
-
 # --- update multiprocessing
 #    ( https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm)
 
@@ -130,3 +111,17 @@ def istarmap(self, func, iterable, chunksize=1):
 
 
 mpp.Pool.istarmap = istarmap
+
+
+def _unpack_tuple(x):
+    """ Unpacks one-element tuples for use as return values
+
+        Taken from:
+        https://github.com/numpy/numpy/blob/v1.20.0/numpy/lib/arraysetops.py
+        Copyright (c) 2005-2021, NumPy Developers.
+
+        """
+    if len(x) == 1:
+        return x[0]
+    else:
+        return x
