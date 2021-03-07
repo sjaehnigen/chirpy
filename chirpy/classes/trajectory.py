@@ -557,7 +557,13 @@ class _XYZ():
                                        stacklevel=2)
 
             elif fmt == "cif":
-                data, names, symbols, cell_aa_deg, title = cifReader(fn)
+                data, names, symbols, cell_aa_deg, title = cifReader(
+                                                     fn,
+                                                     **_extract_keys(
+                                                            kwargs,
+                                                            fill_unit_cell=True
+                                                            )
+                                                     )
                 comments = kwargs.get('comments', title)
 
                 if self.cell_aa_deg is None:

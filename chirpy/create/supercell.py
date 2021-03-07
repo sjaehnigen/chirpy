@@ -129,8 +129,9 @@ class _BoxObject(_CORE):
             return None
         _eq = _np.zeros((self.n_members,) * 2)
 
-        for _i, _m in self.members:
-            _m.wrap_molecules(_np.zeros((_m.n_atoms)).astype(int))
+        if self.n_members > 1:
+            for _i, _m in self.members:
+                _m.wrap_molecules(_np.zeros((_m.n_atoms)).astype(int))
 
         for _ii, (_i, _m) in enumerate(self.members):
             _eq[_ii, _ii:] = _np.array([

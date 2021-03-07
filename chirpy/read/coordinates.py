@@ -288,7 +288,7 @@ def pdbReader(FN, **kwargs):
         cell_aa_deg[0], list(title)
 
 
-def cifReader(fn):
+def cifReader(fn, fill_unit_cell=True):
     '''Read CIF file and return a filled unit cell.
        '''
     def _measurement2float(number):
@@ -362,13 +362,15 @@ def cifReader(fn):
         _symbols = _names = ()
         # -- apply given symmetry operations on asymmetric unit
         #    (assumes first operation to be the identity: 'x, y, z')
-        for op in _space_group_symop:
+        for _io, op in enumerate(_space_group_symop):
             _op = [__op.strip() for __op in op.split(',')]
             _x = np.append(_x, eval(_op[0]), axis=0)
             _y = np.append(_y, eval(_op[1]), axis=0)
             _z = np.append(_z, eval(_op[2]), axis=0)
             _symbols += symbols
             _names += names
+            if _io == 0 and not fill_unit_cell:
+                break
 
     data = np.array([_x, _y, _z]).T
 

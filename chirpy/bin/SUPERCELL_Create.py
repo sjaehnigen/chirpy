@@ -76,6 +76,12 @@ def main():
             default=False
             )
     parser.add_argument(
+            "--asymmetric_unit",
+            action='store_true',
+            help="Do not fill unit cell (for cif files only).",
+            default=False,
+            )
+    parser.add_argument(
             "-f",
             help="Output file name",
             default='supercell.pdb'
@@ -91,6 +97,7 @@ def main():
     nargs['fn_topo'] = args.fn_topo
     if args.get_mols:
         nargs['define_molecules'] = args.get_mols
+    nargs['fill_unit_cell'] = not args.asymmetric_unit
 
     b = MolecularCrystal.read(args.fn, **nargs)
     b.print_info()
