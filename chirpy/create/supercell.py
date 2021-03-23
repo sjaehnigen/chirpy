@@ -42,6 +42,7 @@ from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Molecule as _Molecule
 from ..physics import constants
 from ..visualise import print_info
+from ..config import ChirPyWarning
 
 
 class _BoxObject(_CORE):
@@ -84,6 +85,7 @@ class _BoxObject(_CORE):
         nargs['cell_aa_deg'] = _load.cell_aa_deg
         if _np.any(_load.cell_aa_deg == 0.):
             _warnings.warn('Cannot detect cell dimensions!',
+                           ChirPyWarning,
                            stacklevel=2)
 
         if _load.mol_map is not None:
@@ -187,7 +189,8 @@ class _BoxObject(_CORE):
 
     def __pow__(self, other):
         '''Multiply system and scale box accordingly'''
-        _warnings.warn('Power in beta state. Proceed with care!',
+        _warnings.warn('pow() in beta state. Proceed with care!',
+                       ChirPyWarning,
                        stacklevel=2)
         if not isinstance(other, int):
             raise TypeError('unsupported operand type(s) for *: '
@@ -366,7 +369,7 @@ class Solution(_BoxObject):
                 if _d > 0.01:
                     _warnings.warn('Member counts differ from input value by '
                                    'more than 1%%:\n  - %s\n' % _id,
-                                   RuntimeWarning,
+                                   ChirPyWarning,
                                    stacklevel=2)
         [_dev_warning(abs(round(_in) - _in) /
                       _in, ([self.solvent] + self.solutes)[_ii])
@@ -382,7 +385,7 @@ class Solution(_BoxObject):
                         ]}
 
         with _warnings.catch_warnings():
-            _warnings.filterwarnings('ignore', category=RuntimeWarning)
+            _warnings.filterwarnings('ignore', category=ChirPyWarning)
             _BoxObject.__init__(
                         self,
                         symmetry='orthorhombic',
@@ -452,7 +455,7 @@ class Solution(_BoxObject):
                 _fn = '.member-%03d.pdb' % _im
                 _m[1].mol_map = _np.zeros_like(_m[1].symbols)
                 with _warnings.catch_warnings():
-                    _warnings.filterwarnings('ignore', category=RuntimeWarning)
+                    _warnings.filterwarnings('ignore', category=ChirPyWarning)
                     _m[1].write(_fn)
                 f.write('\n')
                 f.write('structure %s' % _fn + '\n')
@@ -468,7 +471,7 @@ class Solution(_BoxObject):
             print("Done.")
 
         with _warnings.catch_warnings():
-            _warnings.filterwarnings('ignore', category=RuntimeWarning)
+            _warnings.filterwarnings('ignore', category=ChirPyWarning)
             _load = _Molecule(".simbox.pdb",
                               cell_aa_deg=self._cell_aa_deg(),
                               mol_map=self._mol_map())

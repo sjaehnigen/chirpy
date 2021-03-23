@@ -155,7 +155,7 @@ class _CORE():
             _load = pickle.load(f)
         if not isinstance(_load, cls):
             warnings.warn(f"{FN} does not contain {cls.__name__}. Trying to "
-                          "convert.", stacklevel=2)
+                          "convert.", config.ChirPyWarning, stacklevel=2)
             _load = convert_object(_load, cls)
 
         # if hasattr(_load, 'data'):
@@ -300,7 +300,8 @@ class _ITERATOR():
                 (func, args, kwargs),
                 )
         if len(obj._kwargs['_masks']) > 10:
-            warnings.warn('Too many masks on iterator!', stacklevel=2)
+            warnings.warn('Too many masks on iterator!', config.ChirPyWarning,
+                          stacklevel=2)
 
     def merge(self, other, axis=-1, dim1=slice(0, 3), dim2=slice(0, 3)):
         '''Merge horizontically with another iterator (of equal length).
@@ -367,12 +368,14 @@ class _ITERATOR():
 
         if self._kwargs['range'][1] != 1:
             warnings.warn('Setting range increment to 1 for doublet search!',
+                          config.ChirPyWarning,
                           stacklevel=2)
             self._kwargs['range'] = (_keep[0], 1, _keep[2])
             self.rewind()
 
         if len(self._kwargs['_masks']) > 0:
             warnings.warn('Disabling masks for doublet search! %s' % _masks,
+                          config.ChirPyWarning,
                           stacklevel=2)
             self._kwargs['_masks'] = []
 
@@ -386,7 +389,8 @@ class _ITERATOR():
 
         # ToDo: re-add this warning without using numpy
         if len(np.unique(np.diff(self._kwargs['_timesteps']))) != 1:
-            warnings.warn("CRITICAL: Found varying timesteps!", stacklevel=2)
+            warnings.warn("CRITICAL: Found varying timesteps!",
+                          config.ChirPyWarning, stacklevel=2)
 
         if verbose:
             print('Duplicate frames in %s according to range %s:' % (
@@ -475,6 +479,6 @@ def convert_object(source, target):
             setattr(obj, attr, value)
         except AttributeError:
             warnings.warn(f'{source} object has no attribute \'{attr}\'',
-                          RuntimeWarning, stacklevel=2)
+                          ChirPyWarning, stacklevel=2)
 
     return obj

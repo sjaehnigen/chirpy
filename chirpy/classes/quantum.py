@@ -36,6 +36,7 @@ from scipy.ndimage.filters import maximum_filter, minimum_filter, \
 from scipy import signal as _signal
 import warnings as _warnings
 
+from ..config import ChirPyWarning
 from .core import _CORE
 from .volume import ScalarField as _ScalarField
 from .volume import VectorField as _VectorField
@@ -110,7 +111,7 @@ class ElectronDensity(_ScalarField):
                 _warnings.warn('Density at the boundary exceeds given density '
                                'threshold of %f! %f' % (self.aim_threshold,
                                                         boundary_max),
-                               RuntimeWarning,
+                               ChirPyWarning,
                                stacklevel=2)
 
         # neighborhood = generate_binary_structure(3,1)
@@ -443,7 +444,7 @@ class TDElectronDensity(_CORE):
             with _warnings.catch_warnings():
                 _warnings.warn('AIM gain/loss unbalanced: %f, %f !'
                                % (_np.sum(j_gain), _np.sum(j_loss)),
-                               RuntimeWarning,
+                               ChirPyWarning,
 
                                stacklevel=2)
         print('AIM gain/loss calculation done.')

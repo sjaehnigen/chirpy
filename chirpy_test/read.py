@@ -38,6 +38,7 @@ from chirpy.read import coordinates as r_coordinates
 from chirpy.read import grid as r_grid
 
 from chirpy.physics import constants
+from chirpy.config import ChirPyWarning
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
@@ -90,7 +91,7 @@ class TestModes(unittest.TestCase):
             ))
 
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             n_atoms, numbers, pos_aa, n_modes, freqs, modes_mw = \
                 r_modes.xvibsReader(self.dir + '/test.xvibs', mw=True)
             self.assertTrue(np.allclose(
@@ -306,7 +307,7 @@ class TestCoordinates(unittest.TestCase):
                 )
 
         # check missing-CRYST1 warning (important feature in ChirPy)
-        with self.assertWarns(RuntimeWarning):
+        with self.assertWarns(ChirPyWarning):
             data, names, symbols, res, cell_aa_deg, title = \
                     r_coordinates.pdbReader(
                           self.dir + '/test_simple_nodims.pdb')

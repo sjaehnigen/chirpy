@@ -37,6 +37,7 @@ import copy
 
 from chirpy.interface import cpmd
 from chirpy.physics import constants
+from chirpy.config import ChirPyWarning
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
@@ -103,7 +104,7 @@ class TestCPMD(unittest.TestCase):
                         write_atoms=False)
 
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=UserWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             data2 = cpmd.cpmdReader(_outfile,
                                     filetype='TRAJECTORY',
                                     symbols=cpmd.cpmd_kinds_from_file(_outfile)
@@ -123,7 +124,8 @@ class TestCPMD(unittest.TestCase):
         #     needs also test for correct append behaviour
         for fn in ['cpmd_job_1.inp', 'cpmd_job_2.inp', 'cpmd_job_3.inp']:
             with warnings.catch_warnings():
-                warnings.filterwarnings('ignore', category=UserWarning)
+                warnings.filterwarnings('ignore', category=ChirPyWarning)
+                warnings.filterwarnings('ignore', category=FutureWarning)
                 _cpmd = cpmd.CPMDjob.read_input_file(self.dir + '/' + fn)
                 _cpmd.write_input_file("test.inp", fmt='angstrom')
                 self.assertTrue(filecmp.cmp("test.inp",

@@ -35,6 +35,7 @@ import warnings
 import sys
 import copy
 
+from ..config import ChirPyWarning
 from ..physics import constants
 from ..read.coordinates import cpmdIterator
 from ..read.generators import _open
@@ -161,6 +162,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         frames = kwargs.get('frames', range(data.shape[0]))
         if append:
             warnings.warn('Writing CPMD trajectory without frame info!',
+                          ChirPyWarning,
                           stacklevel=2)
 
     if append:
@@ -226,6 +228,7 @@ def cpmd_kinds_from_file(fn):
        of lines per frame, based on analysis of the first frame'''
 
     warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
+                  ChirPyWarning,
                   stacklevel=2)
     with _open(fn, 'r') as _f:
         _i = 1
@@ -472,7 +475,8 @@ class CPMDinput():
                     if fmt == 'angstrom':
                         warnings.warn('Atomic coordinates in angstrom. Do not '
                                       'forget to set ANGSTROM keyword in the '
-                                      'SYSTEM section!', stacklevel=2)
+                                      'SYSTEM section!',
+                                      ChirPyWarning, stacklevel=2)
                         _dd *= constants.l_au2aa
                     print(format % tuple(_dd), file=file)
 
@@ -516,7 +520,8 @@ class CPMDinput():
         @classmethod
         def from_data(cls, symbols, pos_aa, pp='MT_BLYP KLEINMAN-BYLANDER'):
             warnings.warn('version 0.17.1 and later require position input in '
-                          'angstrom!', stacklevel=2)
+                          'angstrom!',
+                          FutureWarning, stacklevel=2)
             pos_au = pos_aa * constants.l_aa2au
             elements = sorted(set(symbols))
             symbols = np.array(symbols)
@@ -660,7 +665,8 @@ class CPMDjob():
 
         if hasattr(self, 'TRAJECTORY'):
             warnings.warn('using obsolete TRAJECTORY: verifiy units of '
-                          'positions!')
+                          'positions!',
+                          ChirPyWarning, stacklevel=2)
             _getlist = [
                         self.get_positions(),
                         self.get_kinds(),

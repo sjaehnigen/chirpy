@@ -32,6 +32,7 @@
 import numpy as np
 import warnings as _warnings
 
+from ..config import ChirPyWarning
 from ..physics import constants
 
 
@@ -72,7 +73,7 @@ def xvibsReader(fn, au=False, mw=False):
     if mw:
         _warnings.warn('Convention violation: '
                        'Assuming mass-weighted coordinates.',
-                       RuntimeWarning,
+                       ChirPyWarning,
                        stacklevel=2)
         masses_amu = constants.numbers_to_masses(numbers)
         modes /= np.sqrt(masses_amu)[None, :, None]
@@ -80,7 +81,7 @@ def xvibsReader(fn, au=False, mw=False):
     if au:
         _warnings.warn('Convention violation: '
                        'Assuming atomic unit coordinates.',
-                       RuntimeWarning,
+                       ChirPyWarning,
                        stacklevel=2)
         pos_aa *= constants.l_au2aa
 

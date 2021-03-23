@@ -43,8 +43,6 @@ if __name__ == '__main__':
 assert sys.version_info[:2] >= (3, 8), "Python version >= 3.8 required."
 
 # --- code snippets
-
-
 def extract_keys(dict1, **defaults):
     '''Updates the key/value pairs of defaults with those of dict1.
        Similar to defaults.update(dict1), but it does not ADD any new keys to

@@ -37,6 +37,7 @@ import warnings as _warnings
 
 from .core import _CORE
 from .. import extract_keys
+from ..config import ChirPyWarning
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
@@ -69,6 +70,7 @@ class ScalarField(_CORE):
                 if data.shape[0] > 1:
                     _warnings.warn(
                         'Volume class does not (yet) support trajectory data!',
+                        ChirPyWarning,
                         stacklevel=2)
                 # No support of multiple frames for now
                 self.data = data[0]
@@ -263,7 +265,7 @@ class ScalarField(_CORE):
                     _warnings.warn('\n'.join(
                         'Objects dissimilar in %s!'
                         % _e for (_e, _B) in zip(wrn_keys, _WRN) if _B),
-                        RuntimeWarning, stacklevel=2
+                        ChirPyWarning, stacklevel=2
                        )
             else:
                 if return_false:
@@ -442,7 +444,8 @@ class ScalarField(_CORE):
 
         else:
             _warnings.warn('Rotating grid may lead to problems with the '
-                           'Gaussian Cube format convention!', stacklevel=2)
+                           'Gaussian Cube format convention!',
+                           ChirPyWarning, stacklevel=2)
             self.cell_vec_aa = rotate_vector(self.cell_vec_aa, R)
             self.origin_aa = rotate_vector(self.origin_aa, R, origin=_o)
 
@@ -582,13 +585,13 @@ class VectorField(ScalarField):
             if any([ext_pos_aa is None, ext_vel_au is None]):
                 _warnings.warn('Missing external object for set keyword! '
                                'Please give ext_p and ext_v.',
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 ext = False
 
             if ext_pos_aa.shape != ext_vel_au.shape:
                 _warnings.warn('External object with inconsistent ext_p and '
                                'ext_v! Skippping.',
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 ext = False
 
         if ext:

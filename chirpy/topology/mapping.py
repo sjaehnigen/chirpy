@@ -39,6 +39,7 @@ from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
         signed_angle
 
 from .. import _unpack_tuple
+from ..config import ChirPyWarning
 
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
@@ -150,7 +151,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
        Does not care of axis order priority.
        '''
     if cell is None or np.any(cell == 0.):
-        _warnings.warn("no periodic cell given!", RuntimeWarning, stacklevel=2)
+        _warnings.warn("no periodic cell given!", ChirPyWarning, stacklevel=2)
         return None
 
     abc, albega = cell[:3], cell[3:]
@@ -171,7 +172,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
         elif not np.any(_a):
             return 'monoclinic'
         else:
-            _warnings.warn("Unusual lattice!", RuntimeWarning, stacklevel=2)
+            _warnings.warn("Unusual lattice!", ChirPyWarning, stacklevel=2)
             return 'triclinic'
 
     elif np.all(abc) and np.all(albega):
@@ -428,7 +429,6 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                 c_aa = cowt(_p_ref, _w, axis=0)
                 mol_com_aa.append(c_aa)
                 continue
-            # --- find atom that is closest to its counterparts
             P = np.zeros_like(_p_ref)
             _m_n_atoms = len(P)
             n = np.zeros(_m_n_atoms).astype(bool)
@@ -443,14 +443,38 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
 
             n[_r] = True
             P[n] = _p_ref[n]
-            # --- LOOP
-            n0 = n
-            while n0.sum() < _m_n_atoms:
+            n0 = n  # np.zeros(_m_n_atoms).astype(bool)
+            n_1 = np.ones(_m_n_atoms).astype(bool)
+            _n_iter = 0
+            while True:
+                if (_S_n0 := n0.sum()) == n_1.sum():
+                    if _S_n0 < _m_n_atoms:
+                        # _warnings.warn("connectivity interrupted in "
+                        #                "molecular map.", ChirPyWarning,
+                        #                stacklevel=2)
+                        # --- create additional link to nearest atom
+                        not_n0 = (np.ones(_m_n_atoms) - n0).astype(bool)
+                        _r = np.argmin(
+                                np.linalg.norm(D[n0][:, not_n0],
+                                               axis=-1)
+                                )
+                        _ind = np.unravel_index(_r, (_S_n0, _m_n_atoms-_S_n0))
+                        N[np.argwhere(n0)[_ind[0]],
+                          np.argwhere(not_n0)[_ind[1]]] = 1
+                    else:
+                        break
                 m = np.einsum('ij, i -> j', N, n0.astype(int))
                 n = m.astype(bool)
                 _NP = np.einsum('ijk, ij -> jk', P[n0, None] + D[n0], N[n0])
                 P[n] = _NP[n] / m[n, None]
+                n_1 = copy.deepcopy(n0)
                 n0 |= n
+                _n_iter += 1
+                if _n_iter >= _m_n_atoms:
+                    raise ValueError('could not join molecules after '
+                                     f'{_n_iter} iterations. Perhaps '
+                                     'the connectivity is interrupted '
+                                     '(i.e., >1 molecule)')
 
             c_aa = cowt(P, _w, axis=0)
             # --- ensure mol cowt lies within cell
@@ -640,7 +664,9 @@ def ishydrogenbond(positions, donor, acceptor, hydrogens,
         _pre_h = np.argwhere(_dist_dah[0] <= dist_crit_dha / 2.).flatten()
 
         if len(_pre_h) == 0:
-            _warnings.warn('No hydrogen atom found at donor %d' % _di)
+            _warnings.warn('No hydrogen atom found at donor %d' % _di,
+                           ChirPyWarning,
+                           stacklevel=2)
 
         _h = np.argmin(_dist_dah[1, _pre_h])
         _hi = _hyd[_pre_h][_h]

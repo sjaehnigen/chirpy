@@ -40,6 +40,7 @@ from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 from ..physics import constants
+from ..config import ChirPyWarning
 
 
 # --- kernels
@@ -84,7 +85,8 @@ def _cpmd(frame, **kwargs):
     if 'GEOMETRY' in filetype:
         _data = np.array(data).astype(float)
 
-    elif filetype in ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']:
+    elif any([_f in filetype for _f in
+              ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']]):
         _data = np.array(data).astype(float)[:, 1:]
 
     else:
@@ -153,7 +155,8 @@ def xyzIterator(FN, **kwargs):
         _comment = _f.readline().strip()
     if 'CPMD' in _comment or 'GEOMETRY' in FN:
         warnings.warn('It seems as if you are reading an XYZ file generated '
-                      'by CPMD. Check velocity units!', stacklevel=2)
+                      'by CPMD. Check velocity units!', ChirPyWarning,
+                      stacklevel=2)
         if 'units' not in kwargs:
             kwargs['units'] = 3*[('length', 'aa')]+3*[('velocity', 'aa')]
 
@@ -260,7 +263,7 @@ def pdbIterator(FN, **kwargs):
         title = u.trajectory.title
         if np.prod(cell_aa_deg) == 0.0:
             warnings.warn('no or invalid cell specified in pdb file',
-                          RuntimeWarning)
+                          ChirPyWarning)
             cell_aa_deg = None
         if len(title) == 0:
             title = None
@@ -342,13 +345,14 @@ def cifReader(fn, fill_unit_cell=True):
             ]).lower()
 
     if _space_group_label is None:
-        warnings.warn('No space group label found in file!', stacklevel=2)
+        warnings.warn('No space group label found in file!', ChirPyWarning,
+                      stacklevel=2)
 
     elif detect_lattice(cell_aa_deg) != _space_group_label:
         warnings.warn('The given space group and cell parametres do not match!'
                       ' %s != %s' % (_space_group_label,
                                      detect_lattice(cell_aa_deg)),
-                      RuntimeWarning,
+                      ChirPyWarning,
                       stacklevel=2)
 
     _space_group_symop = get_label([
@@ -356,7 +360,8 @@ def cifReader(fn, fill_unit_cell=True):
             '_symmetry_equiv_pos_as_xyz',
             ])
     if _space_group_symop is None:
-        warnings.warn('No symmetry operations found in file!', stacklevel=2)
+        warnings.warn('No symmetry operations found in file!', ChirPyWarning,
+                      stacklevel=2)
     else:
         _x = _y = _z = []
         _symbols = _names = ()

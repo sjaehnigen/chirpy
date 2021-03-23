@@ -35,6 +35,7 @@ import filecmp
 import numpy as np
 
 from chirpy.classes import system, quantum, trajectory, core
+from chirpy.config import ChirPyWarning
 
 # volume, field, domain
 
@@ -90,7 +91,7 @@ class TestTrajectory(unittest.TestCase):
 
     def test_split(self):
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=UserWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             traj_6 = trajectory._XYZTrajectory.load(self.dir+'/ALANINE_NVT_6')
             traj_3 = trajectory._XYZTrajectory.load(self.dir+'/ALANINE_NVT_3')
         traj_6.split([4, 4, 0, 0, 0, 4], select=4)
@@ -102,7 +103,7 @@ class TestTrajectory(unittest.TestCase):
                               range=(0, 10, 1000)
                               )
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=UserWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             traj.mask_duplicate_frames(verbose=False)
             ref = trajectory._XYZTrajectory.load(self.dir + '/TRAJ_clean')
         self.assertFalse(traj._is_equal(ref)[0] == 1)
@@ -139,14 +140,14 @@ class TestTrajectory(unittest.TestCase):
         _out = 'out_center.xyz'
         traj = trajectory.XYZ(self.dir + '/trajectory.xyz')
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             traj.center_coordinates()
         traj_ref = trajectory.XYZ(_ref)
         self.assertTrue(np.allclose(traj.data, traj_ref.data))
 
         traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             traj.center_coordinates(selection=list(range(12)))
         traj.write(_out)
         self.assertTrue(
@@ -191,7 +192,7 @@ class TestSystem(unittest.TestCase):
         _load = system.Supercell(self.dir + "/MD-NVT-production-pos-1.xyz",
                                  fmt='xyz', **largs)
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=UserWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             skip = _load.XYZ.mask_duplicate_frames(verbose=False)
         largs.update({'skip': skip})
 
@@ -239,7 +240,7 @@ class TestQuantum(unittest.TestCase):
         system = quantum.TDElectronDensity(fn, fn1, fn2, fn3)
         system.auto_crop(thresh=thresh)
         with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', category=RuntimeWarning)
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
             system.rho.aim(verbose=False)
         system.calculate_velocity_field(thresh=thresh)
         system.v.helmholtz_decomposition()

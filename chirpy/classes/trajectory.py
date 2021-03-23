@@ -34,6 +34,7 @@ import warnings as _warnings
 
 from .core import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
+from ..config import ChirPyWarning
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
 from ..read.grid import cubeReader
@@ -260,7 +261,7 @@ class _FRAME(_CORE):
         with _warnings.catch_warnings():
             if not len(_np.unique(assign)) == obj1.n_atoms:
                 _warnings.warn('Ambiguities encountered when mapping frames!',
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
 
         return assign
 
@@ -321,6 +322,7 @@ class _MODES(_FRAME):
         if not hasattr(self, 'IR_kmpmol'):
             # --- in km/mol
             _warnings.warn('No IR intensities found. Setting to one.',
+                           ChirPyWarning,
                            stacklevel=2)
             self.IR_kmpmol = _np.ones((self.n_modes))
 
@@ -392,7 +394,7 @@ class _MODES(_FRAME):
                 _warnings.warn('Significant motion of COM for certain modes! '
                                'Are the eigenvectors orthonormal? '
                                'Try enabling/disabling the --mw flag!',
-                               RuntimeWarning,
+                               ChirPyWarning,
                                stacklevel=2)
 
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
@@ -408,7 +410,7 @@ class _MODES(_FRAME):
             _warnings.warn('The given cartesian displacements are '
                            'orthonormal! Please try enabling/disabling '
                            'the --mw flag!',
-                           RuntimeWarning,
+                           ChirPyWarning,
                            stacklevel=2)
             print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
@@ -424,7 +426,7 @@ class _MODES(_FRAME):
             _warnings.warn('The eigenvectors are not '
                            'orthonormal! Please try enabling/disabling '
                            'the --mw flag!',
-                           RuntimeWarning,
+                           ChirPyWarning,
                            stacklevel=2)
             print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
         _np.set_printoptions(precision=8)
@@ -537,7 +539,7 @@ class _XYZ():
                     elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
                         _warnings.warn('Overwriting cell parametres '
                                        'of CUBE file!',
-                                       RuntimeWarning,
+                                       ChirPyWarning,
                                        stacklevel=2)
 
             elif fmt == "pdb":
@@ -553,7 +555,7 @@ class _XYZ():
                     elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
                         _warnings.warn('Overwriting cell parametres '
                                        'of PDB file!',
-                                       RuntimeWarning,
+                                       ChirPyWarning,
                                        stacklevel=2)
 
             elif fmt == "cif":
@@ -572,7 +574,7 @@ class _XYZ():
                 elif not _np.allclose(self.cell_aa_deg, cell_aa_deg):
                     _warnings.warn('Overwriting cell parametres '
                                    'of CIF file!',
-                                   RuntimeWarning,
+                                   ChirPyWarning,
                                    stacklevel=2)
 
             elif fmt == "xvibs":
@@ -772,7 +774,7 @@ class _XYZ():
                 selection = align_coords
             if wrap:  # or wrap_molecules:
                 _warnings.warn('Disabling wrapping for atom alignment!',
-                               stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 # unnecessary here
                 wrap = False
                 wrap_molecules = False
@@ -832,7 +834,7 @@ class _XYZ():
         except KeyError:
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
-                           RuntimeWarning, stacklevel=2)
+                           ChirPyWarning, stacklevel=2)
         # DISABLED 2020-10-20
 #        self._pos_aa()
 #        self._vel_au()
@@ -1169,12 +1171,12 @@ class _XYZ():
         elif fmt == "pdb":
             if (mol_map := kwargs.get('mol_map')) is None:
                 _warnings.warn('Could not find mol_map for PDB output!',
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 mol_map = _np.zeros(loc_self.n_atoms).astype(int)
 
             if (cell_aa_deg := kwargs.get('cell_aa_deg')) is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
             pdbWriter(fn,
@@ -1192,7 +1194,8 @@ class _XYZ():
         elif fmt == 'cpmd':
             if sorted(loc_self.symbols) != list(loc_self.symbols):
                 _warnings.warn('CPMD output requires sorted atoms. '
-                               'Switching on auto-sort.', stacklevel=2)
+                               'Switching on auto-sort.',
+                               ChirPyWarning, stacklevel=2)
                 loc_self.sort()
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)
@@ -1258,7 +1261,7 @@ class _MOMENTS():
 
             if fmt == "xyz":
                 _warnings.warn("XYZ format not tested for MOMENTS!",
-                               stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
                 data, symbols, comments = xyzReader(fn,
                                                     **_extract_keys(kwargs,
                                                                     range=_fr,
@@ -1408,7 +1411,7 @@ class XYZFrame(_XYZ, _FRAME):
             for _j in _i[1]:
                 _warnings.warn(f'Found too close atoms {_i[0]} and {_j[0]} ('
                                f'{_np.round(_j[1], decimals=3)} Å)!',
-                               RuntimeWarning, stacklevel=2)
+                               ChirPyWarning, stacklevel=2)
 
     def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
@@ -1645,7 +1648,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         '''split is faster with fully loaded trajectory'''
         if 'select' not in kwargs:
             _warnings.warn('Splitting iterator without select argument has '
-                           'no effect!', stacklevel=2)
+                           'no effect!', ChirPyWarning, stacklevel=2)
         self._frame.split(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'split', *args, **kwargs)
@@ -1678,7 +1681,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                 if 'symbols' not in kwargs:
                     with _warnings.catch_warnings():
                         _warnings.filterwarnings('ignore',
-                                                 category=UserWarning)
+                                                 category=ChirPyWarning)
                         kwargs.update({
                             'symbols': cpmd_kinds_from_file(fn)
                             })
@@ -1738,7 +1741,7 @@ class _XYZTrajectory(_XYZ, _TRAJECTORY):
         '''finite diff, linear (frame1-frame0, frame2-frame1, etc.)'''
         if _np.linalg.norm(self.vel_au) != 0:
             _warnings.warn('Overwriting existing velocities in object!',
-                           stacklevel=2)
+                           ChirPyWarning, stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
                                     axis=0) / (ts * constants.v_au2aaperfs)
 

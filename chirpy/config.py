@@ -39,7 +39,7 @@ __pal_n_cores__ = multiprocessing.cpu_count()//2
 __verbose__ = True
 
 
-class ChirPy(UserWarning):
+class ChirPyWarning(UserWarning):
     pass
 
 
@@ -61,7 +61,7 @@ def set_pal_n_cores(s, reload_modules=True):
     __pal_n_cores__ = int(s)
     if __verbose__:
         warnings.warn(f'__pal_n_cores__ set to {__pal_n_cores__}',
-                      ChirPy,
+                      ChirPyWarning,
                       stacklevel=2)
     if reload_modules:
         _reload_modules()
@@ -73,7 +73,7 @@ def set_verbose(s, reload_modules=True):
     __verbose__ = bool(s)
     if __verbose__:
         warnings.warn(f'__verbose__ set to {__verbose__}',
-                      ChirPy,
+                      ChirPyWarning,
                       stacklevel=2)
     if reload_modules:
         _reload_modules()

@@ -284,7 +284,7 @@ def _get_property(kinds, key, fmt=None):
                 _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
                                'Proceed with care!',
                                stacklevel=2)
-            except (KeyError, AttributeError):
+            except (TypeError, KeyError, AttributeError):
                 _r = None
         if fmt is not None:
             pr.append(fmt(_r))

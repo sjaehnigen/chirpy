@@ -33,6 +33,7 @@ import os
 import filecmp
 import numpy as np
 
+
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
 
@@ -54,6 +55,16 @@ class TestBinaries(unittest.TestCase):
                         'incorrectly in TEST'
                         )
         os.remove('TEST')
+        os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY_DIMER.pdb '
+                  '%s/TRAJECTORY_DIMER '
+                  '%s/MOMENTS_DIMER -f TEST_DIMER' % (3*(self.dir,)))
+        self.assertTrue(filecmp.cmp('TEST_DIMER',
+                                    self.dir + '/DIMER',
+                                    shallow=False),
+                        f'Molecular moments {self.dir}/DIMER reproduced '
+                        'incorrectly in TEST_DIMER'
+                        )
+        os.remove('TEST_DIMER')
 
     def test_system_create_topology(self):
         for _f in ['topo-1.restart', 'topo.xyz']:
