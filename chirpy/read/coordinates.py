@@ -34,7 +34,6 @@ import numpy as np
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import warnings
-from concurrent_iterator.process import Producer
 import fortranformat as ff
 
 from .generators import _reader, _open
@@ -163,8 +162,7 @@ def xyzIterator(FN, **kwargs):
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -205,8 +203,7 @@ def cpmdIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      3*[('velocity', 'au')])
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def arcIterator(FN, **kwargs):
@@ -227,8 +224,7 @@ def arcIterator(FN, **kwargs):
     elif FN.split('.')[-1] == 'vel':
         kwargs['convert'] = _convert(3*[('velocity', 'aaperps')])
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def ifreeIterator(FN, **kwargs):
@@ -258,8 +254,7 @@ def ifreeIterator(FN, **kwargs):
     else:
         _nlines = len([_k for _k in symbols])  # type-independent
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 # --- complete readers
 
