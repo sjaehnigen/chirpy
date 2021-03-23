@@ -329,9 +329,7 @@ class TestCoordinates(unittest.TestCase):
 
         self.assertListEqual(
             data.flatten().tolist(),
-            np.genfromtxt(self.dir + '/indanol_ref').tolist(),
-            f'Reference data {self.dir}/indanol_ref reproduced '
-            f'incorrectly: {data}'
+            np.genfromtxt(self.dir + '/indanol_ref').tolist()
           )
 
     def test_arcReader(self):
