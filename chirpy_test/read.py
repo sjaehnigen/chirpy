@@ -327,10 +327,12 @@ class TestCoordinates(unittest.TestCase):
                 )
         [self.assertIsInstance(_c, str) for _c in title]
 
-        self.assertTrue(np.array_equal(
-          data,
-          np.genfromtxt(self.dir + '/indanol_ref').reshape(1, 40, 3)
-          ))
+        self.assertListEqual(
+            data.flatten().tolist(),
+            np.genfromtxt(self.dir + '/indanol_ref').tolist(),
+            f'Reference data {self.dir}/indanol_ref reproduced '
+            f'incorrectly: {data}'
+          )
 
     def test_arcReader(self):
         # --- xyz
