@@ -31,6 +31,7 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
+from itertools import zip_longest
 
 from .core import _CORE, _ITERATOR
 from .. import extract_keys as _extract_keys
@@ -41,6 +42,7 @@ from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
 from ..read.coordinates import arcIterator as _arcIterator
+from ..read.coordinates import ifreeIterator as _ifreeIterator
 from ..write.coordinates import xyzWriter, pdbWriter, arcWriter
 from ..write.modes import xvibsWriter
 
@@ -508,18 +510,22 @@ class _XYZ():
             if fmt == "xyz":
                 data, symbols, comments = xyzReader(fn,
                                                     **_extract_keys(
-                                                                kwargs,
-                                                                range=_fr,
-                                                                bz2=False,
-                                                                verbose=False,
-                                                                )
+                                                               kwargs,
+                                                               range=_fr,
+                                                               skip=[],
+                                                               bz2=False,
+                                                               verbose=False,
+                                                               units='default',
+                                                               )
                                                     )
 
             elif fmt in ["cube", "cub"]:
                 data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                         cubeReader(fn, **_extract_keys(kwargs,
                                                        bz2=False,
-                                                       verbose=False))
+                                                       verbose=False,
+                                                       # units='default'
+                                                       ))
                 _dims = data.shape[1:]
                 del data
                 # --- ToDo: to be discussed: adding origin
@@ -532,7 +538,7 @@ class _XYZ():
 
             elif fmt == "pdb":
                 data, names, symbols, residues, f_cell_aa_deg, title = \
-                        pdbReader(fn, **_extract_keys(kwargs, verbose=False))
+                        pdbReader(fn)
                 n_atoms = len(symbols)
                 comments = kwargs.get('comments', title)
 
@@ -561,7 +567,15 @@ class _XYZ():
                     kwargs.update({
                         'symbols': cpmd_kinds_from_file(fn)
                         })
-                data_dict = cpmdReader(fn, **kwargs)
+                data_dict = cpmdReader(fn, **_extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      bz2=False,
+                                      verbose=False,
+                                      units='default',
+                                      filetype='TRAJECTORY'
+                                      ))
                 self._data_dict = data_dict
 
                 if 'symbols' in data_dict:
@@ -577,8 +591,11 @@ class _XYZ():
                 buf = arcReader(fn,
                                 **_extract_keys(kwargs,
                                                 range=_fr,
+                                                skip=[],
                                                 bz2=False,
                                                 verbose=False,
+                                                units='default',
+                                                cell_line=False,
                                                 )
                                 )
                 data, symbols, indices, types, connectivity, comments = buf[:6]
@@ -672,7 +689,7 @@ class _XYZ():
                 numbers = kwargs.get('numbers')
                 symbols = kwargs.get('symbols')
                 if symbols is None:
-                    symbols = [constants.symbols[z - 1] for z in numbers]
+                    symbols = constants.numbers_to_symbols(numbers)
                 data = kwargs.get('data')
                 _sh = data.shape
                 if len(_sh) == 2:
@@ -1229,20 +1246,29 @@ class _MOMENTS():
                 _warnings.warn("XYZ format not tested for MOMENTS!",
                                stacklevel=2)
                 data, symbols, comments = xyzReader(fn,
-                                                    **_extract_keys(kwargs,
-                                                                    range=_fr,
-                                                                    bz2=False,
-                                                                    )
+                                                    **_extract_keys(
+                                                                kwargs,
+                                                                range=_fr,
+                                                                skip=[],
+                                                                bz2=False,
+                                                                verbose=False,
+                                                                units='default'
+                                                                )
                                                     )
 
             elif fmt == "cpmd" or any([_t in fn for _t in [
                                      'MOL', 'MOMENTS']]):
                 fmt = "cpmd"
-                if 'symbols' not in kwargs:
-                    kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
-                        })
-                data_dict = cpmdReader(fn, **kwargs)
+                data_dict = cpmdReader(fn, **_extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      bz2=False,
+                                      verbose=False,
+                                      units='default',
+                                      filetype='MOMENTS',
+                                      symbols=cpmd_kinds_from_file(fn)
+                                      ))
                 self._data_dict = data_dict
 
                 symbols = data_dict['symbols']
@@ -1255,12 +1281,14 @@ class _MOMENTS():
 
         elif len(args) == 0:
             if 'data' in kwargs:
-                numbers = kwargs.get('numbers', (1,))
-                symbols = kwargs.get('symbols')
-                if symbols is None:
-                    symbols = [constants.symbols[z - 1] for z in numbers]
                 data = kwargs.get('data')
                 _sh = data.shape
+                numbers = kwargs.get('numbers')
+                symbols = kwargs.get('symbols')
+                if symbols is None:
+                    if numbers is None:
+                        numbers = _np.arange(_sh[-2])
+                    symbols = constants.numbers_to_symbols(numbers)
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
                 comments = _np.array([kwargs.get('comments',
@@ -1433,20 +1461,34 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             pass
 
         elif len(args) == 1:
+            _fr = kwargs.get('range', (0, 1, float('inf')))
             fn = args[0]
             self._fn = fn
-            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fmt = kwargs.pop('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
                 kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
 
             if self._fmt == "xyz":
-                self._gen = _xyzIterator(fn, **kwargs)
+                self._gen = _xyzIterator(fn, **_extract_keys(
+                                                 kwargs,
+                                                 range=_fr,
+                                                 skip=[],
+                                                 bz2=False,
+                                                 units='default',
+                                                 ))
 
             elif self._fmt in ["arc", 'vel', 'tinker']:
                 self._fmt = "tinker"
-                self._gen = _arcIterator(fn, **kwargs)
+                self._gen = _arcIterator(fn, **_extract_keys(
+                                                 kwargs,
+                                                 range=_fr,
+                                                 skip=[],
+                                                 bz2=False,
+                                                 units='default',
+                                                 cell_line=False,
+                                                 ))
 
             elif self._fmt == "pdb":
                 self._gen = _pdbIterator(fn)  # **kwargs
@@ -1454,11 +1496,15 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             elif self._fmt == "cpmd" or any([_t in fn for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
                 self._fmt = "cpmd"
-                if 'symbols' not in kwargs:
-                    kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
-                        })
-                self._gen = _cpmdIterator(fn, **kwargs)
+                self._gen = _cpmdIterator(fn, **_extract_keys(
+                                               kwargs,
+                                               range=_fr,
+                                               skip=[],
+                                               bz2=False,
+                                               units='default',
+                                               filetype='TRAJECTORY',
+                                               symbols=cpmd_kinds_from_file(fn)
+                                               ))
 
             else:
                 raise ValueError('Unknown trajectory format: %s.' % self._fmt)
@@ -1630,50 +1676,93 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         # --- initialise list of masks
         self._kwargs['_masks'] = []
 
-        if len(args) == 0:
-            pass
+        if len(args) not in (0, 1, 3):
+            raise TypeError("expected 0, 1, or 3 arguments as files for %s"
+                            % self.__class__.__name__)
+
+        elif len(args) == 0:
+            return
 
         elif len(args) == 1:
             fn = args[0]
             self._fn = fn
-            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fmt = kwargs.pop('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
                 kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
+            _fr = kwargs.get('range', (0, 1, float('inf')))
 
             # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or fn in ['MOL', 'MOMENTS']:
                 self._fmt = "cpmd"
-                if 'symbols' not in kwargs:
-                    with _warnings.catch_warnings():
-                        _warnings.filterwarnings('ignore',
-                                                 category=UserWarning)
-                        kwargs.update({
-                            'symbols': cpmd_kinds_from_file(fn)
-                            })
-                self._gen = _cpmdIterator(fn, filetype='MOMENTS', **kwargs)
+                self._gen = _cpmdIterator(fn, **_extract_keys(
+                                           kwargs,
+                                           range=_fr,
+                                           skip=[],
+                                           bz2=False,
+                                           units='default',
+                                           filetype='MOMENTS',
+                                           symbols=cpmd_kinds_from_file(fn)
+                                           ))
 
             else:
                 raise ValueError('Unknown format: %s.' % self._fmt)
 
-            # --- keep kwargs for iterations
-            self._kwargs.update(kwargs)
+        elif len(args) == 3:
+            if kwargs.pop('fmt', None) != "tinker":
+                raise TypeError("expected \'fmt=tinker\' in file reader of "
+                                "%s after finding 3 arguments!"
+                                % self.__class__.__name__)
+            try:
+                _tmft = None  # to avoid flake warning only
+                [setattr(self, {
+                    "ddip": "_fn_c", "dip": "_fn_d", "magdip_half": "_fn_m"
+                    }[(_tmft := _fn.split('.')[-1])],
+                    _fn)
+                 for _fn in args]
+            except KeyError:
+                raise ValueError('Unknown tinker format: %s.' % _tmft)
 
-            self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
-            self._fr, self._st, buf = self._kwargs['range']
-            self._fr -= self._st
+            def _tinker_moment_container():
+                reference = _np.array(kwargs.pop('gauge_origin_aa'))
+                for _cur, _mag, _dip in zip_longest(
+                        # _ifreeIterator(reference positions)
+                        _ifreeIterator(self._fn_c,
+                                       units=3*[('electric_dipole', 'debye')],
+                                       **kwargs),
+                        _ifreeIterator(self._fn_m,
+                                       units=3*[('electric_dipole', 'debye')],
+                                       **kwargs),
+                        _ifreeIterator(self._fn_d,
+                                       units=3*[('electric_dipole', 'debye')],
+                                       **kwargs),
+                        ):
 
-            # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
-            self.sneak(verbose=False)
+                    # --- ToDo: Tinker MUST give the reference positions
+                    #           _workaround for now
+                    if reference is None:
+                        _pos = _np.zeros_like(_cur)
+                    elif len(reference.shape) < 3:
+                        # --- use numpy intelligence on shape
+                        _pos = _np.ones_like(_cur) * reference
+                    yield _np.hstack((_pos, _cur, _mag, _dip))
 
-            # --- Store original skip as it is consumed by generator
-            if 'skip' in self._kwargs:
-                self._kwargs['_skip'] = self._kwargs['skip'].copy()
+            self._gen = _tinker_moment_container()
 
-        else:
-            raise TypeError("File reader of %s takes exactly 1 argument!"
-                            % self.__class__.__name__)
+        # --- keep kwargs for iterations
+        self._kwargs.update(kwargs)
+
+        self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
+        self._fr, self._st, buf = self._kwargs['range']
+        self._fr -= self._st
+
+        # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
+        self.sneak(verbose=False)
+
+        # --- Store original skip as it is consumed by generator
+        if 'skip' in self._kwargs:
+            self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
     def expand(self):
         '''Perform iteration on remaining iterator and load

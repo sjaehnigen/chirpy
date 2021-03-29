@@ -68,6 +68,7 @@ e_si = 1.60217657E-19  # unit charge [C]
 eps0_si = 8.854187817E-12  # vacuum permittivity
 a0_si = 0.529177210859E-10  # Bohr radius [m]
 k_B_si = 1.3806488E-23  # Boltzmann constant [J/K]
+mu_b_si = e_si * hbar_si / 2 / m_e_si  # Bohr magneton [J/T]
 
 # --- A.U. conversion factors
 l_au = a0_si  # Bohr radius [m]
@@ -77,6 +78,7 @@ m_p_au = m_p_si / m_e_si  # proton mass in A.U. [1] ?
 m_amu_au = m_amu_si / m_e_si  # atomic mass unit in A.U. [1] ?
 c_au = c_si / l_au * t_au  # speed of light in A.U. [1]
 k_B_au = k_B_si / E_au  # Boltzmann constant [E_h/K]
+mu_b_au = 0.5  # Bohr magneton
 
 # --- cgs units
 c_cgs = c_si / centi  # speed of light [cm/s]
@@ -85,6 +87,15 @@ h_cgs = h_si * kilo / centi**2  # Planck's constant [erg s]
 hbar_cgs = h_cgs / (2*pi)  # reduced Planck constant [erg s]
 a0_cgs = a0_si / centi  # Bohr radius [cm]
 k_B_cgs = k_B_si * kilo / centi**2  # Boltzmann constant [erg/K]
+# --- esu extension (= Gaussian-cgs for electric units)
+q_si2esu = c_si * 1E1  # charge, statC, Franklin
+q_esu2si = 1 / q_si2esu
+p_debye2si = 1. / c_si * 1E-21  # electric dipole moment
+p_si2debye = 1. / p_debye2si
+p_debye2au = p_debye2si / e_si / a0_si
+p_au2debye = 1 / p_debye2au
+# --- emu extension (= Gaussian-cgs for magnetic units)
+mu_b_emu = e_cgs * hbar_cgs / 2 / c_cgs / m_e_si / 1E3  # Bohr magneton [erg/G]
 
 
 # --- misc
@@ -97,6 +108,8 @@ t_fs2au = 1 / t_au2fs
 v_au2si = 1E+5 * l_au2aa / t_au2fs
 v_si2au = 1 / v_au2si
 v_au2aaperfs = l_au2aa / t_au2fs
+p_si2au = 1 / e_si / a0_si
+p_au2si = 1 / p_si2au
 
 # --- spectroscopic light energy and frequency conversion functions
 E_au2J = E_au
@@ -277,14 +290,14 @@ def _get_property(kinds, key, fmt=None):
         try:
             _r = getattr(elements[_k], key)
         except (KeyError, AttributeError):
-            _warnings.warn('Cannot find %s for atom: %s !' % (key, _k),
-                           RuntimeWarning, stacklevel=2)
+            # _warnings.warn('Cannot find %s for atom: %s !' % (key, _k),
+            #                RuntimeWarning, stacklevel=2)
             try:
                 _r = getattr(elements[_k[:-1]], key)
                 _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
                                'Proceed with care!',
                                stacklevel=2)
-            except (KeyError, AttributeError, TypeError):
+            except (IndexError, KeyError, AttributeError, TypeError):
                 _r = None
         if fmt is not None:
             pr.append(fmt(_r))
@@ -335,6 +348,11 @@ def get_conversion_factor(name, unit):
                 'aaperfs': 1/v_au2aaperfs,
                 'aaperps': 1/v_au2aaperfs/1000,
                 'si': v_si2au
+                },
+            'electric_dipole': {
+                'au': 1.,
+                'si': p_si2au,
+                'debye': p_debye2au,
                 },
             # 'moment_v': {  # "velocity form"
             #     'au': 1.

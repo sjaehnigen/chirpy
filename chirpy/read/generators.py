@@ -31,7 +31,7 @@
 
 from itertools import islice
 import numpy as np
-import bz2
+import bz2 as _bz2
 from tqdm import tqdm
 
 from .. import config
@@ -43,8 +43,8 @@ def _gen(fn):
 
 
 def _open(*args, **kwargs):
-    if kwargs.get('bz2'):
-        return bz2.open(args[0], 'rt')
+    if kwargs.get('bz2', False):
+        return _bz2.open(args[0], 'rt')
     else:
         return open(*args)
 
@@ -55,7 +55,7 @@ def _get(_it, kernel, **kwargs):
 
     n_lines = kwargs.get('n_lines')
 
-    _range = kwargs.get("range", (0, 1, float('inf')))
+    _range = kwargs.pop("range", (0, 1, float('inf')))
     if len(_range) == 2:
         r0, r1 = _range
         _ir = 1
@@ -64,7 +64,7 @@ def _get(_it, kernel, **kwargs):
     else:
         raise ValueError('Given range is not a tuple of length 2 or 3!')
 
-    _sk = kwargs.get("skip", [])
+    _sk = kwargs.pop("skip", [])
 
     class _line_iterator():
         '''self._r ... the frame that will be returned next (!)'''
@@ -108,15 +108,20 @@ def _get(_it, kernel, **kwargs):
             break
 
 
-def _reader(FN, _nlines, _kernel, verbose=config.__verbose__, **kwargs):
+def _reader(FN, n_lines, kernel,
+            convert=1,
+            verbose=config.__verbose__,
+            bz2=False,
+            **kwargs):
     '''Opens file, checks contents, and parses arguments,
-       _kernel, and generator.'''
+       kernel, and generator.'''
 
-    kwargs.update({'n_lines': _nlines})
-
-    with _open(FN, 'r', **kwargs) as _f:
+    with _open(FN, 'r', bz2=bz2, **kwargs) as _f:
         _it = _gen(_f)
-        data = tqdm(_get(_it, _kernel, **kwargs), desc=FN, disable=not verbose)
+        data = tqdm(_get(_it, kernel,
+                         convert=convert,
+                         n_lines=n_lines,
+                         **kwargs), desc=FN, disable=not verbose)
 
         if np.size(data) == 0:
             raise ValueError('Given input and arguments '

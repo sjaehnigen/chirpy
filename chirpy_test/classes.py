@@ -109,7 +109,7 @@ class TestTrajectory(unittest.TestCase):
         self.assertFalse(traj._is_equal(ref)[1][0] == 1)
         traj_e = traj.expand()
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)
-        self.assertTrue(np.allclose(traj_e.data, ref.data))
+        self.assertListEqual(traj_e.data.tolist(), ref.data.tolist())
 
         self.assertTrue(traj.expand() is None)
         traj.rewind()

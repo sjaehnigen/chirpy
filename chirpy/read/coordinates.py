@@ -44,11 +44,9 @@ from ..physics import constants
 
 # --- kernels
 
-def _xyz(frame, **kwargs):
+def _xyz(frame, convert=1, n_lines=1):
     '''Kernel for processing xyz frame.'''
 
-    convert = kwargs.get('convert', 1.)
-    n_lines = kwargs.get('n_lines')
     _atomnumber = int(next(frame).strip())
 
     if n_lines != _atomnumber + 2:
@@ -64,12 +62,9 @@ def _xyz(frame, **kwargs):
     return np.array(data).astype(float)*convert, symbols, comment
 
 
-def _cpmd(frame, **kwargs):
+def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
     '''Kernel for processing cpmd frame.'''
 
-    convert = kwargs.get('convert', 1.)
-    n_lines = kwargs.get('n_lines')
-    filetype = kwargs.get('filetype')
     # --- generator needs at least one call of next() to work properly
     data = []
     data.append(next(frame).strip().split())
@@ -95,12 +90,10 @@ def _cpmd(frame, **kwargs):
     return _data*convert
 
 
-def _arc(frame, **kwargs):
+def _arc(frame, convert=1, n_lines=1, cell_line=False):
     '''Kernel for processing arc frame.'''
 
-    convert = kwargs.get('convert', 1.)
-    n_lines = kwargs.get('n_lines')
-    CELL = kwargs.get('cell', False)
+    CELL = cell_line
     _head = next(frame).strip().split()
     _atomnumber = int(_head[0])
     comment = ' '.join(_head[1:])
@@ -218,7 +211,7 @@ def arcIterator(FN, **kwargs):
         if len(_f.readline().strip().split()) == 6:
             # --- primitive check if there is a cell line
             _nlines += 1
-            kwargs.update({'cell': True})
+            kwargs.update({'cell_line': True})
 
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
@@ -229,7 +222,38 @@ def arcIterator(FN, **kwargs):
                     maxsize=20, chunksize=4)
 
 
+def ifreeIterator(FN, **kwargs):
+    '''Iterator for free data of the format: i(frame) x0 x1 x2 ... (coordinate)
+       Expects units argument to be set with one item per coloumn (except i).
+       symbols specifies number of lines per frame (auto-guess otherwise)
+       '''
+    # --- tweaking cpmd kernel
+    _kernel = _cpmd
+    kwargs['filetype'] = 'MOMENTS'
+
+    try:
+        kwargs['convert'] = _convert(kwargs.pop('units'))
+    except KeyError:
+        raise KeyError('ifreeIterator expects units argument to be set '
+                       'with one item per coloumn (except i)')
+
+    if (symbols := kwargs.pop('symbols', None)) is None:
+        with _open(FN, 'r') as _f:
+            _nlines = 1
+            _fr = _f.readline().strip().split()[0]
+            try:
+                while _f.readline().strip().split()[0] == _fr:
+                    _nlines += 1
+            except IndexError:
+                pass
+    else:
+        _nlines = len([_k for _k in symbols])  # type-independent
+
+    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                    maxsize=20, chunksize=4)
+
 # --- complete readers
+
 
 def xyzReader(FN, **kwargs):
     '''Read complete XYZ file at once.
@@ -261,7 +285,7 @@ def arcReader(FN, **kwargs):
 
 # ------ external readers
 
-def pdbIterator(FN, **kwargs):
+def pdbIterator(FN):
     '''Iterator for pdbReader relying on MDAnalysis
        Usage: next() returns data, names, symbols, res,
        cell_aa_deg, title of current frame.
@@ -295,7 +319,7 @@ def pdbIterator(FN, **kwargs):
                                              resns)]), cell_aa_deg, title
 
 
-def pdbReader(FN, **kwargs):
+def pdbReader(FN):
     '''Read complete PDB file at once using MDAnalysis.
        Returns data, names, symbols, res, cell_aa_deg, title
        of current frame.
@@ -305,7 +329,7 @@ def pdbReader(FN, **kwargs):
        '''
 
     data, names, symbols, res, cell_aa_deg, title = \
-        tuple([_b for _b in zip(*pdbIterator(FN, **kwargs))])
+        tuple([_b for _b in zip(*pdbIterator(FN))])
 
     return np.array(data), tuple(names[0]), tuple(symbols[0]), tuple(res[0]), \
         cell_aa_deg[0], list(title)
