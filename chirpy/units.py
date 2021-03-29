@@ -44,6 +44,7 @@ _warnings.warn('Derived units follow the convention rigorously.',
                stacklevel=2)
 
 # --- atomic units
+charge = 'au'
 velocity = 'au'
 energy = 'au'
 electric_dipole = 'au'

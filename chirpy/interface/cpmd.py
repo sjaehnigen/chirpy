@@ -36,6 +36,7 @@ import sys
 import copy
 
 from ..config import ChirPyWarning
+from .. import extract_keys
 from ..physics import constants
 from ..read.coordinates import cpmdIterator
 from ..read.generators import _open
@@ -84,13 +85,22 @@ def cpmdReader(FN, **kwargs):
             symbols = kwargs.get('symbols')
             if symbols is None:
                 symbols = constants.numbers_to_symbols(numbers)
-            kwargs.update({'symbols': symbols})
         else:
-            raise TypeError("cpmdReader needs list of numbers or "
-                            "symbols.")
+            symbols = cpmd_kinds_from_file(FN)
+        #     raise TypeError("cpmdReader needs list of numbers or "
+        #                     "symbols.")
 
         data = {}
-        _load = np.array(tuple(cpmdIterator(FN, filetype=filetype, **kwargs)))
+        _fr = kwargs.get('range', (0, 1, float('inf')))
+        _load = np.array(tuple(cpmdIterator(FN, **extract_keys(
+                                               kwargs,
+                                               range=_fr,
+                                               bz2=False,
+                                               units='default',
+                                               filetype=filetype,
+                                               symbols=symbols
+                                               ))))
+
         data['data'] = _load
         data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
         data['symbols'] = symbols
@@ -234,9 +244,9 @@ def cpmd_kinds_from_file(fn):
     '''Accepts MOMENTS or TRAJECTORY file and returns the number
        of lines per frame, based on analysis of the first frame'''
 
-    warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
-                  ChirPyWarning,
-                  stacklevel=2)
+    # warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
+    #               ChirPyWarning,
+    #               stacklevel=2)
     with _open(fn, 'r') as _f:
         _i = 1
         _fr = _f.readline().strip().split()[0]
