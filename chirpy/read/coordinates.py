@@ -85,8 +85,7 @@ def _cpmd(frame, **kwargs):
     if 'GEOMETRY' in filetype:
         _data = np.array(data).astype(float)
 
-    elif any([_f in filetype for _f in
-              ['TRAJSAVED', 'TRAJECTORY', 'MOMENTS']]):
+    elif filetype in ['TRAJECTORY', 'MOMENTS']:
         _data = np.array(data).astype(float)[:, 1:]
 
     else:
@@ -174,12 +173,20 @@ def cpmdIterator(FN, **kwargs):
        through kwargs.'''
     _kernel = _cpmd
     symbols = kwargs.pop('symbols', None)
-    if 'filetype' not in kwargs:
+    if (filetype := kwargs.get('filetype')) is None:
+        filetype = FN.split('/')[-1]
         # --- try guess
-        if (_F := FN.split('/')[-1]) == 'MOL':
-            kwargs['filetype'] = 'MOMENTS'
-        else:
-            kwargs['filetype'] = _F
+        if any([_f in filetype for _f in [
+                            'TRAJSAVED',
+                            'CENTERS'
+                            ]]):
+            filetype = 'TRAJECTORY'
+        if any([_f in filetype for _f in [
+                            'MOL',
+                            ]]):
+            filetype = 'MOMENTS'
+
+        kwargs.update(dict(filetype=filetype))
 
     if symbols is None:
         _nlines = 1

@@ -151,7 +151,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
        Does not care of axis order priority.
        '''
     if cell is None or np.any(cell == 0.):
-        _warnings.warn("no periodic cell given!", ChirPyWarning, stacklevel=2)
+        # _warnings.warn("no periodic cell given!", RuntimeWarning, stacklevel=2)
         return None
 
     abc, albega = cell[:3], cell[3:]

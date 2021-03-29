@@ -172,6 +172,7 @@ def time_correlation_function(*args,
         _filter = signal_filter(n_frames, filter_type='welch') ** abs(flt_pow)
         _filter = np.hstack((_filter[::-1], _filter[1:]))
         R *= _filter[:, None]
+        # R = (R - R[0]) * _filter[:, None] + R[0]
 
     # cc mode:
     # --- mu(o).m(t) - m(0).mu(t); equal for ergodic systems
@@ -187,11 +188,11 @@ def time_correlation_function(*args,
         fR += R[:n_frames][::-1]
     if 'C' in mode:
         fR -= R[:n_frames][::-1]
-    if mode == 'AB':
+    if mode in ['AB', 'AC']:
         fR = fR / 2.
 
     if mode == 'full':
-        fR = np.roll(R, len(R) // 2)
+        fR = np.roll(R, len(R) // 2, axis=0)
 
     if not sum_dims:
         return fR
@@ -199,7 +200,8 @@ def time_correlation_function(*args,
         return fR.sum(axis=1)
 
 
-def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
+def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry='even',
+                     **kwargs):
     '''Calculate the spectral distribution as the Fourier transformed
        time-correlation function (TCF) of a vector signal (*args).
        The method automatically chooses to calculate auto- or cross-
@@ -208,6 +210,7 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
        implicit triangular filter due to finite size.
        Expects signal of shape (n_frames, n_dim)
        Keyword ts: timestep
+       Signal symmetry can be even or odd (or None to get the full complex FT)
        Returns:
         1 - discrete sample frequencies f = omega/(2*pi)
         2 - spectral density (FT TCF) as f(omega)
@@ -218,13 +221,26 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), **kwargs):
     kwargs.update({'sum_dims': True})
 
     R = time_correlation_function(*args, **kwargs)
+    # --- impose ergodicity / symmetry
+
     # --- avoid double index 0 after vstack
     #     --> otherwise ugly phase shift in spectra
     #     --> not necessary for index -1 (cc = 0)
-    R = np.hstack((R, R[:0:-1]))  # [::-1]
-
-    n = R.shape[0]
-    S = np.fft.rfft(R, n=n).real * factor * ts
+    if symmetry == 'even':
+        R = np.hstack((R, R[:0:-1]))  # [::-1]
+        n = R.shape[0]
+        S = np.fft.rfft(R, n=n).real * factor * ts
+    elif symmetry == 'odd':
+        R = np.hstack((R, -R[:0:-1]))  # [::-1]
+        n = R.shape[0]
+        S = np.fft.rfft(R, n=n).imag * factor * ts
+    elif symmetry is None:
+        if kwargs.get('mode') != 'full':
+            raise ValueError('requires mode=full for TCF symmetry=None.')
+        n = R.shape[0]
+        S = np.fft.rfft(R, n=n).imag * factor * ts
+    else:
+        raise ValueError(f'unkown symmetry {symmetry}')
 
     # --- Prefactor: see Fourier Integral Theorem;
     #                Convention: factor = 1 / (2 pi), i.e.

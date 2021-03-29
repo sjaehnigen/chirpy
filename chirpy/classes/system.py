@@ -159,6 +159,18 @@ class _SYSTEM(_CORE):
         self.symbols = self.XYZ.symbols
         # self.names = self.XYZ.names
 
+    def extract_atoms(self, atoms):
+        '''Split XYZ through topology and select atoms according to given
+           ids
+        atoms  ...  list of atomic indices
+        '''
+        self.XYZ.split(_np.arange(len(self.symbols)), select=atoms)
+        if self.mol_map is not None:
+            self.mol_map = _np.array([_i for _i in self.mol_map if _i in atoms])
+
+        self.symbols = self.XYZ.symbols
+        # self.names = self.XYZ.names
+
     def define_molecules(self, silent=False):
         if self.mol_map is not None and not silent:
             _warnings.warn('Overwriting existing mol_map!',

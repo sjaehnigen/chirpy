@@ -110,8 +110,8 @@ def main():
             "--origin_id",
             nargs='+',
             help="IDs of kinds whose positions to be sampled in the "
-                 "distributed gauge (default: every particle in MOMENTS) "
-                 "(id starting from 0).",
+                 "distributed gauge (default: every particle in MOMENTS). "
+                 "For cutoff only.",
             type=int,
             default=None,
             )
@@ -119,7 +119,7 @@ def main():
             "--cutoff",
             help="Cutoff in angstrom to scale neighbouring moments "
                  "surrounding each molecular origin.",
-            default=0.,
+            default=None,
             type=float,
             )
     parser.add_argument(
@@ -207,9 +207,10 @@ def main():
     _voa['tcf_va'] = []
     _voa['tcf_vcd'] = []
     # --- ToDo: differ mode according to args
-    origins = _p.swapaxes(0, 1)[args.origin_id]
-    for origin in origins:
-        _tmp = spectroscopy._spectrum_from_tcf(
+    if args.cutoff is not None:
+        origins = _p.swapaxes(0, 1)[args.origin_id]
+        for origin in origins:
+            _tmp = spectroscopy._spectrum_from_tcf(
                                     _c, _m,
                                     positions_au=_p*constants.l_aa2au,
                                     mode='abs_cd',
@@ -220,17 +221,30 @@ def main():
                                     cutoff_au=args.cutoff*constants.l_aa2au,
                                     cell_au_deg=_cell,
                                     )
+            _voa['va'].append(_tmp['abs'])
+            _voa['vcd'].append(_tmp['cd'])
+            _voa['tcf_va'].append(_tmp['tcf_abs'])
+            _voa['tcf_vcd'].append(_tmp['tcf_cd'])
 
-        _voa['va'].append(_tmp['abs'])
-        _voa['vcd'].append(_tmp['cd'])
-        _voa['tcf_va'].append(_tmp['tcf_abs'])
-        _voa['tcf_vcd'].append(_tmp['tcf_cd'])
+        _voa['freq'] = _tmp['freq']
+        _voa['va'] = np.array(_voa['va']).sum(axis=0) / len(origins)
+        _voa['vcd'] = np.array(_voa['vcd']).sum(axis=0) / len(origins)
+        _voa['tcf_va'] = np.array(_voa['tcf_va']).sum(axis=0) / len(origins)
+        _voa['tcf_vcd'] = np.array(_voa['tcf_vcd']).sum(axis=0) / len(origins)
 
-    _voa['freq'] = _tmp['freq']
-    _voa['va'] = np.array(_voa['va']).sum(axis=0) / len(origins)
-    _voa['vcd'] = np.array(_voa['vcd']).sum(axis=0) / len(origins)
-    _voa['tcf_va'] = np.array(_voa['tcf_va']).sum(axis=0) / len(origins)
-    _voa['tcf_vcd'] = np.array(_voa['tcf_vcd']).sum(axis=0) / len(origins)
+    else:
+        _voa = spectroscopy._spectrum_from_tcf(
+                                _c, _m,
+                                positions_au=_p*constants.l_aa2au,
+                                mode='abs_cd',
+                                ts_au=args.ts * constants.t_fs2au,
+                                flt_pow=args.filter_strength,
+                                cell_au_deg=_cell,
+                                )
+        _voa['va'] = _voa['abs']
+        _voa['vcd'] = _voa['cd']
+        _voa['tcf_va'] = _voa['tcf_abs']
+        _voa['tcf_vcd'] = _voa['tcf_cd']
 
     # --- plot
     labels = {

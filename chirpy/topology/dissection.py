@@ -250,6 +250,8 @@ def read_topology_file(fn):
         #                                             range(n_mols))) if a==m])
         if n_mols != max(mol_map)+1:
             raise ValueError('Something is wrong with the list of residues!')
+        if cell_aa_deg is None:
+            cell_aa_deg = np.array(3*[0] + 3*[90.])
 
         return {'mol_map': mol_map,
                 'symbols': symbols,

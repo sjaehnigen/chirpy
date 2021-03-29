@@ -46,8 +46,10 @@ _warnings.warn('Derived units follow the convention rigorously.',
 # --- atomic units
 velocity = 'au'
 energy = 'au'
+electric_dipole = 'au'
 magnetic_dipole = ('au', 'no-cgs')
 current_dipole = 'au'
+charge = 'au'
 current = 'au'
 electric_field = 'au'
 magnetic_field = ('au', 'no-cgs')

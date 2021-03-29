@@ -54,23 +54,29 @@ def cpmdReader(FN, **kwargs):
          GEOMETRY
          TRAJECTORY
          MOMENTS
+         CENTERS
          MOL
          MOLVIB
          APT
          AAT
       '''
 
-    if 'filetype' not in kwargs:
-        # --- try guess
-        kwargs['filetype'] = FN.split('/')[-1]
-    filetype = kwargs.get('filetype')
+    if (filetype := kwargs.get('filetype')) is None:
+        filetype = FN.split('/')[-1]
+        if any([_f in filetype for _f in [
+                            'TRAJSAVED',
+                            'CENTERS'
+                            ]]):
+            filetype = 'TRAJECTORY'
+        if any([_f in filetype for _f in [
+                            'MOL',
+                            ]]):
+            filetype = 'MOMENTS'
 
     if any([_f in filetype for _f in [
-                            'TRAJSAVED',
                             'GEOMETRY',
                             'TRAJECTORY',
                             'MOMENTS',
-                            'MOL'
                             ]]):
         if ('symbols' in kwargs or 'numbers' in kwargs):
             numbers = kwargs.get('numbers')
@@ -149,7 +155,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
        (only append=False).
        '''
 
-    bool_atoms = kwargs.get('write_atoms', True)
+    bool_atoms = kwargs.get('write_atoms', False)
 
     if len(data.shape) == 2:
         # --- frame

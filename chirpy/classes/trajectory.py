@@ -721,6 +721,14 @@ class _XYZ():
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
         comments = list(comments)
+
+        # --- no velocities given (before getting frame)
+        if data.shape[-1] != 6:
+            _data = _np.zeros(data.shape[:-1] + (6,))
+            _data[:, :, :3] += data
+            data = _data
+            del _data
+
         if self._type == 'frame':
             # --- NB: frame selection has been made above
             data = data[0]
@@ -808,13 +816,6 @@ class _XYZ():
         '''Update velocities'''
         if len(args) == 0:
             self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
-            if self.vel_au.size == 0:
-                # ToDo: slow
-                # --- vel_au has to be set!
-                self.data = _np.concatenate((self.pos_aa,
-                                             _np.zeros_like(self.pos_aa)),
-                                            axis=-1)
-                self._vel_au()
         elif len(args) == 1:
             if args[0].shape != self.vel_au.shape:
                 raise ValueError(
@@ -835,11 +836,8 @@ class _XYZ():
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
                            ChirPyWarning, stacklevel=2)
-        # DISABLED 2020-10-20
-#        self._pos_aa()
-#        self._vel_au()
-        self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
-        self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
+        self._pos_aa()
+        self._vel_au()
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
     def _is_equal(self, other, atol=1e-08, noh=True):
@@ -1228,8 +1226,6 @@ class _XYZ():
 class _MOMENTS():
     '''Object that contains position and moment data very similar
        to _XYZ but more general.
-       Supports CPMD input only.
-       Everything in atomic units (including the positions and cell).
        '''
     def _read_input(self, *args, **kwargs):
         self.style = kwargs.get('style', 'CPMD 4.1')
@@ -1308,11 +1304,19 @@ class _MOMENTS():
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
         comments = list(comments)
+        # --- no magenic moments given (before getting frame)
+        if data.shape[-1] == 3:
+            _data = _np.zeros(data.shape[:-1] + (6,))
+            _data[:, :, :3] += data
+            data = _data
+            del _data
+
         if self._type == 'frame':
             _f = kwargs.get("frame", 0)
             data = data[_f]
             comments = comments[_f]
 
+        self.data = data
         self.symbols = tuple(symbols)
         self.comments = comments
         self.data = data
@@ -1325,8 +1329,11 @@ class _MOMENTS():
         self.pos_au = self.pos_aa * constants.l_aa2au
         self._c_au()
         self._m_au()
-        if self.m_au.size == 0:
-            self.m_au = _np.zeros_like(self.pos_aa)
+
+        if self.data.shape[-1] > 6:
+            self._d_au()
+        else:
+            self.d_au = None
         # self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
     def wrap(self):
@@ -1373,7 +1380,7 @@ class _MOMENTS():
         if len(args) == 0:
             self.c_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
         elif len(args) == 1:
-            if args[0].shape != self.c_au.shape:
+            if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
             _tmp = self.data.swapaxes(0, -1)
@@ -1389,7 +1396,7 @@ class _MOMENTS():
         if len(args) == 0:
             self.m_au = self.data.swapaxes(0, -1)[6:9].swapaxes(0, -1)
         elif len(args) == 1:
-            if args[0].shape != self.m_au.shape:
+            if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
             _tmp = self.data.swapaxes(0, -1)
@@ -1399,6 +1406,23 @@ class _MOMENTS():
         else:
             raise TypeError('Too many arguments for %s!'
                             % self._m_au.__name__)
+
+    def _d_au(self, *args):
+        '''Electric dipole moments (optional)'''
+        if len(args) == 0:
+            self.d_au = self.data.swapaxes(0, -1)[9:12].swapaxes(0, -1)
+        elif len(args) == 1:
+            if args[0].shape != self.pos_aa.shape:
+                raise ValueError(
+                     'Cannot update attribute with values of different shape!')
+            _tmp = self.data.swapaxes(0, -1)
+            # --- ToDo: raises error when dims 9-12 not yet present
+            _tmp[9:12] = args[0].swapaxes(0, -1)
+            self.data = _tmp.swapaxes(0, -1)
+            self._d_au()
+        else:
+            raise TypeError('Too many arguments for %s!'
+                            % self._d_au.__name__)
 
 
 class XYZFrame(_XYZ, _FRAME):

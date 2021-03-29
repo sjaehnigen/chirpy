@@ -36,7 +36,7 @@ from ..topology import mapping
 from ..mathematics.analysis import divrot
 
 # m magnetic dipole moment
-# c current ipole moment
+# c current dipole moment
 
 
 def electric_dipole_moment(pos_au, charges_au):
@@ -61,17 +61,19 @@ def electric_quadrupole_moment(pos_au, charges_au):
 
 def electric_dipole_shift_origin(charges_au, trans_au):
     '''Compute differential term of origin shift
-       charges_au ... atomic charges
+       charges_au ... particle charges
        trans_au ... translation vector from old to new origin
+                    with shape ([n_frames, n_particles], 3)
        '''
-    if len(charges_au.shape) == 1:
+    if len(trans_au.shape) == 1:
         return -trans_au * charges_au[None]
 
-    if len(charges_au.shape) == 2:
+    if len(trans_au.shape) == 2:
         return -trans_au * charges_au[:, None]
 
-    if len(charges_au.shape) == 3:
-        return -trans_au * charges_au[:, :, None]
+    if len(trans_au.shape) == 3:
+        # --- assumes charge does not change with frames
+        return -trans_au * charges_au[None, :, None]
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au):
@@ -97,7 +99,7 @@ def magnetic_dipole_shift_origin(c_au, trans_au):
                              axis=(2, 3))  # sum over mols (axis 1) done later
 
 
-def switch_electric_origin_gauge(mu_au, charges_au, o_a_au, o_b_au,
+def switch_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
                                  cell_au_deg=None):
     '''Apply (distrubuted) origin gauge on electric dipole moments shifting
        from origin A to origin B.

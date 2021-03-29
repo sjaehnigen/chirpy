@@ -141,6 +141,12 @@ def main():
             type=int,
             )
     parser.add_argument(
+            "--extract_elements",
+            nargs='+',
+            help="Write only coordinates of given elements (through symbols).",
+            default=None,
+            )
+    parser.add_argument(
             "--sort",
             action='store_true',
             help="Alphabetically sort atoms",
@@ -213,7 +219,7 @@ def main():
     if o_fmt is None:
         if args.convert_to_moments and args.f in ['MOMENTS', 'MOL', 'ATOM']:
             o_fmt = 'cpmd'
-        elif args.f in ['TRAJSAVED', 'TRAJECTORY']:
+        elif args.f in ['TRAJSAVED', 'TRAJECTORY', 'CENTERS']:
             o_fmt = 'cpmd'
         else:
             o_fmt = args.f.split('.')[-1].lower()
@@ -278,9 +284,13 @@ def main():
                     align_ref=_load.XYZ._frame._align_ref)
 
     extract_molecules = largs.pop('extract_molecules')
-
+    extract_elements = largs.pop('extract_elements')
     if extract_molecules is not None:
         _load.extract_molecules(extract_molecules)
+    if extract_elements is not None:
+        _load.extract_atoms(
+                np.where([_s in extract_elements for _s in _load.symbols])[0].tolist()
+                )
 
     if args.verbose:
         print('Writing output...', file=sys.stderr)
