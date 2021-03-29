@@ -479,6 +479,6 @@ def convert_object(source, target):
             setattr(obj, attr, value)
         except AttributeError:
             warnings.warn(f'{source} object has no attribute \'{attr}\'',
-                          ChirPyWarning, stacklevel=2)
+                          config.ChirPyWarning, stacklevel=2)
 
     return obj
