@@ -61,23 +61,24 @@ def cpmdReader(FN, **kwargs):
          AAT
       '''
 
-    if (filetype := kwargs.get('filetype')) is None:
+    if (filetype := kwargs.pop('filetype', None)) is None:
         filetype = FN.split('/')[-1]
         if any([_f in filetype for _f in [
                             'TRAJSAVED',
-                            'CENTERS'
+                            'CENTERS',
+                            'TRAJECTORY',
                             ]]):
             filetype = 'TRAJECTORY'
         if any([_f in filetype for _f in [
                             'MOL',
+                            'MOMENTS',
                             ]]):
             filetype = 'MOMENTS'
 
-    if any([_f in filetype for _f in [
-                            'GEOMETRY',
-                            'TRAJECTORY',
-                            'MOMENTS',
-                            ]]):
+    if filetype in ['GEOMETRY',
+                    'TRAJECTORY',
+                    'MOMENTS',
+                    ]:
         if ('symbols' in kwargs or 'numbers' in kwargs):
             numbers = kwargs.get('numbers')
             symbols = kwargs.get('symbols')
@@ -89,7 +90,7 @@ def cpmdReader(FN, **kwargs):
                             "symbols.")
 
         data = {}
-        _load = np.array(tuple(cpmdIterator(FN, **kwargs)))
+        _load = np.array(tuple(cpmdIterator(FN, filetype=filetype, **kwargs)))
         data['data'] = _load
         data['comments'] = kwargs.get('comments', ['cpmd'] * _load.shape[0])
         data['symbols'] = symbols
