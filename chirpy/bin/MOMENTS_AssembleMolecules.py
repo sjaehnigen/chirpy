@@ -164,10 +164,6 @@ def main():
     _cell = SYS.cell_aa_deg
 
     for _iframe, (_frame) in enumerate(zip(*_trajectory)):
-        if args.electronic_centers is not None:
-            _p_fr, _m_fr, _wc_fr = _frame
-        else:
-            _p_fr, _m_fr = _frame
 
         # --- generate classical nuclear moments
         Qn_au = constants.symbols_to_valence_charges(NUC.symbols)
@@ -190,7 +186,7 @@ def main():
 
         # --- switch gauge to electric centers (optional)
         if args.electronic_centers is not None:
-            gauge_e.switch_origin_gauge(_wc_fr.pos_aa)
+            gauge_e.switch_origin_gauge(WC.pos_aa)
         if args.position_form:
             if args.M_format != 'cpmd':
                 warnings.warn('assuming valence charges for atoms. No core '

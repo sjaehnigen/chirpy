@@ -110,7 +110,7 @@ class OriginGauge(_CORE):
                              'the old one (assignment failure)')
         if assignment is None:
             if _n_o == len(self.r_au):
-                assignment = _np.arange(len(self.origins_aa))
+                assignment = _np.arange(len(origins_aa))
             else:
                 raise ValueError('changed number of origins requires '
                                  'assignment argument')
