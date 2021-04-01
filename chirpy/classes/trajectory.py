@@ -1752,27 +1752,22 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                 raise ValueError('Unknown tinker format: %s.' % _tmft)
 
             def _tinker_moment_container():
-                reference = _np.array(kwargs.pop('gauge_origin_aa'))
+                reference = _np.array(kwargs.pop('gauge_origin_aa', 3*[0.]))
                 for _cur, _mag, _dip in zip_longest(
-                        # _ifreeIterator(reference positions)
-                        _ifreeIterator(self._fn_c,
-                                       units=3*[('electric_dipole', 'debye')],
-                                       **kwargs),
-                        _ifreeIterator(self._fn_m,
-                                       units=3*[('electric_dipole', 'debye')],
-                                       **kwargs),
-                        _ifreeIterator(self._fn_d,
-                                       units=3*[('electric_dipole', 'debye')],
-                                       **kwargs),
-                        ):
+                     # _ifreeIterator(reference positions)
+                     _ifreeIterator(self._fn_c,
+                                    units=3*[('electric_dipole', 'au')],
+                                    **kwargs),
+                     _ifreeIterator(self._fn_m,
+                                    units=3*[('current_dipole', 'au')],
+                                    **kwargs),
+                     _ifreeIterator(self._fn_d,
+                                    units=3*[('current_dipole', 'au')],
+                                    **kwargs),
+                     ):
 
-                    # --- ToDo: Tinker MUST give the reference positions
-                    #           _workaround for now
-                    if reference is None:
-                        _pos = _np.zeros_like(_cur)
-                    elif len(reference.shape) < 3:
-                        # --- use numpy intelligence on shape
-                        _pos = _np.ones_like(_cur) * reference
+                    # --- use numpy intelligence on shape
+                    _pos = _np.ones_like(_cur) * _np.array(reference)
                     yield _np.hstack((_pos, _cur, _mag, _dip))
 
             self._gen = _tinker_moment_container()

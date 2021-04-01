@@ -354,6 +354,11 @@ def get_conversion_factor(name, unit):
                 'si': p_si2au,
                 'debye': p_debye2au,
                 },
+            'current_dipole': {
+                'au': 1.,
+                # 'si': p_si2au,
+                'debyeperps': p_debye2au/t_fs2au/1000,
+                },
             # 'moment_v': {  # "velocity form"
             #     'au': 1.
             #     },

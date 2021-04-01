@@ -233,7 +233,8 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry='even',
     elif symmetry == 'odd':
         R = np.hstack((R, -R[:0:-1]))  # [::-1]
         n = R.shape[0]
-        S = np.fft.rfft(R, n=n).imag * factor * ts
+        # NB: minus sign
+        S = -np.fft.rfft(R, n=n).imag * factor * ts
     elif symmetry is None:
         if kwargs.get('mode') != 'full':
             raise ValueError('requires mode=full for TCF symmetry=None.')
