@@ -116,7 +116,10 @@ class _SYSTEM(_CORE):
         fmt = self.XYZ._fmt
 
         if fmt in ['xvibs', 'orca', 'g09', 'gaussian']:  # re-reads file
-            self.Modes = VibrationalModes(*args, **kwargs)
+            try:
+                self.Modes = VibrationalModes(*args, **kwargs)
+            except NameError:
+                pass
 
         elif fmt == "pdb":
             if self.mol_map is None:  # re-reads file

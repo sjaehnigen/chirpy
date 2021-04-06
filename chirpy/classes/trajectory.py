@@ -637,14 +637,16 @@ class _XYZ():
                 nargs = _extract_keys(kwargs, run=1)
                 data_dict = g09Reader(fn, **nargs)
                 self._data_dict = data_dict
+                comments = ['gaussian job']
 
                 if 'symbols' in data_dict:
                     symbols = data_dict['symbols']
+                    pos_aa = data_dict['pos_aa']
+                    n_atoms = pos_aa.shape[0]
+                    data = pos_aa.reshape((1, n_atoms, -1))
                     if 'modes' in data_dict:
                         modes = data_dict['modes']
-                        pos_aa = data_dict['pos_aa']
                         n_modes = modes.shape[0]
-                        n_atoms = pos_aa.shape[0]
                         modes = modes.reshape((n_modes, n_atoms, 3))
                         omega_cgs = data_dict['omega_cgs']
                         comments = _np.array(omega_cgs).astype(str)
@@ -659,7 +661,9 @@ class _XYZ():
                         try:
                             # --- ToDo: add and debug these features
                             # self.APT_au = data_dict['Polar']
-                            # self.AAT_au = data_dict['AAT']
+                            self.AAT_au = data_dict['AAT'].reshape((n_atoms,
+                                                                    3, 3))
+                            print('AAT', self.AAT_au.ravel())
                             # --- calculate it from tensors
 
                             # --- units not verified, should be in a.u.
@@ -670,8 +674,8 @@ class _XYZ():
                         except KeyError:
                             pass
 
-                    else:
-                        raise NotImplementedError('Cannot read file %s!' % fn)
+                else:
+                    raise NotImplementedError('no atoms found in %s' % fn)
 
             elif fmt in ['cp2k', 'restart', 'inp']:
                 # --- single frame only
@@ -706,7 +710,7 @@ class _XYZ():
         comments = list(comments)
 
         # --- no velocities given (before getting frame)
-        if data.shape[-1] != 6:
+        if data.shape[-1] < 6:
             _data = _np.zeros(data.shape[:-1] + (6,))
             _data[:, :, :3] += data
             data = _data
@@ -719,7 +723,7 @@ class _XYZ():
 
         if self._type == 'modes':
             if 'omega_cgs' not in locals():
-                raise TypeError('Could not retrieve modes data from input!')
+                raise NameError('Could not retrieve modes data from input!')
             self.eival_cgs = omega_cgs
             comments = _np.array(omega_cgs).astype(str)
 

@@ -169,8 +169,14 @@ def main():
             default=None,
             )
     parser.add_argument(
+            "--write_atoms",
+            help="Print ATOMS and XYZ topology (--output_format cpmd only).",
+            action='store_true',
+            default=False,
+            )
+    parser.add_argument(
             "--pp",
-            help="Pseudopotential (for CPMD ATOMS section only).",
+            help="pseudopotential for --print_atoms.",
             default='MT_BLYP KLEINMAN-BYLANDER',
             )
     parser.add_argument(
@@ -201,9 +207,6 @@ def main():
 
     if args.fn_topo is None:
         del args.fn_topo
-
-    if args.pp is None:
-        del args.pp
 
     if args.cell_aa_deg is None:
         del args.cell_aa_deg
@@ -289,7 +292,8 @@ def main():
         _load.extract_molecules(extract_molecules)
     if extract_elements is not None:
         _load.extract_atoms(
-                np.where([_s in extract_elements for _s in _load.symbols])[0].tolist()
+                np.where([_s in extract_elements
+                          for _s in _load.symbols])[0].tolist()
                 )
 
     if args.verbose:
@@ -317,8 +321,11 @@ def main():
 
         else:
             largs = {}
-            if 'pp' in args:
-                largs = {'pp': args.pp}
+            if o_fmt == 'cpmd':
+                largs = dict(
+                        pp=args.pp,
+                        write_atoms=args.write_atoms,
+                        )
             _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
 
 

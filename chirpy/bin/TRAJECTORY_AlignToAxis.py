@@ -37,7 +37,8 @@ from chirpy.classes import system
 def main():
     '''Align a line that connects i0 and i1 to an axis.'''
     parser = argparse.ArgumentParser(
-            description="Align a line that connects i0 and i1 to an axis.",
+            description="Align a line that connects atoms i0 and i1 to an "
+                        "axis (no PBC support).",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
             )
     parser.add_argument("fn",
@@ -50,12 +51,12 @@ def main():
                         default=[0., 0., 1.]
                         )
     parser.add_argument("-i0",
-                        help="Origin of reference in system",
+                        help="Atom index of reference origin in system",
                         default=0,
                         type=int,
                         )
     parser.add_argument("-i1",
-                        help="Tip of reference in system",
+                        help="Atom index of reference tip in system",
                         default=1,
                         type=int,
                         )
