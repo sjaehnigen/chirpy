@@ -36,4 +36,3 @@ pylint:
     #   - export PYTHONPATH="$PYTHONPATH:."
     #   - python -c "import sys;print(sys.path)"
     #   - pytest
-

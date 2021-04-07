@@ -1,7 +1,7 @@
-pythonbase
 __pycache__
 *py[cod]
 *~
 *.bak
 *.sw[a-z]
 !.gitignore
+!.gitlab-ci.yml

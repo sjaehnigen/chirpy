@@ -8,14 +8,15 @@
 #    https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
 #
-#  Copyright (c) 2010-2020, The ChirPy Developers.
+#  Copyright (c) 2010-2021, The ChirPy Developers.
 #
 #
-#  Released under the GNU General Public Licence, v3
+#  Released under the GNU General Public Licence, v3 or later
 #
 #   ChirPy is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published
-#   by the Free Software Foundation, either version 3 of the License.
+#   by the Free Software Foundation, either version 3 of the License,
+#   or any later version.
 #
 #   This program is distributed in the hope that it will be useful,
 #   but WITHOUT ANY WARRANTY; without even the implied warranty of
