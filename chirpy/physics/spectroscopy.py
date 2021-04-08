@@ -1,4 +1,4 @@
-# -------------------------------------------------------------------
+#  -------------------------------------------------------------------
 #
 #  ChirPy
 #
@@ -134,7 +134,7 @@ def power_from_tcf(velocities_au, weights=1.0,
         wgh = np.repeat(weights, n_dims)
 
     _velocities = velocities_au.reshape((n_frames, -1))
-    f, S, R = zip(*[spectral_density(_v, **kwargs)
+    f, S, R = zip(*[spectral_density(_v, symmetry='even', **kwargs)
                     for _v in _velocities.T])
 
     data = {}
@@ -279,6 +279,7 @@ def _spectrum_from_tcf(*args,
         raise KeyError('ts argument must not be used here. Please specify '
                        'ts_au!')
     kwargs.update(dict(ts=ts_au))
+    kwargs.update(dict(symmetry='even'))
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)

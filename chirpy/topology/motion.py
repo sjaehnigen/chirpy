@@ -118,14 +118,14 @@ def _acf_c(h):
     segments = _cumulate_hydrogen_bonding_events(h)
     if len(segments) == 0:
         return np.zeros_like(h)
-    B = np.mean([tcf(_s) for _s in segments],
+    B = np.mean([tcf(_s, mode='A') for _s in segments],
                 axis=0
                 )
     return B / B[0]
 
 
 def _acf_i(h):
-    B = tcf(h)
+    B = tcf(h, mode='A')
     return B / B[0]
 
 

@@ -103,7 +103,7 @@ def signal_filter(n_frames, filter_length=None, filter_type='welch'):
 
 def time_correlation_function(*args,
                               flt_pow=-1.E-16,
-                              mode='AB',
+                              mode='full',
                               sum_dims=True
                               ):
     '''Calculate the time-correlation function (TCF) of a signal and
@@ -191,9 +191,17 @@ def time_correlation_function(*args,
         fR -= R[:n_frames][::-1]
     if mode in ['AB', 'AC']:
         fR = fR / 2.
+        # --- avoid double index 0 after vstack
+        #     --> otherwise ugly phase shift in spectra
+        #     --> not necessary for index -1 (cc = 0)
+        # --- impose ergodicity / symmetry
+        if mode == 'AB':
+            fR = np.vstack((fR, fR[:0:-1]))
+        if mode == 'AC':
+            fR = np.vstack((fR, -fR[:0:-1]))
 
     if mode == 'full':
-        fR = np.roll(R, len(R) // 2, axis=0)
+        fR = np.roll(R, len(R) // 2 + 1, axis=0)
 
     if not sum_dims:
         return fR
@@ -201,7 +209,7 @@ def time_correlation_function(*args,
         return fR.sum(axis=1)
 
 
-def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry='even',
+def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry=None,
                      **kwargs):
     '''Calculate the spectral distribution as the Fourier transformed
        time-correlation function (TCF) of a vector signal (*args).
@@ -220,27 +228,18 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry='even',
 
     # --- enforce summation over dimensions
     kwargs.update({'sum_dims': True})
-
     R = time_correlation_function(*args, **kwargs)
-    # --- impose ergodicity / symmetry
 
-    # --- avoid double index 0 after vstack
-    #     --> otherwise ugly phase shift in spectra
-    #     --> not necessary for index -1 (cc = 0)
     if symmetry == 'even':
-        R = np.hstack((R, R[:0:-1]))  # [::-1]
         n = R.shape[0]
         S = np.fft.rfft(R, n=n).real * factor * ts
     elif symmetry == 'odd':
-        R = np.hstack((R, -R[:0:-1]))  # [::-1]
         n = R.shape[0]
         # NB: minus sign
         S = -np.fft.rfft(R, n=n).imag * factor * ts
     elif symmetry is None:
-        if kwargs.get('mode') != 'full':
-            raise ValueError('requires mode=full for TCF symmetry=None.')
         n = R.shape[0]
-        S = np.fft.rfft(R, n=n).imag * factor * ts
+        S = np.fft.rfft(R, n=n) * factor * ts
     else:
         raise ValueError(f'unkown symmetry {symmetry}')
 
