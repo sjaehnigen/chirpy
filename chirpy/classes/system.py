@@ -35,8 +35,8 @@ import warnings as _warnings
 from .core import AttrDict
 from ..snippets import tracked_extract_keys as _tracked_extract_keys
 from ..snippets import equal as _equal
-from ..config import ChirPyWarning
-from .core import CORE
+from ..config import ChirPyWarning as _ChirPyWarning
+from .core import CORE as _CORE
 from .trajectory import XYZ, XYZFrame, VibrationalModes
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
@@ -44,7 +44,7 @@ from .. import constants
 from ..visualise import print_info
 
 
-class _SYSTEM(CORE):
+class _SYSTEM(_CORE):
     '''Parent class that parses and manages properties of a chemical system
        organised in attributed classes.'''
 
@@ -100,7 +100,7 @@ class _SYSTEM(CORE):
                                            f'{self._topo["fn_topo"]}'
                                            ' does not represent molecule '
                                            f'{self.XYZ._fn} in {_k}!',
-                                           ChirPyWarning,
+                                           _ChirPyWarning,
                                            stacklevel=2)
                             print(self._topo[_k])
                             print(_v)
@@ -109,7 +109,7 @@ class _SYSTEM(CORE):
             with _warnings.catch_warnings():
                 _warnings.warn('Initialised void %s!'
                                % self.__class__.__name__,
-                               ChirPyWarning,
+                               _ChirPyWarning,
                                stacklevel=2)
 
     def read_fn(self, *args, **kwargs):
@@ -178,7 +178,7 @@ class _SYSTEM(CORE):
     def define_molecules(self, silent=False):
         if self.mol_map is not None and not silent:
             _warnings.warn('Overwriting existing mol_map!',
-                           ChirPyWarning, stacklevel=2)
+                           _ChirPyWarning, stacklevel=2)
 
         n_map = tuple(_define_molecules(self.XYZ.pos_aa,
                                         self.XYZ.symbols,
@@ -242,7 +242,7 @@ class _SYSTEM(CORE):
         if fmt == 'pdb':
             if self.mol_map is None:
                 _warnings.warn('Could not find mol_map.',
-                               ChirPyWarning, stacklevel=2)
+                               _ChirPyWarning, stacklevel=2)
                 self.mol_map = _np.zeros(self.XYZ.n_atoms).astype(int)
             self.clean_residues()
             nargs = {_s: getattr(self, _s)

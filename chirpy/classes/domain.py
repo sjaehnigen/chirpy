@@ -31,11 +31,11 @@
 
 import numpy as _np
 
-from .core import CORE
+from .core import CORE as _CORE
 from .volume import ScalarField as _ScalarField
 
 
-class Domain3D(CORE):
+class Domain3D(_CORE):
     '''Contains arrays of positions in a grid with assigned (scalar) values.
        The object can be expanded into a full grid representation (see volume
        class)'''

@@ -33,12 +33,12 @@ from functools import partial
 import numpy as np
 import copy
 
-from .core import CORE
+from .core import CORE as _CORE
 from ..topology.dissection import fermi_cutoff_function
 from ..topology.mapping import distance_pbc
 
 
-class Sphere(CORE):
+class Sphere(_CORE):
     def __init__(self, position=None, radius=None, edge='hard', D=0.23622):
         '''Define a sphere at position, radius and edge (soft/hard).
            D=0.23622 bohr corresponds to 0.125 angstrom (soft sphere only)

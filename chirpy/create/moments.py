@@ -32,13 +32,13 @@
 import numpy as _np
 import copy as _copy
 
-from ..classes.core import CORE
+from ..classes.core import CORE as _CORE
 from ..topology import mapping as mp
 from ..physics import classical_electrodynamics as ed
 from .. import constants
 
 
-class OriginGauge(CORE):
+class OriginGauge(_CORE):
     '''Object that processes moment trajectories from classes and
        converts between origin gauges.
 

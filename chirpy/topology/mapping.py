@@ -40,7 +40,7 @@ from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
         signed_angle
 
 from ..snippets import _unpack_tuple
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 
 # NB: the molecules have to be sequentially numbered starting with 0
 # the script will transform them starting with 0
@@ -172,7 +172,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
         elif not np.any(_a):
             return 'monoclinic'
         else:
-            _warnings.warn("Unusual lattice!", ChirPyWarning, stacklevel=2)
+            _warnings.warn("Unusual lattice!", _ChirPyWarning, stacklevel=2)
             return 'triclinic'
 
     elif np.all(abc == abc[0]) and np.all(albega == albega[0]):
@@ -450,7 +450,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                 if (_S_n0 := n0.sum()) == n_1.sum():
                     if _S_n0 < _m_n_atoms:
                         # _warnings.warn("connectivity interrupted in "
-                        #                "molecular map.", ChirPyWarning,
+                        #                "molecular map.", _ChirPyWarning,
                         #                stacklevel=2)
                         # --- create additional link to nearest atom
                         not_n0 = (np.ones(_m_n_atoms) - n0).astype(bool)
@@ -665,7 +665,7 @@ def ishydrogenbond(positions, donor, acceptor, hydrogens,
 
         if len(_pre_h) == 0:
             _warnings.warn('No hydrogen atom found at donor %d' % _di,
-                           ChirPyWarning,
+                           _ChirPyWarning,
                            stacklevel=2)
 
         _h = np.argmin(_dist_dah[1, _pre_h])

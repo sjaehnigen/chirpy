@@ -36,7 +36,7 @@ import warnings
 import sys
 import copy
 
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 from ..snippets import extract_keys
 from .. import constants
 from ..read.coordinates import cpmdIterator
@@ -180,7 +180,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         frames = kwargs.get('frames', range(data.shape[0]))
         if append:
             warnings.warn('Writing CPMD trajectory without frame info!',
-                          ChirPyWarning,
+                          _ChirPyWarning,
                           stacklevel=2)
 
     if append:
@@ -246,7 +246,7 @@ def cpmd_kinds_from_file(fn):
        of lines per frame, based on analysis of the first frame'''
 
     # warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
-    #               ChirPyWarning,
+    #               _ChirPyWarning,
     #               stacklevel=2)
     with _open(fn, 'r') as _f:
         _i = 1
@@ -494,7 +494,7 @@ class CPMDinput():
                         warnings.warn('Atomic coordinates in angstrom. Do not '
                                       'forget to set ANGSTROM keyword in the '
                                       'SYSTEM section!',
-                                      ChirPyWarning, stacklevel=2)
+                                      _ChirPyWarning, stacklevel=2)
                         _dd *= constants.l_au2aa
                     print(format % tuple(_dd), file=file)
 
@@ -684,7 +684,7 @@ class CPMDjob():
         if hasattr(self, 'TRAJECTORY'):
             warnings.warn('using obsolete TRAJECTORY: verifiy units of '
                           'positions!',
-                          ChirPyWarning, stacklevel=2)
+                          _ChirPyWarning, stacklevel=2)
             _getlist = [
                         self.get_positions(),
                         self.get_kinds(),

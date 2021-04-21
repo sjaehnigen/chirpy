@@ -42,7 +42,7 @@ from ..classes.core import PALARRAY
 from ..topology.mapping import distance_pbc, _pbc_shift
 
 from .. import config
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 
 
 def absorption_from_transition_moment(etdm_au):
@@ -273,7 +273,7 @@ def _spectrum_from_tcf(*args,
     if flt_pow >= 0:
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
-                       'input data!', ChirPyWarning, stacklevel=2)
+                       'input data!', _ChirPyWarning, stacklevel=2)
 
     kwargs.update({'flt_pow': flt_pow})
     if 'ts' in kwargs:
@@ -339,7 +339,7 @@ def _spectrum_from_tcf(*args,
         if pseudo_isolated and cell_au_deg is not None:
             _warnings.warn('imposing non-periodic boundaries around '
                            f'origini(s) {origin_au}',
-                           ChirPyWarning,
+                           _ChirPyWarning,
                            stacklevel=2)
 
             pos = origin_au[:, None] + distance_pbc(origin_au[:, None],

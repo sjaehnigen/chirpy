@@ -34,7 +34,7 @@ import numpy as np
 import warnings
 
 from .mapping import distance_pbc
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 
 # def _voigt():
 #    pass
@@ -62,7 +62,7 @@ def _lorentzian(r, gamma, dim=1):
 
     if dim != 1:
         warnings.warn("Lorentzian distribution not normalised for dim > 1!",
-                      ChirPyWarning, stacklevel=2)
+                      _ChirPyWarning, stacklevel=2)
     _N = 1 / (np.pi * gamma)
     _E = 1 / (1 + (r / gamma)**2)
 

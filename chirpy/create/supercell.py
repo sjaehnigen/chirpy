@@ -38,15 +38,15 @@ from ..topology.dissection import assign_molecule as _assign_molecule
 from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import get_cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
-from ..classes.core import CORE
+from ..classes.core import CORE as _CORE
 from ..classes.trajectory import XYZFrame as _XYZFrame
 from ..classes.system import Molecule as _Molecule
 from .. import constants
 from ..visualise import print_info
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 
 
-class _BoxObject(CORE):
+class _BoxObject(_CORE):
 
     # --- DEV log
     # volume is determined by _cell_vec_aa() / cell_vec_aa()
@@ -86,7 +86,7 @@ class _BoxObject(CORE):
         nargs['cell_aa_deg'] = _load.cell_aa_deg
         if _np.any(_load.cell_aa_deg == 0.):
             _warnings.warn('Cannot detect cell dimensions!',
-                           ChirPyWarning,
+                           _ChirPyWarning,
                            stacklevel=2)
 
         if _load.mol_map is not None:
@@ -191,7 +191,7 @@ class _BoxObject(CORE):
     def __pow__(self, other):
         '''Multiply system and scale box accordingly'''
         _warnings.warn('pow() in beta state. Proceed with care!',
-                       ChirPyWarning,
+                       _ChirPyWarning,
                        stacklevel=2)
         if not isinstance(other, int):
             raise TypeError('unsupported operand type(s) for *: '
@@ -370,7 +370,7 @@ class Solution(_BoxObject):
                 if _d > 0.01:
                     _warnings.warn('Member counts differ from input value by '
                                    'more than 1%%:\n  - %s\n' % _id,
-                                   ChirPyWarning,
+                                   _ChirPyWarning,
                                    stacklevel=2)
         [_dev_warning(abs(round(_in) - _in) /
                       _in, ([self.solvent] + self.solutes)[_ii])
@@ -386,7 +386,7 @@ class Solution(_BoxObject):
                         ]}
 
         with _warnings.catch_warnings():
-            _warnings.filterwarnings('ignore', category=ChirPyWarning)
+            _warnings.filterwarnings('ignore', category=_ChirPyWarning)
             _BoxObject.__init__(
                         self,
                         symmetry='orthorhombic',
@@ -456,7 +456,7 @@ class Solution(_BoxObject):
                 _fn = '.member-%03d.pdb' % _im
                 _m[1].mol_map = _np.zeros_like(_m[1].symbols)
                 with _warnings.catch_warnings():
-                    _warnings.filterwarnings('ignore', category=ChirPyWarning)
+                    _warnings.filterwarnings('ignore', category=_ChirPyWarning)
                     _m[1].write(_fn)
                 f.write('\n')
                 f.write('structure %s' % _fn + '\n')
@@ -472,7 +472,7 @@ class Solution(_BoxObject):
             print("Done.")
 
         with _warnings.catch_warnings():
-            _warnings.filterwarnings('ignore', category=ChirPyWarning)
+            _warnings.filterwarnings('ignore', category=_ChirPyWarning)
             _load = _Molecule(".simbox.pdb",
                               cell_aa_deg=self._cell_aa_deg(),
                               mol_map=self._mol_map())

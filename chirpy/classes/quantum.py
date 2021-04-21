@@ -31,14 +31,12 @@
 
 import numpy as _np
 import copy
-from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
-from scipy.ndimage.filters import maximum_filter, minimum_filter, \
-        gaussian_filter
 from scipy import signal as _signal
+from scipy import ndimage as _ndimage
 import warnings as _warnings
 
-from ..config import ChirPyWarning
-from .core import CORE
+from ..config import ChirPyWarning as _ChirPyWarning
+from .core import CORE as _CORE
 from .volume import ScalarField as _ScalarField
 from .volume import VectorField as _VectorField
 from .domain import Domain3D as _Domain3D
@@ -58,12 +56,19 @@ class WannierFunction(_ScalarField):
         return r
 
     def extrema(self, **kwargs):
-        data = gaussian_filter(self.data, 4.0)
-        neighborhood = generate_binary_structure(3, 3)
-        local_max = maximum_filter(data, footprint=neighborhood) == data
-        local_min = minimum_filter(data, footprint=neighborhood) == data
+        data = _ndimage.filters.gaussian_filter(self.data, 4.0)
+        neighborhood = _ndimage.morphology.generate_binary_structure(3, 3)
+        local_max = _ndimage.filters.maximum_filter(
+                                                data,
+                                                footprint=neighborhood
+                                                ) == data
+        local_min = _ndimage.filters.minimum_filter(
+                                                data,
+                                                footprint=neighborhood
+                                                ) == data
         background = (_np.abs(data) > 0.8 * _np.amax(_np.abs(data)))
-        eroded_background = binary_erosion(background,
+        eroded_background = _ndimage.morphology.binary_erosion(
+                                           background,
                                            structure=neighborhood,
                                            border_value=1)
         local_extreme = (local_max + local_min) * eroded_background
@@ -112,7 +117,7 @@ class ElectronDensity(_ScalarField):
                 _warnings.warn('Density at the boundary exceeds given density '
                                'threshold of %f! %f' % (self.aim_threshold,
                                                         boundary_max),
-                               ChirPyWarning,
+                               _ChirPyWarning,
                                stacklevel=2)
 
         # neighborhood = generate_binary_structure(3,1)
@@ -215,7 +220,7 @@ class CurrentDensity(_VectorField):
     pass
 
 
-class TDElectronicState(CORE):
+class TDElectronicState(_CORE):
     def __init__(self, *args, psi1=None, **kwargs):
         '''psi1 - imaginary part from linear response calculation'''
         if len(args) == 4:
@@ -274,7 +279,7 @@ class TDElectronicState(CORE):
         self.v.normalise(norm=rho, thresh=thresh)
 
 
-class TDElectronDensity(CORE):
+class TDElectronDensity(_CORE):
     def __init__(self, *args, **kwargs):
         if len(args) == 4:
             self.rho = ElectronDensity(args[0], **kwargs)
@@ -391,8 +396,9 @@ class TDElectronDensity(CORE):
             vel[2] += j_dir[2] * (j_dir[2] < 0) * _np.abs(dw[5])
 
             # --- thickness of boundary has to be >= 3 points for differential
-            _neigh = generate_binary_structure(3, 3)
-            vel = _np.array([maximum_filter(_vel, footprint=_neigh)
+            _neigh = _ndimage.morphology.generate_binary_structure(3, 3)
+            vel = _np.array([_ndimage.filters.maximum_filter(_vel,
+                                                             footprint=_neigh)
                              for _vel in vel])
 
             # --- correct current at boundary and recalculate norm
@@ -445,7 +451,7 @@ class TDElectronDensity(CORE):
             with _warnings.catch_warnings():
                 _warnings.warn('AIM gain/loss unbalanced: %f, %f !'
                                % (_np.sum(j_gain), _np.sum(j_loss)),
-                               ChirPyWarning,
+                               _ChirPyWarning,
 
                                stacklevel=2)
         print('AIM gain/loss calculation done.')

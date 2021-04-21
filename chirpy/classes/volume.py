@@ -33,12 +33,12 @@ import numpy as _np
 import copy as _copy
 from scipy.interpolate import interpn as _interpn
 from scipy.integrate import simps as _simps
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d as _gaussian_filter1d
 import warnings as _warnings
 
-from .core import CORE
+from .core import CORE as _CORE
 from ..snippets import extract_keys
-from ..config import ChirPyWarning
+from ..config import ChirPyWarning as _ChirPyWarning
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
@@ -49,7 +49,7 @@ from ..topology import mapping as mp
 from ..visualise import print_info
 
 
-class ScalarField(CORE):
+class ScalarField(_CORE):
     def __init__(self, *args, **kwargs):
         self._print_info = [print_info.print_cell]
         if len(args) > 1:
@@ -71,7 +71,7 @@ class ScalarField(CORE):
                 if data.shape[0] > 1:
                     _warnings.warn(
                         'Volume class does not (yet) support trajectory data!',
-                        ChirPyWarning,
+                        _ChirPyWarning,
                         stacklevel=2)
                 # No support of multiple frames for now
                 self.data = data[0]
@@ -266,7 +266,7 @@ class ScalarField(CORE):
                     _warnings.warn('\n'.join(
                         'Objects dissimilar in %s!'
                         % _e for (_e, _B) in zip(wrn_keys, _WRN) if _B),
-                        ChirPyWarning, stacklevel=2
+                        _ChirPyWarning, stacklevel=2
                        )
             else:
                 if return_false:
@@ -349,9 +349,9 @@ class ScalarField(CORE):
 
     def smoothen(self, sigma):
         '''Apply a sequence of 1D Gaussian filters to grid data'''
-        self.data = gaussian_filter1d(self.data, sigma, axis=-1)
-        self.data = gaussian_filter1d(self.data, sigma, axis=-2)
-        self.data = gaussian_filter1d(self.data, sigma, axis=-3)
+        self.data = _gaussian_filter1d(self.data, sigma, axis=-1)
+        self.data = _gaussian_filter1d(self.data, sigma, axis=-2)
+        self.data = _gaussian_filter1d(self.data, sigma, axis=-3)
 
     def sparse(self, sp, dims='xyz'):
         '''Returns a new object with sparse grid according to sp (integer).'''
@@ -446,7 +446,7 @@ class ScalarField(CORE):
         else:
             _warnings.warn('Rotating grid may lead to problems with the '
                            'Gaussian Cube format convention!',
-                           ChirPyWarning, stacklevel=2)
+                           _ChirPyWarning, stacklevel=2)
             self.cell_vec_aa = rotate_vector(self.cell_vec_aa, R)
             self.origin_aa = rotate_vector(self.origin_aa, R, origin=_o)
 
@@ -586,13 +586,13 @@ class VectorField(ScalarField):
             if any([ext_pos_aa is None, ext_vel_au is None]):
                 _warnings.warn('Missing external object for set keyword! '
                                'Please give ext_p and ext_v.',
-                               ChirPyWarning, stacklevel=2)
+                               _ChirPyWarning, stacklevel=2)
                 ext = False
 
             if ext_pos_aa.shape != ext_vel_au.shape:
                 _warnings.warn('External object with inconsistent ext_p and '
                                'ext_v! Skippping.',
-                               ChirPyWarning, stacklevel=2)
+                               _ChirPyWarning, stacklevel=2)
                 ext = False
 
         if ext:
