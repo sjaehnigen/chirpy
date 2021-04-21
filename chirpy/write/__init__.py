@@ -28,3 +28,6 @@
 #   If not, see <https://www.gnu.org/licenses/>.
 #
 # -------------------------------------------------------------------
+from . import coordinates
+from . import grid
+from . import modes

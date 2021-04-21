@@ -34,7 +34,7 @@ import numpy as np
 import warnings as _warnings
 
 from ..config import ChirPyWarning
-from ..physics import constants
+from .. import constants
 
 
 def xvibsReader(fn, au=False, mw=False):

@@ -34,7 +34,7 @@ import numpy as np
 
 from .mapping import distance_pbc, cell_volume
 from ..mathematics.algebra import rotation_matrix
-from ..classes.core import _PALARRAY
+from ..classes.core import PALARRAY
 
 
 def radial_distribution_function(positions,
@@ -124,7 +124,7 @@ def radial_distribution_function(positions,
                     ) / _wg
 
     return np.linspace(*rng, bins),\
-        np.mean(_PALARRAY(_func, range(n_O)).run(), axis=0)
+        np.mean(PALARRAY(_func, range(n_O)).run(), axis=0)
 
 
 def rdf(*args, **kwargs):

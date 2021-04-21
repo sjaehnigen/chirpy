@@ -37,8 +37,8 @@ import sys
 import copy
 
 from ..config import ChirPyWarning
-from .. import extract_keys
-from ..physics import constants
+from ..snippets import extract_keys
+from .. import constants
 from ..read.coordinates import cpmdIterator
 from ..read.generators import _open
 from ..write.coordinates import xyzWriter

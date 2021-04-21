@@ -31,7 +31,7 @@
 
 
 import numpy as np
-from ..physics import constants
+from .. import constants
 
 
 def kinetic_energies(vel_au, masses_amu):

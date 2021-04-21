@@ -38,11 +38,11 @@ from scipy import signal as _signal
 import warnings as _warnings
 
 from ..config import ChirPyWarning
-from .core import _CORE
+from .core import CORE
 from .volume import ScalarField as _ScalarField
 from .volume import VectorField as _VectorField
 from .domain import Domain3D as _Domain3D
-from ..physics import constants
+from .. import constants
 from ..read.coordinates import xyzReader as _xyzReader
 
 
@@ -215,7 +215,7 @@ class CurrentDensity(_VectorField):
     pass
 
 
-class TDElectronicState(_CORE):
+class TDElectronicState(CORE):
     def __init__(self, *args, psi1=None, **kwargs):
         '''psi1 - imaginary part from linear response calculation'''
         if len(args) == 4:
@@ -274,7 +274,7 @@ class TDElectronicState(_CORE):
         self.v.normalise(norm=rho, thresh=thresh)
 
 
-class TDElectronDensity(_CORE):
+class TDElectronDensity(CORE):
     def __init__(self, *args, **kwargs):
         if len(args) == 4:
             self.rho = ElectronDensity(args[0], **kwargs)

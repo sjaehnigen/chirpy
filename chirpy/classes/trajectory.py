@@ -34,8 +34,8 @@ import numpy as _np
 import warnings as _warnings
 from itertools import zip_longest
 
-from .core import _CORE, _ITERATOR
-from .. import extract_keys as _extract_keys
+from .core import CORE, ITERATOR
+from ..snippets import extract_keys as _extract_keys
 from ..config import ChirPyWarning
 from ..read.modes import xvibsReader
 from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
@@ -56,7 +56,7 @@ from ..interface.gaussian import g09Reader
 from ..topology import mapping, motion
 from ..topology.dissection import read_topology_file
 
-from ..physics import constants
+from .. import constants
 from ..physics.statistical_mechanics import kinetic_energies as \
         _kinetic_energies
 from ..physics.classical_electrodynamics import current_dipole_moment as \
@@ -72,7 +72,7 @@ from ..mathematics import algebra as _algebra
 #   list of modes is (M,F,N,X)
 
 
-class _FRAME(_CORE):
+class _FRAME(CORE):
     def _labels(self):
         self._type = 'frame'
         self._labels = ('symbols',  None)
@@ -1345,6 +1345,18 @@ class _MOMENTS():
         else:
             self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
+    def center_position(self, pos, cell_aa_deg, wrap=True):
+        '''pos reference in shape (n_frames, three)'''
+        if self._type == 'frame':
+            self._pos_aa(self.pos_aa + cell_aa_deg[None, :3] / 2
+                         - pos[None, :])
+        else:
+            self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2
+                         - pos[:, None, :])
+
+        if wrap:
+            self.wrap()
+
     def write(self, fn, **kwargs):
         attr = kwargs.get('attr', 'data')
         # loc_self = _copy.deepcopy(self)
@@ -1481,7 +1493,7 @@ class MOMENTSFrame(_MOMENTS, _FRAME):
                )
 
 
-class XYZ(_XYZ, _ITERATOR, _FRAME):
+class XYZ(_XYZ, ITERATOR, _FRAME):
     '''A generator of XYZ frames.'''
     def __init__(self, *args, **kwargs):
         self._kernel = XYZFrame
@@ -1699,7 +1711,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._mask(self, 'split', *args, **kwargs)
 
 
-class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
+class MOMENTS(_MOMENTS, ITERATOR, _FRAME):
     '''A generator of MOMENT frames.'''
     def __init__(self, *args, **kwargs):
         self._kernel = MOMENTSFrame
@@ -1811,6 +1823,16 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                      )
         if kwargs.get('rewind', True):
             self.rewind()
+
+    def wrap(self, *args, **kwargs):
+        self._frame.wrap(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'wrap', *args, **kwargs)
+
+    def center_position(self, *args, **kwargs):
+        self._frame.center_position(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'center_position', *args, **kwargs)
 
 
 class _XYZTrajectory(_XYZ, _TRAJECTORY):

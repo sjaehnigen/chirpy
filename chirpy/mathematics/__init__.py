@@ -28,3 +28,5 @@
 #   If not, see <https://www.gnu.org/licenses/>.
 #
 # -------------------------------------------------------------------
+from . import analysis
+from . import algebra

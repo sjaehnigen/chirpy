@@ -35,7 +35,7 @@ import argparse
 import numpy as np
 
 from chirpy.classes import system
-from chirpy import extract_keys
+from chirpy.snippets import extract_keys
 
 
 def main():

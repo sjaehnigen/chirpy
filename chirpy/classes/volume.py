@@ -36,20 +36,20 @@ from scipy.integrate import simps as _simps
 from scipy.ndimage import gaussian_filter1d
 import warnings as _warnings
 
-from .core import _CORE
-from .. import extract_keys
+from .core import CORE
+from ..snippets import extract_keys
 from ..config import ChirPyWarning
 from ..read.grid import cubeReader
 from ..write.grid import cubeWriter
 from ..physics.kspace import k_potential as _k_potential
-from ..physics import constants
+from .. import constants
 from ..mathematics.algebra import rotate_griddata, rotate_vector
 from ..mathematics.analysis import divrot
 from ..topology import mapping as mp
 from ..visualise import print_info
 
 
-class ScalarField(_CORE):
+class ScalarField(CORE):
     def __init__(self, *args, **kwargs):
         self._print_info = [print_info.print_cell]
         if len(args) > 1:

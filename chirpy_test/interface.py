@@ -37,7 +37,7 @@ import filecmp
 import copy
 
 from chirpy.interface import cpmd
-from chirpy.physics import constants
+from chirpy import constants
 from chirpy.config import ChirPyWarning
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'

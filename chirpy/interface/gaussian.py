@@ -32,7 +32,7 @@
 import sys
 import numpy as np
 
-from ..physics import constants
+from .. import constants
 from ..topology import mapping
 import copy
 

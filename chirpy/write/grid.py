@@ -31,7 +31,7 @@
 
 # outbuffer method may result in memory outage ==> Replace it
 
-from ..physics import constants
+from .. import constants
 
 
 def cubeWriter(fn, comments, numbers, pos_aa, cell_vec_aa, data,

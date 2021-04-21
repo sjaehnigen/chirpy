@@ -34,9 +34,9 @@ import numpy as np
 import warnings
 import copy
 
-from ..classes import AttrDict
-
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+
+from ..classes.core import AttrDict
 
 
 class pub_label():

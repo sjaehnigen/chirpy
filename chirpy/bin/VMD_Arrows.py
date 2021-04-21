@@ -35,7 +35,7 @@ import argparse
 
 from chirpy.classes import trajectory, volume
 from chirpy.interface import vmd
-from chirpy.physics import constants
+from chirpy import constants
 
 
 def main():

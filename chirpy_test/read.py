@@ -38,7 +38,7 @@ from chirpy.read import modes as r_modes
 from chirpy.read import coordinates as r_coordinates
 from chirpy.read import grid as r_grid
 
-from chirpy.physics import constants
+from chirpy import constants
 from chirpy.config import ChirPyWarning
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'

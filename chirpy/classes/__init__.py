@@ -29,20 +29,10 @@
 #
 # -------------------------------------------------------------------
 
-
-class AttrDict(dict):
-    '''Converts dictionary keys into attributes'''
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        # --- protect built-in namespace of dict
-        for _k in self:
-            if _k in dir(self):
-                raise NameError("Trying to alter namespace of built-in "
-                                "dict method!", _k)
-        self.__dict__ = self
-
-    def __setitem__(self, key, value):
-        if key in dir(self):
-            raise NameError("Trying to alter namespace of built-in "
-                            "dict method!", key)
-        super(AttrDict, self).__setitem__(key, value)
+from . import core
+from . import quantum
+from . import volume
+from . import trajectory
+from . import system
+from . import domain
+from . import object

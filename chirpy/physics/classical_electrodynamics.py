@@ -31,8 +31,9 @@
 
 
 import numpy as np
-from ..physics import constants, kspace
-from ..physics.constants import eijk
+from .. import constants
+from ..physics import kspace
+from ..constants import eijk
 from ..topology import mapping
 from ..mathematics.analysis import divrot
 

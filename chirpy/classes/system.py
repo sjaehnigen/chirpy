@@ -32,19 +32,19 @@
 import numpy as _np
 import warnings as _warnings
 
-from . import AttrDict
-from .. import tracked_extract_keys as _tracked_extract_keys
-from .. import equal as _equal
+from .core import AttrDict
+from ..snippets import tracked_extract_keys as _tracked_extract_keys
+from ..snippets import equal as _equal
 from ..config import ChirPyWarning
-from .core import _CORE
+from .core import CORE
 from .trajectory import XYZ, XYZFrame, VibrationalModes
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
-from ..physics import constants
+from .. import constants
 from ..visualise import print_info
 
 
-class _SYSTEM(_CORE):
+class _SYSTEM(CORE):
     '''Parent class that parses and manages properties of a chemical system
        organised in attributed classes.'''
 

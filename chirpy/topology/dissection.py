@@ -36,9 +36,7 @@ import copy
 from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
     detect_lattice, neighbour_matrix, get_cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..physics.constants import detect_element
-from ..read.coordinates import pdbReader, xyzReader
-from ..interface import cp2k
+from ..constants import detect_element
 
 
 def fermi_cutoff_function(distance, R_cutoff, D):
@@ -234,7 +232,11 @@ def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
 
 
 def read_topology_file(fn):
-    '''Only PDB support for now'''
+    '''Returns dict of properties'''
+
+    from ..read.coordinates import pdbReader, xyzReader
+    from ..interface import cp2k
+
     fmt = fn.split('.')[-1]
     if fmt == 'pdb':
         # A little old messy code

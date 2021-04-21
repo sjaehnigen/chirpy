@@ -36,7 +36,7 @@ from functools import partial
 
 from chirpy.topology import mapping, dissection, motion, grid  # , distribution
 from chirpy.read import coordinates
-from chirpy.physics import constants
+from chirpy import constants
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 

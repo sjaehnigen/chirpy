@@ -34,7 +34,7 @@ import numpy as np
 from itertools import islice
 from concurrent_iterator.process import Producer
 from .generators import _reader, _open
-from ..physics import constants
+from .. import constants
 
 
 def _cube(frame, **kwargs):

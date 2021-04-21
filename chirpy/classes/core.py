@@ -44,7 +44,7 @@ from tqdm import tqdm
 from .. import config
 
 
-class _PALARRAY():
+class PALARRAY():
     '''Class for parallel processing of array data.
        Processes data in a nested grid
        (i.e. all combinations of indices)'''
@@ -110,14 +110,14 @@ class _PALARRAY():
                 return result.reshape(_l + result.shape[1:])
 
         except KeyboardInterrupt:
-            print("KeyboardInterrupt in _PALARRAY")
+            print("KeyboardInterrupt in PALARRAY")
 
         finally:
             self.pool.terminate()
             self.pool.join()
 
 
-class _CORE():
+class CORE():
     def __init__(self, *args, **kwargs):
         self._print_info = []
 
@@ -182,9 +182,9 @@ class _CORE():
             _func(self)
 
 
-class _ITERATOR():
+class ITERATOR():
     def __init__(self, *args, **kwargs):
-        self._kernel = _CORE
+        self._kernel = CORE
         # self._gen_init = iter([])
         self._gen = iter([])
 
@@ -409,6 +409,24 @@ class _ITERATOR():
             self.rewind()
 
         return self._kwargs['skip']
+
+
+class AttrDict(dict):
+    '''Converts dictionary keys into attributes'''
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        # --- protect built-in namespace of dict
+        for _k in self:
+            if _k in dir(self):
+                raise NameError("Trying to alter namespace of built-in "
+                                "dict method!", _k)
+        self.__dict__ = self
+
+    def __setitem__(self, key, value):
+        if key in dir(self):
+            raise NameError("Trying to alter namespace of built-in "
+                            "dict method!", key)
+        super(AttrDict, self).__setitem__(key, value)
 
 
 _known_objects = {

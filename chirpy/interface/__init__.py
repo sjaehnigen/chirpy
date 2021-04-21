@@ -28,3 +28,5 @@
 #   If not, see <https://www.gnu.org/licenses/>.
 #
 # -------------------------------------------------------------------
+
+from . import cp2k, cpmd, gaussian, molden, namd, orca, pymol, vmd

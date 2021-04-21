@@ -37,8 +37,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from chirpy.classes import trajectory
-from chirpy.physics import spectroscopy, constants
-from chirpy import config
+from chirpy.physics import spectroscopy
+from chirpy import config, constants
 
 
 def main():

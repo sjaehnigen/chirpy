@@ -34,12 +34,12 @@ import numpy as np
 import copy
 import warnings as _warnings
 
-from ..physics import constants
+from .. import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
         signed_angle
 
-from .. import _unpack_tuple
+from ..snippets import _unpack_tuple
 from ..config import ChirPyWarning
 
 # NB: the molecules have to be sequentially numbered starting with 0
@@ -152,7 +152,6 @@ def detect_lattice(cell, priority=(0, 1, 2)):
        Does not care of axis order priority.
        '''
     if cell is None or np.any(cell == 0.):
-        # _warnings.warn("no periodic cell given!", RuntimeWarning, stacklevel=2)
         return None
 
     abc, albega = cell[:3], cell[3:]
@@ -176,7 +175,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
             _warnings.warn("Unusual lattice!", ChirPyWarning, stacklevel=2)
             return 'triclinic'
 
-    elif np.all(abc) and np.all(albega):
+    elif np.all(abc == abc[0]) and np.all(albega == albega[0]):
         return 'rhombohedral'
 
     else:

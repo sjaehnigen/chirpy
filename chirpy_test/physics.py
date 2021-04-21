@@ -35,7 +35,8 @@ from math import isclose
 import numpy as np
 import warnings
 
-from chirpy.physics import constants, statistical_mechanics, spectroscopy, \
+from chirpy import constants
+from chirpy.physics import statistical_mechanics, spectroscopy, \
     classical_electrodynamics
 from chirpy.classes import trajectory
 # kspace, modern_theory_of_magnetisation

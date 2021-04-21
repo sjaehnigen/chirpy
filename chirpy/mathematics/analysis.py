@@ -31,7 +31,7 @@
 
 
 import numpy as np
-from ..physics.constants import eijk
+from ..constants import eijk
 
 
 def divrot(data, cell_vec):

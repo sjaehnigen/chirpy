@@ -37,7 +37,7 @@ import warnings
 from chirpy.create.moments import OriginGauge
 from chirpy.classes import system, trajectory
 from chirpy.topology import mapping
-from chirpy.physics import constants
+from chirpy import constants
 from chirpy.physics import classical_electrodynamics as ed
 from chirpy.interface import cpmd
 from chirpy import config

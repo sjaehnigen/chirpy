@@ -33,7 +33,7 @@
 import numpy as np
 import warnings
 
-from ..physics import constants
+from .. import constants
 
 
 def orcaReader(fn):

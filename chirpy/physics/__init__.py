@@ -28,3 +28,8 @@
 #   If not, see <https://www.gnu.org/licenses/>.
 #
 # -------------------------------------------------------------------
+from . import modern_theory_of_magnetisation
+from . import kspace
+from . import classical_electrodynamics
+from . import statistical_mechanics
+from . import spectroscopy

@@ -40,7 +40,7 @@ import fortranformat as ff
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
 
-from ..physics import constants
+from .. import constants
 from ..config import ChirPyWarning
 
 

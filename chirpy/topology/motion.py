@@ -31,7 +31,7 @@
 
 
 import numpy as np
-from ..classes.core import _PALARRAY
+from ..classes.core import PALARRAY
 from ..physics.statistical_mechanics import time_correlation_function as tcf
 from .mapping import ishydrogenbond
 
@@ -75,7 +75,7 @@ def angular_momenta(positions, velocities, wt, subset=slice(None), axis=-2,
         return angmoms
 
 
-# --- for _PALARRAY
+# --- for PALARRAY
 def _func0(p,
            donor,
            acceptor,
@@ -154,8 +154,8 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
        '''
 
     # --- generate HB occurence trajectory (parallel run)
-    # H = _PALARRAY(_func0, positions).run()
-    H = _PALARRAY(_func0, positions,
+    # H = PALARRAY(_func0, positions).run()
+    H = PALARRAY(_func0, positions,
                   donor=donor,
                   acceptor=acceptor,
                   hydrogen=hydrogen,
@@ -172,10 +172,10 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
 
     # --- correlate (parallel run)
     if mode == 'continuous':
-        ACF = _PALARRAY(_acf_c, _wH).run()
+        ACF = PALARRAY(_acf_c, _wH).run()
 
     if mode == 'intermittent':
-        ACF = _PALARRAY(_acf_i, _wH).run()
+        ACF = PALARRAY(_acf_i, _wH).run()
 
     if no_average:
         ACF_res = np.zeros((n_donors, n_acceptors, n_frames))

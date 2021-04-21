@@ -36,12 +36,13 @@ import tqdm
 
 from .classical_electrodynamics import magnetic_dipole_shift_origin
 from .statistical_mechanics import spectral_density
-from ..physics import constants
+from .. import constants
 from ..classes.object import Sphere
-from ..classes.core import _PALARRAY
+from ..classes.core import PALARRAY
 from ..topology.mapping import distance_pbc, _pbc_shift
 
 from .. import config
+from ..config import ChirPyWarning
 
 
 def absorption_from_transition_moment(etdm_au):
@@ -252,7 +253,7 @@ def _spectrum_from_tcf(*args,
 
        Computation of the gauge transport:
          unwrap_pbc ... Unwrap particles before the calculation.
-         parallel ... Execute job in parallel (_PALARRAY).
+         parallel ... Execute job in parallel (PALARRAY).
          pseudo_isolated ... Impose isolated supercell with origin_au as
                              centre. This option accelerates the computation
                              and is applicable especially to large supercells
@@ -272,7 +273,7 @@ def _spectrum_from_tcf(*args,
     if flt_pow >= 0:
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
-                       'input data!', stacklevel=2)
+                       'input data!', ChirPyWarning, stacklevel=2)
 
     kwargs.update({'flt_pow': flt_pow})
     if 'ts' in kwargs:
@@ -336,7 +337,9 @@ def _spectrum_from_tcf(*args,
 
         # --- assume non-periodic boundaries
         if pseudo_isolated and cell_au_deg is not None:
-            _warnings.warn('imposing non-periodic boundaries around origin_au',
+            _warnings.warn('imposing non-periodic boundaries around '
+                           f'origini(s) {origin_au}',
+                           ChirPyWarning,
                            stacklevel=2)
 
             pos = origin_au[:, None] + distance_pbc(origin_au[:, None],
@@ -451,7 +454,7 @@ def compute_gauge_transport_term(cur, pos, cell,
                                  **kwargs):
     '''
        unwrap_pbc ... unwrap particles before the calculation
-       parallel ... execute job in parallel (_PALARRAY)
+       parallel ... execute job in parallel (PALARRAY)
     '''
     n_frames, n_particles, n_dim = pos.shape
 
@@ -483,7 +486,7 @@ def compute_gauge_transport_term(cur, pos, cell,
                      ).swapaxes(0, 1)
 
     else:
-        freq, cd_GT, C_cd_GT = tuple(zip(*_PALARRAY(
+        freq, cd_GT, C_cd_GT = tuple(zip(*PALARRAY(
                       gauge_transport_particle_i,
                       range(n_particles),
                       pos=_pos,

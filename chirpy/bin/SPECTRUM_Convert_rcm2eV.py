@@ -33,7 +33,7 @@
 
 import argparse
 import numpy as np
-from chirpy.physics import constants
+from chirpy import constants
 
 
 def main():
