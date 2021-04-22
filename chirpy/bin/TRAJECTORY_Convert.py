@@ -130,7 +130,8 @@ def main():
             )
     parser.add_argument(
             "--weight",
-            help="Atom weights used for atom alignment, centering, wrapping",
+            help="Atom weights used for atom alignment, centering, wrapping"
+                 " (\'mass\' or \'one\')",
             default='mass'
             )
     parser.add_argument(
@@ -232,7 +233,7 @@ def main():
     if args.f == 'out.xyz':
         args.f = 'out.' + o_fmt
 
-    # --- Caution when passing all arguments to object!
+    # --- ToDO: Caution when passing all arguments to object!
     largs = vars(args)
 
     if bool(args.align_coords):

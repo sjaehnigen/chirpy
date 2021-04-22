@@ -89,21 +89,8 @@ class _SYSTEM(_CORE):
             if kwargs.get('clean_residues',
                           False) and self.mol_map is not None:
                 self.clean_residues()
-
-            # --- Consistency check
-            if self._topo is not None:
-                for _k in self._topo:
-                    _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
-                    if _k is not None and 'topo' not in _k:
-                        if not _equal(_v, self._topo[_k]):
-                            _warnings.warn('Topology file '
-                                           f'{self._topo["fn_topo"]}'
-                                           ' does not represent molecule '
-                                           f'{self.XYZ._fn} in {_k}!',
-                                           _ChirPyWarning,
-                                           stacklevel=2)
-                            print(self._topo[_k])
-                            print(_v)
+            # --- ToDo: necessary? Symbols are checked in _XYZ
+            self._check_consistency()
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -111,6 +98,21 @@ class _SYSTEM(_CORE):
                                % self.__class__.__name__,
                                _ChirPyWarning,
                                stacklevel=2)
+
+    def _check_consistency(self):
+        if self._topo is not None:
+            for _k in self._topo:
+                if _k is not None and 'topo' not in _k:
+                    _v = self.XYZ.__dict__.get(_k, self.__dict__.get(_k))
+                    if _v is not None and not _equal(_v, self._topo[_k]):
+                        _warnings.warn('Topology file '
+                                       f'{self._topo["fn_topo"]}'
+                                       ' does not represent molecule '
+                                       f'{self.XYZ._fn} in {_k}!',
+                                       _ChirPyWarning,
+                                       stacklevel=2)
+                        print(self._topo[_k])
+                        print(_v)
 
     def read_fn(self, *args, **kwargs):
         self.XYZ = self._XYZ(*args, **kwargs)

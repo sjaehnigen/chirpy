@@ -31,6 +31,7 @@
 
 import numpy as _np
 import warnings
+from . import config
 
 
 # --- code snippets
@@ -61,7 +62,7 @@ def tracked_update(dict1, dict2, msg='in dict1!'):
                 with warnings.catch_warnings():
                     warnings.warn('Overwriting existing key '
                                   '\'{}\' '.format(_k2) + msg,
-                                  RuntimeWarning,
+                                  config.ChirPyWarning,
                                   stacklevel=2)
     dict1.update(dict2)
     return dict1

@@ -730,11 +730,28 @@ class _XYZ():
             comments = _np.array(omega_cgs).astype(str)
 
         # --- external metadata (i.e. from topology file)
-        #     wins over fn, but not in the case of data
+        #     wins over fn, but not in the case of data, raises Warning for
+        #     cell and symbols
+        def _check_file_vs_argument(key, value_file, value_argument):
+            if (_diff := '\n'.join([
+                       f'{_is}: {_f} != {_a}'
+                       for _is, (_f, _a) in enumerate(zip(value_file,
+                                                          value_argument))
+                       if _f != _a
+                       ])) != '':
+                _warnings.warn(f'{key} different in file and argument '
+                               '(e.g., from topology)\n' + _diff,
+                               _ChirPyWarning, stacklevel=2)
+
         self.cell_aa_deg = kwargs.get('cell_aa_deg', f_cell_aa_deg)
         if self.cell_aa_deg is None:
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
+        elif f_cell_aa_deg is not None:
+            _check_file_vs_argument('cell', f_cell_aa_deg, self.cell_aa_deg)
+
         self.symbols = kwargs.get('symbols', tuple(symbols))
+        _check_file_vs_argument('symbols', symbols, self.symbols)
+
         self.comments = kwargs.get('comments', comments)
         self.data = data
 

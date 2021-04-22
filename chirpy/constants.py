@@ -34,6 +34,7 @@ import numpy as np
 import copy
 from periodictable import elements as _EL
 import warnings as _warnings
+from . import config
 
 # --- Levi-Civita
 eijk = np.zeros((3, 3, 3))
@@ -297,6 +298,7 @@ def _get_property(kinds, key, fmt=None):
                 _r = getattr(elements[_k[:-1]], key)
                 _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
                                'Proceed with care!',
+                               config.ChirPyWarning,
                                stacklevel=2)
             except (IndexError, KeyError, AttributeError, TypeError):
                 _r = None
@@ -304,6 +306,15 @@ def _get_property(kinds, key, fmt=None):
             pr.append(fmt(_r))
         else:
             pr.append(_r)
+    if config.__verbose__:
+        _warnings.warn(f'Got {key} of {kinds}: {pr}',
+                       config.ChirPyWarning, stacklevel=2)
+    if None in pr:
+        [_warnings.warn(f'Could not find {key} of {kinds[_ipr]} (id {_ipr}).',
+                        config.ChirPyWarning,
+                        stacklevel=2)
+         for _ipr, _pr in enumerate(pr) if _pr is None]
+
     return pr
 
 
