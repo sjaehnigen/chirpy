@@ -316,8 +316,8 @@ class ITERATOR():
 
         def _add(obj1, obj2):
             '''combine two frames'''
-            obj1.axis_pointer = axis
-            obj2.axis_pointer = axis
+            obj1._axis_pointer = axis
+            obj2._axis_pointer = axis
 
             obj1.data = obj1.data[:, dim1]
             obj2.data = obj2.data[:, dim2]

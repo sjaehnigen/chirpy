@@ -32,7 +32,7 @@
 
 
 import argparse
-from chirpy.classes import system
+import chirpy as cp
 
 
 def main():
@@ -95,8 +95,17 @@ def main():
             help="Wrap molecules instead of atoms into cell.",
             default=False
             )
+    parser.add_argument(
+            "--verbose",
+            action='store_true',
+            help="Print info and progress.",
+            default=False,
+            )
     parser.add_argument("-f", help="Output file name", default='out.pdb')
     args = parser.parse_args()
+
+    cp.config.set_verbose(args.verbose)
+
     if bool(args.center_coords):
         if args.center_coords[0] == 'True':
             args.center_coords = True
@@ -116,7 +125,7 @@ def main():
     if args.cell_aa_deg is None:
         del args.cell_aa_deg
 
-    _load = system.Molecule(**vars(args), fmt=i_fmt)
+    _load = cp.classes.system.Molecule(**vars(args), fmt=i_fmt)
     _load.XYZ._check_distances()
 
     # --- keep only coordinates

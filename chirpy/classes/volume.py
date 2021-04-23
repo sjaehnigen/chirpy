@@ -117,7 +117,7 @@ class ScalarField(_CORE):
                                f'angstrom. \'{_a}_au\' is '
                                'deprecated and should no longer be '
                                f'used; use \'{_a}_aa\' instead.',
-                               FutureWarning, stacklevel=2)
+                               FutureWarning, stacklevel=3)
                 setattr(self, _a+'_aa',
                         getattr(self, _a+'_au')*constants.l_au2aa)
                 delattr(self, _a+'_au')

@@ -258,39 +258,14 @@ class MolecularCrystal(_BoxObject):
 
     def propagate(self, frame, multiply=(1, 1, 1), priority=(0, 1, 2)):
         '''Convolute FRAME object with unitcell.'''
-        multiply = _np.array(multiply)
+        frame.cell_aa_deg = self.cell_aa_deg
+        frame.repeat(multiply, priority)
 
-        cart_vec_aa = _get_cell_vec(self.cell_aa_deg,
-                                    n_fields=3,
-                                    priority=priority)
-        frame.axis_pointer = -2
-        new = _copy.deepcopy(frame)
-        for iz, z in enumerate(multiply):
-            tmp = _copy.deepcopy(new)
-            for iiz in range(z-1):
-                tmp.data[:, :3] += cart_vec_aa[None, iz]
-                new += tmp
-
-        # ToDo: for modes (should be possible from FRAME object)
-        # elif hasattr(data, 'eival_cgs'):
-        #     cart_vec_aa = _get_cell_vec(self.cell_aa_deg,
-        #                                 n_fields=3,
-        #                                 priority=priority)
-        #     new = _copy.deepcopy(data)
-        #     for iz, z in enumerate(multiply):
-        #         tmp = _copy.deepcopy(new)
-        #         for iiz in range(z-1):
-        #             tmp.pos_au[:, :] += cart_vec_aa[_np.newaxis, iz] *\
-        #                                 constants.l_aa2au
-        #             new += tmp
-        #    new._sort()
-        new.cell_aa_deg[:3] *= multiply
-
-        return new
+        return frame
 
     def create(self, verbose=True, **kwargs):
         _SC = self.members[0][1]
-        _SC.axis_pointer = -2
+        _SC._axis_pointer = -2
         # _mol = 0
         # mol_map = [_mol] * len(_SC.symbols)
         for _i in range(self.members[0][0]-1):

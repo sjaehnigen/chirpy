@@ -67,7 +67,7 @@ from ..physics.spectroscopy import absorption_from_transition_moment as \
 
 from ..mathematics import algebra as _algebra
 
-# NB: data is accessed from behind (axis_pointer):
+# NB: data is accessed from behind (_axis_pointer):
 #   frame is (N,X)
 #   trajectory is (F,N,X),
 #   list of modes is (M,F,N,X)
@@ -88,7 +88,7 @@ class _FRAME(_CORE):
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
     def _sync_class(self):
-        self.axis_pointer = -2
+        self._axis_pointer = -2
 
         if not isinstance(self.symbols, tuple):
             raise TypeError('Expected tuple for symbols attribute. '
@@ -109,8 +109,8 @@ class _FRAME(_CORE):
     def __add__(self, other):
         new = _copy.deepcopy(self)
         new.data = _np.concatenate((self.data, other.data),
-                                   axis=self.axis_pointer)
-        _l = new._labels[self.axis_pointer]
+                                   axis=self._axis_pointer)
+        _l = new._labels[self._axis_pointer]
         if _l is not None:
             setattr(new, _l, getattr(self, _l) + getattr(other, _l))
 
@@ -126,7 +126,7 @@ class _FRAME(_CORE):
         return new
 
     def tail(self, n, **kwargs):
-        axis = kwargs.get("axis", self.axis_pointer)
+        axis = kwargs.get("axis", self._axis_pointer)
         new = _copy.deepcopy(self)
         new.data = self.data.swapaxes(axis, 0)[-n:].swapaxes(0, axis)
         try:
@@ -231,6 +231,37 @@ class _FRAME(_CORE):
             self.__dict__.update(_new.__dict__)
             self._sync_class()
 
+    def repeat(self, times, priority=(0, 1, 2)):
+        '''Propagate kinds using cell tensor, duplicate if cell is not defined.
+           times ... integer or tuple of integers for each Cartesian dimension
+           priority ... (see chirpy.topology.mapping.get_cell_vec)
+           '''
+        if isinstance(times, int):
+            times = 3 * (times,)
+        elif not isinstance(times, tuple):
+            raise TypeError('expected integer or tuple for times argument')
+        times = _np.array(times)
+        self._axis_pointer = -2
+        new = _copy.deepcopy(self)
+
+        try:
+            cell_vec_aa = mapping.get_cell_vec(self.cell_aa_deg,
+                                               n_fields=3,
+                                               priority=priority)
+            new.cell_aa_deg[:3] *= times
+        except AttributeError:
+            cell_vec_aa = _np.zeros((3, 3))
+
+        for iz, z in enumerate(times):
+            tmp = _copy.deepcopy(new)
+            for iiz in range(z-1):
+                tmp.data[:, :3] += cell_vec_aa[None, iz]
+                new += tmp
+
+        self.__dict__.update(new.__dict__)
+        self._sync_class()
+        return self
+
     @staticmethod
     def map_frame(obj1, obj2):
         '''obj1, obj2 ... Frame objects.
@@ -296,7 +327,7 @@ class _TRAJECTORY(_FRAME):
                              'comments attribute!'
                              '{} {}'.format(self.data.shape,
                                             self.comments))
-        self.axis_pointer = -2
+        self._axis_pointer = -2
 
 
 class _MODES(_FRAME):
@@ -312,7 +343,7 @@ class _MODES(_FRAME):
         if self.n_modes != len(self.comments):
             raise ValueError('Data shape inconsistent with '
                              'comments attribute!\n')
-        self.axis_pointer = -2
+        self._axis_pointer = -2
         self.modes = self.data[:, :, 6:9]
         self.eival_cgs = _np.array(self.comments).astype(float)
         self._eivec()
@@ -399,7 +430,7 @@ class _MODES(_FRAME):
                                'Are the eigenvectors orthonormal? '
                                'Try enabling/disabling the --mw flag!',
                                _ChirPyWarning,
-                               stacklevel=2)
+                               stacklevel=3)
 
         test = self.modes.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
@@ -415,7 +446,7 @@ class _MODES(_FRAME):
                            'orthonormal! Please try enabling/disabling '
                            'the --mw flag!',
                            _ChirPyWarning,
-                           stacklevel=2)
+                           stacklevel=3)
             print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
         test = self.eivec.reshape(self.n_modes, self.n_atoms*3)
         a = _np.inner(test, test)
@@ -431,7 +462,7 @@ class _MODES(_FRAME):
                            'orthonormal! Please try enabling/disabling '
                            'the --mw flag!',
                            _ChirPyWarning,
-                           stacklevel=2)
+                           stacklevel=3)
             print(_np.amax(_np.abs(a[6:, 6:]-_np.identity(self.n_modes-6))))
         _np.set_printoptions(precision=8)
 
@@ -741,7 +772,7 @@ class _XYZ():
                        ])) != '':
                 _warnings.warn(f'{key} different in file and argument '
                                '(e.g., from topology)\n' + _diff,
-                               _ChirPyWarning, stacklevel=2)
+                               _ChirPyWarning, stacklevel=4)
 
         self.cell_aa_deg = kwargs.get('cell_aa_deg', f_cell_aa_deg)
         if self.cell_aa_deg is None:
@@ -750,7 +781,11 @@ class _XYZ():
             _check_file_vs_argument('cell', f_cell_aa_deg, self.cell_aa_deg)
 
         self.symbols = kwargs.get('symbols', tuple(symbols))
-        _check_file_vs_argument('symbols', symbols, self.symbols)
+        try:
+            int(symbols[0])
+        except (ValueError, TypeError):
+            # --- check only if file contains proper symbols
+            _check_file_vs_argument('symbols', symbols, self.symbols)
 
         self.comments = kwargs.get('comments', comments)
         self.data = data
@@ -844,7 +879,7 @@ class _XYZ():
         except KeyError:
             _warnings.warn('Could not find masses for all elements! '
                            'Centre of mass cannot be used.',
-                           _ChirPyWarning, stacklevel=2)
+                           _ChirPyWarning, stacklevel=3)
         self._pos_aa()
         self._vel_au()
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
@@ -966,7 +1001,7 @@ class _XYZ():
             _ref = mapping.cowt(self.pos_aa,
                                 wt,
                                 subset=self._centered_coords,
-                                axis=self.axis_pointer)
+                                axis=self._axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
 
     def center_coordinates(self, selection=None, weight='mass', wrap=False):
@@ -1000,7 +1035,7 @@ class _XYZ():
 
         _ref = mapping.cowt(_p,
                             wt[selection],
-                            axis=self.axis_pointer)
+                            axis=self._axis_pointer)
 
         self.center_position(_ref, self.cell_aa_deg)
 
@@ -1104,7 +1139,7 @@ class _XYZ():
 
         _o = mapping.cowt(_p*constants.l_aa2au,
                           _wt,
-                          axis=self.axis_pointer)
+                          axis=self._axis_pointer)
 
         _AV, _I = motion.angular_momenta(_p*constants.l_aa2au, _v, _wt,
                                          origin=_o, moI=True)
@@ -1310,7 +1345,7 @@ class _MOMENTS():
                 if symbols is None:
                     if numbers is None:
                         numbers = _np.arange(_sh[-2])
-                    symbols = constants.numbers_to_symbols(numbers)
+                    symbols = numbers
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
                 comments = _np.array([kwargs.get('comments',
@@ -1324,7 +1359,7 @@ class _MOMENTS():
             self.cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
 
         comments = list(comments)
-        # --- no magenic moments given (before getting frame)
+        # --- no magnetic moments given (before getting frame)
         if data.shape[-1] == 3:
             _data = _np.zeros(data.shape[:-1] + (6,))
             _data[:, :, :3] += data
@@ -1382,7 +1417,7 @@ class _MOMENTS():
         fmt = kwargs.get('fmt', 'cpmd')
 
         if fmt == 'cpmd':
-            kwargs.update({'symbols': self.symbols})
+            # kwargs.update({'symbols': self.symbols})
             cpmdWriter(fn,
                        getattr(self, attr),
                        write_atoms=False,
@@ -1533,45 +1568,49 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             self._fmt = fmt
 
             if self._fmt == "xyz":
-                self._gen = _xyzIterator(fn, **_extract_keys(
-                                                 kwargs,
-                                                 range=_fr,
-                                                 skip=[],
-                                                 bz2=False,
-                                                 units='default',
-                                                 ))
+                nargs = _extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      bz2=False,
+                                      units='default',
+                                      )
+                self._gen = _xyzIterator(fn, **nargs)
 
             elif self._fmt in ["arc", 'vel', 'tinker']:
                 self._fmt = "tinker"
-                self._gen = _arcIterator(fn, **_extract_keys(
-                                                 kwargs,
-                                                 range=_fr,
-                                                 skip=[],
-                                                 bz2=False,
-                                                 units='default',
-                                                 cell_line=False,
-                                                 ))
+                nargs = _extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      bz2=False,
+                                      units='default',
+                                      cell_line=False,
+                                      )
+                self._gen = _arcIterator(fn, **nargs)
 
             elif self._fmt == "pdb":
+                nargs = {}
                 self._gen = _pdbIterator(fn)  # **kwargs
 
             elif self._fmt == "cpmd" or any([_t in fn for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
                 self._fmt = "cpmd"
-                self._gen = _cpmdIterator(fn, **_extract_keys(
-                                               kwargs,
-                                               range=_fr,
-                                               skip=[],
-                                               bz2=False,
-                                               units='default',
-                                               filetype='TRAJECTORY',
-                                               symbols=cpmd_kinds_from_file(fn)
-                                               ))
+                nargs = _extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      bz2=False,
+                                      units='default',
+                                      filetype='TRAJECTORY',
+                                      symbols=cpmd_kinds_from_file(fn)
+                                      )
+                self._gen = _cpmdIterator(fn, **nargs)
 
             else:
                 raise ValueError('Unknown trajectory format: %s.' % self._fmt)
 
-            self._topology = XYZFrame(fn, **kwargs)
+            self._topology = XYZFrame(fn, **nargs)
 
             # keep kwargs for iterations
             self._kwargs.update(kwargs)
@@ -1719,6 +1758,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'wrap', *args, **kwargs)
 
+    def repeat(self, *args, **kwargs):
+        self._frame.repeat(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'repeat', *args, **kwargs)
+
     def split(self, *args, **kwargs):
         '''split is faster with fully loaded trajectory'''
         if 'select' not in kwargs:
@@ -1851,6 +1895,11 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         self._frame.center_position(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'center_position', *args, **kwargs)
+
+    def repeat(self, *args, **kwargs):
+        self._frame.repeat(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'repeat', *args, **kwargs)
 
 
 class _XYZTrajectory(_XYZ, _TRAJECTORY):

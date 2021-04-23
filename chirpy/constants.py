@@ -299,7 +299,7 @@ def _get_property(kinds, key, fmt=None):
                 _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
                                'Proceed with care!',
                                config.ChirPyWarning,
-                               stacklevel=2)
+                               stacklevel=3)
             except (IndexError, KeyError, AttributeError, TypeError):
                 _r = None
         if fmt is not None:
@@ -308,11 +308,11 @@ def _get_property(kinds, key, fmt=None):
             pr.append(_r)
     if config.__verbose__:
         _warnings.warn(f'Got {key} of {kinds}: {pr}',
-                       config.ChirPyWarning, stacklevel=2)
+                       config.ChirPyWarning, stacklevel=3)
     if None in pr:
         [_warnings.warn(f'Could not find {key} of {kinds[_ipr]} (id {_ipr}).',
                         config.ChirPyWarning,
-                        stacklevel=2)
+                        stacklevel=4)
          for _ipr, _pr in enumerate(pr) if _pr is None]
 
     return pr

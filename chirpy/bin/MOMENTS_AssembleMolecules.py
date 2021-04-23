@@ -151,7 +151,7 @@ def main():
                             fmt=args.EC_format,
                             range=args.range,
                             units=args.EC_units,
-                            fn_topo=args.TOPOLOGY,
+                            # fn_topo=args.TOPOLOGY,
                             )
         _trajectory += (WC,)
 

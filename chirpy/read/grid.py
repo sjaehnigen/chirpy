@@ -73,7 +73,7 @@ def _cube(frame, **kwargs):
     try:
         data = np.array(data).reshape(n_x, n_y, n_z).astype(float)
     except ValueError:
-        raise ValueError('Tried to read broken or incomplete file!')
+        raise ValueError('Tried to read broken or incomplete file.')
 
     return data, origin_au*constants.l_au2aa, cell_vec_au*constants.l_au2aa, \
         pos_au*constants.l_au2aa, numbers, comments

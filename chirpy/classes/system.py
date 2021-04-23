@@ -110,7 +110,7 @@ class _SYSTEM(_CORE):
                                        ' does not represent molecule '
                                        f'{self.XYZ._fn} in {_k}!',
                                        _ChirPyWarning,
-                                       stacklevel=2)
+                                       stacklevel=3)
                         print(self._topo[_k])
                         print(_v)
 
@@ -244,7 +244,7 @@ class _SYSTEM(_CORE):
         if fmt == 'pdb':
             if self.mol_map is None:
                 _warnings.warn('Could not find mol_map.',
-                               _ChirPyWarning, stacklevel=2)
+                               _ChirPyWarning, stacklevel=3)
                 self.mol_map = _np.zeros(self.XYZ.n_atoms).astype(int)
             self.clean_residues()
             nargs = {_s: getattr(self, _s)
