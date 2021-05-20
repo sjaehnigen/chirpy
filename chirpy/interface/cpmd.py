@@ -248,7 +248,7 @@ def cpmd_kinds_from_file(fn):
     # warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
     #               _ChirPyWarning,
     #               stacklevel=2)
-    with _open(fn, 'r') as _f:
+    with _open(fn, 'r', bz2=fn.split('.')[-1] == 'bz2') as _f:
         _i = 1
         _fr = _f.readline().strip().split()[0]
         try:

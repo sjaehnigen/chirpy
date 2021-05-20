@@ -1800,7 +1800,8 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             _fr = kwargs.get('range', (0, 1, float('inf')))
 
             # self._topology = XYZFrame(fn, **kwargs)
-            if self._fmt == "cpmd" or fn in ['MOL', 'MOMENTS']:
+            if self._fmt == "cpmd" or any(_t in fn
+                                          for _t in ['MOL', 'MOMENTS']):
                 self._fmt = "cpmd"
                 self._gen = _cpmdIterator(fn, **_extract_keys(
                                            kwargs,
@@ -1813,7 +1814,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                                            ))
 
             else:
-                raise ValueError('Unknown format: %s.' % self._fmt)
+                raise ValueError('Unknown format: %s' % self._fmt)
 
         elif len(args) == 3:
             if kwargs.pop('fmt', None) != "tinker":
