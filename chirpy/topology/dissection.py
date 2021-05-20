@@ -36,7 +36,7 @@ import copy
 from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
     detect_lattice, neighbour_matrix, get_cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..constants import detect_element
+from ..constants import detect_element, symbols_to_rvdw
 
 
 def fermi_cutoff_function(distance, R_cutoff, D):
@@ -99,6 +99,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
         MAX = _cell[:3]
         MIN = np.zeros_like(MAX)
         _n_b = tuple((cell_aa_deg[:3] / 12).astype(int) + 1)
+        # _n_b = tuple((cell_aa_deg[:3] / max(symbols_to_rvdw(symbols)) / 0.02).astype(int) + 1)
     else:
         _cell = None
         MIN = tuple([np.amin(_ip) for _ip in np.moveaxis(_p, -1, 0)])
@@ -138,7 +139,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
         pair_list += [tuple(_ind2[_l]) for _l in np.argwhere(
                            neigh_map[noh[_ind]][:, noh[_ind]] == 1)]
 
-    # --- This is a little fussy after various changes and methodology updates
+    # --- This is a little fuzzy after various changes and methodology updates
 
     # pair_list = [tuple(_i) for _i in np.unique(np.sort(pair_list, axis=-1),
     #                                             axis=0)]

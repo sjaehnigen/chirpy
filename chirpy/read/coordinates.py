@@ -312,7 +312,7 @@ def pdbIterator(FN):
         resns = u.atoms.resnames
         resids = u.atoms.resids
         names = tuple(u.atoms.names)
-        symbols = tuple(u.atoms.types)
+        symbols = tuple([_t.title() for _t in u.atoms.types])
         cell_aa_deg = u.dimensions
         title = u.trajectory.title
         if np.prod(cell_aa_deg) == 0.0:

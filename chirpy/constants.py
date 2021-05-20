@@ -248,6 +248,7 @@ _rvdw_list = [
     ('Ar', 188.0),
     # K
     ('Ca', 231.0),
+    ('I',  198.0),
     ('X',    0.0),
     ]
 for _z, _rvdw in _rvdw_list:
@@ -306,9 +307,9 @@ def _get_property(kinds, key, fmt=None):
             pr.append(fmt(_r))
         else:
             pr.append(_r)
-    if config.__verbose__:
-        _warnings.warn(f'Got {key} of {kinds}: {pr}',
-                       config.ChirPyWarning, stacklevel=3)
+    # if config.__verbose__:
+    #     _warnings.warn(f'Got {key} of {kinds}: {pr}',
+    #                    config.ChirPyWarning, stacklevel=3)
     if None in pr:
         [_warnings.warn(f'Could not find {key} of {kinds[_ipr]} (id {_ipr}).',
                         config.ChirPyWarning,

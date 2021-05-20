@@ -241,6 +241,7 @@ def main():
             warnings.warn('Using centering/wrapping and aligning in one call '
                           'may not yield the desired result (use two '
                           'consecutive calls if this is the case).',
+                          config.ChirPyWarning,
                           stacklevel=2)
 
     skip = largs.pop('mask_frames')

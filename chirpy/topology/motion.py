@@ -156,13 +156,13 @@ def hydrogen_bond_lifetime_analysis(positions, donor, acceptor, hydrogen,
     # --- generate HB occurence trajectory (parallel run)
     # H = PALARRAY(_func0, positions).run()
     H = PALARRAY(_func0, positions,
-                  donor=donor,
-                  acceptor=acceptor,
-                  hydrogen=hydrogen,
-                  dist_crit=dist_crit,
-                  angle_crit=angle_crit,
-                  cell=cell
-                  ).run()
+                 donor=donor,
+                 acceptor=acceptor,
+                 hydrogen=hydrogen,
+                 dist_crit=dist_crit,
+                 angle_crit=angle_crit,
+                 cell=cell
+                 ).run()
     # print('Done with HB occurrence...')
 
     n_frames, n_donors, n_acceptors = H.shape

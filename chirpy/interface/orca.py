@@ -33,7 +33,7 @@
 import numpy as np
 import warnings
 
-from .. import constants
+from .. import constants, config
 
 
 def orcaReader(fn):
@@ -68,7 +68,7 @@ def read_hessian_file(fn):
     n_freqs = int(sec_freqs[0])
     warnings.warn('ORCA interface: Found %d vibrational frequencies.'
                   % n_freqs,
-                  stacklevel=2)
+                  config.ChirPyWarning, stacklevel=2)
     omega_cgs = np.array([float(_l.split()[1])
                          for _l in sec_freqs[1: n_freqs+1]])
 

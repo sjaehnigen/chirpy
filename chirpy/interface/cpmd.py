@@ -537,9 +537,6 @@ class CPMDinput():
 
         @classmethod
         def from_data(cls, symbols, pos_aa, pp='MT_BLYP KLEINMAN-BYLANDER'):
-            warnings.warn('version 0.17.1 and later require position input in '
-                          'angstrom!',
-                          FutureWarning, stacklevel=2)
             pos_au = pos_aa * constants.l_aa2au
             elements = sorted(set(symbols))
             symbols = np.array(symbols)

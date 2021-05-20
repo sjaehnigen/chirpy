@@ -31,8 +31,9 @@
 
 import sys
 import numpy as np
+import warnings
 
-from .. import constants
+from .. import constants, config
 from ..topology import mapping
 import copy
 
@@ -46,8 +47,9 @@ def g09Reader(filename, run=1):
     if archives == 0:
         raise ValueError('found unnormal termination of Gaussian')
     if archives != run:
-        raise ValueError('found %d Gaussian runs instead of %d in file %s'
-                         % (archives, run, filename))
+        warnings.warn('found %d Gaussian runs instead of %d in file %s'
+                      % (archives, run, filename),
+                      config.ChirPyWarning, stacklevel=2)
     positions = [0]
     for i in range(run):
         tmp = inbuffer.index('Normal termination of Gaussian', positions[-1]+1)

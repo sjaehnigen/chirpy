@@ -34,7 +34,7 @@ import numpy as np
 import warnings
 import copy
 
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from matplotlib.ticker import MultipleLocator  # FormatStrFormatter
 
 from ..classes.core import AttrDict
 
@@ -142,7 +142,7 @@ def set_mutliple_y_axes(ax, sep, n_axes,
     for _i, _m, _M, _o in zip(range(n_axes), minor, major, offset):
         ax.yaxis.set_major_locator(MultipleLocator(_M[2]))
         ax.yaxis.set_minor_locator(MultipleLocator(_m[2]))
-        ax.yaxis.set_major_formatter(FormatStrFormatter(fmt))
+        # ax.yaxis.set_major_formatter(FormatStrFormatter(fmt))
         ax.yaxis.set_minor_locator(MultipleLocator(_m[-1]))
 
         # _minor_base = np.linspace(_m[0], _m[1], int((_m[1]-_m[0])/_m[2])+1)
@@ -151,7 +151,7 @@ def set_mutliple_y_axes(ax, sep, n_axes,
         _major_base = np.round(np.linspace(*_M), decimals=6)
         _minor_tick_rel_pos += (_minor_base - _i * sep + _o).tolist()
         _major_tick_rel_pos += (_major_base - _i * sep + _o).tolist()
-        _major_tick_labels += _major_base.tolist()
+        _major_tick_labels += [fmt % _b for _b in _major_base]
 
     ax.set_yticks(_minor_tick_rel_pos, minor=True)
     ax.set_yticks(_major_tick_rel_pos, minor=False)

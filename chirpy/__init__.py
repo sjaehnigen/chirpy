@@ -50,6 +50,7 @@ from . import write
 # --- load important sub-modules
 from .classes import *
 from .create import *
+from .physics import spectroscopy
 
 if __name__ == '__main__':
     _mp.set_start_method('spawn')

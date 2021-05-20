@@ -126,7 +126,7 @@ def main():
         del args.cell_aa_deg
 
     _load = cp.classes.system.Molecule(**vars(args), fmt=i_fmt)
-    _load.XYZ._check_distances()
+    # _load.XYZ._check_distances()
 
     # --- keep only coordinates
     if hasattr(_load, 'Modes'):
