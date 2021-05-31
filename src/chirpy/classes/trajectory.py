@@ -69,7 +69,7 @@ from ..mathematics import algebra as _algebra
 # NB: data is accessed from behind (_axis_pointer):
 #   frame is (N,X)
 #   trajectory is (F,N,X),
-#   list of modes is (M,F,N,X)
+#   FUTURE: list of modes is (M,F,N,X)
 
 
 class _FRAME(_CORE):
@@ -722,7 +722,12 @@ class _XYZ():
 
         if self._type == 'modes':
             if 'omega_cgs' not in locals():
-                raise NameError('Could not retrieve modes data from input!')
+                try:
+                    omega_cgs = kwargs.pop('omega_cgs')
+                except KeyError:
+                    _warnings.warn('Could not retrieve modes data from input.',
+                                   _ChirPyWarning, stacklevel=2)
+                    raise
             self.eival_cgs = omega_cgs
             comments = _np.array(omega_cgs).astype(str)
 
