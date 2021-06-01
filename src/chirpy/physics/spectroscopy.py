@@ -115,7 +115,7 @@ def power_from_tcf(velocities_au, weights=1.0,
        window_length_au ... time length of the window function used with the
                             time correlation function in a.u.
 
-       The output is averaged over the no. of atoms/species.
+       The output is by default averaged over the no. of atoms/species.
        Returns dictionary with (all in a.u.):
          "f"             - discrete sample frequencies
          "power"         - spectral density (FT TCF) in <energy>
