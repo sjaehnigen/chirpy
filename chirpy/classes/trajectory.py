@@ -967,13 +967,13 @@ class _XYZ():
         else:
             raise ValueError(f'unknown weight type {weights}')
 
-        algorithm = 'connectivity'
-        if not join_molecules:
-            algorithm = None
-
         if mask is not None:
-            self.wrap_molecules(mask, weights=weights, algorithm=algorithm)
-            cowt_aa = self.mol_com_aa
+            if not join_molecules:
+                cowt_aa = mapping.cowt(self.pos_aa, w, mask=mask)
+            else:
+                algorithm = 'connectivity'
+                self.wrap_molecules(mask, weights=weights, algorithm=algorithm)
+                cowt_aa = self.mol_com_aa
         else:
             self.wrap()
             cowt_aa = mapping.cowt(self.pos_aa, w)
@@ -1790,6 +1790,16 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._frame.wrap(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'wrap', *args, **kwargs)
+
+    def get_center_of_mass(self, *args, **kwargs):
+        self._frame.get_center_of_mass(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'get_center_of_mass', *args, **kwargs)
+
+    def get_center_of_geometry(self, *args, **kwargs):
+        self._frame.get_center_of_geometry(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'get_center_of_geometry', *args, **kwargs)
 
     def repeat(self, *args, **kwargs):
         self._frame.repeat(*args, **kwargs)

@@ -83,18 +83,27 @@ def dec(prop, indices, n_ind=None):
             ]
 
 
-def cowt(pos, wt, axis=-2, subset=slice(None)):
+def cowt(pos, wt, axis=-2, mask=None, subset=slice(None)):
     '''Calculate centre of weight, consider periodic boundaries before
-       calling this method.'''
+       calling this method.
+       Optional mask with (0-based) indices of units for subset.'''
 
-    _p = np.moveaxis(pos, axis, 0)
+    _pos = np.moveaxis(pos, axis, 0)
     if not hasattr(wt, '__len__'):
-        _wt = np.ones(len(_p)) * wt
+        _wt = np.ones(len(_pos)) * wt
     else:
         _wt = np.array(wt)
-    _slc = (subset,) + (len(_p.shape)-1) * (None,)
 
-    return np.sum(_p[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
+    if mask is not None:
+        _dwt = dec(_wt[subset], mask)
+        _dpos = dec(_pos[subset], mask)
+        return np.moveaxis(np.array([cowt(_p, _w, axis=0)
+                                     for _w, _p in zip(_dwt, _dpos)]),
+                           0, axis)
+
+    _slc = (subset,) + (len(_pos.shape)-1) * (None,)
+
+    return np.sum(_pos[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
 
 
 def get_cell_l_deg(cell_vec, multiply=(1, 1, 1)):
@@ -421,10 +430,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
         else:
             _p_ref = _p
 
-        if algorithm is None:
-            # --- take mol positions as is
-            mol_com_aa.append(cowt(_p, _w, axis=0))
-        elif algorithm == 'connectivity':
+        if algorithm == 'connectivity':
             # --- ToDo: do not always recalculate D and N (store it in object)
             N, D, B = neighbour_matrix(_p_ref, _s,
                                        cell_aa_deg=cell_aa_deg,
