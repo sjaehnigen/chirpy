@@ -109,7 +109,7 @@ t_au2fs = t_au / femto
 t_fs2au = 1 / t_au2fs
 v_au2si = 1E+5 * l_au2aa / t_au2fs
 v_si2au = 1 / v_au2si
-v_au2aaperfs = l_au2aa / t_au2fs
+v_au2aa_fs = l_au2aa / t_au2fs
 p_si2au = 1 / e_si / a0_si
 p_au2si = 1 / p_si2au
 
@@ -151,15 +151,22 @@ def E_Hz2nm(x):
 #     Calculated spectra are given as specific absorption coefficient according
 #     to Beer-Lambert law with general unit 1/(amount_per_volume * distance)
 #     (for continuous or Lorentzian-broadened spectra and TCF calculations)
-Abs_au2si_per_mol = avog * l_au**2
-Abs_au2L_per_cm_mol = Abs_au2si_per_mol * centi / dezi**3
+Abs_au2si_mol = avog * l_au**2
+Abs_au2L_cm_mol = Abs_au2si_mol * centi / dezi**3
 
 #     Integrated absorption coefficient with general units
 #     frequency-based:   1/(amount_per_volume * distance * time) or
 #     wavenumber-based:  distance/amount
 #     (for line spectra and static calculations)
-IntAbs_au2si_per_mol = Abs_au2si_per_mol / t_au
-IntAbs_au2km_per_mol = IntAbs_au2si_per_mol / c_si / kilo
+IntAbs_au2si_mol = Abs_au2si_mol / t_au
+IntAbs_au2km_mol = IntAbs_au2si_mol / c_si / kilo
+
+
+# --- ToDo: backward compatibility
+Abs_au2L_per_cm_mol = Abs_au2L_cm_mol
+Abs_au2si_per_mol = Abs_au2si_mol
+IntAbs_au2si_per_mol = IntAbs_au2si_mol
+IntAbs_au2km_per_mol = IntAbs_au2km_mol
 
 
 def current_current_prefactor_au(T_K, n=1):
@@ -358,19 +365,24 @@ def get_conversion_factor(name, unit):
             'velocity': {
                 'au': 1.,
                 'aa': l_aa2au,  # time in a.u.
-                'aaperfs': 1/v_au2aaperfs,
-                'aaperps': 1/v_au2aaperfs/1000,
+                'aa_fs': 1/v_au2aa_fs,
+                'aa_ps': 1/v_au2aa_fs/1000,
                 'si': v_si2au
                 },
             'electric_dipole': {
                 'au': 1.,
                 'si': p_si2au,
                 'debye': p_debye2au,
+                'eaa': l_aa2au,  # electron-Ang
                 },
             'current_dipole': {
                 'au': 1.,
                 # 'si': p_si2au,
-                'debyeperps': p_debye2au/t_fs2au/1000,
+                'debye_ps': p_debye2au/t_fs2au/1000,
+                },
+            'magnetic_dipole': {
+                'au': 1.,
+                'debyeaa_ps': p_debye2au/t_fs2au/1000 * l_aa2au,
                 },
             # 'moment_v': {  # "velocity form"
             #     'au': 1.

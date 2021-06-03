@@ -52,14 +52,14 @@ def _xyz(frame, convert=1, n_lines=1):
     _atomnumber = int(next(frame).strip())
 
     if n_lines != _atomnumber + 2:
-        raise ValueError('inconsistent XYZ file')
+        raise ValueError('XYZ file inconsistent')
 
     comment = next(frame).rstrip('\n')
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 
     if len(data) != n_lines - 2:
-        raise ValueError('broken or incomplete file')
+        raise ValueError('XYZ file broken or incomplete')
 
     return np.array(data).astype(float)*convert, symbols, comment
 
@@ -76,7 +76,7 @@ def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
         data.append(_l)
 
     if len(data) != n_lines:
-        raise ValueError('Tried to read broken or incomplete file!')
+        raise ValueError('CPMD file broken or incomplete')
 
     if 'GEOMETRY' in filetype:
         _data = np.array(data).astype(float)
@@ -90,6 +90,38 @@ def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
     return _data * convert
 
 
+def _free(frame, columns='iddd', convert=1, n_lines=1):
+    '''Kernel for processing free format frame.
+       Column support: i s m d'''
+
+    def _parse_columns(line):
+        content = {}
+        # --- ToDO: is this slowing down the generator?
+        for _c, _l in zip(columns, line.strip().split()):
+            if _c == 'd':
+                if 'd' not in content:  # important for keeping column order
+                    content['d'] = []
+                content[_c].append(float(_l))  # FortranF?
+            else:
+                content[_c] = _l
+        content['d'] = np.array(content['d']) * convert
+        return tuple(content.values())
+
+    # --- generator needs at least one call of next() to work properly
+    data = []
+    data.append(_parse_columns(next(frame)))
+
+    for _l in frame:
+        data.append(_parse_columns(_l))
+
+    if len(data) != n_lines:
+        raise ValueError('File broken or incomplete')
+
+    _return = tuple(zip(*data))
+
+    return _return
+
+
 def _arc(frame, convert=1, n_lines=1, cell_line=False):
     '''Kernel for processing arc frame.'''
 
@@ -101,13 +133,14 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
         cell_aa_deg = list(map(float, next(frame).strip().split()))
 
     if n_lines != _atomnumber + 1 + CELL:
-        raise ValueError('inconsistent ARC file')
+        raise ValueError('ARC file inconsistent')
 
     # --- FORTRAN conversion of numbers; we read single items, choosing broad
     #     range hence.
     _ff = ff.FortranRecordReader('(F160.16)')
     _split = (_l.strip().split() for _l in frame)
 
+    # --- ToDo: these are not the atomic numbers but ids
     numbers, symbols, data, types, connectivity =\
         zip(*[(int(_l[0]),
               _l[1],
@@ -119,7 +152,7 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
     types = tuple([_it for _t in types for _it in _t])
 
     if len(data) != n_lines - 1 - CELL:
-        raise ValueError('broken or incomplete file')
+        raise ValueError('ARC file broken or incomplete')
 
     _return = np.array(data).astype(float)*convert, symbols, numbers, types,\
         connectivity, comment
@@ -137,6 +170,8 @@ def _convert(units):
                             for _i, _j in units])
     elif isinstance(units, tuple):
         convert = constants.get_conversion_factor(*units)
+    elif isinstance(units, (float, int)):
+        convert = float(units)
     else:
         raise ValueError('invalid units')
     return convert
@@ -225,38 +260,55 @@ def arcIterator(FN, **kwargs):
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
     elif FN.split('.')[-1] == 'vel':
-        kwargs['convert'] = _convert(3*[('velocity', 'aaperps')])
+        kwargs['convert'] = _convert(3*[('velocity', 'aa_ps')])
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)
 
 
-def ifreeIterator(FN, **kwargs):
-    '''Iterator for free data of the format: i(frame) x0 x1 x2 ... (coordinate)
-       Expects units argument to be set with one item per coloumn (except i).
-       symbols specifies number of lines per frame (auto-guess otherwise)
+def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
+    '''Iterator for free data of the format:
+         i(frame) [m s ... (additional columns)] x0 x1 x2 ... (coordinate)
+
+       columns: custom format (one letter per column)
+         i ... frame
+         d ... data
+         s ... symbol
+         m ... molecule id
+         z ... atomic number (NOT IMPLEMENTED)
+         n ... name (NOT IMPLEMENTED)
+         r ... residue index (NOT IMPLEMENTED)
+         t ... type (NOT IMPLEMENTED)
+       nlines: number of lines per frame
+         if None auto-guessed if frame (\'i\') is in the column set
+       units: conversion set with one item per data coloumn (\'d\')
        '''
-    # --- tweaking cpmd kernel
-    _kernel = _cpmd
-    kwargs['filetype'] = 'MOMENTS'
+    _kernel = _free
+    kwargs['columns'] = columns
+    if 'd' not in columns:
+        raise ValueError('freeIterator excepts at least one data column')
 
     try:
-        kwargs['convert'] = _convert(kwargs.pop('units'))
+        kwargs['convert'] = _convert(units)
     except KeyError:
-        raise KeyError('ifreeIterator expects units argument to be set '
-                       'with one item per coloumn (except i)')
+        raise KeyError('freeIterator expects units argument to be set '
+                       'with one item per data column')
 
-    if (symbols := kwargs.pop('symbols', None)) is None:
-        with _open(FN, 'r') as _f:
-            _nlines = 1
-            _fr = _f.readline().strip().split()[0]
-            try:
-                while _f.readline().strip().split()[0] == _fr:
-                    _nlines += 1
-            except IndexError:
-                pass
-    else:
-        _nlines = len([_k for _k in symbols])  # type-independent
+    # --- auto guess nlines
+    if (_nlines := nlines) is None:
+        _nlines = 1
+        try:
+            _icol = columns.index('i')
+            with _open(FN, 'r') as _f:
+                _fr = _f.readline().strip().split()[_icol]
+                try:
+                    while _f.readline().strip().split()[_icol] == _fr:
+                        _nlines += 1
+                except IndexError:
+                    pass
+        except ValueError:
+            # -- ToDo: add more options from other columns (m surtout)
+            pass
 
     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
                     maxsize=20, chunksize=4)

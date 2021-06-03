@@ -170,7 +170,7 @@ def main():
     elif args.property == 'velocities':
         traj = trajectory.XYZFrame(args.fn, **largs)
         paths = vmd.VMDPaths.from_vector(traj.pos_aa,
-                                         traj.vel_au*constants.v_au2aaperfs,
+                                         traj.vel_au*constants.v_au2aa_fs,
                                          scale=args.scale)
 
     elif args.property == 'mode':
@@ -183,13 +183,13 @@ def main():
     elif args.property == 'moments_c':
         traj = trajectory.MOMENTSFrame(args.fn, **largs)
         paths = vmd.VMDPaths.from_vector(traj.pos_aa,
-                                         traj.c_au*constants.v_au2aaperfs,
+                                         traj.c_au*constants.v_au2aa_fs,
                                          scale=args.scale)
 
     elif args.property == 'moments_m':
         traj = trajectory.MOMENTSFrame(args.fn, **largs)
         paths = vmd.VMDPaths.from_vector(traj.pos_aa,
-                                         traj.m_au*constants.v_au2aaperfs,
+                                         traj.m_au*constants.v_au2aa_fs,
                                          scale=args.scale)
 
     elif args.property == 'vectorfield':

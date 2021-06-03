@@ -574,7 +574,7 @@ class VectorField(ScalarField):
 
         # --- Todo: Centralise
         # if unit_vel == 'au':
-        _uv = constants.v_au2aaperfs
+        _uv = constants.v_au2aa_fs
         # else:
         #     raise NotImplementedError('Does not support velocity unit other'
         #                              'than \'au\'')
