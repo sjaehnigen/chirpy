@@ -514,7 +514,7 @@ class _XYZ():
         align_coords = kwargs.pop('align_coords', False)
         center_coords = kwargs.pop('center_coords', False)
         wrap = kwargs.get('wrap', False)
-        weight = kwargs.get('weight', 'mass')
+        weights = kwargs.get('weights', 'masses')
         # wrap_molecules = kwargs.get('wrap_molecules', False)
         f_cell_aa_deg = None
         names = kwargs.get('names')  # atom names
@@ -807,7 +807,7 @@ class _XYZ():
             if isinstance(center_coords, list):
                 selection = center_coords
             self.center_coordinates(selection=selection,
-                                    weight=weight, wrap=wrap)
+                                    weights=weights, wrap=wrap)
 
         if wrap:
             self.wrap()
@@ -832,7 +832,7 @@ class _XYZ():
                 wrap_molecules = False
             self.align_coordinates(
                            selection=selection,
-                           weight=weight,
+                           weights=weights,
                            align_ref=kwargs.get('align_ref'),
                            force_centering=kwargs.get('force_centering', False)
                            )
@@ -926,10 +926,14 @@ class _XYZ():
         else:
             self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
 
-    def wrap_molecules(self, mol_map, weight='mass', algorithm='connectivity'):
-        w = _np.ones((self.n_atoms))
-        if weight == 'mass':
+    def wrap_molecules(self, mol_map, weights='masses',
+                       algorithm='connectivity'):
+        if weights is None:
+            w = _np.ones((self.n_atoms))
+        elif weights == 'masses':
             w = self.masses_amu
+        else:
+            raise ValueError(f'unknown weight type {weights}')
 
         if self._type == 'trajectory':
             _p, mol_com_aa = mapping.join_molecules(
@@ -954,7 +958,33 @@ class _XYZ():
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
 
-    def align_coordinates(self, selection=None, weight='mass', align_ref=None,
+    def _center_of_weight(self, mask=None, weights=None):
+        if weights is None:
+            w = _np.ones((self.n_atoms))
+        elif weights == 'masses':
+            w = self.masses_amu
+        else:
+            raise ValueError(f'unknown weight type {weights}')
+
+        if mask is not None:
+            self.wrap_molecules(mask, weights=weights)
+            cowt_aa = self.mol_com_aa
+        else:
+            self.wrap()
+            cowt_aa = mapping.cowt(self.pos_aa, w)
+
+        return cowt_aa
+
+    def center_of_mass(self, mask=None):
+        self.com_aa = self._center_of_weight(mask=mask, weights='masses')
+        return self.com_aa
+
+    def center_of_geometry(self, mask=None):
+        self.com_aa = self._center_of_weight(mask=mask, weights=None)
+        return self.com_aa
+
+    def align_coordinates(self, selection=None, weights='masses',
+                          align_ref=None,
                           force_centering=False):
         '''Aligns positions and rotates (but does not correct)
            velocities.
@@ -967,7 +997,7 @@ class _XYZ():
 
         self._aligned_coords = selection
         wt = _np.ones((self.n_atoms))
-        if weight == 'mass':
+        if weights == 'masses':
             wt = self.masses_amu
 
         if self._type == 'frame':
@@ -1004,7 +1034,7 @@ class _XYZ():
                                 axis=self._axis_pointer)
             self.center_position(_ref, self.cell_aa_deg)
 
-    def center_coordinates(self, selection=None, weight='mass', wrap=False):
+    def center_coordinates(self, selection=None, weights='masses', wrap=False):
         if not isinstance(selection, list):
             if selection is None:
                 selection = slice(None)
@@ -1013,7 +1043,7 @@ class _XYZ():
 
         self._centered_coords = selection
         wt = _np.ones((self.n_atoms))
-        if weight == 'mass':
+        if weights == 'masses':
             wt = self.masses_amu
 
         if self._type == 'frame':
@@ -1121,12 +1151,12 @@ class _XYZ():
 
         self._pos_aa(_pos)
 
-    def clean_velocities(self, weights='mass'):
+    def clean_velocities(self, weights='masses'):
         '''Remove spurious linear and angular momenta from trajectory.
            Positions are not changed.
           '''
         wt = _np.ones((self.n_atoms))
-        if weights == 'mass':
+        if weights == 'masses':
             wt = self.masses_amu
 
         _wt = wt

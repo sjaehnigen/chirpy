@@ -67,6 +67,8 @@ def dec(prop, indices, n_ind=None):
         iterator = range(n_ind)
     else:
         iterator = set(indices)
+    if len(prop) != len(indices):
+        raise ValueError('Lenght of index array does not match atom data')
     if isinstance(prop, (tuple, int)):
         return [
             type(prop)([
@@ -426,9 +428,11 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                                        cartesian=True,
                                        return_pbc_bool=True)
             if B.all():  # --- molecule not broken
-                c_aa = cowt(_p_ref, _w, axis=0)
+                # --- frame support
+                c_aa = cowt(_p, _w, axis=0)
                 mol_com_aa.append(c_aa)
                 continue
+            # --- no frame support
             P = np.zeros_like(_p_ref)
             _m_n_atoms = len(P)
             n = np.zeros(_m_n_atoms).astype(bool)

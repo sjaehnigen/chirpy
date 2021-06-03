@@ -84,7 +84,8 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             if (center_mol := kwargs.get('center_molecule')) is not None:
-                self.center_molecule(center_mol, kwargs.get('weight', 'mass'))
+                self.center_molecule(center_mol,
+                                     kwargs.get('weights', 'masses'))
 
             if kwargs.get('clean_residues',
                           False) and self.mol_map is not None:
@@ -129,14 +130,14 @@ class _SYSTEM(_CORE):
                 self._topo = _read_topology_file(self.XYZ._fn)
                 self.mol_map = self._topo['mol_map']
 
-    def center_molecule(self, index, weight='mass'):
+    def center_molecule(self, index, weights='masses'):
         if self.mol_map is None:
             self.define_molecules()
         self.wrap_molecules()
         self.XYZ.center_coordinates(
                 selection=[_is for _is, _i in enumerate(self.mol_map)
                            if _i == index],
-                weight=weight,
+                weights=weights,
                 )
         self.wrap_molecules()
 
