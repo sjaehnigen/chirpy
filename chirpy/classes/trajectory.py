@@ -958,7 +958,8 @@ class _XYZ():
             self._pos_aa(_p)
             self.mol_com_aa = mol_com_aa
 
-    def _center_of_weight(self, mask=None, weights=None):
+    def _get_center_of_weight(self, mask=None, weights=None,
+                              join_molecules=False):
         if weights is None:
             w = _np.ones((self.n_atoms))
         elif weights == 'masses':
@@ -966,8 +967,12 @@ class _XYZ():
         else:
             raise ValueError(f'unknown weight type {weights}')
 
+        algorithm = 'connectivity'
+        if not join_molecules:
+            algorithm = None
+
         if mask is not None:
-            self.wrap_molecules(mask, weights=weights)
+            self.wrap_molecules(mask, weights=weights, algorithm=algorithm)
             cowt_aa = self.mol_com_aa
         else:
             self.wrap()
@@ -975,13 +980,11 @@ class _XYZ():
 
         return cowt_aa
 
-    def center_of_mass(self, mask=None):
-        self.com_aa = self._center_of_weight(mask=mask, weights='masses')
-        return self.com_aa
+    def get_center_of_mass(self, mask=None, join_molecules=True):
+        self.com_aa = self._get_center_of_weight(mask=mask, weights='masses')
 
-    def center_of_geometry(self, mask=None):
-        self.com_aa = self._center_of_weight(mask=mask, weights=None)
-        return self.com_aa
+    def get_center_of_geometry(self, mask=None, join_molecules=True):
+        self.com_aa = self._get_center_of_weight(mask=mask, weights=None)
 
     def align_coordinates(self, selection=None, weights='masses',
                           align_ref=None,
