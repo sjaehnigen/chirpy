@@ -38,7 +38,7 @@ import platform
 
 from .version import version
 
-__pal_n_cores__ = multiprocessing.cpu_count()//2
+__pal_n_cores__ = max(multiprocessing.cpu_count()//2, 1)
 __verbose__ = True
 __os__ = platform.system()
 
