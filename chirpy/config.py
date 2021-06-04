@@ -34,10 +34,13 @@ import importlib
 import warnings
 from IPython import get_ipython
 import multiprocessing
+import platform
+
 from .version import version
 
 __pal_n_cores__ = multiprocessing.cpu_count()//2
 __verbose__ = True
+__os__ = platform.system()
 
 
 class ChirPyWarning(UserWarning):

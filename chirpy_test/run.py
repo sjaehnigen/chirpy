@@ -57,7 +57,8 @@ if __name__ == '__main__':
 
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
 
-    print(f'You are using ChirPy version {cp.version.version}')
+    print(f'You are using ChirPy version {cp.version.version} on '
+          f'{cp.config.__os__}')
     print(70 * '-')
     print('Running TestSuite')
     sys.stdout.flush()

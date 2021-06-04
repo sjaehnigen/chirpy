@@ -34,14 +34,16 @@ import numpy as np
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import warnings
-from concurrent_iterator.process import Producer
 import fortranformat as ff
 
 from .generators import _reader, _open
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 from .. import constants
-from ..config import ChirPyWarning as _ChirPyWarning
+from .. import config
+
+if config.__os__ == 'Linux':
+    from concurrent_iterator.process import Producer
 
 
 # --- kernels
@@ -190,7 +192,7 @@ def xyzIterator(FN, **kwargs):
         _comment = _f.readline().strip()
     if 'CPMD' in _comment or 'GEOMETRY' in FN:
         warnings.warn('It seems as if you are reading an XYZ file generated '
-                      'by CPMD. Check velocity units!', _ChirPyWarning,
+                      'by CPMD. Check velocity units!', config.ChirPyWarning,
                       stacklevel=2)
         if 'units' not in kwargs:
             kwargs['units'] = 3*[('length', 'aa')]+3*[('velocity', 'aa')]
@@ -198,8 +200,11 @@ def xyzIterator(FN, **kwargs):
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -240,8 +245,11 @@ def cpmdIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      3*[('velocity', 'au')])
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def arcIterator(FN, **kwargs):
@@ -262,8 +270,11 @@ def arcIterator(FN, **kwargs):
     elif FN.split('.')[-1] == 'vel':
         kwargs['convert'] = _convert(3*[('velocity', 'aa_ps')])
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
@@ -310,8 +321,11 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
             # -- ToDo: add more options from other columns (m surtout)
             pass
 
-    return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                    maxsize=20, chunksize=4)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 # --- complete readers
 
@@ -369,7 +383,7 @@ def pdbIterator(FN):
         title = u.trajectory.title
         if np.prod(cell_aa_deg) == 0.0:
             warnings.warn('no or invalid cell specified in pdb file',
-                          _ChirPyWarning)
+                          config.ChirPyWarning)
             cell_aa_deg = None
         if len(title) == 0:
             title = None
@@ -451,14 +465,15 @@ def cifReader(fn, fill_unit_cell=True):
             ]).lower()
 
     if _space_group_label is None:
-        warnings.warn('No space group label found in file!', _ChirPyWarning,
+        warnings.warn('No space group label found in file!',
+                      config.ChirPyWarning,
                       stacklevel=2)
 
     elif detect_lattice(cell_aa_deg) != _space_group_label:
         warnings.warn('The given space group and cell parametres do not match!'
                       ' %s != %s' % (_space_group_label,
                                      detect_lattice(cell_aa_deg)),
-                      _ChirPyWarning,
+                      config.ChirPyWarning,
                       stacklevel=2)
 
     _space_group_symop = get_label([
@@ -466,7 +481,8 @@ def cifReader(fn, fill_unit_cell=True):
             '_symmetry_equiv_pos_as_xyz',
             ])
     if _space_group_symop is None:
-        warnings.warn('No symmetry operations found in file!', _ChirPyWarning,
+        warnings.warn('No symmetry operations found in file!',
+                      config.ChirPyWarning,
                       stacklevel=2)
     else:
         _x = _y = _z = []

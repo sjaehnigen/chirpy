@@ -338,7 +338,7 @@ def _spectrum_from_tcf(*args,
         # --- assume non-periodic boundaries
         if pseudo_isolated and cell_au_deg is not None:
             _warnings.warn('imposing non-periodic boundaries around '
-                           f'origini(s) {origin_au}',
+                           f'origin(s) {origin_au}',
                            _ChirPyWarning,
                            stacklevel=2)
 
