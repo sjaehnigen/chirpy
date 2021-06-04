@@ -337,10 +337,10 @@ def _spectrum_from_tcf(*args,
 
         # --- assume non-periodic boundaries
         if pseudo_isolated and cell_au_deg is not None:
-            _warnings.warn('imposing non-periodic boundaries around '
-                           f'origin(s) {origin_au}',
-                           _ChirPyWarning,
-                           stacklevel=2)
+            # _warnings.warn('imposing non-periodic boundaries around '
+            #                f'origin(s) {origin_au}',
+            #                _ChirPyWarning,
+            #                stacklevel=2)
 
             pos = origin_au[:, None] + distance_pbc(origin_au[:, None],
                                                     positions_au,

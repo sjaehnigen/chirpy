@@ -1867,7 +1867,10 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             try:
                 _tmft = None  # to avoid flake warning only
                 [setattr(self, {
-                    "ddip": "_fn_c", "dip": "_fn_d", "magdip": "_fn_m"
+                    "ddip": "_fn_c",
+                    "dip": "_fn_d",
+                    "magdip": "_fn_m",
+                    "magdip_half": "_fn_m",
                     }[(_tmft := _fn.split('.')[-1])],
                     _fn)
                  for _fn in args]
@@ -1880,25 +1883,19 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             def _tinker_moment_container():
                 reference = _np.array(kwargs.pop('gauge_origin_aa', 3*[0.]))
                 for _cur, _mag, _dip in _zip_longest(
-                     # _ifreeIterator(reference positions)
                      _freeIterator(self._fn_c,
                                    units=3*[('current_dipole', 'debye_ps')],
-                                   # units=3*[('current_dipole', 'au')],
                                    **kwargs),
                      _freeIterator(self._fn_m,
                                    units=3*[('magnetic_dipole', 'debyeaa_ps')],
-                                   # units=3*[('magnetic_dipole', 'au')],
                                    **kwargs),
                      _freeIterator(self._fn_d,
                                    units=3*[('electric_dipole', 'debye')],
-                                   # units=3*[('electric_dipole', 'au')],
                                    **kwargs),
                      ):
 
                     # --- use numpy intelligence on shape
                     _pos = _np.ones_like(_cur[_id]) * _np.array(reference)
-                    # print(_cur)
-                    # assert False
                     yield _np.hstack((_pos, _cur[_id], _mag[_id], _dip[_id]))
 
             self._gen = _tinker_moment_container()
