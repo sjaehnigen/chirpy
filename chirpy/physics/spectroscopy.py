@@ -345,6 +345,11 @@ def _spectrum_from_tcf(*args,
             pos = origin_au[:, None] + distance_pbc(origin_au[:, None],
                                                     positions_au,
                                                     cell_au_deg)
+            # --- old code, "sit" on the origin (!= common for all times)
+            # pos = distance_pbc(origin_au[:, None],
+            #                    positions_au,
+            #                    cell_au_deg)
+            # origin_au = np.zeros_like(origin_au)
             cell = None
         else:
             pos = copy.deepcopy(positions_au)

@@ -58,6 +58,13 @@ if __name__ == '__main__':
 
 assert sys.version_info[:2] >= (3, 8), "Python version >= 3.8 required."
 
+
+# import traceback
+# def handle_exception(type, value, tb):
+#     # length = 0
+#     print(''.join(traceback.format_exception(type, value, tb)))
+# sys.excepthook = handle_exception
+
 # --- update multiprocessing
 #    ( https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm)
 

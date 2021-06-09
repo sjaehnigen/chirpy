@@ -74,11 +74,11 @@ def set_pal_n_cores(s, reload_modules=True):
 def set_verbose(s, reload_modules=True):
     '''Enable/disable chirpy runtime verbosity.'''
     global __verbose__
+    # if __verbose__ and not s:
+    #     warnings.warn(f'__verbose__ set to {bool(s)}',
+    #                   ChirPyWarning,
+    #                   stacklevel=2)
     __verbose__ = bool(s)
-    if __verbose__:
-        warnings.warn(f'__verbose__ set to {__verbose__}',
-                      ChirPyWarning,
-                      stacklevel=2)
     if reload_modules:
         _reload_modules()
 
@@ -86,5 +86,6 @@ def set_verbose(s, reload_modules=True):
 # --- check if run in ipython/jupyter notebook
 if get_ipython() is not None:
     if "IPKernelApp" in get_ipython().config:
-        warnings.warn('jupyter: enabling chirpy verbosity', stacklevel=2)
-        set_verbose(True)
+        # warnings.warn('jupyter: enabling chirpy verbosity', stacklevel=2)
+        if not __verbose__:
+            set_verbose(True)

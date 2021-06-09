@@ -190,15 +190,17 @@ def xyzIterator(FN, **kwargs):
     with _open(FN, 'r', **kwargs) as _f:
         _nlines = int(_f.readline().strip()) + 2
         _comment = _f.readline().strip()
-    if 'CPMD' in _comment or 'GEOMETRY' in FN:
-        warnings.warn('It seems as if you are reading an XYZ file generated '
-                      'by CPMD. Check velocity units!', config.ChirPyWarning,
-                      stacklevel=2)
-        if 'units' not in kwargs:
-            kwargs['units'] = 3*[('length', 'aa')]+3*[('velocity', 'aa')]
 
     if (units := kwargs.pop('units', 'default')) != 'default':
         kwargs['convert'] = _convert(units)
+
+    elif 'CPMD' in _comment or 'GEOMETRY' in FN:
+        warnings.warn('Assuming angstrom per a.u. as velocity unit for '
+                      'CPMD-generated XYZ file',
+                      config.ChirPyWarning,
+                      stacklevel=2)
+        kwargs['convert'] = _convert(3*[('length', 'aa')]
+                                     + 3*[('velocity', 'aa')])
 
     if config.__os__ == 'Linux':
         return Producer(_reader(FN, _nlines, _kernel, **kwargs),

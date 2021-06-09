@@ -204,6 +204,7 @@ class _SYSTEM(_CORE):
     def sort_atoms(self, *args):
         '''Sort atoms alphabetically (default)'''
         ind = self.XYZ.sort(*args)
+        self.symbols = self.XYZ.symbols
 
         if hasattr(self, 'Modes'):
             self.Modes.sort(ind, *args)
