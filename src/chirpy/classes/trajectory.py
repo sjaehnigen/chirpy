@@ -192,8 +192,10 @@ class _FRAME(_CORE):
         _DEC = (_data, _symbols)
 
         # --- ToDo: Generalise optional attributes
-        for _l in ['names', 'residues']:
+        optattrs = []
+        for _l in ['names', 'residues']:  # , 'eival_cgs']:
             if hasattr(self, _l):
+                optattrs.append(_l)
                 _dl = mapping.dec(getattr(self, _l), mask)
                 _DEC += (_dl,)
 
@@ -201,7 +203,7 @@ class _FRAME(_CORE):
             nargs = {}
             nargs.update(self.__dict__)
             nargs.update({'data': _d, 'symbols': _s})
-            for _oa, key in zip(optargs, ['names', 'residues']):
+            for _oa, key in zip(optargs, optattrs):
                 nargs.update({key: _oa})
             _obj = self._from_data(**nargs)
             return _obj
@@ -580,8 +582,8 @@ class _XYZ():
             elif fmt == "xvibs":
                 nargs = _extract_keys(kwargs, mw=False, au=False)
                 n_atoms, numbers, pos_aa, \
-                    n_modes, omega_cgs, modes = xvibsReader(fn, **nargs)
-                comments = _np.array(omega_cgs).astype(str)
+                    n_modes, eival_cgs, modes = xvibsReader(fn, **nargs)
+                comments = _np.array(eival_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
@@ -614,8 +616,8 @@ class _XYZ():
                         modes = data_dict['modes']
                         n_modes = modes.shape[0]
                         pos_aa = data_dict['pos_aa']
-                        omega_cgs = data_dict['omega_cgs']
-                        comments = _np.array(omega_cgs).astype(str)
+                        eival_cgs = data_dict['omega_cgs']
+                        comments = _np.array(eival_cgs).astype(str)
                         data = _np.concatenate((
                              _np.tile(pos_aa, (n_modes, 1, 1)),
                              _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -646,8 +648,8 @@ class _XYZ():
                         modes = data_dict['modes']
                         n_modes = modes.shape[0]
                         modes = modes.reshape((n_modes, n_atoms, 3))
-                        omega_cgs = data_dict['omega_cgs']
-                        comments = _np.array(omega_cgs).astype(str)
+                        eival_cgs = data_dict['omega_cgs']
+                        comments = _np.array(eival_cgs).astype(str)
 
                         data = _np.concatenate((
                              _np.tile(pos_aa, (n_modes, 1, 1)),
@@ -694,6 +696,7 @@ class _XYZ():
                 symbols = kwargs.get('symbols')
                 if symbols is None:
                     symbols = constants.numbers_to_symbols(numbers)
+                eival_cgs = kwargs.get('eival_cgs')
                 data = kwargs.get('data')
                 _sh = data.shape
                 if len(_sh) == 2:
@@ -721,15 +724,15 @@ class _XYZ():
             comments = comments[0]
 
         if self._type == 'modes':
-            if 'omega_cgs' not in locals():
+            if 'eival_cgs' not in locals():
                 try:
-                    omega_cgs = kwargs.pop('omega_cgs')
+                    eival_cgs = kwargs.pop('omega_cgs')
                 except KeyError:
                     _warnings.warn('Could not retrieve modes data from input.',
                                    _ChirPyWarning, stacklevel=2)
                     raise
-            self.eival_cgs = omega_cgs
-            comments = _np.array(omega_cgs).astype(str)
+            self.eival_cgs = eival_cgs
+            comments = _np.array(eival_cgs).astype(str)
 
         # --- external metadata (i.e. from topology file)
         #     wins over fn, but not in the case of data, raises Warning for
@@ -2065,11 +2068,11 @@ class VibrationalModes(_XYZ, _MODES):
 
             # random pos
 #            avg = _np.zeros((1, n_atoms, 3))
-#            omega_au = 2*_np.pi*_np.array(self.eival_cgs)
+#            eival_au = 2*_np.pi*_np.array(self.eival_cgs)
 #            *constants.c_cgs*constants.t_au
 #            for i_mode in range(self.n_modes):
 #                avg += S[i_mode].reshape(1, self.n_atoms, 3)
-#                *_np.sin(phases[i_mode])/omega_au[i_mode]
+#                *_np.sin(phases[i_mode])/eival_au[i_mode]
 #            avg *= constants.l_au2aa
 #            avg += self.pos_au*constants.l_au2aa
             print('Random seed not tested')
