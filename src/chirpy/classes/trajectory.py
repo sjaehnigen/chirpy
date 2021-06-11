@@ -55,7 +55,7 @@ from ..interface.molden import write_moldenvib_file, read_moldenvib_file
 from ..interface.gaussian import g09Reader
 from ..interface.tinker import tinkermomentsReader
 
-from ..topology import mapping, motion
+from ..topology import mapping, motion, grid
 from ..topology.dissection import read_topology_file
 
 from .. import constants
@@ -517,6 +517,27 @@ class _MODES(_FRAME):
     #                                     )
     #     # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
+    def continuous_spectrum(self, sample_points_cgs,
+                            mode='ir',
+                            function='gaussian_std',
+                            width_cgs=4):
+        '''Generate a continuous spectrum from discrete vibrational modes.
+           Sample points in 1/cm define the frequencies of the continuous
+           spectrum.
+           width (in 1/cm) corresponds to FWHM of the standard smoothing
+           function (with constant height), or sigma/gamma if a normalised
+           Gaussian/Lorentzian function (with constant integral) is used.'''
+
+        return _np.vstack((
+                 sample_points_cgs,
+                 grid.regularisation(self.eival_cgs,
+                                     _np.array(sample_points_cgs),
+                                     width_cgs,
+                                     mode=mode,
+                                     cell_aa_deg=self.cell_aa_deg,
+                                     weights=self.VCD_kmpmol).sum(axis=0)
+                 ))
+
 
 class _XYZ():
     '''Convention (at the moment) of data attribute:
@@ -663,7 +684,6 @@ class _XYZ():
                             # self.APT_au = data_dict['Polar']
                             self.AAT_au = data_dict['AAT'].reshape((n_atoms,
                                                                     3, 3))
-                            # print('AAT', self.AAT_au.ravel())
                             # --- calculate it from tensors
 
                             # --- units not verified, should be in a.u.
