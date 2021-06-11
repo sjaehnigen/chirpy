@@ -686,8 +686,9 @@ class _XYZ():
                             axis=-1
                             )
                         try:
-                            # --- ToDo: add and debug these features
-                            # self.APT_au = data_dict['Polar']
+                            # --- ToDo: add and debug these features (units?)
+                            self.APT_au = data_dict['DipoleDeriv'].reshape(
+                                                            (n_atoms, 3, 3))
                             self.AAT_au = data_dict['AAT'].reshape((n_atoms,
                                                                     3, 3))
                             # --- calculate it from tensors
@@ -989,8 +990,8 @@ class _XYZ():
         else:
             self._mol_ref = _copy.deepcopy(_p)
 
-    def _get_center_of_weight(self, mask=None, weights=None,
-                              wrap=False, join_molecules=False):
+    def _center_of_weight(self, mask=None, weights=None,
+                          wrap=False, join_molecules=False):
         _loc = _copy.deepcopy(self)
         if weights is None:
             w = _np.ones((_loc.n_atoms))
@@ -1014,33 +1015,42 @@ class _XYZ():
 
         return cowt_aa
 
-    def get_center_of_mass(self, mask=None, join_molecules=True):
+    def center_of_mass(self, mask=None, join_molecules=True):
         if mask is None:
-            self.com_aa = self._get_center_of_weight(
+            self.com_aa = self._center_of_weight(
                                     mask=None,
                                     weights='masses',
                                     join_molecules=False
                                     )
+            return self.com_aa
         else:
-            self.mol_com_aa = self._get_center_of_weight(
+            self.mol_com_aa = self._center_of_weight(
                                     mask=mask,
                                     weights='masses',
                                     join_molecules=join_molecules
                                     )
+            return self.mol_com_aa
 
-    def get_center_of_geometry(self, mask=None, join_molecules=True):
+    def center_of_geometry(self, mask=None, join_molecules=True):
         if mask is None:
-            self.cog_aa = self._get_center_of_weight(
+            self.cog_aa = self._center_of_weight(
                                     mask=None,
                                     weights=None,
                                     join_molecules=False
                                     )
+            return self.cog_aa
+
         else:
-            self.mol_cog_aa = self._get_center_of_weight(
+            self.mol_cog_aa = self._center_of_weight(
                                     mask=mask,
                                     weights=None,
                                     join_molecules=join_molecules
                                     )
+            return self.mol_cog_aa
+
+    # --- backward compatibility
+    def get_center_of_mass(self, *args, **kwargs):
+        self.center_of_mass(*args, **kwargs)
 
     def align_coordinates(self, selection=None, weights='masses',
                           align_ref=None,
@@ -1883,14 +1893,17 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._mask(self, 'wrap', *args, **kwargs)
 
     def get_center_of_mass(self, *args, **kwargs):
-        self._frame.get_center_of_mass(*args, **kwargs)
-        self.__dict__.update(self._frame.__dict__)
-        self._mask(self, 'get_center_of_mass', *args, **kwargs)
+        self.center_of_mass(*args, **kwargs)
 
-    def get_center_of_geometry(self, *args, **kwargs):
-        self._frame.get_center_of_geometry(*args, **kwargs)
+    def center_of_mass(self, *args, **kwargs):
+        self._frame.center_of_mass(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
-        self._mask(self, 'get_center_of_geometry', *args, **kwargs)
+        self._mask(self, 'center_of_mass', *args, **kwargs)
+
+    def center_of_geometry(self, *args, **kwargs):
+        self._frame.center_of_geometry(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'center_of_geometry', *args, **kwargs)
 
     def repeat(self, *args, **kwargs):
         self._frame.repeat(*args, **kwargs)
