@@ -400,12 +400,16 @@ class _MODES(_FRAME):
         if check_orthonormality:
             self._check_orthonormality()
 
-    def _modelist(self, modelist):
+    def select_modes(self, modelist):
         if not isinstance(modelist, list):
             raise TypeError('Please give a list of integers instead of %s!'
                             % modelist.__class__.__name__)
         self.data = self.data[modelist]
         self.comments = [self.comments[_m] for _m in modelist]
+        for optattr in ['etdm_au', 'mtdm_au', 'IR_kmpmol', 'VCD_kmpmol']:
+            if (_v := getattr(self, optattr, None)) is not None:
+                setattr(self, optattr, _v[modelist])
+
         self._sync_class(check_orthonormality=False)
 
     def _modes(self, *args):
@@ -518,9 +522,9 @@ class _MODES(_FRAME):
     #     # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
     def continuous_spectrum(self, sample_points_cgs,
-                            mode='ir',
-                            function='gaussian_std',
-                            width_cgs=4):
+                            attribute='IR_kmpmol',
+                            mode='gaussian_std',
+                            width_cgs=10):
         '''Generate a continuous spectrum from discrete vibrational modes.
            Sample points in 1/cm define the frequencies of the continuous
            spectrum.
@@ -530,12 +534,14 @@ class _MODES(_FRAME):
 
         return _np.vstack((
                  sample_points_cgs,
-                 grid.regularisation(self.eival_cgs,
+                 grid.regularisation(
+                                     self.eival_cgs,
                                      _np.array(sample_points_cgs),
                                      width_cgs,
                                      mode=mode,
                                      cell_aa_deg=self.cell_aa_deg,
-                                     weights=self.VCD_kmpmol).sum(axis=0)
+                                     weights=getattr(self, attribute)
+                                     ).sum(axis=0)
                  ))
 
 
