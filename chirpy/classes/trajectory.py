@@ -1871,6 +1871,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                     "dip": "_fn_d",
                     "magdip": "_fn_m",
                     "magdip_half": "_fn_m",
+                    "magdip_tot": "_fn_m",
                     }[(_tmft := _fn.split('.')[-1])],
                     _fn)
                  for _fn in args]
