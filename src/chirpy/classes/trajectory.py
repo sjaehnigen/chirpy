@@ -32,9 +32,11 @@ import copy as _copy
 import numpy as _np
 import warnings as _warnings
 import itertools
+from tqdm import tqdm
 
 from .core import CORE as _CORE
 from .core import ITERATOR as _ITERATOR
+from .. import config
 from ..snippets import extract_keys as _extract_keys
 from ..config import ChirPyWarning as _ChirPyWarning
 from ..read.modes import xvibsReader
@@ -723,13 +725,13 @@ class _XYZ():
                 symbols = kwargs.get('symbols')
                 if symbols is None:
                     symbols = constants.numbers_to_symbols(numbers)
-                eival_cgs = kwargs.get('eival_cgs')
                 data = kwargs.get('data')
                 _sh = data.shape
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
-                comments = _np.array([kwargs.get('comments',
-                                                 data.shape[0] * ['passed'])
+                comments = _np.array([kwargs.get(
+                                       'comments',
+                                       data.shape[0] * ['created with ChirPy'])
                                       ]).flatten()
                 omega_cgs = kwargs.get('omega_cgs')
             else:
@@ -753,9 +755,10 @@ class _XYZ():
         if self._type == 'modes':
             if 'eival_cgs' not in locals():
                 try:
-                    eival_cgs = kwargs.pop('omega_cgs')
+                    eival_cgs = kwargs.pop('eival_cgs',
+                                           kwargs.pop('omega_cgs'))
                 except KeyError:
-                    _warnings.warn('Could not retrieve modes data from input.',
+                    _warnings.warn('could not retrieve mode frequencies',
                                    _ChirPyWarning, stacklevel=2)
                     raise
             self.eival_cgs = eival_cgs
@@ -968,21 +971,39 @@ class _XYZ():
                                _ChirPyWarning, stacklevel=2)
                 algorithm = 'connectivity'
 
-        _p, mol_cnt_aa = mapping.join_molecules(
-                            self.pos_aa,
-                            mol_map,
-                            self.cell_aa_deg,
-                            weights=w,
-                            algorithm=algorithm,
-                            symbols=self.symbols,
-                            reference=reference,
-                            )
-        self._pos_aa(_p)
+        if self._type == 'frame':
+            _p, mol_cnt_aa = mapping.join_molecules(
+                                self.pos_aa,
+                                mol_map,
+                                self.cell_aa_deg,
+                                weights=w,
+                                algorithm=algorithm,
+                                symbols=self.symbols,
+                                reference=reference,
+                                )
+            self._pos_aa(_p)
+        else:
+            _p, mol_cnt_aa = zip(*[mapping.join_molecules(
+                                _pos,
+                                mol_map,
+                                self.cell_aa_deg,
+                                weights=w,
+                                algorithm=algorithm,
+                                symbols=self.symbols,
+                                reference=reference,
+                                )
+                              for _pos in tqdm(
+                                             self.pos_aa,
+                                             desc="%10s" % self._type,
+                                             total=len(self.pos_aa),
+                                             disable=not config.__verbose__
+                                             )])
+            self._pos_aa(_np.array(_p))
 
         if weights is None:
-            self.mol_cog_aa = mol_cnt_aa
+            self.mol_cog_aa = _np.array(mol_cnt_aa)
         elif weights == 'masses':
-            self.mol_com_aa = mol_cnt_aa
+            self.mol_com_aa = _np.array(mol_cnt_aa)
 
         # --- remember topology
         if self._type != 'frame':
@@ -1072,7 +1093,8 @@ class _XYZ():
         if self._type == 'frame':
             _p = self.pos_aa.reshape((1, ) + self.pos_aa.shape)
             _v = self.vel_au.reshape((1, ) + self.vel_au.shape)
-        elif self._type == 'trajectory':
+        # elif self._type == 'trajectory':
+        else:
             _p = self.pos_aa
             _v = self.vel_au
 
@@ -1092,7 +1114,8 @@ class _XYZ():
             self._pos_aa(_p[0])
             self._vel_au(_data[0][0])
 
-        if self._type == 'trajectory':
+        # if self._type == 'trajectory':
+        else:
             self._pos_aa(_p)
             self._vel_au(_data[0])
 
