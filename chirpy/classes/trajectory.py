@@ -273,7 +273,7 @@ class _FRAME(_CORE):
                      n_atoms: %s
                      n_fields: %s
                      symbols: %s
-                  ''' % tuple(tmp))
+                  ''' % tuple(tmp[1:]))
 
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')

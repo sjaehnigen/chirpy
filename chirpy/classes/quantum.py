@@ -83,7 +83,6 @@ class WannierFunction(_ScalarField):
 
 class ElectronDensity(_ScalarField):
     def integral(self):
-        # self.n_electrons = self.voxel*simps(simps(simps(self.data)))
         self.n_electrons = self.voxel*self.data.sum()
         self.threshold = 1.E-3
 

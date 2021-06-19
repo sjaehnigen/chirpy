@@ -134,8 +134,9 @@ class ScalarField(_CORE):
 
             self.symbols = constants.numbers_to_symbols(self.numbers)
             self.voxel = _np.dot(self.cell_vec_aa[0],
-                                 _np.cross(self.cell_vec_aa[1],
-                                           self.cell_vec_aa[2]))
+                                 _np.cross(
+                                   self.cell_vec_aa[1],
+                                   self.cell_vec_aa[2])) * constants.l_aa2au**3
             self.cell_aa_deg = mp.get_cell_l_deg(
                                      self.cell_vec_aa,
                                      multiply=self.data.shape[-3:]
