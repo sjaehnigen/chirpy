@@ -212,7 +212,7 @@ def main():
         # --- test for neutrality of charge
         if np.any((_mol := gauge.q_au != 0.0)):
             warnings.warn('Got non-zero charge for molecules '
-                          f'{np.argwhere(_mol)}: {gauge.q_au[_mol]}',
+                          f'{np.where(_mol)[0]}: {gauge.q_au[_mol]}',
                           RuntimeWarning, stacklevel=2)
 
         # --- write output

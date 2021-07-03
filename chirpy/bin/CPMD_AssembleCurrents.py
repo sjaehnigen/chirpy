@@ -237,7 +237,7 @@ def main():
     if args.auto_crop:
         _V = _sys.auto_crop(thresh=_sys.rho.threshold/2)
     if _V != 0:
-        print(' --> Crop %s' % _V)
+        print(' --> Crop:', _V)
     _sys.rho.print_info()
     sys.stdout.flush()
 
