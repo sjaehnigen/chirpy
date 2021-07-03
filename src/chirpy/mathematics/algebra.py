@@ -146,23 +146,26 @@ def triple_product(*args):
     return np.inner(np.cross(v1, v2), v3)
 
 
-def rotation_matrix(*args):
-    '''rotate v1 to match v2'''
+def rotation_matrix(*args, angle=None):
+    '''rotate v1 to match v2 or normal vector (requires angle)'''
     if len(args) == 1:
-        v1, v2 = args[0]
+        n = args[0] / np.linalg.norm(args[0])
+        cos_ang = np.cos(angle)
+
     elif len(args) == 2:
         v1, v2 = args
+        u1 = v1 / np.linalg.norm(v1)
+        u2 = v2 / np.linalg.norm(v2)
+        n = np.cross(u1, u2)
+        cos_ang = np.dot(u1, u2)
     else:
         raise TypeError('rotation_matrix() requires 1 or 2 '
                         'positional arguments!')
 
-    u1 = v1 / np.linalg.norm(v1)
-    u2 = v2 / np.linalg.norm(v2)
-    n = np.cross(u1, u2)
     V = np.matrix([[0., -n[2], n[1]], [n[2], 0, -n[0]], [-n[1], n[0], 0.]])
     Id = np.matrix([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
     # unittest: use np.identity ?
-    R = Id + V + V**2 * (1. - np.dot(u1, u2)) / np.linalg.norm(n)**2
+    R = Id + V + V**2 * (1. - cos_ang) / np.linalg.norm(n)**2
 
     return np.asarray(R)
 
