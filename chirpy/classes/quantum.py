@@ -104,6 +104,8 @@ class ElectronDensity(_ScalarField):
                         ])
 
         self.aim_threshold = self.threshold
+        # --- minimum size of atom domain in n_points based of radius of H
+        self.i_min_size = 1.1**3 / (self.voxel / constants.l_aa2au**3)
         boundary_max = 0
         boundary_max = max(boundary_max, _np.amax(self.data[0, :, :]))
         boundary_max = max(boundary_max, _np.amax(self.data[-1, :, :]))
@@ -123,7 +125,8 @@ class ElectronDensity(_ScalarField):
         test = _np.unravel_index(_np.argsort(self.data.ravel())[::-1],
                                  self.data.shape)
 
-        atoms = range(self.n_atoms)
+        buffer_atoms = self.n_atoms - 1
+        atoms = range(self.n_atoms + buffer_atoms)
 
         basin = _np.zeros([j for i in (self.data.shape, len(atoms))
                           for j in (i if isinstance(i, tuple) else (i,))])
@@ -178,6 +181,22 @@ class ElectronDensity(_ScalarField):
                                 cell_vec_aa=self.cell_vec_aa,
                                 origin_aa=self.origin_aa
                                 ))
+            basin[:, :, :, jatom] = 0.0
+
+        _lossatom = 0
+        for _iloss in (loss := (
+                        basin
+                        * self.data[:, :, :, None]
+                        * self.voxel).sum(axis=(0, 1, 2))
+                       ):
+            if _iloss > 0.:
+                _lossatom += 1
+
+        if _lossatom != 0:
+            _warnings.warn(f'AIM charge loss of {loss.sum()} in {_lossatom} '
+                           'artificially defined atom' + (_lossatom != 1)*'s',
+                           _ChirPyWarning, stacklevel=2)
+
         self.aim_atoms = _np.array(aim_atoms)
 
     @staticmethod

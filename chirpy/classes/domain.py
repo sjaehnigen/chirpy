@@ -30,9 +30,11 @@
 # -------------------------------------------------------------------
 
 import numpy as _np
+import copy as _copy
 
 from .core import CORE as _CORE
 from .volume import ScalarField as _ScalarField
+from ..snippets import extract_keys
 
 
 class Domain3D(_CORE):
@@ -44,6 +46,16 @@ class Domain3D(_CORE):
         self.grid_shape = shape
         self.indices = indices
         self.weights = weights
+
+    def __add__(self, other):
+        if self.grid_shape != other.grid_shape:
+            raise ValueError('cannot combine domains of grid shape '
+                             f'{self.grid_shape} and {other.grid_shape}')
+        new = _copy.deepcopy(self)
+        data = self.expand() + other.expand()
+        new.indices = _np.where(data != 0)
+        new.weights = data[new.indices]
+        return new
 
     def map_vector(self, v3):
         n_x, n_y, n_z = self.grid_shape
@@ -62,4 +74,9 @@ class Domain3D(_CORE):
         return data
 
     def write(self, fn, **kwargs):
-        _ScalarField.from_domain(self, **vars(self)).write(fn, **kwargs)
+        _ScalarField.from_domain(self, **extract_keys(vars(self),
+                                                      origin_aa=None,
+                                                      pos_aa=None,
+                                                      cell_vec_aa=None,
+                                                      numbers=None)
+                                 ).write(fn, **kwargs)
