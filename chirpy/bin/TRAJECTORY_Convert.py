@@ -161,7 +161,7 @@ def main():
             default=False,
             )
     parser.add_argument(
-            "-f",
+            "--outputfile", "-o", "-f",
             help="Output file name",
             default='out.xyz'
             )
@@ -222,16 +222,17 @@ def main():
     if i_fmt is None:
         i_fmt = args.fn.split('.')[-1].lower()
     if o_fmt is None:
-        if args.convert_to_moments and args.f in ['MOMENTS', 'MOL', 'ATOM']:
+        if args.convert_to_moments and args.outputfile in ['MOMENTS', 'MOL',
+                                                           'ATOM']:
             o_fmt = 'cpmd'
-        elif args.f in ['TRAJSAVED', 'TRAJECTORY', 'CENTERS']:
+        elif args.outputfile in ['TRAJSAVED', 'TRAJECTORY', 'CENTERS']:
             o_fmt = 'cpmd'
         else:
-            o_fmt = args.f.split('.')[-1].lower()
+            o_fmt = args.outputfile.split('.')[-1].lower()
     elif o_fmt == 'tinker':
         o_fmt = 'arc'
-    if args.f == 'out.xyz':
-        args.f = 'out.' + o_fmt
+    if args.outputfile == 'out.xyz':
+        args.outputfile = 'out.' + o_fmt
 
     # --- ToDO: Caution when passing all arguments to object!
     largs = vars(args)
@@ -301,7 +302,7 @@ def main():
 
     if args.verbose:
         print('Writing output...', file=sys.stderr)
-    if args.f not in ['None', 'False']:
+    if args.outputfile not in ['None', 'False']:
         if args.convert_to_moments:
             for _iframe, _p_fr in enumerate(_load.XYZ):
                 _moment = trajectory.MOMENTSFrame.from_classical_nuclei(
@@ -311,7 +312,7 @@ def main():
                 if _iframe > 0:
                     append = True
                 largs = {'append': append, 'frame': _iframe}
-                _moment.write(args.f, fmt=o_fmt, **largs)
+                _moment.write(args.outputfile, fmt=o_fmt, **largs)
 
                 # cpmd.cpmdWriter(
                 #  args.f,
@@ -329,7 +330,7 @@ def main():
                         pp=args.pp,
                         write_atoms=args.write_atoms,
                         )
-            _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
+            _load.write(args.outputfile, fmt=o_fmt, rewind=False, **largs)
 
 
 if __name__ == "__main__":

@@ -83,7 +83,7 @@ def main():
             )
 
     parser.add_argument(
-            "-f",
+            "--outputfile", "-o", "-f",
             help="Output file name",
             default='out.cpmd'
             )
@@ -113,9 +113,9 @@ def main():
     if i_fmt is None:
         i_fmt = args.fn.split('.')[-1].lower()
     if o_fmt is None:
-        o_fmt = args.f.split('.')[-1].lower()
-    elif args.f == 'out.cpmd':
-        args.f = 'out.' + o_fmt
+        o_fmt = args.outputfile.split('.')[-1].lower()
+    elif args.outputfile == 'out.cpmd':
+        args.outputfile = 'out.' + o_fmt
 
     # --- Caution when passing all arguments to object!
     largs = vars(args)
@@ -139,11 +139,11 @@ def main():
         _load = trajectory.MOMENTS(args.fn, fmt=i_fmt, **largs)
         largs.update({'skip': []})
 
-    if args.f not in ['None', 'False']:
+    if args.outputfile not in ['None', 'False']:
         largs = {}
         if 'pp' in args:
             largs = {'pp': args.pp}
-        _load.write(args.f, fmt=o_fmt, rewind=False, **largs)
+        _load.write(args.outputfile, fmt=o_fmt, rewind=False, **largs)
 
 
 if __name__ == "__main__":
