@@ -578,7 +578,13 @@ class _XYZ():
                 comments = kwargs.get('comments', title)
 
             elif fmt == "cif":
-                data, names, symbols, f_cell_aa_deg, title = cifReader(fn)
+                data, names, symbols, f_cell_aa_deg, title = \
+                        cifReader(fn,
+                                  **_extract_keys(
+                                             kwargs,
+                                             fill_unit_cell=True
+                                             )
+                                  )
                 comments = kwargs.get('comments', title)
 
             elif fmt == "xvibs":

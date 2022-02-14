@@ -102,7 +102,7 @@ def main():
     parser.add_argument(
             "--position_form",
             action='store_true',
-            help="also compute the electric dipole moment and append it to "
+            help="also compute the electric dipole moment and add it to "
                  "the output file.",
             default=False,
             )
