@@ -210,7 +210,7 @@ def time_correlation_function(*args,
 
 
 def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry=None,
-                     **kwargs):
+                     **kwargs) -> tuple:
     '''Calculate the spectral distribution as the Fourier transformed
        time-correlation function (TCF) of a vector signal (*args).
        The method automatically chooses to calculate auto- or cross-

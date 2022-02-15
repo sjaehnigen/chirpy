@@ -95,7 +95,7 @@ class PALARRAY():
             result = np.array(list(tqdm(
                          self.pool.istarmap(self.f, self.array),
                          desc=f'{self.f.func.__name__} (PALARRAY)',
-                         total=self._length - (
+                         total=self._length - int(
                                            self._ut *
                                            (self._length-len(self.data[0])) / 2
                                            ),
