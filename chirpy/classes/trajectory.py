@@ -965,7 +965,7 @@ class _XYZ():
             self.mol_com_aa = mol_com_aa
 
     def _get_center_of_weight(self, mask=None, weights=None,
-                              join_molecules=False):
+                              wrap=False, join_molecules=False):
         if weights is None:
             w = _np.ones((self.n_atoms))
         elif weights == 'masses':
@@ -981,7 +981,8 @@ class _XYZ():
                 self.wrap_molecules(mask, weights=weights, algorithm=algorithm)
                 cowt_aa = self.mol_com_aa
         else:
-            self.wrap()
+            if wrap:
+                self.wrap()
             cowt_aa = mapping.cowt(self.pos_aa, w)
 
         return cowt_aa
