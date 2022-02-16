@@ -966,24 +966,26 @@ class _XYZ():
 
     def _get_center_of_weight(self, mask=None, weights=None,
                               wrap=False, join_molecules=False):
+        _loc = _copy.deepcopy(self)
         if weights is None:
-            w = _np.ones((self.n_atoms))
+            w = _np.ones((_loc.n_atoms))
         elif weights == 'masses':
-            w = self.masses_amu
+            w = _loc.masses_amu
         else:
             raise ValueError(f'unknown weight type {weights}')
 
         if mask is not None:
             if not join_molecules:
-                cowt_aa = mapping.cowt(self.pos_aa, w, mask=mask)
+                cowt_aa = mapping.cowt(_loc.pos_aa, w, mask=mask)
             else:
                 algorithm = 'connectivity'
-                self.wrap_molecules(mask, weights=weights, algorithm=algorithm)
-                cowt_aa = self.mol_com_aa
+                _loc.wrap_molecules(mask, weights=weights, algorithm=algorithm)
+                cowt_aa = _loc.mol_com_aa
         else:
             if wrap:
-                self.wrap()
-            cowt_aa = mapping.cowt(self.pos_aa, w)
+                _loc.wrap()
+            cowt_aa = mapping.cowt(_loc.pos_aa, w)
+        del _loc
 
         return cowt_aa
 
