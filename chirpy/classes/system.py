@@ -37,7 +37,7 @@ from ..snippets import tracked_extract_keys as _tracked_extract_keys
 from ..snippets import equal as _equal
 from ..config import ChirPyWarning as _ChirPyWarning
 from .core import CORE as _CORE
-from .trajectory import XYZ, XYZFrame, VibrationalModes
+from .trajectory import XYZ, VibrationalModes
 from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.dissection import read_topology_file as _read_topology_file
 from .. import constants
@@ -277,7 +277,7 @@ class _SYSTEM(_CORE):
 
 class Molecule(_SYSTEM):
     def _XYZ(self, *args, **kwargs):
-        return XYZFrame(*args, **kwargs)
+        return XYZ(*args, range=(0, 1, 1), **kwargs)
 
 
 class Supercell(_SYSTEM):

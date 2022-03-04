@@ -182,7 +182,7 @@ def main():
     # --- streamline options
     export_args = {}
     if args.particles is not None:
-        _part = trajectory.XYZFrame(args.particles)
+        _part = trajectory.XYZ(args.particles)
         export_args.update({
                 'external_object': True,
                 'ext_pos_aa': copy.deepcopy(_part.pos_aa),

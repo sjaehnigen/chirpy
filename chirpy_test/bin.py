@@ -84,12 +84,37 @@ class TestBinaries(unittest.TestCase):
     def test_trajectory_convert(self):
         os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +
-                  '-f out.xyz')
+                  '-o out.xyz')
         self.assertTrue(filecmp.cmp('out.xyz',
                                     self.dir + '/trajectory.xyz',
                                     shallow=False),
                         f'Trajectory {self.dir}/trajectory.xyz reproduced '
                         f'incorrectly in out.xyz'
+                        )
+        os.remove('out.xyz')
+
+        os.system('TRAJECTORY_Convert.py ' +
+                  '%s/water_rot.arc --fn_vel %s/water_rot.vel ' %
+                  (2*(self.dir + '/../read_write',)) +
+                  '-o out.xyz --align_coords True')
+        self.assertTrue(filecmp.cmp('out.xyz',
+                                    self.dir + '/trajectory_aligned.xyz',
+                                    shallow=False),
+                        f'Trajectory {self.dir}/trajectory_aligned.xyz '
+                        'reproduced incorrectly in out.xyz'
+                        )
+
+        os.remove('out.xyz')
+
+        os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
+                  % (2 * (self.dir + '/../read_write',)) +
+                  '-o out.xyz --mask_frames 1 3')
+
+        self.assertTrue(filecmp.cmp('out.xyz',
+                                    self.dir + '/trajectory_skip.xyz',
+                                    shallow=False),
+                        f'Trajectory {self.dir}/trajectory_skip.xyz reproduced'
+                        f' incorrectly in out.xyz'
                         )
         os.remove('out.xyz')
 

@@ -39,7 +39,7 @@ from ..topology.mapping import get_cell_vec as _get_cell_vec
 from ..topology.mapping import get_cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.core import CORE as _CORE
-from ..classes.trajectory import XYZFrame as _XYZFrame
+from ..classes.trajectory import XYZ
 from ..classes.system import Molecule as _Molecule
 from .. import constants
 from ..visualise import print_info
@@ -92,7 +92,7 @@ class _BoxObject(_CORE):
         if _load.mol_map is not None:
             return cls(
                     members=[(1, _s)
-                             for _s in _load.XYZ.split(
+                             for _s in _load.XYZ._frame.split(
                              _load.mol_map)],
                     **nargs)
         else:
@@ -320,8 +320,8 @@ class Solution(_BoxObject):
             raise ValueError('You have to specify non-zero values of '
                              'concentration!')
 
-        _slt = [_XYZFrame(_s) for _s in self.solutes]
-        _slv = _XYZFrame(self.solvent)
+        _slt = [XYZ(_s) for _s in self.solutes]
+        _slv = XYZ(self.solvent)
 
         # --- CALCULATE INTENSIVE PROPERTIES (per 1L)
         _c_slv_mol_L = (1000 * self.rho_g_cm3 -
@@ -460,7 +460,7 @@ class Solution(_BoxObject):
         if sort_atoms:
             _load.sort_atoms()
         if write_pdb:
-            _load.write("topology.pdb")
+            _load.write("topology.pdb", rewind=False)
 
         # --- clean files
         # _os.remove(".tmp_packmol.inp")

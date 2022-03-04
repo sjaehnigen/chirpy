@@ -164,11 +164,11 @@ def main():
         largs.update({'fmt': i_fmt})
 
     if args.property == 'positions':
-        traj = trajectory._XYZTrajectory(args.fn, **largs)
+        traj = trajectory.XYZ(args.fn, **largs).expand()
         paths = vmd.VMDPaths(traj.pos_aa, auto_smooth=not args.no_smooth)
 
     elif args.property == 'velocities':
-        traj = trajectory.XYZFrame(args.fn, **largs)
+        traj = trajectory.XYZ(args.fn, **largs)
         paths = vmd.VMDPaths.from_vector(traj.pos_aa,
                                          traj.vel_au*constants.v_au2aa_fs,
                                          scale=args.scale)

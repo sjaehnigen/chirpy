@@ -150,6 +150,6 @@ def _container(reader_a, fn_a, args_a=(), kwargs_a=()):
              zip_longest(reader_a, fn_a, args_a, kwargs_a, fillvalue={})
              )):
             # -- frame = (out0, out1, out2, ...)
-            yield list(zip(*_frame))
+            yield list(zip_longest(*_frame))
     except TypeError:
         raise ValueError('reached unmatched end of file')

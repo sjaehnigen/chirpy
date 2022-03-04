@@ -98,7 +98,7 @@ def main():
         _load_vel = system.Supercell(args.fn_vel, **largs)
 
     def get_p_and_v():
-        # --- old but working: could use iterator merge
+        # --- old but working: any file combination
         try:
             while True:
                 next(_load.XYZ)

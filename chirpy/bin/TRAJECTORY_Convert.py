@@ -62,6 +62,15 @@ def main():
             type=int,
             )
     parser.add_argument(
+            "--units",
+            help="List of chirpy unit tags for data columns in ALL files, "
+                 "e.g., (\'length\', \'aa\')."
+                 "\'default\' refers to the ChirPy unit convention for each "
+                 "file format",
+            default='default',
+            nargs='+',
+            )
+    parser.add_argument(
             "--mask_frames",
             nargs='+',
             help="If True: Check for duplicate frames (based on comment line) "
@@ -129,10 +138,10 @@ def main():
             default=False,
             )
     parser.add_argument(
-            "--weight",
+            "--weights",
             help="Atom weights used for atom alignment, centering, wrapping"
-                 " (\'mass\' or \'one\')",
-            default='mass'
+                 " (\'masses\' or \'one\')",
+            default='masses'
             )
     parser.add_argument(
             "--extract_molecules",
@@ -190,8 +199,10 @@ def main():
     args = parser.parse_args()
 
     config.set_verbose(args.verbose)
-    # --- ToDo: workaround
+    # --------------------------------------------------------
+    # --- parse and combine arguments: bash ---> chirpy
     if bool(args.center_coords):
+        # --- ToDo: workaround
         if args.center_coords[0] == 'True':
             args.center_coords = True
         elif args.center_coords[0] == 'False':
@@ -207,6 +218,14 @@ def main():
         else:
             args.align_coords = [int(_a) for _a in args.align_coords]
 
+        if bool(args.center_coords) or args.center_molecule is not None:
+            warnings.warn('Using centering/wrapping and aligning in one call '
+                          'may not yield the desired result (use two '
+                          'consecutive calls if this is the case).',
+                          config.ChirPyWarning,
+                          stacklevel=2)
+
+    # --- delete empty arguments
     if args.fn_topo is None:
         del args.fn_topo
 
@@ -214,9 +233,11 @@ def main():
         del args.cell_aa_deg
     else:
         args.cell_aa_deg = np.array(args.cell_aa_deg).astype(float)
-    if args.range is None:
-        args.range = (0, 1, float('inf'))
 
+    if args.range is None:
+        del args.range
+
+    # --- set defaults for format
     i_fmt = args.input_format
     o_fmt = args.output_format
     if i_fmt is None:
@@ -234,61 +255,33 @@ def main():
     if args.outputfile == 'out.xyz':
         args.outputfile = 'out.' + o_fmt
 
-    # --- ToDO: Caution when passing all arguments to object!
+    # --------------------------------------------------------
+    # --- ToDo: Caution when passing all arguments to object!
     largs = vars(args)
 
-    if bool(args.align_coords):
-        if bool(args.center_coords) or args.center_molecule is not None:
-            warnings.warn('Using centering/wrapping and aligning in one call '
-                          'may not yield the desired result (use two '
-                          'consecutive calls if this is the case).',
-                          config.ChirPyWarning,
-                          stacklevel=2)
-
     skip = largs.pop('mask_frames')
-    if skip is not None:
+
+    _files = [args.fn]
+    if args.fn_vel is not None:
+        _files.append(args.fn_vel)
+
+    if skip is None:
+        _load = system.Supercell(*_files, fmt=i_fmt, **largs)
+        largs.update({'skip': []})
+    else:
         if skip[0] in ['True', 'False']:
             if skip[0] == 'True':
                 skip = bool(skip[0])
-                _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+                _load = system.Supercell(*_files, fmt=i_fmt, **largs)
                 skip = _load.XYZ.mask_duplicate_frames()
                 largs.update({'skip': skip})
             else:
-                _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
+                _load = system.Supercell(*_files, fmt=i_fmt, **largs)
                 largs.update({'skip': []})
         else:
             skip = [int(_a) for _a in skip]
             largs.update({'skip': skip})
-            _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
-    else:
-        _load = system.Supercell(args.fn, fmt=i_fmt, **largs)
-        largs.update({'skip': []})
-
-    if args.fn_vel is not None:
-        nargs = {}
-        for _a in [
-            'range',
-            'fn_topo',
-            'sort',
-            'skip',
-                   ]:
-            nargs[_a] = largs.get(_a)
-
-        if i_fmt in ['tinker', 'arc', 'vel']:
-            nargs['units'] = ('velocity', 'aa_fs')
-
-        _load_vel = system.Supercell(args.fn_vel, fmt=i_fmt, **nargs)
-        _load.XYZ.merge(_load_vel.XYZ, axis=-1)
-
-        # --- repeat alignment call after merge to include velocities into
-        #     iterator mask
-        # ToDo: (IS THIS NECESSARY?)
-        if bool(args.align_coords):
-            _load.XYZ.align_coordinates(
-                    selection=args.align_coords,
-                    weight=args.weight,
-                    force_centering=args.force_centering,
-                    align_ref=_load.XYZ._frame._align_ref)
+            _load = system.Supercell(*_files, fmt=i_fmt, **largs)
 
     extract_molecules = largs.pop('extract_molecules')
     extract_elements = largs.pop('extract_elements')

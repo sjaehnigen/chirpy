@@ -162,22 +162,10 @@ def main():
     config.set_verbose(args.verbose)
 
     largs = vars(args)
-    _load = system.Supercell(largs.pop('fn'), **largs)
-
+    _files = [largs.pop('fn')]
     if args.fn_vel is not None:
-        # --- A little inefficient to load args.fn first as it will no
-        #     longer be used (but pos and vel should no be in extra files
-        #     anyway)
-        nargs = {}
-        for _a in [
-            'range',
-            'fn_topo',
-            'sort',
-                   ]:
-            nargs[_a] = largs.get(_a)
-
-        _load_vel = system.Supercell(args.fn_vel, **nargs)
-        _load.XYZ.merge(_load_vel.XYZ, axis=-1)
+        _files.append(args.fn_vel)
+    _load = system.Supercell(*_files, **largs)
 
     extract_molecules = largs.pop('extract_molecules')
 

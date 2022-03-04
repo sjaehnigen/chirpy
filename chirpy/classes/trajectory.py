@@ -38,17 +38,19 @@ from .core import ITERATOR as _ITERATOR
 from ..snippets import extract_keys as _extract_keys
 from ..config import ChirPyWarning as _ChirPyWarning
 from ..read.modes import xvibsReader
-from ..read.coordinates import xyzReader, pdbReader, cifReader, arcReader
+from ..read.coordinates import cifReader
 from ..read.grid import cubeReader
 from ..read.coordinates import xyzIterator as _xyzIterator
+from ..read.coordinates import xyzContainer as _xyzContainer
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
 from ..read.coordinates import arcIterator as _arcIterator
+from ..read.coordinates import arcContainer as _arcContainer
 from ..write.coordinates import xyzWriter, pdbWriter, arcWriter
 from ..write.modes import xvibsWriter
 
 from ..interface.orca import orcaReader
-from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
+from ..interface.cpmd import cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import write_moldenvib_file
 from ..interface.gaussian import g09Reader
 from ..interface.tinker import tinkermomentsReader
@@ -79,10 +81,10 @@ class _FRAME(_CORE):
 
     def __init__(self, *args, **kwargs):
         self._labels()
-        self._read_input(*args, **kwargs)
+        self._import_frame(*args, **kwargs)
         self._sync_class()
 
-    def _read_input(self,  *args, **kwargs):
+    def _import_frame(self,  *args, **kwargs):
         self.symbols = kwargs.get('symbols', ())
         self.data = kwargs.get('data', _np.zeros((0, 0)))
 
@@ -102,8 +104,8 @@ class _FRAME(_CORE):
         if self.n_atoms != len(self.symbols):
             raise ValueError('Data shape inconsistent '
                              'with symbols attribute! '
-                             '{} {}'.format(self.data.shape,
-                                            self.symbols))
+                             f'{self.data.shape} '
+                             f'{len(self.symbols)} = {self.symbols}')
 
     def __add__(self, other):
         new = _copy.deepcopy(self)
@@ -309,23 +311,18 @@ class _TRAJECTORY(_FRAME):
         self._type = 'trajectory'
         self._labels = ('comments', 'symbols', None)
 
-    def _read_input(self,  *args, **kwargs):
-        self.comments = kwargs.get('comments', [])
-        self.symbols = kwargs.get('symbols', ())
-        self.data = kwargs.get('data', _np.zeros((0, 0, 0)))
-
     def _sync_class(self):
         self.n_frames, self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
-            raise ValueError('Data shape inconsistent with '
-                             'symbols attribute!'
-                             '{} {}'.format(self.data.shape,
-                                            self.symbols))
+            raise ValueError('Data shape inconsistent '
+                             'with symbols attribute! '
+                             f'{self.data.shape} '
+                             f'{len(self.symbols)} = {self.symbols}')
         if self.n_frames != len(self.comments):
-            raise ValueError('Data shape inconsistent with '
-                             'comments attribute!'
-                             '{} {}'.format(self.data.shape,
-                                            self.comments))
+            raise ValueError('Data shape inconsistent '
+                             'with symbols attribute! '
+                             f'{self.data.shape} '
+                             f'{len(self.comments)} = {self.comment}')
         self._axis_pointer = -2
 
 
@@ -337,11 +334,15 @@ class _MODES(_FRAME):
     def _sync_class(self, check_orthonormality=True):
         self.n_modes, self.n_atoms, self.n_fields = self.data.shape
         if self.n_atoms != len(self.symbols):
-            raise ValueError('Data shape inconsistent with '
-                             'symbols attribute!\n')
-        if self.n_modes != len(self.comments):
-            raise ValueError('Data shape inconsistent with '
-                             'comments attribute!\n')
+            raise ValueError('Data shape inconsistent '
+                             'with symbols attribute! '
+                             f'{self.data.shape} '
+                             f'{len(self.symbols)} = {self.symbols}')
+        if self.n_frames != len(self.comments):
+            raise ValueError('Data shape inconsistent '
+                             'with symbols attribute! '
+                             f'{self.data.shape} '
+                             f'{len(self.comments)} = {self.comment}')
         self._axis_pointer = -2
         self.modes = self.data[:, :, 6:9]
         self.eival_cgs = _np.array(self.comments).astype(float)
@@ -509,7 +510,7 @@ class _XYZ():
        pos_aa/vel_au attributes are protected, use underscored
        attributes for changes.'''
 
-    def _read_input(self, *args, **kwargs):
+    def _import_frame(self, *args, **kwargs):
         align_coords = kwargs.pop('align_coords', False)
         center_coords = kwargs.pop('center_coords', False)
         wrap = kwargs.get('wrap', False)
@@ -525,7 +526,7 @@ class _XYZ():
             raise TypeError("File reader of %s takes at most 1 argument!"
                             % self.__class__.__name__)
 
-        elif len(args) == 1:
+        elif len(args) == 1 and self._type != 'trajectory':
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
@@ -537,22 +538,8 @@ class _XYZ():
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
                 kwargs.update({'range': _fr})
-            elif self._type == 'trajectory':
-                _fr = kwargs.get('range', (0, 1, float('inf')))
 
-            if fmt == "xyz":
-                data, symbols, comments = xyzReader(fn,
-                                                    **_extract_keys(
-                                                               kwargs,
-                                                               range=_fr,
-                                                               skip=[],
-                                                               bz2=False,
-                                                               verbose=False,
-                                                               units='default',
-                                                               )
-                                                    )
-
-            elif fmt in ["cube", "cub"]:
+            if fmt in ["cube", "cub"]:
                 data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                         cubeReader(fn, **_extract_keys(kwargs,
                                                        bz2=False,
@@ -568,12 +555,6 @@ class _XYZ():
                         cell_vec_aa,
                         multiply=_dims
                         )
-
-            elif fmt == "pdb":
-                data, names, symbols, residues, f_cell_aa_deg, title = \
-                        pdbReader(fn)
-                n_atoms = len(symbols)
-                comments = kwargs.get('comments', title)
 
             elif fmt == "cif":
                 data, names, symbols, f_cell_aa_deg, title = \
@@ -598,50 +579,6 @@ class _XYZ():
                           ),
                           axis=-1
                           )
-
-            elif fmt == "cpmd" or any([_t in fn for _t in [
-                                     'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
-                fmt = "cpmd"
-                if 'symbols' not in kwargs:
-                    kwargs.update({
-                        'symbols': cpmd_kinds_from_file(fn)
-                        })
-                data_dict = cpmdReader(fn, **_extract_keys(
-                                      kwargs,
-                                      range=_fr,
-                                      skip=[],
-                                      bz2=False,
-                                      verbose=False,
-                                      units='default',
-                                      filetype='TRAJECTORY'
-                                      ))
-                self._data_dict = data_dict
-
-                if 'symbols' in data_dict:
-                    symbols = data_dict['symbols']
-                    data = data_dict['data']
-                    comments = data_dict['comments']
-                else:
-                    raise ValueError('File %s does not contain atom '
-                                     'information!' % fn)
-
-            elif fmt in ['tinker', 'arc', 'vel']:
-                fmt = "tinker"
-                buf = arcReader(fn,
-                                **_extract_keys(kwargs,
-                                                range=_fr,
-                                                skip=[],
-                                                bz2=False,
-                                                verbose=False,
-                                                units='default',
-                                                cell_line=False,
-                                                )
-                                )
-                data, symbols, indices, types, connectivity, comments = buf[:6]
-                try:
-                    f_cell_aa_deg = buf[6]
-                except IndexError:
-                    pass
 
             elif fmt == "orca":
                 data_dict = orcaReader(fn)
@@ -1311,7 +1248,7 @@ class _MOMENTS():
     '''Object that contains position and moment data very similar
        to _XYZ but more general.
        '''
-    def _read_input(self, *args, **kwargs):
+    def _import_frame(self, *args, **kwargs):
         self.style = kwargs.get('style', 'CPMD 4.1')
         if self.style != 'CPMD 4.1':
             raise NotImplementedError('ChirPy supports only the CPMD 4.1 '
@@ -1320,62 +1257,10 @@ class _MOMENTS():
         self.cell_aa_deg = kwargs.get('cell_aa_deg')
         wrap = kwargs.get('wrap', False)
 
-        if len(args) > 1:
-            raise TypeError("File reader of %s takes at most 1 argument!"
+        if len(args) > 0:
+            raise TypeError("File reader of %s does not take arguments"
                             % self.__class__.__name__)
-
-        elif len(args) == 1:
-            fn = args[0]
-            fmt = kwargs.get('fmt', fn.split('.')[-1])
-            if fmt == 'bz2':
-                fmt = fn.split('.')[-2]
-            self._fmt = fmt
-            self._fn = args
-            if self._type == 'frame':
-                _fr = kwargs.get('frame', 0)
-                _fr = _fr, 1, _fr+1
-                kwargs.update({'range': _fr})
-            elif self._type == 'trajectory':
-                _fr = kwargs.get('range', (0, 1, float('inf')))
-
-            if fmt == "xyz":
-                _warnings.warn("XYZ format not tested for MOMENTS!",
-                               _ChirPyWarning, stacklevel=2)
-                data, symbols, comments = xyzReader(fn,
-                                                    **_extract_keys(
-                                                                kwargs,
-                                                                range=_fr,
-                                                                skip=[],
-                                                                bz2=False,
-                                                                verbose=False,
-                                                                units='default'
-                                                                )
-                                                    )
-
-            elif fmt == "cpmd" or any([_t in fn for _t in [
-                                     'MOL', 'MOMENTS']]):
-                fmt = "cpmd"
-                data_dict = cpmdReader(fn, **_extract_keys(
-                                      kwargs,
-                                      range=_fr,
-                                      skip=[],
-                                      bz2=False,
-                                      verbose=False,
-                                      units='default',
-                                      filetype='MOMENTS',
-                                      symbols=cpmd_kinds_from_file(fn)
-                                      ))
-                self._data_dict = data_dict
-
-                symbols = data_dict['symbols']
-                data = data_dict['data']
-
-                comments = data_dict['comments']
-
-            else:
-                raise ValueError('Unknown format: %s.' % fmt)
-
-        elif len(args) == 0:
+        else:
             if 'data' in kwargs:
                 data = kwargs.get('data')
                 _sh = data.shape
@@ -1597,13 +1482,14 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         if len(args) == 0:
             pass
 
-        elif len(args) == 1:
+        elif len(args) == 1 or len(args) == 2:
             _fr = kwargs.get('range', (0, 1, -1))
-            fn = args[0]
             self._fn = args
-            fmt = kwargs.get('fmt', fn.split('.')[-1])
+            fn0 = args[0]
+            # --- retrieve format with fn0 as the master reference
+            fmt = kwargs.get('fmt', fn0.split('.')[-1])
             if fmt == 'bz2':
-                fmt = fn.split('.')[-2]
+                fmt = fn0.split('.')[-2]
             self._fmt = fmt
 
             if self._fmt == "xyz":
@@ -1614,7 +1500,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       bz2=False,
                                       units='default',
                                       )
-                self._gen = _xyzIterator(fn, **nargs)
+                if len(args) == 1:
+                    self._gen = _xyzIterator(fn0, **nargs)
+                else:
+                    # --- also works with 1 argument, but slower (?)
+                    self._gen = _xyzContainer(*args, **nargs)
 
             elif self._fmt in ["arc", 'vel', 'tinker']:
                 self._fmt = "tinker"
@@ -1626,14 +1516,22 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       units='default',
                                       cell_line=False,
                                       )
-                self._gen = _arcIterator(fn, **nargs)
+                if len(args) == 1:
+                    self._gen = _arcIterator(fn0, **nargs)
+                else:
+                    # --- also works with 1 argument, but slower (?)
+                    self._gen = _arcContainer(*args, **nargs)
 
             elif self._fmt == "pdb":
+                if len(args) != 1:
+                    raise NotImplementedError('cannot handle multiple files')
                 nargs = {}
-                self._gen = _pdbIterator(fn)  # **kwargs
+                self._gen = _pdbIterator(fn0)  # **kwargs
 
-            elif self._fmt == "cpmd" or any([_t in fn for _t in [
+            elif self._fmt == "cpmd" or any([_t in fn0 for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
+                if len(args) != 1:
+                    raise NotImplementedError('cannot handle multiple files')
                 self._fmt = "cpmd"
                 nargs = _extract_keys(
                                       kwargs,
@@ -1642,16 +1540,25 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       bz2=False,
                                       units='default',
                                       filetype='TRAJECTORY',
-                                      symbols=cpmd_kinds_from_file(fn)
+                                      symbols=cpmd_kinds_from_file(fn0)
                                       )
-                self._gen = _cpmdIterator(fn, **nargs)
+                self._gen = _cpmdIterator(fn0, **nargs)
+                self.symbols = nargs['symbols']
+                self.comments = kwargs.get('comments', 'cpmd')
 
             else:
-                raise ValueError('Unknown trajectory format: %s.' % self._fmt)
+                if len(args) != 1:
+                    raise NotImplementedError('cannot handle multiple files')
+                try:
+                    self._fmt = "import"  # will be overwritten in next()
+                    nargs = kwargs
+                    # self._frame = self._kernel(*args, **kwargs)
+                    # self.__dict__.update(self._frame.__dict__)
+                    self._gen = iter([self._kernel(*args, **kwargs)])
+                except ValueError:
+                    raise ValueError(f'unknown trajectory format: {self._fmt}')
 
-            self._topology = XYZFrame(fn, **nargs)
-
-            # keep kwargs for iterations
+            # --- keep kwargs for iterations
             self._kwargs.update(kwargs)
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
@@ -1660,6 +1567,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             # --- Get first frame for free (NB: if _fr <0 iterator is fresh)
             self.sneak(verbose=False)
+            self._topology = _copy.deepcopy(self._frame)
 
             # --- Store original skip as it is consumed by generator
             if 'skip' in self._kwargs:
@@ -1673,7 +1581,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         frame = next(self._gen)
 
         def check_topo(k, f):
-            return getattr(self._topology, k, f)
+            if self._fr < 0:
+                return f
+            else:
+                return getattr(self._topology, k, f)
 
         if self._fmt == 'xyz':
             out = {
@@ -1682,7 +1593,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'comments': frame[-1],
                     }
 
-        if self._fmt == 'tinker':
+        elif self._fmt == 'tinker':
             out = {
                     'data': frame[0],
                     'symbols': check_topo('symbols', frame[1]),
@@ -1692,7 +1603,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'cell_aa_deg': (frame[6:7] or ([],))[0],  # --- optional
                     }
 
-        if self._fmt == 'pdb':
+        elif self._fmt == 'pdb':
             out = {
                     'data': frame[0],
                     'symbols': check_topo('symbols', frame[2]),
@@ -1702,13 +1613,16 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'residues': check_topo('residues', frame[3]),
                     }
 
-        if self._fmt == 'cpmd':
+        elif self._fmt == 'cpmd':
             out = {
                     'data': frame,
-                    'symbols': self._topology.symbols,
-                    'comments': self._topology.comments,
+                    'symbols': self.symbols,
+                    'comments': self.comments,
                     }
-        self._fr += self._st
+
+        else:
+            out = frame.__dict__
+
         self._kwargs.update(out)
 
         self._frame = self._kernel(**self._kwargs)
@@ -1725,6 +1639,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._frame = _f(self._frame, *_f_args, **_f_kwargs)
 
         self.__dict__.update(self._frame.__dict__)
+        self._fr += self._st
 
         return self._fr
 
@@ -1850,7 +1765,6 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
 
-            # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or any(_t in fn
                                           for _t in ['MOL', 'MOMENTS']):
                 self._fmt = "cpmd"

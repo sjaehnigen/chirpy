@@ -124,10 +124,10 @@ class TestCoordinates(unittest.TestCase):
         data, symbols, comments = \
             r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz')
         self.assertIsInstance(data, np.ndarray)
-        self.assertTrue(np.array_equal(
-            data,
-            np.genfromtxt(self.dir + '/data_frame_pos_pbc').reshape(1, 208, 3)
-            ))
+        DATA_FRAME_POS_PBC = np.loadtxt(
+                self.dir + '/data_frame_pos_pbc'
+                ).reshape(1, 208, 3)
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
         self.assertIsInstance(comments, list)
         self.assertTupleEqual(
                 symbols,
@@ -228,6 +228,21 @@ class TestCoordinates(unittest.TestCase):
                  'O', 'H', 'H', 'O', 'H', 'H', 'O', 'H', 'H', )
                 )
         [self.assertIsInstance(_c, str) for _c in comments]
+
+        # --- test unit conversion (also valid for cpmd, arc)
+        data, symbols, comments = \
+            r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz',
+                                    units=3*[('length', 'aa')])
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
+        data, symbols, comments = \
+            r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz',
+                                    units='default')
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
+        data, symbols, comments = \
+            r_coordinates.xyzReader(self.dir + '/test_frame_pos_pbc.xyz',
+                                    units=3*[('length', 'au')])
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC *
+                        constants.l_au2aa))
 
         # Test symbol support (no recognition here)
         data, symbols, comments = r_coordinates.xyzReader(
@@ -434,6 +449,189 @@ class TestCoordinates(unittest.TestCase):
         self.assertTupleEqual(data[1], 2*(tuple(np.arange(1, 17).astype(str)),)
                               )
         self.assertTupleEqual(np.array(data[2]).shape, (2, 16, 3))
+
+    def test_xyzContainer(self):
+        _iter = r_coordinates.xyzContainer(
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                )
+        data, symbols, comments = next(_iter)
+        self.assertIsInstance(data, np.ndarray)
+        DATA_FRAME_POS_PBC = np.tile(np.loadtxt(
+                self.dir + '/data_frame_pos_pbc'
+                ).reshape(208, 3), (1, 3))
+        self.assertListEqual(data[0].tolist(), DATA_FRAME_POS_PBC[0].tolist())
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
+        self.assertTupleEqual(
+                symbols,
+                ('C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+                 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+                 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+                 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H',
+                 'H', 'H', 'H', 'H', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+                 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'O', 'O', 'O', 'O',
+                 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O',
+                 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O',
+                 'O', 'O', 'O', 'O', )
+                )
+        [self.assertIsInstance(_c, str) for _c in comments]
+
+        # --- test unit conversion (also valid for cpmd, arc)
+        # --- some defaults (no change to numbers)
+        data, symbols, comments = next(r_coordinates.xyzContainer(
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                units=9*[('length', 'aa')]
+                ))
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
+        data, symbols, comments = next(r_coordinates.xyzContainer(
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                units=6*[('length', 'aa')] + 3*[('velocity', 'au')]
+                ))
+        self.assertTrue(np.array_equal(data, DATA_FRAME_POS_PBC))
+
+        # --- non-defaults
+        data, symbols, comments = next(r_coordinates.xyzContainer(
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                self.dir + '/test_frame_pos_pbc.xyz',
+                units=6*[('length', 'aa')] + 3*[('length', 'au')]
+                ))
+        data[:, 6:] *= constants.l_aa2au
+        self.assertListEqual(data[0].tolist(), DATA_FRAME_POS_PBC[0].tolist())
+        self.assertTrue(np.allclose(data, DATA_FRAME_POS_PBC))
+
+        # --- some Negatives
+        with self.assertRaises(ValueError):
+            data, symbols, comments = next(r_coordinates.xyzContainer(
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                    self.dir + '/test_frame_pos_pbc.xyz',
+                    units=6*[('length', 'aa')]
+                    ))
+
+    def test_arcContainer(self):
+        TINKER_VEL = np.loadtxt(self.dir + '/tinker_vel').reshape(10, 3, 3)[0]
+        TINKER_POS = np.loadtxt(self.dir + '/tinker_pos').reshape(10, 3, 3)[0]
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.vel',
+                self.dir + '/water.vel',
+                ))
+        self.assertTrue(np.array_equal(data, np.tile(TINKER_VEL, (1, 2))))
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.arc',
+                self.dir + '/water.arc',
+                ))
+        self.assertTrue(np.array_equal(data, np.tile(TINKER_POS, (1, 2))))
+        self.assertTupleEqual(
+                symbols,
+                ('O', 'H', 'H')
+                )
+
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/TAI.xyz',
+                self.dir + '/TAI.xyz',
+                ))
+
+        self.assertTupleEqual(
+                connectivity,
+                (
+                    [2, 6, 11],
+                    [1, 3, 13],
+                    [2, 4, 7],
+                    [3, 5, 8],
+                    [4, 6, 9],
+                    [1, 5, 10],
+                    [3],
+                    [4],
+                    [5],
+                    [6],
+                    [1, 12, 16, 19],
+                    [11],
+                    [2, 14, 15, 16],
+                    [13],
+                    [13],
+                    [11, 13, 17, 21],
+                    [16],
+                    [19],
+                    [11, 18, 20],
+                    [19],
+                    [16, 22],
+                    [21]
+                    )
+                )
+        self.assertTupleEqual(
+                types,
+                (304, 305, 303, 302, 301, 300, 310, 309, 308, 307, 59, 60, 57,
+                 58, 58, 55, 56, 66, 65, 66, 230, 231)
+                )
+
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.arc',
+                self.dir + '/water.vel',
+                ))
+        self.assertTrue(np.array_equal(data,
+                                       np.hstack((TINKER_POS, TINKER_VEL))))
+
+        # ---- units
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.arc',
+                self.dir + '/water.vel',
+                units='default',
+                ))
+        self.assertTrue(np.array_equal(data,
+                                       np.hstack((TINKER_POS, TINKER_VEL))))
+
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.arc',
+                self.dir + '/water.vel',
+                units=3*[('length', 'aa')] + 3*[('velocity', 'aa_ps')],
+                ))
+        self.assertTrue(np.array_equal(data,
+                                       np.hstack((TINKER_POS, TINKER_VEL))))
+
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates.arcContainer(
+                self.dir + '/water.arc',
+                self.dir + '/water.vel',
+                units=3*[('length', 'aa')] + 3*[('velocity', 'aa_fs')],
+                ))
+        self.assertTrue(np.allclose(
+                    data,
+                    np.hstack((TINKER_POS, TINKER_VEL*1000.)))
+                    )
+
+    def test_mixedContainer(self):
+        TINKER_VEL = np.loadtxt(self.dir + '/tinker_vel').reshape(10, 3, 3)[0]
+        TINKER_POS = np.loadtxt(self.dir + '/tinker_pos').reshape(10, 3, 3)[0]
+        data, symbols, numbers, types, connectivity, comments = \
+            next(r_coordinates._coordContainer(
+                self.dir + '/water.xyz',
+                self.dir + '/water.vel',
+                iterator=[r_coordinates.xyzIterator,
+                          r_coordinates.arcIterator],
+                ))
+        self.assertTrue(np.array_equal(data,
+                                       np.hstack((TINKER_POS, TINKER_VEL))))
 
     def test_bz2(self):
         # --- general iterator test (also valid for cpmd, cube, etc.)

@@ -36,7 +36,7 @@ from CifFile import ReadCif as _ReadCif
 import warnings
 import fortranformat as ff
 
-from .generators import _reader, _open
+from .generators import _reader, _open, _container
 from ..topology.mapping import detect_lattice, get_cell_vec
 
 from .. import constants
@@ -332,6 +332,54 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
     else:
         return _reader(FN, _nlines, _kernel, **kwargs)
 
+# --- containers
+
+
+def _coordContainer(*args, iterator=xyzIterator, **kwargs):
+    '''Iterate over multiple trajectory files. The files have to
+       agree in the number of atoms and frames.
+       The output has the form of the first given file.
+       iterator ... file reader or list of readers (mixed format case)
+
+       '''
+    # --- works for all iterators with data at return position 0
+    if isinstance(iterator, list):
+        _iterators = iterator
+    else:
+        _iterators = [iterator] * len(args)
+    reader_a, fn_a, args_a, kwargs_a = zip(
+         *[(_iter, _fn, (), kwargs) for _iter, _fn in zip(_iterators, args)]
+         )
+    _dim = None
+    convert = 1.
+
+    if (units := kwargs.pop('units', 'default')) != 'default':
+        # --- do not send convert to readers as usual, convert here
+        convert = _convert(units)
+        kwargs['units'] = 1
+
+    for _frame in _container(reader_a, fn_a, args_a, kwargs_a):
+        if _dim is None:
+            _dim = np.array(_frame[0]).shape
+
+        yield np.transpose(
+                    np.array(_frame[0]), axes=(1, 0, 2)
+                    ).reshape(_dim[1], _dim[0]*_dim[2]) * convert, \
+            *[_fr[0] for _fr in _frame[1:]]
+
+
+def xyzContainer(*args, **kwargs):
+    '''Iterate over multiple XYZ trajectory files. The files have to
+       agree in the number of atoms and frames'''
+    return _coordContainer(*args, iterator=xyzIterator, **kwargs)
+
+
+def arcContainer(*args, **kwargs):
+    '''Iterate over multiple ARC trajectory files. The files have to
+       agree in the number of atoms and frames'''
+    return _coordContainer(*args, iterator=arcIterator, **kwargs)
+
+
 # --- complete readers
 
 
@@ -388,7 +436,7 @@ def pdbIterator(FN):
         title = u.trajectory.title
         if np.prod(cell_aa_deg) == 0.0:
             warnings.warn('no or invalid cell specified in pdb file',
-                          config.ChirPyWarning)
+                          config.ChirPyWarning, stacklevel=2)
             cell_aa_deg = None
         if len(title) == 0:
             title = None

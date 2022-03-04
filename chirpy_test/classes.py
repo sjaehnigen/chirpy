@@ -127,7 +127,8 @@ class TestTrajectory(unittest.TestCase):
         traj_ref = trajectory.XYZ(_ref)
         self.assertTrue(np.allclose(traj.data, traj_ref.data))
 
-        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        # traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz').expand()
         traj.align_coordinates(selection=list(range(12)))
         traj.write(_out)
         self.assertTrue(
@@ -146,7 +147,7 @@ class TestTrajectory(unittest.TestCase):
         traj_ref = trajectory.XYZ(_ref)
         self.assertTrue(np.allclose(traj.data, traj_ref.data))
 
-        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz').expand()
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=ChirPyWarning)
             traj.center_coordinates(selection=list(range(12)))
@@ -165,7 +166,7 @@ class TestTrajectory(unittest.TestCase):
         traj_ref = trajectory.XYZ(_ref)
         self.assertTrue(np.allclose(traj.data, traj_ref.data))
 
-        traj = trajectory._XYZTrajectory(self.dir + '/trajectory.xyz')
+        traj = trajectory.XYZ(self.dir + '/trajectory.xyz').expand()
         traj.clean_velocities()
         traj.write(_out)
         self.assertTrue(
