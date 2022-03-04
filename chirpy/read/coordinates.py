@@ -94,11 +94,14 @@ def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
 
 def _free(frame, columns='iddd', convert=1, n_lines=1):
     '''Kernel for processing free format frame.
-       Column support: i s m d'''
+       Column support: i s m d
+       i ... iterations/frames
+       s ... symbols/numbers
+       d ... data'''
 
     def _parse_columns(line):
         content = {}
-        # --- ToDO: is this slowing down the generator?
+        # --- ToDo: is this slowing down the generator?
         for _c, _l in zip(columns, line.strip().split()):
             if _c == 'd':
                 if 'd' not in content:  # important for keeping column order
@@ -288,7 +291,7 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
          d ... data
          s ... symbol
          m ... molecule id
-         z ... atomic number (NOT IMPLEMENTED)
+         z ... atomic number
          n ... name (NOT IMPLEMENTED)
          r ... residue index (NOT IMPLEMENTED)
          t ... type (NOT IMPLEMENTED)
@@ -405,7 +408,6 @@ def pdbReader(FN):
 
        https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
        '''
-
     data, names, symbols, res, cell_aa_deg, title = \
         tuple([_b for _b in zip(*pdbIterator(FN))])
 
@@ -413,7 +415,7 @@ def pdbReader(FN):
         cell_aa_deg[0], list(title)
 
 
-def cifReader(fn, fill_unit_cell=True):
+def cifReader(FN, fill_unit_cell=True):
     '''Read CIF file and return a filled unit cell.
        '''
     def _measurement2float(number):
@@ -435,7 +437,7 @@ def cifReader(fn, fill_unit_cell=True):
                           stacklevel=2)
         return _label
 
-    _read = _ReadCif(fn)
+    _read = _ReadCif(FN)
     title = _read.keys()[0]
     _load = _read[title]
     cell_aa_deg = np.array([_measurement2float(_load[_k]) for _k in [

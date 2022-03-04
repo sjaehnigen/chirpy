@@ -32,7 +32,6 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
-from itertools import zip_longest as _zip_longest
 
 from .core import CORE as _CORE
 from .core import ITERATOR as _ITERATOR
@@ -45,7 +44,6 @@ from ..read.coordinates import xyzIterator as _xyzIterator
 from ..read.coordinates import cpmdIterator as _cpmdIterator
 from ..read.coordinates import pdbIterator as _pdbIterator
 from ..read.coordinates import arcIterator as _arcIterator
-from ..read.coordinates import freeIterator as _freeIterator
 from ..write.coordinates import xyzWriter, pdbWriter, arcWriter
 from ..write.modes import xvibsWriter
 
@@ -53,6 +51,7 @@ from ..interface.orca import orcaReader
 from ..interface.cpmd import cpmdReader, cpmdWriter, cpmd_kinds_from_file
 from ..interface.molden import write_moldenvib_file
 from ..interface.gaussian import g09Reader
+from ..interface.tinker import tinkermomentsReader
 
 from ..topology import mapping, motion
 from ..topology.dissection import read_topology_file
@@ -530,11 +529,10 @@ class _XYZ():
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
-                kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
 
             self._fmt = fmt
-            self._fn = fn
+            self._fn = args
             if self._type == 'frame':
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
@@ -1330,10 +1328,9 @@ class _MOMENTS():
             fn = args[0]
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
-                kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
-            self._fn = fn
+            self._fn = args
             if self._type == 'frame':
                 _fr = kwargs.get('frame', 0)
                 _fr = _fr, 1, _fr+1
@@ -1535,6 +1532,7 @@ class _MOMENTS():
 
 
 class XYZFrame(_XYZ, _FRAME):
+    # -- not for trajectory
     def _check_distances(self):
         _too_close = mapping.close_neighbours(self.data[:, :3],
                                               cell=self.cell_aa_deg,
@@ -1600,12 +1598,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
             pass
 
         elif len(args) == 1:
-            _fr = kwargs.get('range', (0, 1, float('inf')))
+            _fr = kwargs.get('range', (0, 1, -1))
             fn = args[0]
-            self._fn = fn
+            self._fn = args
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
-                kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
 
@@ -1830,9 +1827,13 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
     def __init__(self, *args, **kwargs):
         self._kernel = MOMENTSFrame
 
-        self._kwargs = {}
+        # --- keep kwargs for iterations
+        self._kwargs = kwargs
+
         # --- initialise list of masks
         self._kwargs['_masks'] = []
+
+        _fr = kwargs.get('range', (0, 1, -1))
 
         if len(args) not in (0, 1, 3):
             raise TypeError("expected 0, 1, or 3 arguments as files for %s"
@@ -1843,13 +1844,11 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
 
         elif len(args) == 1:
             fn = args[0]
-            self._fn = fn
+            self._fn = args
             fmt = kwargs.get('fmt', fn.split('.')[-1])
             if fmt == 'bz2':
-                kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
             self._fmt = fmt
-            _fr = kwargs.get('range', (0, 1, float('inf')))
 
             # self._topology = XYZFrame(fn, **kwargs)
             if self._fmt == "cpmd" or any(_t in fn
@@ -1869,48 +1868,23 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                 raise ValueError('Unknown format: %s' % self._fmt)
 
         elif len(args) == 3:
-            if kwargs.pop('fmt', None) != "tinker":
+            # -- if no format is given it silently assumes tinker format
+            if kwargs.get('fmt', 'tinker') != "tinker":
                 raise TypeError("expected \'fmt=tinker\' in file reader of "
                                 "%s after finding 3 arguments!"
                                 % self.__class__.__name__)
-            try:
-                _tmft = None  # to avoid flake warning only
-                [setattr(self, {
-                    "ddip": "_fn_c",
-                    "dip": "_fn_d",
-                    "magdip": "_fn_m",
-                    "magdip_half": "_fn_m",
-                    "magdip_tot": "_fn_m",
-                    }[(_tmft := _fn.split('.')[-1])],
-                    _fn)
-                 for _fn in args]
-            except KeyError:
-                raise ValueError('Unknown tinker format: %s.' % _tmft)
+            self._fn = args
+            self._gen = tinkermomentsReader(*args, **_extract_keys(
+                                             kwargs,
+                                             range=_fr,
+                                             skip=[],
+                                             bz2=False,
+                                             units='default',
+                                             gauge_origin_aa=[0., 0., 0.],
+                                             columns='imddd',
+                                             ))
 
-            columns = kwargs.get('columns', 'iddd')
-            _id = columns.index('d')
-
-            def _tinker_moment_container():
-                reference = _np.array(kwargs.pop('gauge_origin_aa', 3*[0.]))
-                for _cur, _mag, _dip in _zip_longest(
-                     _freeIterator(self._fn_c,
-                                   units=3*[('current_dipole', 'debye_ps')],
-                                   **kwargs),
-                     _freeIterator(self._fn_m,
-                                   units=3*[('magnetic_dipole', 'debyeaa_ps')],
-                                   **kwargs),
-                     _freeIterator(self._fn_d,
-                                   units=3*[('electric_dipole', 'debye')],
-                                   **kwargs),
-                     ):
-
-                    # --- use numpy intelligence on shape
-                    _pos = _np.ones_like(_cur[_id]) * _np.array(reference)
-                    yield _np.hstack((_pos, _cur[_id], _mag[_id], _dip[_id]))
-
-            self._gen = _tinker_moment_container()
-
-        # --- keep kwargs for iterations
+        # --- safe changes to kwargs (ignore deletions)
         self._kwargs.update(kwargs)
 
         self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))

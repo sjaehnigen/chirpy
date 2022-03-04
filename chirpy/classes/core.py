@@ -265,7 +265,7 @@ class ITERATOR():
         '''Reinitialises the iterator'''
         if '_skip' in self._kwargs:
             self._kwargs['skip'] = self._kwargs['_skip'].copy()
-        self.__init__(self._fn, **self._kwargs)
+        self.__init__(*self._fn, **self._kwargs)
 
     def _unwind(self, *args, **kwargs):
         '''Unwinds the Iterator according to <length> or until it is exhausted

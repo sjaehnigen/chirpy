@@ -30,7 +30,7 @@
 # -------------------------------------------------------------------
 
 
-from itertools import islice
+from itertools import islice, zip_longest
 import numpy as np
 import bz2 as _bz2
 from tqdm import tqdm
@@ -44,7 +44,7 @@ def _gen(fn):
 
 
 def _open(*args, **kwargs):
-    if kwargs.get('bz2', False):
+    if kwargs.get('bz2', args[0].split('.')[-1] == 'bz2'):
         return _bz2.open(args[0], 'rt')
     else:
         return open(*args)
@@ -116,7 +116,6 @@ def _reader(FN, n_lines, kernel,
             **kwargs):
     '''Opens file, checks contents, and parses arguments,
        kernel, and generator.'''
-
     with _open(FN, 'r', bz2=bz2, **kwargs) as _f:
         _it = _gen(_f)
         data = tqdm(_get(_it,
@@ -128,8 +127,8 @@ def _reader(FN, n_lines, kernel,
                     disable=not verbose)
 
         if np.size(data) == 0:
-            raise ValueError('Given input and arguments '
-                             'do not yield any data!')
+            raise ValueError('given input and arguments '
+                             'do not yield any data')
         else:
             for _d in data:
                 yield _d
@@ -138,3 +137,19 @@ def _reader(FN, n_lines, kernel,
 def _dummy_kernel(frame, **kwargs):
     '''Simplest _kernel. Does nothing.'''
     return frame
+
+
+def _container(reader_a, fn_a, args_a=(), kwargs_a=()):
+    '''Assemble multiple readers in one generator.
+       reader_a/fn_a/args_a/kwargs_a are iterables
+       of reader functions and their filenames + arguments.'''
+    try:
+        for _frame in zip_longest(*map(
+             lambda x: x[0](x[1], *x[2], **x[3]),
+             # i.e.: reader(fn,   *args, **kwargs)
+             zip_longest(reader_a, fn_a, args_a, kwargs_a, fillvalue={})
+             )):
+            # -- frame = (out0, out1, out2, ...)
+            yield list(zip(*_frame))
+    except TypeError:
+        raise ValueError('reached unmatched end of file')

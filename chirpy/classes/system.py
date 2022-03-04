@@ -127,7 +127,7 @@ class _SYSTEM(_CORE):
 
         elif fmt == "pdb":
             if self.mol_map is None:  # re-reads file
-                self._topo = _read_topology_file(self.XYZ._fn)
+                self._topo = _read_topology_file(*self.XYZ._fn)
                 self.mol_map = self._topo['mol_map']
 
     def center_molecule(self, index, weights='masses'):

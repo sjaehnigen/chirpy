@@ -37,6 +37,7 @@ import warnings
 from chirpy.read import modes as r_modes
 from chirpy.read import coordinates as r_coordinates
 from chirpy.read import grid as r_grid
+from chirpy.read import generators
 
 from chirpy import constants
 from chirpy.config import ChirPyWarning
@@ -391,8 +392,48 @@ class TestCoordinates(unittest.TestCase):
                  58, 58, 55, 56, 66, 65, 66, 230, 231)
                 )
 
+        # test CELL
+        # data, symbols, numbers, types, connectivity, comments, cell_aa_deg
+        _return = r_coordinates.arcReader(self.dir + '/s_0881.arc')
+        self.assertEqual(len(_return), 7)
+        self.assertListEqual(
+                _return[0].ravel().tolist(),
+                np.loadtxt(self.dir + '/data_s_0881_arc').tolist()
+                )
+        self.assertListEqual(_return[-1].tolist(),
+                             [12.073, 12.342, 11.577, 90., 90., 90.])
         # Some Negatives
-        # with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError):
+            _return = r_coordinates.arcReader(self.dir + '/s_0881_broken.arc')
+
+    def test_freeIterator(self):
+        reference = iter([
+            [0.255269, 1.97165, -14.108334],
+            [1., 0.255269, 1.97165, -14.108334],
+            [1.97165, -14.108334],
+            [3., 1., 0.255269, 1.97165, -14.108334],
+        ])
+        for columns in ['imddd', 'idddd', 'ismdd', 'ddddd']:
+            _return = r_coordinates.freeIterator(self.dir+'/s_0881.dip',
+                                                 columns=columns)
+            data = next(_return)
+            self.assertEqual(len(data), len(set(columns)))
+            self.assertListEqual(data[-1][0].tolist(), next(reference))
+        # Some Negatives
+        with self.assertRaises(ValueError):
+            _return = r_coordinates.freeIterator(self.dir+'/s_0881.dip',
+                                                 columns='iiiii')
+
+    def test_container(self):
+        _return = generators._container(
+                (r_coordinates.freeIterator, r_coordinates.freeIterator),
+                (self.dir + '/s_0881.dip', self.dir + '/s_0881.dip'),
+                (),
+                ({'columns': 'imddd'}, {'columns': 'imddd'}))
+        data = next(_return)
+        self.assertTupleEqual(data[1], 2*(tuple(np.arange(1, 17).astype(str)),)
+                              )
+        self.assertTupleEqual(np.array(data[2]).shape, (2, 16, 3))
 
     def test_bz2(self):
         # --- general iterator test (also valid for cpmd, cube, etc.)

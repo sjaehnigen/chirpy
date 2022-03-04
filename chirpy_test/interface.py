@@ -36,7 +36,7 @@ import warnings
 import filecmp
 import copy
 
-from chirpy.interface import cpmd
+from chirpy.interface import cpmd, tinker
 from chirpy import constants
 from chirpy.config import ChirPyWarning
 
@@ -144,3 +144,47 @@ class TestCPMD(unittest.TestCase):
                                                     pp=_cpmd.ATOMS.pp)
                 _cpmd.write_input_file("test.inp", fmt='angstrom')
                 os.remove("test.inp")
+
+
+class TestTinker(unittest.TestCase):
+
+    def setUp(self):
+        self.dir = _test_dir + '/read_write'
+
+    def tearDown(self):
+        pass
+
+    def test_tinkermomentsReader(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            data = np.array(list(tinker.tinkermomentsReader(
+                    *[self.dir + '/' + _f for _f in
+                        ('s_0881.dip', 's_0881.magdip', 's_0881.ddip')],
+                    columns='imddd'
+                    )))
+            self.assertTupleEqual(data.shape, (3, 16, 12))
+            self.assertListEqual(
+                    data[-1, 3].tolist(),
+                    np.loadtxt(self.dir + '/data_s_0881_1').tolist()
+                    )
+
+            # -- wrong columns and other range
+            data = np.array(list(tinker.tinkermomentsReader(
+                    *[self.dir + '/' + _f for _f in
+                        ('s_0881.dip', 's_0881.magdip', 's_0881.ddip')],
+                    columns='iddd',
+                    range=(0, 2, -1)
+                    )))
+            self.assertTupleEqual(data.shape, (2, 16, 12))
+            self.assertListEqual(
+                    data[-1, 3].tolist(),
+                    np.loadtxt(self.dir + '/data_s_0881_2').tolist()
+                    )
+
+        # Some Negatives
+            with self.assertRaises(ValueError):
+                data = np.array(list(tinker.tinkermomentsReader(
+                      *[self.dir + '/' + _f for _f in
+                        ('s_0881_broken.dip', 's_0881.magdip', 's_0881.ddip')],
+                      columns='imddd'
+                      )))
