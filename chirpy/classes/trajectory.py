@@ -825,6 +825,25 @@ class _XYZ():
         self._vel_au()
         self.cell_aa_deg = _np.array(self.cell_aa_deg)
 
+    def _check_distances(self):
+        '''current frame only'''
+        if self._type == 'trajectory':
+            _warnings.warn('can only check distance for single frame',
+                           _ChirPyWarning, stacklevel=2)
+            return
+
+        _too_close = mapping.close_neighbours(
+                                    self.pos_aa[:, :3],
+                                    cell=getattr(self, 'cell_aa_deg'),
+                                    symbols=self.symbols,
+                                    )
+
+        for _i in _too_close:
+            for _j in _i[1]:
+                _warnings.warn(f'Found too close atoms {_i[0]} and {_j[0]} ('
+                               f'{_np.round(_j[1], decimals=3)} Å)!',
+                               _ChirPyWarning, stacklevel=2)
+
     def _is_equal(self, other, atol=1e-08, noh=True):
         '''atol adds up to dist_crit_aa from vdw radii'''
         _p, ie = self._is_similar(other)
@@ -1207,7 +1226,8 @@ class _XYZ():
                                     _np.array(['MOL'] * loc_self.n_atoms)
                                     )).swapaxes(0, 1)),
                       box=cell_aa_deg,
-                      title='Generated with ChirPy'
+                      title=getattr(loc_self, 'comments',
+                                    'Generated with ChirPy')
                       )
 
         elif fmt == 'cpmd':
@@ -1417,18 +1437,6 @@ class _MOMENTS():
 
 
 class XYZFrame(_XYZ, _FRAME):
-    # -- not for trajectory
-    def _check_distances(self):
-        _too_close = mapping.close_neighbours(self.data[:, :3],
-                                              cell=self.cell_aa_deg,
-                                              crit=0.5)
-
-        for _i in _too_close:
-            for _j in _i[1]:
-                _warnings.warn(f'Found too close atoms {_i[0]} and {_j[0]} ('
-                               f'{_np.round(_j[1], decimals=3)} Å)!',
-                               _ChirPyWarning, stacklevel=2)
-
     def _sync_class(self, **kwargs):
         _FRAME._sync_class(self)
         _XYZ._sync_class(self, **kwargs)

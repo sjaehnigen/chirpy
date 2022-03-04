@@ -31,9 +31,10 @@
 
 
 import numpy as np
+import warnings
+
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
-import warnings
 import fortranformat as ff
 
 from .generators import _reader, _open, _container
@@ -426,7 +427,6 @@ def pdbIterator(FN):
         u = mda.Universe(FN)
 
     for ts in u.trajectory:
-        # only take what is needed in ChirPy
         data = u.coord.positions
         resns = u.atoms.resnames
         resids = u.atoms.resids
@@ -434,7 +434,7 @@ def pdbIterator(FN):
         symbols = tuple([_t.title() for _t in u.atoms.types])
         cell_aa_deg = u.dimensions
         title = u.trajectory.title
-        if np.prod(cell_aa_deg) == 0.0:
+        if np.prod(cell_aa_deg) in [0.0, None]:
             warnings.warn('no or invalid cell specified in pdb file',
                           config.ChirPyWarning, stacklevel=2)
             cell_aa_deg = None

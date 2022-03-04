@@ -120,7 +120,7 @@ def power_from_tcf(velocities_au, weights=1.0,
     if flt_pow >= 0:
         _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
                        'require flt_pow < 0 to account for finite size of '
-                       'input data!', stacklevel=2)
+                       'input data!', _ChirPyWarning, stacklevel=2)
 
     kwargs.update({'flt_pow': flt_pow})
     if 'ts' in kwargs:
@@ -403,7 +403,7 @@ def _spectrum_from_tcf(*args,
                 data['tcf_cd'] += C_cd_GT
             else:
                 _warnings.warn('Omitting gauge transport term in CD mode!',
-                               stacklevel=2)
+                               _ChirPyWarning, stacklevel=2)
 
         data['freq'] = freq
 

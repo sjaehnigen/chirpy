@@ -179,6 +179,7 @@ def multiplot(
              alpha_exp=1.0,
              lw_exp=3,
              stack_plots=True,
+             fill=False,  # fill space with respect to x axis
              pile_up=False,  # fill space between plots (additive)
              fill_between=False,  # fill space between plots (subtractive)
              hatch_a=None,  # pattern for pile_up or fill_between
@@ -240,21 +241,21 @@ def multiplot(
                          offset_a,
                          ])
 
-    _fill = False
+    _fill_range = False
     if std_a is not None:
-        _fill = True
+        _fill_range = True
 
-    if pile_up and any([stack_plots,  _fill, fill_between]):
-        warnings.warn('pile_up set: disabling stack_plots and/or fill_between'
+    if pile_up and any([stack_plots,  _fill_range, fill_between, fill]):
+        warnings.warn('pile_up set: disabling stack_plots and/or fill'
                       ' arguments, respectively!', stacklevel=2)
         stack_plots = False
-        _fill = False
+        _fill_range = False
         fill_between = False
 
-    if fill_between and std_a is not None:
-        warnings.warn('fill_between set: disabling std_a'
+    if any([fill_between, fill, pile_up]) and std_a is not None:
+        warnings.warn('fill set: disabling std_a'
                       ' argument', stacklevel=2)
-        _fill = False
+        _fill_range = False
 
     if any(len(_a) != n_plots for _a in [y_a,  bool_a]):
         raise ValueError('Inconsistent no. of plots in lists!')
@@ -303,13 +304,16 @@ def multiplot(
                     max(ylim[1], np.amax(_e[_slce])))
         ylim = (ylim[0] - 0.25*_shift, ylim[1] + 0.25*_shift)
 
+    if not stack_plots:
+        _shift = 0.0
+
     # --- plot reference (experiment)
     if exp is not None:
         ax.plot(xe, _e, style_exp, alpha=alpha_exp, lw=lw_exp, color='black',
                 label='exp.')
 
     # --- plot data
-    if _fill:
+    if _fill_range:
         for _b, _x, _y, _st, _c, _al, _lw, _s, _fal, _fc, _o in zip(
                                                                bool_a,
                                                                x_a,
@@ -358,6 +362,27 @@ def multiplot(
                 ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
             _y_1 = copy.deepcopy(_y)
             _o_1 = copy.deepcopy(_o)
+
+    elif fill:
+        for _iset, (_b, _x, _y, _st, _ha, _c, _al, _lw, _fal, _fc, _o) in \
+            enumerate(
+                                                           zip(bool_a,
+                                                               x_a,
+                                                               _y_a,
+                                                               style_a,
+                                                               hatch_a,
+                                                               color_a,
+                                                               alpha_a,
+                                                               lw_a,
+                                                               fill_alpha_a,
+                                                               fill_color_a,
+                                                               offset_a)):
+            if _b:
+                if _fc is None:
+                    _fc = _c
+                ax.fill_between(_x, _y+_o, _o-_shift*_iset, color=_fc,
+                                alpha=_fal, lw=0, hatch=_ha)
+                ax.plot(_x, _y+_o, _st, lw=_lw, color=_c, alpha=_al, **kwargs)
 
     elif pile_up:
         if not np.allclose(np.unique(x_a),  x_a[0]):

@@ -48,7 +48,7 @@ from ..config import ChirPyWarning as _ChirPyWarning
 
 
 def dist_crit_aa(symbols):
-    '''Get distance criteria matrix of symbols (in angstrom)
+    '''Get distance criteria matrix for bond between atoms (in angstrom)
        http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.1/ug/node26.html
        '''
     natoms = len(symbols)
@@ -377,8 +377,14 @@ def nearest_neighbour(p0, p1=None, cell=None, ignore=None,
         return np.argmin(_dists, axis=1), np.amin(_dists, axis=1)
 
 
-def close_neighbours(p0, cell=None, crit=0.0):
+def close_neighbours(p0, cell=None, crit=None, symbols=None):
     _dM = distance_matrix(p0, cell=cell)
+    if crit is None:
+        if symbols is None:
+            crit = 0.0
+        else:
+            crit = dist_crit_aa(symbols) / 2.0
+
     return [(_i, [(_j, _dM[_i, _j]) for _j in np.argwhere(_idM).flatten()])
             for _i, _idM in enumerate(np.triu(_dM <= crit, k=1))
             if np.any(_idM)]
@@ -487,8 +493,7 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                 if _n_iter >= _m_n_atoms:
                     raise ValueError('could not join molecules after '
                                      f'{_n_iter} iterations. Perhaps '
-                                     'the connectivity is interrupted '
-                                     '(i.e., >1 molecule)')
+                                     'the connectivity is interrupted.')
 
             c_aa = cowt(P, _w, axis=0)
             # --- ensure mol cowt lies within cell
