@@ -212,14 +212,15 @@ class TestSystem(unittest.TestCase):
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 
         _load.extract_molecules([10, 11])
-        _load.write(self.dir + "/out.xyz", fmt='xyz', rewind=False)
+        _load.write("out_system.xyz", fmt='xyz', rewind=False)
 
-        self.assertTrue(filecmp.cmp(self.dir + "/out.xyz",
+        self.assertTrue(filecmp.cmp("out_system.xyz",
                                     self.dir + "/ref.xyz",
                                     shallow=False),
-                        'Class does not reproduce reference file!',
+                        'Class does not reproduce reference '
+                        f'{self.dir}/ref.xyz!',
                         )
-        os.remove(self.dir + "/out.xyz")
+        os.remove("out_system.xyz")
 
 
 class TestQuantum(unittest.TestCase):

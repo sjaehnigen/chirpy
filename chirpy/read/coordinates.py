@@ -57,7 +57,7 @@ def _xyz(frame, convert=1, n_lines=1):
     if n_lines != _atomnumber + 2:
         raise ValueError('XYZ file inconsistent')
 
-    comment = next(frame).rstrip('\n')
+    comment = next(frame).rstrip('\n').strip()
     _split = (_l.strip().split() for _l in frame)
     symbols, data = zip(*[(_l[0], _l[1:]) for _l in _split])
 

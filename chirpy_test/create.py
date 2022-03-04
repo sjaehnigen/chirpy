@@ -72,7 +72,7 @@ class TestSupercell(unittest.TestCase):
         self.assertTrue(filecmp.cmp("CREATE.pdb",
                                     self.dir + "/782512_1x2x2.pdb",
                                     shallow=False),
-                        f'{self.dir}/782512_1x2x2.pdb incorreclty reproduced'
+                        f'{self.dir}/782512_1x2x2.pdb incorrectly reproduced'
                         ' by CREATE.pdb',
                         )
 
