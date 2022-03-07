@@ -287,29 +287,31 @@ for _z, _ZV in _ZV_list:
     elements[_z].valence_charge = _ZV
 
 
-def detect_element(string):
-    while string.title() not in np.array(_rvdw_list)[:, 0]:
-        # NB: using elements array not practical here (HO would become Holmium)
-        string = string[:-1]
-    return string.title()
-
-
 def _get_property(kinds, key, fmt=None):
     pr = []
     for _k in kinds:
-        try:
-            _r = getattr(elements[_k], key)
-        except (KeyError, AttributeError):
-            # _warnings.warn('Cannot find %s for atom: %s !' % (key, _k),
-            #                RuntimeWarning, stacklevel=2)
+        _guess = _k
+        while True:
             try:
-                _r = getattr(elements[_k[:-1]], key)
-                _warnings.warn(f'Guessing element: {_k} --> {_k[:-1]}. '
-                               'Proceed with care!',
-                               config.ChirPyWarning,
-                               stacklevel=3)
-            except (IndexError, KeyError, AttributeError, TypeError):
-                _r = None
+                _r = getattr(elements[_guess], key)
+                break
+
+            except (KeyError, AttributeError):
+                try:
+                    _guess = _guess[:-1]
+                    if len(_guess) == 0:
+                        raise IndexError
+                    continue
+
+                except (IndexError, TypeError):
+                    _r = None
+                    break
+
+                finally:
+                    _warnings.warn(f'Guessing element: {_k} --> {_guess}',
+                                   config.ChirPyWarning,
+                                   stacklevel=3)
+
         if fmt is not None:
             pr.append(fmt(_r))
         else:
@@ -327,6 +329,10 @@ def _get_property(kinds, key, fmt=None):
 
 
 def numbers_to_symbols(numbers):
+    return tuple(_get_property(numbers, 'symbol'))
+
+
+def symbols_to_symbols(numbers):
     return tuple(_get_property(numbers, 'symbol'))
 
 

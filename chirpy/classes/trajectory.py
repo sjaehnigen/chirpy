@@ -816,6 +816,8 @@ class _XYZ():
     def _sync_class(self, **kwargs):
         # kwargs for consistency with Modes
         try:
+            # --- clean symbols
+            self.symbols = constants.symbols_to_symbols(self.symbols)
             self.masses_amu = constants.symbols_to_masses(self.symbols)
         except KeyError:
             _warnings.warn('Could not find masses for all elements! '

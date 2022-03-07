@@ -36,7 +36,7 @@ import copy
 from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
     detect_lattice, neighbour_matrix, get_cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..constants import detect_element, symbols_to_rvdw
+from ..constants import symbols_to_symbols
 
 
 def fermi_cutoff_function(distance, R_cutoff, D):
@@ -99,7 +99,8 @@ def define_molecules(pos_aa, symbols, **kwargs):
         MAX = _cell[:3]
         MIN = np.zeros_like(MAX)
         _n_b = tuple((cell_aa_deg[:3] / 12).astype(int) + 1)
-        # _n_b = tuple((cell_aa_deg[:3] / max(symbols_to_rvdw(symbols)) / 0.02).astype(int) + 1)
+        # _n_b = tuple((cell_aa_deg[:3] / max(symbols_to_rvdw(symbols))
+        # / 0.02).astype(int) + 1)
     else:
         _cell = None
         MIN = tuple([np.amin(_ip) for _ip in np.moveaxis(_p, -1, 0)])
@@ -258,7 +259,7 @@ def read_topology_file(fn):
             cell_aa_deg = np.array(3*[0] + 3*[90.])
 
         return {'mol_map': mol_map,
-                'symbols': symbols,
+                'symbols': symbols_to_symbols(symbols),  # redundant for PDB?
                 'names': names,
                 'residues': residues,
                 'cell_aa_deg': cell_aa_deg,
@@ -267,7 +268,7 @@ def read_topology_file(fn):
     elif fmt == 'xyz':
         data, symbols, comments = xyzReader(fn)
 
-        return {'symbols': symbols,
+        return {'symbols': symbols_to_symbols(symbols),
                 'fn_topo': fn,
                 }
 
@@ -350,7 +351,7 @@ def read_topology_file(fn):
                 axis=-1
                 ), (1, 1, 1))
 
-        return {'symbols': tuple([detect_element(_n) for _n in _con['names']]),
+        return {'symbols': symbols_to_symbols(tuple(_con['names'])),
                 'names': tuple(_con['names']),
                 'data_topo': data,
                 'cell_aa_deg': cell_aa_deg,
