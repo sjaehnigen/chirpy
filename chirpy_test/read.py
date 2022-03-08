@@ -345,7 +345,7 @@ class TestCoordinates(unittest.TestCase):
         [self.assertIsInstance(_c, str) for _c in title]
 
         self.assertListEqual(
-            data.flatten().tolist(),
+            np.around(data, decimals=12).flatten().tolist(),
             np.genfromtxt(self.dir + '/indanol_ref').tolist()
           )
 

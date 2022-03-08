@@ -190,9 +190,9 @@ def cpmdWriter(fn, data, append=False, **kwargs):
         for fr, _d in zip(frames, data):
             for _dd in _d:
                 line = '%7d  ' % fr \
-                    + '  '.join(map('{:22.14f}'.format,
+                    + '  '.join(map('{:20.12f}'.format,
                                 _dd[:3]*constants.l_aa2au)) + '  '\
-                    + '  '.join(map('{:22.14f}'.format, _dd[3:]))
+                    + '  '.join(map('{:20.12f}'.format, _dd[3:]))
 
                 f.write(line+'\n')
 
