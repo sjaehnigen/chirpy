@@ -354,15 +354,17 @@ class TestCoordinates(unittest.TestCase):
         # --- Check Fortran number conversion
         data, symbols, numbers, types, connectivity, comments = \
             r_coordinates.arcReader(self.dir + '/water.vel')
-        self.assertTrue(np.array_equal(
+        self.assertTrue(np.allclose(
             data,
-            np.genfromtxt(self.dir + '/tinker_vel').reshape(10, 3, 3)
+            np.genfromtxt(self.dir + '/tinker_vel').reshape(10, 3, 3),
+            atol=1.E-12
             ))
         data, symbols, numbers, types, connectivity, comments = \
             r_coordinates.arcReader(self.dir + '/water.arc')
-        self.assertTrue(np.array_equal(
+        self.assertTrue(np.allclose(
             data,
-            np.genfromtxt(self.dir + '/tinker_pos').reshape(10, 3, 3)
+            np.genfromtxt(self.dir + '/tinker_pos').reshape(10, 3, 3),
+            atol=1.E-12
             ))
         self.assertIsInstance(comments, list)
         self.assertTupleEqual(
@@ -531,7 +533,11 @@ class TestCoordinates(unittest.TestCase):
                 self.dir + '/water.vel',
                 self.dir + '/water.vel',
                 ))
-        self.assertTrue(np.array_equal(data, np.tile(TINKER_VEL, (1, 2))))
+        self.assertTrue(np.allclose(
+            data,
+            np.tile(TINKER_VEL, (1, 2)),
+            atol=1.E-12
+            ))
         data, symbols, numbers, types, connectivity, comments = \
             next(r_coordinates.arcContainer(
                 self.dir + '/water.arc',
@@ -587,8 +593,9 @@ class TestCoordinates(unittest.TestCase):
                 self.dir + '/water.arc',
                 self.dir + '/water.vel',
                 ))
-        self.assertTrue(np.array_equal(data,
-                                       np.hstack((TINKER_POS, TINKER_VEL))))
+        self.assertTrue(np.allclose(data,
+                                    np.hstack((TINKER_POS, TINKER_VEL)),
+                                    atol=1.E-12))
 
         # ---- units
         data, symbols, numbers, types, connectivity, comments = \
@@ -597,8 +604,9 @@ class TestCoordinates(unittest.TestCase):
                 self.dir + '/water.vel',
                 units='default',
                 ))
-        self.assertTrue(np.array_equal(data,
-                                       np.hstack((TINKER_POS, TINKER_VEL))))
+        self.assertTrue(np.allclose(data,
+                                    np.hstack((TINKER_POS, TINKER_VEL)),
+                                    atol=1.E-12))
 
         data, symbols, numbers, types, connectivity, comments = \
             next(r_coordinates.arcContainer(
@@ -606,8 +614,9 @@ class TestCoordinates(unittest.TestCase):
                 self.dir + '/water.vel',
                 units=3*[('length', 'aa')] + 3*[('velocity', 'aa_ps')],
                 ))
-        self.assertTrue(np.array_equal(data,
-                                       np.hstack((TINKER_POS, TINKER_VEL))))
+        self.assertTrue(np.allclose(data,
+                                    np.hstack((TINKER_POS, TINKER_VEL)),
+                                    atol=1.E-12))
 
         data, symbols, numbers, types, connectivity, comments = \
             next(r_coordinates.arcContainer(
@@ -617,7 +626,8 @@ class TestCoordinates(unittest.TestCase):
                 ))
         self.assertTrue(np.allclose(
                     data,
-                    np.hstack((TINKER_POS, TINKER_VEL*1000.)))
+                    np.hstack((TINKER_POS, TINKER_VEL*1000.)),
+                    atol=1.E-12)
                     )
 
     def test_mixedContainer(self):
@@ -630,8 +640,9 @@ class TestCoordinates(unittest.TestCase):
                 iterator=[r_coordinates.xyzIterator,
                           r_coordinates.arcIterator],
                 ))
-        self.assertTrue(np.array_equal(data,
-                                       np.hstack((TINKER_POS, TINKER_VEL))))
+        self.assertTrue(np.allclose(data,
+                                    np.hstack((TINKER_POS, TINKER_VEL)),
+                                    atol=1.E-12))
 
     def test_bz2(self):
         # --- general iterator test (also valid for cpmd, cube, etc.)
