@@ -287,13 +287,17 @@ for _z, _ZV in _ZV_list:
     elements[_z].valence_charge = _ZV
 
 
-def _get_property(kinds, key, fmt=None):
+def _get_property(kinds, key, fmt=None, fill_value=None):
     pr = []
     for _k in kinds:
         _guess = _k
         while True:
             try:
                 _r = getattr(elements[_guess], key)
+                if _guess != _k:
+                    _warnings.warn(f'Guessing element: {_k} --> {_guess}',
+                                   config.ChirPyWarning,
+                                   stacklevel=3)
                 break
 
             except (KeyError, AttributeError):
@@ -304,13 +308,11 @@ def _get_property(kinds, key, fmt=None):
                     continue
 
                 except (IndexError, TypeError):
-                    _r = None
+                    if fill_value == 'self':
+                        _r = _k
+                    else:
+                        _r = fill_value
                     break
-
-                finally:
-                    _warnings.warn(f'Guessing element: {_k} --> {_guess}',
-                                   config.ChirPyWarning,
-                                   stacklevel=3)
 
         if fmt is not None:
             pr.append(fmt(_r))
@@ -320,7 +322,8 @@ def _get_property(kinds, key, fmt=None):
     #     _warnings.warn(f'Got {key} of {kinds}: {pr}',
     #                    config.ChirPyWarning, stacklevel=3)
     if None in pr:
-        [_warnings.warn(f'Could not find {key} of {kinds[_ipr]} (id {_ipr}).',
+        [_warnings.warn(f'Could not find {key} of \'{kinds[_ipr]}\' '
+                        f'(id {_ipr}).',
                         config.ChirPyWarning,
                         stacklevel=4)
          for _ipr, _pr in enumerate(pr) if _pr is None]
@@ -333,7 +336,7 @@ def numbers_to_symbols(numbers):
 
 
 def symbols_to_symbols(numbers):
-    return tuple(_get_property(numbers, 'symbol'))
+    return tuple(_get_property(numbers, 'symbol', fill_value='self'))
 
 
 def symbols_to_numbers(symbols):

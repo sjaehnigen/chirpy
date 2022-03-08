@@ -159,7 +159,7 @@ def main():
     if (_total_charge := ELE.n_atoms * (-2) +
             constants.symbols_to_valence_charges(NUC.symbols).sum()) != 0.0:
         warnings.warn(f'Got non-zero cell charge {_total_charge}!',
-                      RuntimeWarning, stacklevel=2)
+                      config.ChirPyWarning, stacklevel=2)
 
     n_map = np.array(SYS.mol_map)
     _cell = SYS.cell_aa_deg
@@ -213,7 +213,7 @@ def main():
         if np.any((_mol := gauge.q_au != 0.0)):
             warnings.warn('Got non-zero charge for molecules '
                           f'{np.where(_mol)[0]}: {gauge.q_au[_mol]}',
-                          RuntimeWarning, stacklevel=2)
+                          config.ChirPyWarning, stacklevel=2)
 
         # --- write output
         append = False

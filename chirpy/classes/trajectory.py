@@ -1534,14 +1534,16 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             elif self._fmt == "pdb":
                 if len(args) != 1:
-                    raise NotImplementedError('cannot handle multiple files')
+                    raise NotImplementedError('cannot handle multiple pdb '
+                                              'files')
                 nargs = {}
                 self._gen = _pdbIterator(fn0)  # **kwargs
 
             elif self._fmt == "cpmd" or any([_t in fn0 for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
                 if len(args) != 1:
-                    raise NotImplementedError('cannot handle multiple files')
+                    raise NotImplementedError('cannot handle multiple cpmd '
+                                              'files')
                 self._fmt = "cpmd"
                 nargs = _extract_keys(
                                       kwargs,
@@ -1558,7 +1560,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
             else:
                 if len(args) != 1:
-                    raise NotImplementedError('cannot handle multiple files')
+                    raise NotImplementedError('cannot handle multiple '
+                                              f'{self._fmt} files')
                 try:
                     self._fmt = "import"  # will be overwritten in next()
                     nargs = kwargs
@@ -1569,7 +1572,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     raise ValueError(f'unknown trajectory format: {self._fmt}')
 
             # --- keep kwargs for iterations
-            self._kwargs.update(kwargs)
+            self._kwargs.update(kwargs.copy())
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
             self._fr, self._st, buf = self._kwargs['range']
@@ -1584,7 +1587,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
         else:
-            raise TypeError("File reader of %s takes exactly 1 argument!"
+            raise TypeError("File reader of %s takes only 1 or 2 arguments!"
                             % self.__class__.__name__)
 
     def __next__(self):
@@ -1592,7 +1595,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         def check_topo(k, f):
             if self._fr < 0:
-                return f
+                return self._kwargs.get(k, f)
             else:
                 return getattr(self._topology, k, f)
 
