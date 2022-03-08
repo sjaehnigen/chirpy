@@ -33,6 +33,7 @@ import unittest
 import os
 import filecmp
 import numpy as np
+import chirpy as cp
 
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
@@ -82,12 +83,16 @@ class TestBinaries(unittest.TestCase):
             os.remove('out.pdb')
 
     def test_trajectory_convert(self):
+        def cp_comp(fn, ref):
+            return np.allclose(
+                    cp.read.coordinates.xyzReader(fn)[0],
+                    cp.read.coordinates.xyzReader(ref)[0],
+                    atol=1.E-12)
+
         os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +
                   '-o out.xyz')
-        self.assertTrue(filecmp.cmp('out.xyz',
-                                    self.dir + '/trajectory.xyz',
-                                    shallow=False),
+        self.assertTrue(cp_comp('out.xyz', self.dir + '/trajectory.xyz'),
                         f'Trajectory {self.dir}/trajectory.xyz reproduced '
                         f'incorrectly in out.xyz'
                         )
@@ -97,24 +102,19 @@ class TestBinaries(unittest.TestCase):
                   '%s/water_rot.arc --fn_vel %s/water_rot.vel ' %
                   (2*(self.dir + '/../read_write',)) +
                   '-o out.xyz --align_coords True')
-        self.assertTrue(filecmp.cmp('out.xyz',
-                                    self.dir + '/trajectory_aligned.xyz',
-                                    shallow=False),
+        self.assertTrue(cp_comp('out.xyz', self.dir+'/trajectory_aligned.xyz'),
                         f'Trajectory {self.dir}/trajectory_aligned.xyz '
-                        'reproduced incorrectly in out.xyz'
+                        f'reproduced incorrectly in out.xyz'
                         )
-
         os.remove('out.xyz')
 
         os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +
                   '-o out.xyz --mask_frames 1 3')
 
-        self.assertTrue(filecmp.cmp('out.xyz',
-                                    self.dir + '/trajectory_skip.xyz',
-                                    shallow=False),
+        self.assertTrue(cp_comp('out.xyz', self.dir+'/trajectory_skip.xyz'),
                         f'Trajectory {self.dir}/trajectory_skip.xyz reproduced'
-                        f' incorrectly in out.xyz'
+                        ' incorrectly in out.xyz'
                         )
         os.remove('out.xyz')
 
