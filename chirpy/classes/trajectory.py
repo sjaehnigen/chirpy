@@ -320,7 +320,7 @@ class _TRAJECTORY(_FRAME):
                              f'{len(self.symbols)} = {self.symbols}')
         if self.n_frames != len(self.comments):
             raise ValueError('Data shape inconsistent '
-                             'with symbols attribute! '
+                             'with comments attribute! '
                              f'{self.data.shape} '
                              f'{len(self.comments)} = {self.comment}')
         self._axis_pointer = -2
@@ -338,9 +338,9 @@ class _MODES(_FRAME):
                              'with symbols attribute! '
                              f'{self.data.shape} '
                              f'{len(self.symbols)} = {self.symbols}')
-        if self.n_frames != len(self.comments):
+        if self.n_modes != len(self.comments):
             raise ValueError('Data shape inconsistent '
-                             'with symbols attribute! '
+                             'with comments attribute! '
                              f'{self.data.shape} '
                              f'{len(self.comments)} = {self.comment}')
         self._axis_pointer = -2
