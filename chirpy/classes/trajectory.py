@@ -743,6 +743,12 @@ class _XYZ():
 
         self._sync_class(check_orthonormality=False)
 
+        if wrap and mapping.detect_lattice(self.cell_aa_deg) is None:
+            _warnings.warn('wrapping disabled for invalid cell '
+                           f'{self.cell_aa_deg}',
+                           _ChirPyWarning, stacklevel=2)
+            wrap = False
+
         if bool(center_coords):
             selection = None
             if isinstance(center_coords, list):
@@ -1027,6 +1033,7 @@ class _XYZ():
                     _p,
                     _np.zeros((_p.shape[1])).astype(int),
                     self.cell_aa_deg,
+                    symbols=_np.array(self.symbols)[selection],
                     )[0]
             if self._type == 'frame':
                 _p = _p[0]
@@ -1369,6 +1376,17 @@ class _MOMENTS():
                        write_atoms=False,
                        **kwargs)
 
+        if fmt == "xyz":
+            attr = kwargs.get('attr', 'pos_aa')
+            xyzWriter(fn,
+                      getattr(self, attr),
+                      *_extract_keys(
+                          kwargs,
+                          symbols=len(self.pos_aa)*['X'],
+                          comments='Created from MOMENTS with ChirPy'
+                          ).values(),
+                      **_extract_keys(kwargs, append=False)
+                      )
         else:
             raise ValueError('Unknown format for MOMENTS: %s.' % fmt)
 
@@ -1562,14 +1580,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 if len(args) != 1:
                     raise NotImplementedError('cannot handle multiple '
                                               f'{self._fmt} files')
-                try:
-                    self._fmt = "import"  # will be overwritten in next()
-                    nargs = kwargs
-                    # self._frame = self._kernel(*args, **kwargs)
-                    # self.__dict__.update(self._frame.__dict__)
-                    self._gen = iter([self._kernel(*args, **kwargs)])
-                except ValueError:
-                    raise ValueError(f'unknown trajectory format: {self._fmt}')
+                # --- try sending file directly to kernel (single frame only)
+                self._fmt = "import"  # will be overwritten in next()
+                nargs = kwargs
+                self._gen = iter([self._kernel(*args, **kwargs)])
 
             # --- keep kwargs for iterations
             self._kwargs.update(kwargs.copy())
@@ -1629,7 +1643,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         elif self._fmt == 'cpmd':
             out = {
                     'data': frame,
-                    'symbols': self.symbols,
+                    'symbols': check_topo('symbols', self.symbols),
                     'comments': self.comments,
                     }
 
@@ -1670,8 +1684,12 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'symbols': symbols[0],
                     'comments': list(comments)
                      }
-        except ValueError:
-            return None
+        except ValueError as _e:
+            try:  # --- check if end of iterator is the reason
+                next(self)
+                raise _e
+            except StopIteration:
+                return None
 
         self._kwargs.update(out)
 

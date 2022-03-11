@@ -46,6 +46,8 @@ def radial_distribution_function(positions,
     '''Compute the normalised radial distribution function (RDF).
        Array of positions ((n_frames, n_particles, 3)) is evaluated
        against an array of origins ((n_frames, n_origins, 3)).
+       Optional half_vector ((n_frames, n_origins, 3)) for defining
+       a half-sphere.
        Returns:
         r   - bin positions
         RDF - values
