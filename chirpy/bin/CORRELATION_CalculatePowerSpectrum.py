@@ -60,7 +60,7 @@ def main():
     parser.add_argument(
             "--extract_molecules",
             nargs='+',
-            help="Write only coordinates of given molecular ids starting from 0 \
+            help="Consider only coordinates of given molecular ids starting from 0 \
                     (requires a topology file).",
             default=None,
             type=int,
@@ -89,7 +89,8 @@ def main():
             "--subset",
             nargs='+',
             help="Use only a subset of atoms. Expects list of indices "
-                 "(id starting from 0).",
+                 "(id starting from 0). If extract_molecules is set, it "
+                 "applies after.",
             type=int,
             default=None,
             )
@@ -177,7 +178,7 @@ def main():
     _pow = spectroscopy.power_from_tcf(
                                 _vel,
                                 ts_au=args.ts * constants.t_fs2au,
-                                weights=_load.XYZ.masses_amu,
+                                weights=_load.XYZ.masses_amu[args.subset],
                                 flt_pow=args.filter_strength,
                                 )
 
