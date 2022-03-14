@@ -31,7 +31,9 @@
 
 
 from itertools import zip_longest
+import warnings
 
+from .. import config
 
 def _write_xyz_frame(filename, data, symbols, comment, append=False):
     """WriteFrame(filename, data, symbols, comment, append=False)
@@ -190,6 +192,9 @@ def _write_pdb_frame(fn, data, names, symbols, residues, box, title,
 
 Output: None"""
 
+    if 0. in box:
+        warnings.warn('expected non-void cell for output',
+                      config.ChirPyWarning, stacklevel=2)
     format = '%s%7d %-5s%-4s%5d    '
     for field in range(data.shape[1]):
         format += '%8.3f'

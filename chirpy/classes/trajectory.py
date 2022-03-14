@@ -1621,7 +1621,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'data': frame[0],
                     'symbols': check_topo('symbols', frame[2]),
                     'comments': str(frame[-1]),  # if no title: 'None'
-                    'cell_aa_deg': frame[-2],
+                    'cell_aa_deg': check_topo('cell_aa_deg', frame[-2]),
                     'names': check_topo('names', frame[1]),
                     'residues': check_topo('residues', frame[3]),
                     }

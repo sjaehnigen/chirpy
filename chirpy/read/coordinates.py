@@ -435,8 +435,6 @@ def pdbIterator(FN):
         cell_aa_deg = u.dimensions
         title = u.trajectory.title
         if np.prod(cell_aa_deg) in [0.0, None]:
-            warnings.warn('no or invalid cell specified in pdb file',
-                          config.ChirPyWarning, stacklevel=2)
             cell_aa_deg = None
         if len(title) == 0:
             title = None
