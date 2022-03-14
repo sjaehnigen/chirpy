@@ -43,6 +43,7 @@ from chirpy.write import modes as w_modes
 from chirpy.write import coordinates as w_coordinates
 from chirpy.write import grid as w_grid
 
+from chirpy.config import ChirPyWarning
 
 _test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
 
@@ -148,6 +149,14 @@ class TestCoordinates(unittest.TestCase):
         self.assertTrue(np.array_equal(data_r, data2))
         self.assertListEqual(cell_aa_deg_r.tolist(), cell_aa_deg2.tolist())
         os.remove(self.dir + "/out.pdb")
+
+        # check missing-CRYST1 warning (important feature in ChirPy)
+        with self.assertWarns(ChirPyWarning):
+            w_coordinates.pdbWriter(self.dir + '/out.pdb', data[0], names, symbols,
+                                    res,
+                                    np.array([0., 0., 0., 90., 90., 90.]),
+                                    title)
+
 
 
 class TestGrid(unittest.TestCase):

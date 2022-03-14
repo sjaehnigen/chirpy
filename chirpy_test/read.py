@@ -323,11 +323,6 @@ class TestCoordinates(unittest.TestCase):
                  'O', 'O', 'O', 'O', )
                 )
 
-        # check missing-CRYST1 warning (important feature in ChirPy)
-        with self.assertWarns(ChirPyWarning):
-            data, names, symbols, res, cell_aa_deg, title = \
-                    r_coordinates.pdbReader(
-                          self.dir + '/test_simple_nodims.pdb')
 
     def test_cifReader(self):
         # ToDo: insufficient testing: needs test on symmetry
