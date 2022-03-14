@@ -74,6 +74,8 @@ class _SYSTEM(_CORE):
                                    if _s in constants.elements
                                    else 'UNKNOWN'
                                    for _s in self.symbols})
+            self.molecular_formula = AttrDict({_s: self.symbols.count(_s)
+                                               for _s in sorted(self.symbols)})
 
             if kwargs.get('sort', False):
                 self.sort_atoms()
