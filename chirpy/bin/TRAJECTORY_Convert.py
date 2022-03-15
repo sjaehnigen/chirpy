@@ -144,17 +144,35 @@ def main():
             default='masses'
             )
     parser.add_argument(
-            "--extract_molecules",
+            "--select_molecules",
             nargs='+',
-            help="Write only coordinates of given molecular ids starting from 0 \
-                    (requires a topology file).",
+            help="Write only coordinates of given molecular ids starting from"
+                 " 0 (requires a topology file). Atoms are arranged in "
+                 "molecular blocks. "
+                 "Combination with --select_atoms and --select_elements "
+                 "returns the intersecting set, but destroys order "
+                 "and index repetitions.",
             default=None,
             type=int,
             )
     parser.add_argument(
-            "--extract_elements",
+            "--select_atoms",
             nargs='+',
-            help="Write only coordinates of given elements (through symbols).",
+            help="Write only coordinates of given atoms (id starting from 0)."
+                 "Keeps atom order. "
+                 "Combination with --select_molecules and --select_elements "
+                 "returns the intersecting set, but destroys order "
+                 "and index repetitions.",
+            default=None,
+            )
+    parser.add_argument(
+            "--select_elements",
+            nargs='+',
+            help="Write only coordinates of given elements (through symbols)."
+                 "Keeps atom order. "
+                 "Combination with --select_atoms and --select_molecules "
+                 "returns the intersecting set, but destroys order "
+                 "and index repetitions.",
             default=None,
             )
     parser.add_argument(
@@ -260,6 +278,9 @@ def main():
     largs = vars(args)
 
     skip = largs.pop('mask_frames')
+    select_molecules = largs.pop('select_molecules')
+    select_atoms = largs.pop('select_atoms')
+    select_elements = largs.pop('select_elements')
 
     _files = [args.fn]
     if args.fn_vel is not None:
@@ -283,19 +304,36 @@ def main():
             largs.update({'skip': skip})
             _load = system.Supercell(*_files, fmt=i_fmt, **largs)
 
-    extract_molecules = largs.pop('extract_molecules')
-    extract_elements = largs.pop('extract_elements')
-    if extract_molecules is not None:
-        _load.extract_molecules(extract_molecules)
-    if extract_elements is not None:
-        _load.extract_atoms(
-                np.where([_s in extract_elements
-                          for _s in _load.symbols])[0].tolist()
-                )
-
-    if args.verbose:
-        print('Writing output...', file=sys.stderr)
+    # --- object ----> file
     if args.outputfile not in ['None', 'False']:
+
+        # --- parse selection
+        _selection = []
+        if select_atoms is not None:
+            _selection = select_atoms
+        if select_molecules is not None:
+            __selection = [_i
+                           for _m in select_molecules
+                           for _i, _s in enumerate(_load.mol_map)
+                           if _s == _m]
+            if _selection == []:
+                _selection = __selection
+            else:
+                _selection = list(set(_selection) & set(__selection))
+        if select_elements is not None:
+            __selection = np.where([_s in select_elements
+                                    for _s in _load.symbols])[0].tolist()
+            if _selection == []:
+                _selection = __selection
+            else:
+                _selection = list(set(_selection) & set(__selection))
+        if _selection == []:
+            _selection = None
+        # ----
+
+        if args.verbose:
+            print('Writing output...', file=sys.stderr)
+
         if args.convert_to_moments:
             for _iframe, _p_fr in enumerate(_load.XYZ):
                 _moment = trajectory.MOMENTSFrame.from_classical_nuclei(
@@ -307,15 +345,6 @@ def main():
                 largs = {'append': append, 'frame': _iframe}
                 _moment.write(args.outputfile, fmt=o_fmt, **largs)
 
-                # cpmd.cpmdWriter(
-                #  args.f,
-                #  np.array([np.concatenate((gauge.r_au*constants.l_au2aa,
-                #                            gauge.c_au,
-                #                            gauge.m_au), axis=-1)]),
-                #  frame=_iframe,
-                #  append=append,
-                #  write_atoms=False)
-
         else:
             largs = {}
             if o_fmt == 'cpmd':
@@ -323,7 +352,8 @@ def main():
                         pp=args.pp,
                         write_atoms=args.write_atoms,
                         )
-            _load.write(args.outputfile, fmt=o_fmt, rewind=False, **largs)
+            _load.write(args.outputfile, fmt=o_fmt, rewind=False,
+                        selection=_selection, **largs)
 
 
 if __name__ == "__main__":

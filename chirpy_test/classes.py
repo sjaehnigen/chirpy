@@ -222,6 +222,29 @@ class TestSystem(unittest.TestCase):
                         )
         os.remove("out_system.xyz")
 
+        # --- selection
+        _load = system.Supercell(self.dir + "/MD-NVT-production-pos-1.xyz",
+                                 self.dir + "/MD-NVT-production-vel-1.xyz",
+                                 **largs)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            skip = _load.XYZ.mask_duplicate_frames(verbose=False)
+
+        sel = [_i
+               for _m in [10, 11]
+               for _i, _s in enumerate(_load.mol_map)
+               if _s == _m]
+
+        _load.write("out_system.xyz", fmt='xyz', selection=sel, rewind=True)
+
+        self.assertTrue(filecmp.cmp("out_system.xyz",
+                                    self.dir + "/ref.xyz",
+                                    shallow=False),
+                        'Class does not reproduce reference '
+                        f'{self.dir}/ref.xyz!',
+                        )
+        os.remove("out_system.xyz")
+
 
 class TestQuantum(unittest.TestCase):
     # --- insufficiently tested

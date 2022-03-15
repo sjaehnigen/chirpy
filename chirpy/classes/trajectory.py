@@ -1160,29 +1160,46 @@ class _XYZ():
         elif self._type == 'trajectory':
             self._vel_au(_v)
 
-    def write(self, fn, **kwargs):
-        attr = kwargs.get('attr', 'data')  # not supported for all formats
-        factor = kwargs.get('factor', 1.0)  # for velocities
-        fmt = kwargs.get('fmt', fn.split('.')[-1])
+    def write(self, fn, selection=None, attribute='data', units='default',
+              **kwargs):
+        '''Write frame(s) to file.
+           selection ... write only list of atom ids
+           '''
+        factor = kwargs.pop('factor', 1.0)  # for velocities
+        fmt = kwargs.pop('fmt', fn.split('.')[-1])
 
         loc_self = _copy.deepcopy(self)
+
+        if units != 'default':
+            if fmt not in ['xyz', "arc", "tinker"]:
+                raise NotImplementedError('custom units supported only for '
+                                          'xyz and tinker format')
+            if len(units) != getattr(loc_self, attribute).shape[-1]:
+                raise ValueError('cannot cast together units of size '
+                                 f'{len(units)} with attribute of shape '
+                                 f'{getattr(loc_self, attribute).shape}'
+                                 )
 
         if self._type == "modes":
             loc_self.n_frames = loc_self.n_modes
 
         if fmt == "xyz":
             xyzWriter(fn,
-                      getattr(loc_self, attr),
+                      getattr(loc_self, attribute),
                       loc_self.symbols,
                       comments=getattr(loc_self, 'comments'),
+                      units=units,
+                      selection=selection,
                       **_extract_keys(kwargs, append=False)
                       )
 
         elif fmt in ["arc", "tinker"]:
             arcWriter(fn,
-                      getattr(loc_self, attr),
+                      getattr(loc_self, attribute),
                       loc_self.symbols,
                       comments=getattr(loc_self, 'comments'),
+                      units=units,
+                      selection=selection,
                       **_extract_keys(kwargs,
                                       append=False,
                                       types=getattr(loc_self,
@@ -1235,6 +1252,7 @@ class _XYZ():
                                     _np.array(['MOL'] * loc_self.n_atoms)
                                     )).swapaxes(0, 1)),
                       box=cell_aa_deg,
+                      selection=selection,
                       title=getattr(loc_self, 'comments',
                                     'Generated with ChirPy')
                       )
@@ -1250,6 +1268,7 @@ class _XYZ():
             loc_self.data[3:] *= factor
             cpmdWriter(fn,
                        loc_self.data.swapaxes(0, -1),
+                       selection=selection,
                        **kwargs)
 
         else:
@@ -1363,11 +1382,14 @@ class _MOMENTS():
         if wrap:
             self.wrap()
 
-    def write(self, fn, **kwargs):
+    def write(self, fn, selection=None, **kwargs):
         attr = kwargs.get('attr', 'data')
         # loc_self = _copy.deepcopy(self)
         # fmt = kwargs.get('fmt', fn.split('.')[-1])
         fmt = kwargs.get('fmt', 'cpmd')
+        if selection is not None:
+            raise NotImplementedError('MOMENTS does not support selection in '
+                                      'write()')
 
         if fmt == 'cpmd':
             # kwargs.update({'symbols': self.symbols})

@@ -39,8 +39,7 @@ import fortranformat as ff
 
 from .generators import _reader, _open, _container
 from ..topology.mapping import detect_lattice, get_cell_vec
-
-from .. import constants
+from ..constants import convert as _convert
 from .. import config
 
 if config.__os__ == 'Linux':
@@ -166,21 +165,6 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
     if CELL:
         _return += (cell_aa_deg,)
     return _return
-
-
-# --- unit parser for iterators
-
-def _convert(units):
-    if isinstance(units, list):
-        convert = np.array([constants.get_conversion_factor(_i, _j)
-                            for _i, _j in units])
-    elif isinstance(units, tuple):
-        convert = constants.get_conversion_factor(*units)
-    elif isinstance(units, (float, int)):
-        convert = float(units)
-    else:
-        raise ValueError('invalid units')
-    return convert
 
 
 # --- iterators

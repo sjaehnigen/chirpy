@@ -405,3 +405,19 @@ def get_conversion_factor(name, unit):
         else:
             raise ValueError(f'Unknown magnitude \'{name}\' in units.')
         return 1.
+
+
+def convert(units):
+    if units == 'default':
+        return 1.
+
+    if isinstance(units, list):
+        convert = np.array([get_conversion_factor(_i, _j)
+                            for _i, _j in units])
+    elif isinstance(units, tuple):
+        convert = get_conversion_factor(*units)
+    elif isinstance(units, (float, int)):
+        convert = float(units)
+    else:
+        raise ValueError('invalid units')
+    return convert

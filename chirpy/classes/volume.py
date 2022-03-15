@@ -451,12 +451,12 @@ class ScalarField(_CORE):
             self.cell_vec_aa = rotate_vector(self.cell_vec_aa, R)
             self.origin_aa = rotate_vector(self.origin_aa, R, origin=_o)
 
-    def write(self, fn, **kwargs):
+    def write(self, fn, attribute='data', **kwargs):
         fmt = kwargs.get('fmt', fn.split('.')[-1])
-        attr = kwargs.get('attribute', 'data')
-        if not hasattr(self, attr):
+        if not hasattr(self, attribute):
             raise AttributeError(
-                              'Attribute %s not (yet) part of object!' % attr)
+                              'Attribute %s not (yet) part of object!' %
+                              attribute)
         if fmt == "cube":
             comments = kwargs.get('comments', self.comments)
             pos_aa = kwargs.get('pos_aa', self.pos_aa)
@@ -466,7 +466,7 @@ class ScalarField(_CORE):
             # constants.symbols_to_numbers(symbols)
             if len(numbers) != n_atoms:
                 raise ValueError('Given numbers inconsistent with positions')
-            data = getattr(self, attr)
+            data = getattr(self, attribute)
             cubeWriter(fn,
                        comments,
                        numbers,

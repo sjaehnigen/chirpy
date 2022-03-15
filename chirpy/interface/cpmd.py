@@ -155,7 +155,7 @@ def cpmdReader(FN, **kwargs):
     return data
 
 
-def cpmdWriter(fn, data, append=False, **kwargs):
+def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
     '''Writes a CPMD TRAJECTORY or MOMENTS file including the frame column.
        Expects data of shape (n_frames, n_atoms, n_fields) in
        atomic units and angstrom (positions [col 0-2]).
@@ -165,6 +165,7 @@ def cpmdWriter(fn, data, append=False, **kwargs):
        write_atoms=True additionally writes an xyz file, containing data and
        symbols, as well as the ATOMS section for a CPMD input file
        (only append=False).
+       selection: list of integers
        '''
 
     bool_atoms = kwargs.get('write_atoms', False)
@@ -183,34 +184,43 @@ def cpmdWriter(fn, data, append=False, **kwargs):
                           _ChirPyWarning,
                           stacklevel=2)
 
+    if selection is None:
+        n_atoms = data.shape[1]
+        _range = list(range(n_atoms))
+        _ind = slice(selection)
+    else:
+        n_atoms = len(selection)
+        _range = selection
+        _ind = selection
     if append:
         mode = 'a'
 
     with open(fn, mode) as f:
         for fr, _d in zip(frames, data):
-            for _dd in _d:
+            for _i in _range:
                 line = '%7d  ' % fr \
                     + '  '.join(map('{:20.12f}'.format,
-                                _dd[:3]*constants.l_aa2au)) + '  '\
-                    + '  '.join(map('{:20.12f}'.format, _dd[3:]))
+                                _d[_i][:3]*constants.l_aa2au)) + '  '\
+                    + '  '.join(map('{:20.12f}'.format, _d[_i][3:]))
 
                 f.write(line+'\n')
 
     if bool_atoms and mode != 'a':
         symbols = kwargs.pop('symbols', ())
-        if data.shape[1] != len(symbols):
-            raise ValueError('symbols and positions are not consistent!',
+        if len(symbols) != data.shape[1]:
+            raise ValueError('cannot cast together symbols and positions',
                              symbols, data.shape[1])
         if sorted(symbols) != list(symbols):
             raise ValueError('CPMD requires sorted data!')
 
-        CPMDinput.ATOMS.from_data(symbols,
-                                  data[0, :, :3],
+        CPMDinput.ATOMS.from_data(np.array(symbols)[_ind],
+                                  data[0, _ind, :3],
                                   pp=kwargs.get('pp'),
                                   ).write_section(fn+'_ATOMS')
         xyzWriter(fn + '_ATOMS.xyz',
                   data[0, :, :3],
                   symbols,
+                  selection=selection,
                   comments=fn)
 
 

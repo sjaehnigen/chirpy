@@ -117,8 +117,26 @@ class TestCPMD(unittest.TestCase):
                         f'CPMD file {self.dir}/TRAJECTORY reproduced '
                         f'incorrectly in {_outfile}'
                         )
+        os.remove(_outfile)
+
+        # --- selection
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            cpmd.cpmdWriter(_outfile, data,
+                            frames=np.arange(data.shape[0]).astype(int)+1,
+                            selection=[4, 9, 1, 33],
+                            symbols=['X']*208,
+                            pp='any',
+                            write_atoms=True)
+            data2 = cpmd.cpmdReader(_outfile,
+                                    filetype='TRAJECTORY',
+                                    symbols=['X']*4,
+                                    )['data']
+        self.assertTrue(np.allclose(data_r[:, [4, 9, 1, 33]], data2))
 
         os.remove(_outfile)
+        os.remove(_outfile + '_ATOMS')
+        os.remove(_outfile + '_ATOMS.xyz')
 
     def test_cpmdjob(self):
         # --- insufficiently tested
