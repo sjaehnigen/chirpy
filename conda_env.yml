@@ -4,15 +4,15 @@ channels:
   - defaults
 dependencies:
   - fortranformat=0.2.*
-  - ipython=7.*
+  - ipython=8.*
   - jupyter=1.*
   - jupyter_core=4.*
   - matplotlib=3.*
-  - mdanalysis=1.* 
+  - mdanalysis=2.* 
   - numpy=1.*
   - packmol=20.*
   - periodictable=1.*
-  - pip=20.*
+  - pip=22.*
   - pycifrw=4.*
   - python=3.8.*
   - scipy=1.*

@@ -184,6 +184,8 @@ class _FRAME(_CORE):
         '''Split atoms set according to given mask and
            optionally select mask entry (overwrites input object).
            If select is None, returns a list of new objects.
+           Slow; for simple atom selection in the output use
+           selection keyword in write().
 
            select ... list or tuple of ids'''
         _data = [_np.moveaxis(_d, 0, -2)
