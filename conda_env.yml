@@ -1,18 +1,17 @@
-name: chirpy_py3.10
+name: chirpy
 channels:
   - conda-forge
   - defaults
 dependencies:
   - python=3.10
-  - scipy
-  - numpy
-  - jupyter
-  - ipython
-  - jupyter_core
-  - matplotlib
-  - periodictable
-  - pycifrw
-  - packmol
-  - fortranformat
-  - tqdm
-prefix: /home/jaehnigen/anaconda3/envs/chirpy_py3.10
+  - scipy=1.8.*
+  - numpy=1.22.*
+  - jupyter=1.0.*
+  - ipython=8.1.*
+  - jupyter_core=4.9.*
+  - matplotlib=3.5.*
+  - periodictable=1.5.*
+  - pycifrw=4.4.*
+  - packmol=20.*
+  - fortranformat=0.2.*
+  - tqdm=4.63.*
