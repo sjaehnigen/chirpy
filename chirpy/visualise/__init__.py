@@ -8,7 +8,7 @@
 #    https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
 #
 #
-#  Copyright (c) 2010-2021, The ChirPy Developers.
+#  Copyright (c) 2010-2022, The ChirPy Developers.
 #
 #
 #  Released under the GNU General Public Licence, v3 or later
