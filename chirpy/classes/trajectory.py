@@ -1805,8 +1805,8 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
 
         _fr = kwargs.get('range', (0, 1, -1))
 
-        if len(args) not in (0, 1, 3):
-            raise TypeError("expected 0, 1, or 3 arguments as files for %s"
+        if len(args) not in (0, 1, 3, 4):
+            raise TypeError("expected 0, 1, 3, or 4 arguments as files for %s"
                             % self.__class__.__name__)
 
         elif len(args) == 0:
@@ -1836,7 +1836,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
             else:
                 raise ValueError('Unknown format: %s' % self._fmt)
 
-        elif len(args) == 3:
+        elif len(args) in [3, 4]:
             # -- if no format is given it silently assumes tinker format
             if kwargs.get('fmt', 'tinker') != "tinker":
                 raise TypeError("expected \'fmt=tinker\' in file reader of "
