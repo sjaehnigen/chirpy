@@ -46,6 +46,7 @@ from . import read
 from . import topology
 from . import visualise
 from . import write
+from . import external
 
 # --- load important sub-modules
 from .classes import *

@@ -34,7 +34,6 @@ import numpy as np
 import warnings
 import copy
 
-# import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import fortranformat as ff
 
@@ -43,8 +42,8 @@ from ..topology.mapping import detect_lattice, get_cell_vec
 from ..constants import convert as _convert
 from .. import config
 
-# if config.__os__ == 'Linux':
-#     from concurrent_iterator.process import Producer
+if config.__os__ == 'Linux':
+    from ..external.concurrent_iterator.process import Producer
 
 
 # --- kernels
@@ -289,11 +288,11 @@ def xyzIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'aa')]
                                      + 3*[('velocity', 'aa')])
 
-    # if config.__os__ == 'Linux':
-    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-    #                     maxsize=20, chunksize=4)
-    # else:
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -334,11 +333,11 @@ def cpmdIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      3*[('velocity', 'au')])
 
-    # if config.__os__ == 'Linux':
-    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-    #                     maxsize=20, chunksize=4)
-    # else:
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def arcIterator(FN, **kwargs):
@@ -410,11 +409,11 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
             # -- ToDo: add more options from other columns (m surtout)
             pass
 
-    # if config.__os__ == 'Linux':
-    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-    #                     maxsize=20, chunksize=4)
-    # else:
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def pdbIterator(FN, **kwargs):
@@ -428,11 +427,11 @@ def pdbIterator(FN, **kwargs):
             if 'END' in _line:
                 break
 
-    # if config.__os__ == 'Linux':
-    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-    #                     maxsize=20, chunksize=4)
-    # else:
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 # --- containers
