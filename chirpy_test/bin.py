@@ -50,9 +50,10 @@ class TestBinaries(unittest.TestCase):
     def test_moments_assemble_molecules(self):
         os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY.pdb %s/TRAJECTORY '
                   '%s/MOMENTS -f TEST' % (3*(self.dir,)))
-        self.assertTrue(filecmp.cmp('TEST',
-                                    self.dir + '/MOL',
-                                    shallow=False),
+        self.assertTrue(np.allclose(
+                            np.loadtxt('TEST'),
+                            np.loadtxt(self.dir + '/MOL')
+                            ),
                         f'Molecular moments {self.dir}/MOL reproduced '
                         'incorrectly in TEST'
                         )
@@ -60,9 +61,10 @@ class TestBinaries(unittest.TestCase):
         os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY_DIMER.pdb '
                   '%s/TRAJECTORY_DIMER '
                   '%s/MOMENTS_DIMER -f TEST_DIMER' % (3*(self.dir,)))
-        self.assertTrue(filecmp.cmp('TEST_DIMER',
-                                    self.dir + '/DIMER',
-                                    shallow=False),
+        self.assertTrue(np.allclose(
+                            np.loadtxt('TEST_DIMER'),
+                            np.loadtxt(self.dir + '/DIMER')
+                            ),
                         f'Molecular moments {self.dir}/DIMER reproduced '
                         'incorrectly in TEST_DIMER'
                         )

@@ -246,7 +246,8 @@ def _pdb(frame, convert=1., n_lines=1):
                 # seg_id.append(line[72:76])
                 _s = line[76:78].strip()
                 if (_s := line[76:78].strip()) == '':
-                    warnings.warn('invalid or missing element symbol in PDB',
+                    warnings.warn('invalid or missing element symbol column'
+                                  'in PDB',
                                   config.ChirPyWarning, stacklevel=2)
                     symbols.append(names[-1][:2])
                 else:
