@@ -104,6 +104,7 @@ def _get(_it, kernel, **kwargs):
     _data = _line_iterator()
     while True:
         try:
+            # --- NB: islice does not raise StopIteration, but returns []!
             yield kernel(next(_data), **kwargs)
         except StopIteration:
             break
@@ -152,4 +153,4 @@ def _container(reader_a, fn_a, args_a=(), kwargs_a=()):
             # -- frame = (out0, out1, out2, ...)
             yield list(zip_longest(*_frame))
     except TypeError:
-        raise ValueError('reached unmatched end of file')
+        raise ValueError('unexpected end of file in container')

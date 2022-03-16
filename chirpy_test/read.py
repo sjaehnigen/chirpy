@@ -323,7 +323,6 @@ class TestCoordinates(unittest.TestCase):
                  'O', 'O', 'O', 'O', )
                 )
 
-
     def test_cifReader(self):
         # ToDo: insufficient testing: needs test on symmetry
         data, names, symbols, cell_aa_deg, title = \

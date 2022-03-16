@@ -34,7 +34,7 @@ import numpy as np
 import warnings
 import copy
 
-import MDAnalysis as mda
+# import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
 import fortranformat as ff
 
@@ -43,8 +43,8 @@ from ..topology.mapping import detect_lattice, get_cell_vec
 from ..constants import convert as _convert
 from .. import config
 
-if config.__os__ == 'Linux':
-    from concurrent_iterator.process import Producer
+# if config.__os__ == 'Linux':
+#     from concurrent_iterator.process import Producer
 
 
 # --- kernels
@@ -196,7 +196,76 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
     return _return
 
 
+def _pdb(frame, convert=1., n_lines=1):
+    '''Kernel for processing PDB frame'''
+    names, resns, resids, data, symbols, cell_aa_deg, title = \
+        [], [], [], [], [], None, None
+
+    def mk_int(s):
+        return int(s) if s.strip() else 0
+
+    # --- explict for loop for adpated handling StopIteration
+    while True:
+        try:
+            line = next(frame)
+        except StopIteration:
+            if symbols == []:
+                raise StopIteration
+            break
+
+        record = line[:6].strip()
+        match record:
+            case 'TITLE':
+                title = line[10:80].rstrip('\n')
+            case 'CRYST1':
+                cell_aa_deg = np.array([
+                    line[6:15],
+                    line[15:24],
+                    line[24:33],
+                    line[33:40],
+                    line[40:47],
+                    line[47:54]
+                    ]).astype(float)
+                # data['space_group'] = line[55:66]
+                # data['Z_value'    ] = int(line[66:70])
+            case ('ATOM' | 'HETATM'):
+                # atom_ser_nr.append(int(line[6:11]))
+                names.append(line[12:16].strip())
+                # alt_loc_ind.append(line[16])
+                resns.append(line[17:21].strip())
+                # NB: adding [20] to resn
+                # Note: line[20] seems to be blank
+                # chain_ind.append(line[21]) ??
+                resids.append(mk_int(line[22:26]))  # residue sequence number
+                # code_in_res.append(line[26])
+                data.append(list(map(float, [
+                    line[30:38], line[38:46], line[46:54]
+                    ])))
+                # occupancy.append(float(line[54:60]))
+                # temp_fact.append(float(line[60:66]))
+                # seg_id.append(line[72:76])
+                _s = line[76:78].strip()
+                if (_s := line[76:78].strip()) == '':
+                    warnings.warn('invalid or missing element symbol in PDB',
+                                  config.ChirPyWarning, stacklevel=2)
+                    symbols.append(names[-1][:2])
+                else:
+                    symbols.append(_s)
+
+    # --- data length not unamibigously connected to n_lines in PDB
+    # if len(data) != n_lines:
+    #     raise ValueError('File broken or incomplete')
+
+    return np.array(data), \
+        tuple(names), \
+        tuple(symbols), \
+        tuple([list(_n) for _n in zip(resids, resns)]), \
+        cell_aa_deg, \
+        title
+
+
 # --- iterators
+
 
 def xyzIterator(FN, **kwargs):
     '''Iterator for xyzReader
@@ -219,11 +288,11 @@ def xyzIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'aa')]
                                      + 3*[('velocity', 'aa')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -264,11 +333,11 @@ def cpmdIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      3*[('velocity', 'au')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def arcIterator(FN, **kwargs):
@@ -340,11 +409,30 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
             # -- ToDo: add more options from other columns (m surtout)
             pass
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
+
+def pdbIterator(FN, **kwargs):
+    '''Iterator for PDB files
+       Usage: next() returns data, names, symbols, residues, cell_aa_deg, title
+       '''
+    _kernel = _pdb
+
+    with open(FN) as _f:
+        for _nlines, _line in enumerate(_f, 1):
+            if 'END' in _line:
+                break
+
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
+
 
 # --- containers
 
@@ -362,6 +450,7 @@ def _coordContainer(*args, iterator=xyzIterator, **kwargs):
     else:
         _iterators = [iterator] * len(args)
 
+    # --- pop kwargs items before passing
     convert = 1.
     if (units := kwargs.pop('units', 'default')) != 'default':
         # --- do not send convert to readers as usual, convert here
@@ -374,7 +463,6 @@ def _coordContainer(*args, iterator=xyzIterator, **kwargs):
              for _iter, _fn in zip(_iterators, args)]
          )
     _dim = None
-
     for _frame in _container(reader_a, fn_a, args_a, kwargs_a):
         if _dim is None:
             _dim = np.array(_frame[0]).shape
@@ -428,41 +516,7 @@ def arcReader(FN, **kwargs):
     return _return
 
 
-# ------ external readers
-
-def pdbIterator(FN):
-    '''Iterator for pdbReader relying on MDAnalysis
-       Usage: next() returns data, names, symbols, res,
-       cell_aa_deg, title of current frame.
-
-       https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
-       '''
-    with warnings.catch_warnings():  # suppress MDAnalysis warnings
-        warnings.filterwarnings('ignore', category=UserWarning)
-        warnings.filterwarnings('ignore', category=DeprecationWarning)
-        u = mda.Universe(FN)
-
-    for ts in u.trajectory:
-        data = u.coord.positions
-        resns = u.atoms.resnames
-        resids = u.atoms.resids
-        names = tuple(u.atoms.names)
-        symbols = tuple([_t.title() for _t in u.atoms.types])
-        cell_aa_deg = u.dimensions
-        title = u.trajectory.title
-        if np.prod(cell_aa_deg) in [0.0, None]:
-            cell_aa_deg = None
-        if len(title) == 0:
-            title = None
-        else:
-            title = title[0]
-
-        yield data, names, symbols, tuple([list(_n) for _n in zip(
-                                             resids,
-                                             resns)]), cell_aa_deg, title
-
-
-def pdbReader(FN):
+def pdbReader(FN, **kwargs):
     '''Read complete PDB file at once using MDAnalysis.
        Returns data, names, symbols, res, cell_aa_deg, title
        of current frame.
@@ -470,11 +524,15 @@ def pdbReader(FN):
 
        https://www.mdanalysis.org/docs/documentation_pages/coordinates/PDB.html
        '''
-    data, names, symbols, res, cell_aa_deg, title = \
-        tuple([_b for _b in zip(*pdbIterator(FN))])
+    buf = list(zip(*pdbIterator(FN, **kwargs)))
+
+    data, names, symbols, res, cell_aa_deg, title = buf[:6]
 
     return np.array(data), tuple(names[0]), tuple(symbols[0]), tuple(res[0]), \
         cell_aa_deg[0], list(title)
+
+
+# ------ external readers
 
 
 def cifReader(FN, fill_unit_cell=True):
