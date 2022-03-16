@@ -314,11 +314,11 @@ def xyzIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'aa')]
                                      + 3*[('velocity', 'aa')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def cpmdIterator(FN, **kwargs):
@@ -362,11 +362,11 @@ def cpmdIterator(FN, **kwargs):
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      3*[('velocity', 'au')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def arcIterator(FN, **kwargs):
@@ -387,11 +387,11 @@ def arcIterator(FN, **kwargs):
     elif FN.split('.')[-1] == 'vel':
         kwargs['convert'] = _convert(3*[('velocity', 'aa_ps')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
@@ -438,11 +438,11 @@ def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
             # -- ToDo: add more options from other columns (m surtout)
             pass
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def pdbIterator(FN, **kwargs):
