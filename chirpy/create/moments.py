@@ -102,7 +102,7 @@ class OriginGauge(_CORE):
 
         return new
 
-    def switch_origin_gauge(self, origins_aa, assignment=None,
+    def shift_origin_gauge(self, origins_aa, assignment=None,
                             number_of_types=None):
         '''origins in angstrom'''
         _O = _copy.deepcopy(origins_aa) * constants.l_aa2au
@@ -144,12 +144,12 @@ class OriginGauge(_CORE):
                         [_R, _C, _M, _Q]
                         )
         # --- --- magnetic dipole
-        _Md_p = [ed.switch_magnetic_origin_gauge(*_tup, cell_au_deg=_CELL)
+        _Md_p = [ed.shift_magnetic_origin_gauge(*_tup, cell_au_deg=_CELL)
                  for _tup in zip(_Cd, _Md, _Rd, _O)]
         # --- --- electric dipole
         if 'd' in self._set:
             _Dd = mp.dec(_D, assignment, n_ind=number_of_types)
-            _Dd_p = [ed.switch_electric_origin_gauge(*_tup, cell_au_deg=_CELL)
+            _Dd_p = [ed.shift_electric_origin_gauge(*_tup, cell_au_deg=_CELL)
                      for _tup in zip(_Qd, _Dd, _Rd, _O)]
             _D = _np.array([_Dd_p[_i].sum(axis=0) for _i in range(_n_o)])
 

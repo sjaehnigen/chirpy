@@ -217,9 +217,18 @@ class TestClassicalElectrodyanmics(unittest.TestCase):
     def tearDown(self):
         pass
 
-    # def test_switch_magnetic_origin_gauge(self):
-    def test_switch_magnetic_origin_gauge(self):
-        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+    def test_shift_magnetic_origin_gauge(self):
+        _m = classical_electrodynamics.shift_magnetic_origin_gauge(
+                np.array([1.2, 3, -1]),  # j
+                np.array([0., 0., 0.]),
+                np.array([-1., 3., 0.1]),  # r
+                np.array([0., 0., 0.])
+                )  # --> m
+        # m = 0.5 * r × j
+        # 0.5 * (-1., 3., 0.1) × (1.2, 3, -1) = (-1.65, -0.44, -3.3)
+        self.assertListEqual(_m.tolist(), [-1.65, -0.44, -3.3])
+
+        _m = classical_electrodynamics.shift_magnetic_origin_gauge(
                 np.array([1.2, 3, -1]),
                 np.array([1., 2., 0.]),
                 np.array([-1., 0., 0.1]),
@@ -228,7 +237,7 @@ class TestClassicalElectrodyanmics(unittest.TestCase):
         self.assertListEqual(_m.tolist(), [1.2, 2.12, 0.6])
 
         # -- periodic
-        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+        _m = classical_electrodynamics.shift_magnetic_origin_gauge(
                 np.array([1.2, 3, -1]),
                 np.array([1., 2., 0.]),
                 np.array([-1., 0., 0.1]),
@@ -239,7 +248,7 @@ class TestClassicalElectrodyanmics(unittest.TestCase):
                              [0.85, 2.12, 0.18])
 
         # -- one origin ---> multiple origins
-        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+        _m = classical_electrodynamics.shift_magnetic_origin_gauge(
                 np.array([[1.2, 3, -1], [1.2, 3, -1]]),
                 np.array([[1., 2., 0.], [1., 2., 0.]]),
                 np.array([-1., 0., 0.1]),
@@ -249,7 +258,7 @@ class TestClassicalElectrodyanmics(unittest.TestCase):
                              [[1.2, 2.12, 0.6], [2.2, 2.12, 1.8]])
 
         # -- multiple origins ---> one origin
-        _m = classical_electrodynamics.switch_magnetic_origin_gauge(
+        _m = classical_electrodynamics.shift_magnetic_origin_gauge(
                 np.array([[1.2, 3, -1], [1.2, 3, -1]]),
                 np.array([[1., 2., 0.], [1., 2., 0.]]),
                 np.array([[-1., 0., 0.1], [-1., -2., 0.1]]),

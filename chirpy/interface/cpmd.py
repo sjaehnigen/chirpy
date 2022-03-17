@@ -775,7 +775,7 @@ class CPMDjob():
 # class TRAJECTORY(_TRAJ):
 #     # --- DEPRECATED ?
 #     '''Convention: pos in a.a., vel in a.u.
-#        Use keyword to switch between representations '''
+#        Use keyword to shift between representations '''
 #
 #     def __init__(self, **kwargs):
 #         for _i in kwargs:

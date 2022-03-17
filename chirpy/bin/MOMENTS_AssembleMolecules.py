@@ -185,9 +185,9 @@ def main():
                cell_aa_deg=_cell,
                )
 
-        # --- switch gauge to electric centers (optional)
+        # --- shift gauge to electric centers (optional)
         if args.electronic_centers is not None:
-            gauge_e.switch_origin_gauge(WC.pos_aa)
+            gauge_e.shift_origin_gauge(WC.pos_aa)
         if args.position_form:
             if args.M_format != 'cpmd':
                 warnings.warn('assuming valence charges for atoms. No core '
@@ -205,9 +205,9 @@ def main():
         gauge = gauge_e + gauge_n
         assignment = np.concatenate((e_map, n_map))
 
-        # --- switch to molecular origins
+        # --- shift to molecular origins
         _com = NUC.mol_com_aa
-        gauge.switch_origin_gauge(_com, assignment)
+        gauge.shift_origin_gauge(_com, assignment)
 
         # --- test for neutrality of charge
         if np.any((_mol := gauge.q_au != 0.0)):

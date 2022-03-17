@@ -101,8 +101,8 @@ def magnetic_dipole_shift_origin(c_au, trans_au):
                              axis=(2, 3))  # sum over mols (axis 1) done later
 
 
-def switch_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
-                                 cell_au_deg=None):
+def shift_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
+                                cell_au_deg=None):
     '''Apply (distrubuted) origin gauge on electric dipole moments shifting
        from origin A to origin B.
        Accepts cell_au_deg argument to account for periodic boundaries.
@@ -123,7 +123,7 @@ def switch_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
     return mu_au + electric_dipole_shift_origin(charges_au, _trans)
 
 
-def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
+def shift_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
     '''Apply (distrubuted) origin gauge on magnetic dipole moments shifting
        from origin A to origin B.
        Accepts cell_au_deg argument to account for periodic boundaries.
@@ -139,6 +139,7 @@ def switch_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
        Returns: An updated array of m_au
        '''
 
+    # --- points to the new origin
     _trans = mapping.distance_pbc(o_a_au, o_b_au, cell=cell_au_deg)
 
     return m_au + magnetic_dipole_shift_origin(c_au, _trans)
