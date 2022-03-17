@@ -1610,7 +1610,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 self._gen = iter([self._kernel(*args, **kwargs)])
 
             # --- keep kwargs for iterations
-            self._kwargs.update(kwargs.copy())
+            self._kwargs.update(_copy.deepcopy(kwargs))
 
             self._kwargs['range'] = kwargs.get('range', (0, 1, float('inf')))
             self._fr, self._st, buf = self._kwargs['range']
@@ -1651,7 +1651,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'types': check_topo('types', frame[3]),
                     'connectivity': check_topo('connectivity', frame[4]),
                     'comments': frame[5],
-                    'cell_aa_deg': (frame[6:7] or ([],))[0],  # --- optional
+                    'cell_aa_deg': check_topo('cell_aa_deg', frame[6:7]),
                     }
 
         elif self._fmt == 'pdb':

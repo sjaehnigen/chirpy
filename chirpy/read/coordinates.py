@@ -51,7 +51,14 @@ if config.__os__ == 'Linux':
 def _xyz(frame, convert=1, n_lines=1):
     '''Kernel for processing xyz frame.'''
 
-    _atomnumber = int(next(frame).strip())
+    # --- frame never starts with blank line --> EOF
+    #     (+treatment of blank lines at EOF)
+    if (_first_line := next(frame).strip()) == '':
+        warnings.warn('blank line invoked end of file',
+                      config.ChirPyWarning,
+                      stacklevel=2)
+        raise StopIteration
+    _atomnumber = int(_first_line)
 
     if n_lines != _atomnumber + 2:
         raise ValueError('XYZ file inconsistent')
@@ -69,9 +76,16 @@ def _xyz(frame, convert=1, n_lines=1):
 def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
     '''Kernel for processing cpmd frame.'''
 
-    # --- generator needs at least one call of next() to work properly
+    # --- generator needs one+ call next() to allow for StopIteration
     data = []
-    data.append(next(frame).strip().split())
+    # --- frame never starts with blank line --> EOF
+    #     (+treatment of blank lines at EOF)
+    if (_first_line := next(frame).strip()) == '':
+        warnings.warn('blank line invoked end of file',
+                      config.ChirPyWarning,
+                      stacklevel=2)
+        raise StopIteration
+    data.append(_first_line.split())
 
     for _l in frame:
         _l = _l.strip().split()
@@ -114,7 +128,14 @@ def _free(frame, columns='iddd', convert=1, n_lines=1):
 
     # --- generator needs at least one call of next() to work properly
     data = []
-    data.append(_parse_columns(next(frame)))
+    # --- frame never starts with blank line --> EOF
+    #     (+treatment of blank lines at EOF)
+    if (_first_line := next(frame).strip()) == '':
+        warnings.warn('blank line invoked end of file',
+                      config.ChirPyWarning,
+                      stacklevel=2)
+        raise StopIteration
+    data.append(_first_line.split())
 
     for _l in frame:
         data.append(_parse_columns(_l))
@@ -131,7 +152,14 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
     '''Kernel for processing arc frame.'''
 
     CELL = cell_line
-    _head = next(frame).strip().split()
+    # --- frame never starts with blank line --> EOF
+    #     (+treatment of blank lines at EOF)
+    if (_first_line := next(frame).strip()) == '':
+        warnings.warn('blank line invoked end of file',
+                      config.ChirPyWarning,
+                      stacklevel=2)
+        raise StopIteration
+    _head = _first_line.split()
     _atomnumber = int(_head[0])
     comment = ' '.join(_head[1:])
     if CELL:
@@ -260,11 +288,11 @@ def arcIterator(FN, **kwargs):
     elif FN.split('.')[-1] == 'vel':
         kwargs['convert'] = _convert(3*[('velocity', 'aa_ps')])
 
-    if config.__os__ == 'Linux':
-        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-                        maxsize=20, chunksize=4)
-    else:
-        return _reader(FN, _nlines, _kernel, **kwargs)
+    # if config.__os__ == 'Linux':
+    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+    #                     maxsize=20, chunksize=4)
+    # else:
+    return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
