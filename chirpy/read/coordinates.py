@@ -135,7 +135,7 @@ def _free(frame, columns='iddd', convert=1, n_lines=1):
                       config.ChirPyWarning,
                       stacklevel=2)
         raise StopIteration
-    data.append(_first_line.split())
+    data.append(_parse_columns(_first_line))
 
     for _l in frame:
         data.append(_parse_columns(_l))
@@ -288,11 +288,11 @@ def arcIterator(FN, **kwargs):
     elif FN.split('.')[-1] == 'vel':
         kwargs['convert'] = _convert(3*[('velocity', 'aa_ps')])
 
-    # if config.__os__ == 'Linux':
-    #     return Producer(_reader(FN, _nlines, _kernel, **kwargs),
-    #                     maxsize=20, chunksize=4)
-    # else:
-    return _reader(FN, _nlines, _kernel, **kwargs)
+    if config.__os__ == 'Linux':
+        return Producer(_reader(FN, _nlines, _kernel, **kwargs),
+                        maxsize=20, chunksize=4)
+    else:
+        return _reader(FN, _nlines, _kernel, **kwargs)
 
 
 def freeIterator(FN, columns='iddd', nlines=None, units=1, **kwargs):
