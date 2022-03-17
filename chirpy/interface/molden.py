@@ -36,14 +36,16 @@ from .. import constants
 
 def read_moldenvib_file(filename):
     f = open(filename, 'r')
-    inbuffer = f.readlines()
+    inbuffer = iter(f.readlines())
     f.close()
-    if inbuffer[0].strip() != '[Molden Format]':
-        raise Exception('No Molden format?!')
-    if inbuffer[1].strip() != '[FREQ]':
-        raise Exception('No Frequencies?!')
+    if next(inbuffer).strip() != '[Molden Format]':
+        raise ValueError('expected molden format')
+    for line in inbuffer:
+        if line.strip() == '[FREQ]':
+            break
+
     freqs = list()
-    for line in inbuffer[2:]:
+    for line in inbuffer:
         if '[FR-COORD]' in line:
             break
         else:
@@ -52,7 +54,7 @@ def read_moldenvib_file(filename):
     n_modes = freqs.shape[0]
     coords = list()
     symbols = list()
-    for line in inbuffer[n_modes+3:]:
+    for line in inbuffer:
         if '[FR-NORM-COORD]' in line:
             break
         else:
@@ -61,13 +63,14 @@ def read_moldenvib_file(filename):
             coords.append([float(e) for e in tmp[1:]])
     coords_aa = np.array(coords)*constants.l_au2aa
     n_atoms = len(symbols)
-    vib_data = inbuffer[n_modes+n_atoms+4:]
+    vib_data = [_d for _d in inbuffer]
     modes = np.zeros((n_modes, 3*n_atoms))
     for mode in range(n_modes):
         tmp = ''.join(vib_data[mode*(n_atoms+1):(mode+1)*(n_atoms+1)][1:])
         modes[mode] = np.array([float(e.strip())
                                 for e in tmp.replace('\n', ' ').split()])
-    return symbols, coords_aa, freqs, modes
+
+    return symbols, coords_aa, freqs, modes.reshape((n_modes, n_atoms, 3))
 
 
 def write_moldenvib_file(filename, symbols, coords_aa, freqs, modes):

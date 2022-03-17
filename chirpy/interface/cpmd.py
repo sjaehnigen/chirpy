@@ -169,6 +169,7 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
        '''
 
     bool_atoms = kwargs.get('write_atoms', False)
+    symbols = kwargs.pop('symbols', ())
 
     if len(data.shape) == 2:
         # --- frame
@@ -190,8 +191,11 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
         _ind = slice(selection)
     else:
         n_atoms = len(selection)
-        _range = selection
-        _ind = selection
+        # --- impose CPMD sorting
+        # NEXT: think again
+        # NEXT: add warning if selection but no symbols
+        _range = np.array(selection)[np.argsort(np.array(symbols)[selection])]
+        _ind = _range
     if append:
         mode = 'a'
 
@@ -206,7 +210,6 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
                 f.write(line+'\n')
 
     if bool_atoms and mode != 'a':
-        symbols = kwargs.pop('symbols', ())
         if len(symbols) != data.shape[1]:
             raise ValueError('cannot cast together symbols and positions',
                              symbols, data.shape[1])

@@ -103,8 +103,12 @@ mu_b_emu = e_cgs * hbar_cgs / 2 / c_cgs / m_e_si / 1E3  # Bohr magneton [erg/G]
 # --- misc
 a_lat = 2*pi / l_au  # lattice constant
 finestr = 1 / c_au  # finestructure constant
+l_au2si = l_au
+l_si2au = 1 / l_au
 l_au2aa = l_au * 1E10  # convertion A.U. to Angstrom
 l_aa2au = 1 / l_au2aa  # convertion Angstrom to A.U.
+t_au2si = t_au
+t_si2au = 1 / t_au
 t_au2fs = t_au / femto
 t_fs2au = 1 / t_au2fs
 v_au2si = 1E+5 * l_au2aa / t_au2fs

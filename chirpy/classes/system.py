@@ -121,7 +121,7 @@ class _SYSTEM(_CORE):
         self.XYZ = self._XYZ(*args, **kwargs)
         fmt = self.XYZ._fmt
 
-        if fmt in ['xvibs', 'orca', 'g09', 'gaussian']:  # re-reads file
+        if fmt in ['molden', 'mol', 'xvibs', 'orca', 'g09', 'gaussian']:
             try:
                 self.Modes = VibrationalModes(*args, **kwargs)
             except NameError:

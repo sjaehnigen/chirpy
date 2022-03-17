@@ -104,7 +104,8 @@ class _BoxObject(_CORE):
 
     def _cell_aa_deg(self):
         if hasattr(self, 'cell_aa_deg'):
-            if _get_symmetry(self.cell_aa_deg) is not None:
+            if _get_symmetry(self.cell_aa_deg) not in [
+                    None, 'void']:
                 return self.cell_aa_deg
         if hasattr(self, 'cell_vec_aa'):
             return _get_cell_aa_deg(self.cell_vec_aa)

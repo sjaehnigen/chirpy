@@ -51,7 +51,7 @@ from ..write.modes import xvibsWriter
 
 from ..interface.orca import orcaReader
 from ..interface.cpmd import cpmdWriter, cpmd_kinds_from_file
-from ..interface.molden import write_moldenvib_file
+from ..interface.molden import write_moldenvib_file, read_moldenvib_file
 from ..interface.gaussian import g09Reader
 from ..interface.tinker import tinkermomentsReader
 
@@ -574,6 +574,19 @@ class _XYZ():
                     n_modes, omega_cgs, modes = xvibsReader(fn, **nargs)
                 comments = _np.array(omega_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
+                data = _np.concatenate((
+                           _np.tile(pos_aa, (n_modes, 1, 1)),
+                           _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
+                           modes
+                          ),
+                          axis=-1
+                          )
+
+            elif fmt in ["mol", "molden"]:
+                fmt = 'molden'
+                symbols, pos_aa, omega_cgs, modes = read_moldenvib_file(fn)
+                n_modes = len(omega_cgs)
+                comments = _np.array(omega_cgs).astype(str)
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
                            _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -1494,9 +1507,12 @@ class XYZFrame(_XYZ, _FRAME):
         '''Create a XYZTrajectory object with <n_images>
            frames from velocities and a timestep ts.'''
 
-        _img = _np.arange(-(n_images // 2), n_images // 2 + 1)
+        if n_images % 2 == 0:
+            _img = _np.arange(-(n_images // 2), n_images // 2)
+        else:
+            _img = _np.arange(-(n_images // 2), n_images // 2 + 1)
         _pos_aa = _np.tile(self.pos_aa, (n_images, 1, 1))
-        _vel_aa = _np.tile(self.vel_au * constants.v_au2aaperfs,
+        _vel_aa = _np.tile(self.vel_au * constants.v_au2aa_fs,
                            (n_images, 1, 1))
         _pos_aa += _vel_aa * _img[:, None, None] * ts_fs
 
@@ -1610,7 +1626,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     raise NotImplementedError('cannot handle multiple '
                                               f'{self._fmt} files')
                 # --- try sending file directly to kernel (single frame only)
-                self._fmt = "import"  # will be overwritten in next()
+                # self._fmt = "import"  # will be overwritten in next()
                 nargs = kwargs
                 self._gen = iter([self._kernel(*args, **kwargs)])
 
@@ -1637,7 +1653,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         frame = next(self._gen)
 
         def check_topo(k, f):
-            if self._fr < 0 or not hasattr(self, '_topology'):
+            if self._fr < self._kwargs['range'][0] \
+              or not hasattr(self, '_topology'):
                 return self._kwargs.get(k, f)
             else:
                 return getattr(self._topology, k, f)
@@ -1927,7 +1944,7 @@ class _XYZTrajectory(_XYZ, _TRAJECTORY):
             _warnings.warn('Overwriting existing velocities in object!',
                            _ChirPyWarning, stacklevel=2)
         self.vel_au[:-1] = _np.diff(self.pos_aa,
-                                    axis=0) / (ts * constants.v_au2aaperfs)
+                                    axis=0) / (ts * constants.v_au2aa_fs)
 
 
 class _MOMENTSTrajectory(_MOMENTS, _TRAJECTORY):

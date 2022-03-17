@@ -43,7 +43,7 @@ def print_header(obj):
 
 
 def print_cell(obj):
-    if not hasattr(obj, 'cell_aa_deg'):
+    if getattr(obj, 'cell_aa_deg') is None:
         return
     cell_vec_aa = get_cell_vec(obj.cell_aa_deg)
 

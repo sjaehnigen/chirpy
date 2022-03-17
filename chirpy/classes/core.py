@@ -29,7 +29,6 @@
 #
 # -------------------------------------------------------------------
 
-import sys
 import pickle
 import itertools
 import warnings
@@ -252,10 +251,20 @@ class ITERATOR():
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
-        next(self)
+        try:
+            next(self)
+        except StopIteration:
+            with warnings.catch_warnings():  # --- do not warn only once
+                warnings.warn('reached end of trajectory',
+                              config.ChirPyWarning, stacklevel=2)
+                del self._gen_old
+                del self._gen_aux
+                return
 
         if verbose:
-            print(f'sneaked frame {self._fr}', file=sys.stderr)
+            with warnings.catch_warnings():  # --- do not warn only once
+                warnings.warn(f'sneaked frame {self._fr}',
+                              config.ChirPyWarning, stacklevel=2)
         self._fr -= self._st
 
         # --- reset generator

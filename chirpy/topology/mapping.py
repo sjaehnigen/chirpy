@@ -162,8 +162,10 @@ def detect_lattice(cell, priority=(0, 1, 2)):
     '''Obtain lattice system from cell measures.
        Does not care of axis order priority.
        '''
-    if cell is None or np.any(cell == 0.):
+    if cell is None:
         return None
+    if np.any(cell == 0.):
+        return 'void'
 
     abc, albega = cell[:3], cell[3:]
     _a = np.invert(np.diff(np.round(abc, decimals=3)).astype(bool))
@@ -197,7 +199,7 @@ def wrap(positions, cell):
     '''positions: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
-    if (lattice := detect_lattice(cell)) is not None:
+    if (lattice := detect_lattice(cell)) not in [None, 'void']:
         if lattice in ['cubic', 'orthorhombic', 'tetragonal']:
             # --- fast
             return positions - np.floor(positions/cell[:3]) * cell[:3]
