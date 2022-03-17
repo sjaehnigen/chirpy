@@ -206,7 +206,14 @@ def _pdb(frame, convert=1., n_lines=1):
     # --- explict for loop for adpated handling StopIteration
     while True:
         try:
-            line = next(frame)
+            # --- frame never starts with blank line --> EOF
+            #     (+treatment of blank lines at EOF)
+            if (_first_line := next(frame).strip()) == '':
+                warnings.warn('blank line invoked end of file',
+                              config.ChirPyWarning,
+                              stacklevel=2)
+                raise StopIteration
+            line = _first_line
         except StopIteration:
             if symbols == []:
                 raise StopIteration
