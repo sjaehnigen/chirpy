@@ -252,11 +252,8 @@ class ITERATOR():
         self._gen, self._gen_aux = itertools.tee(self._gen_old, 2)
 
         # --- get free frame
-        try:
-            next(self)
-        except StopIteration:
-            # --- imported frame case
-            pass
+        next(self)
+
         if verbose:
             print(f'sneaked frame {self._fr}', file=sys.stderr)
         self._fr -= self._st

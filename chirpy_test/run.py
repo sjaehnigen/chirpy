@@ -70,14 +70,14 @@ if __name__ == '__main__':
     # add tests to the test suite
     suite.addTests(loader.loadTestsFromModule(imports))
     suite.addTests(loader.loadTestsFromModule(read))
-    # suite.addTests(loader.loadTestsFromModule(write))
-    # suite.addTests(loader.loadTestsFromModule(interface))
-    # suite.addTests(loader.loadTestsFromModule(mathematics))
-    # suite.addTests(loader.loadTestsFromModule(topology))
-    # suite.addTests(loader.loadTestsFromModule(physics))
-    # suite.addTests(loader.loadTestsFromModule(classes))
-    # suite.addTests(loader.loadTestsFromModule(create))
-    # suite.addTests(loader.loadTestsFromModule(bin))
+    suite.addTests(loader.loadTestsFromModule(write))
+    suite.addTests(loader.loadTestsFromModule(interface))
+    suite.addTests(loader.loadTestsFromModule(mathematics))
+    suite.addTests(loader.loadTestsFromModule(topology))
+    suite.addTests(loader.loadTestsFromModule(physics))
+    suite.addTests(loader.loadTestsFromModule(classes))
+    suite.addTests(loader.loadTestsFromModule(create))
+    suite.addTests(loader.loadTestsFromModule(bin))
 
     # initialize a runner, pass it your suite and run it
     runner = unittest.TextTestRunner(verbosity=_verbosity)
