@@ -169,7 +169,6 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
        '''
 
     bool_atoms = kwargs.get('write_atoms', False)
-    symbols = kwargs.pop('symbols', ())
 
     if len(data.shape) == 2:
         # --- frame
@@ -191,11 +190,8 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
         _ind = slice(selection)
     else:
         n_atoms = len(selection)
-        # --- impose CPMD sorting
-        # NEXT: think again
-        # NEXT: add warning if selection but no symbols
-        _range = np.array(selection)[np.argsort(np.array(symbols)[selection])]
-        _ind = _range
+        _range = selection
+        _ind = selection
     if append:
         mode = 'a'
 
@@ -210,6 +206,7 @@ def cpmdWriter(fn, data, selection=None, append=False, **kwargs):
                 f.write(line+'\n')
 
     if bool_atoms and mode != 'a':
+        symbols = kwargs.pop('symbols', ())
         if len(symbols) != data.shape[1]:
             raise ValueError('cannot cast together symbols and positions',
                              symbols, data.shape[1])
@@ -778,7 +775,7 @@ class CPMDjob():
 # class TRAJECTORY(_TRAJ):
 #     # --- DEPRECATED ?
 #     '''Convention: pos in a.a., vel in a.u.
-#        Use keyword to shift between representations '''
+#        Use keyword to switch between representations '''
 #
 #     def __init__(self, **kwargs):
 #         for _i in kwargs:
