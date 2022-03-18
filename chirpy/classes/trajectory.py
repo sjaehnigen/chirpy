@@ -1260,17 +1260,21 @@ class _XYZ():
                       )
 
         elif fmt == 'cpmd':
+            _selection = selection
             if sorted(loc_self.symbols) != list(loc_self.symbols):
                 _warnings.warn('CPMD output requires sorted atoms. '
                                'Switching on auto-sort.',
                                _ChirPyWarning, stacklevel=2)
-                loc_self.sort()
+                _slist = loc_self.sort()
+                _selection = [_id for _id, _iatom in enumerate(_slist)
+                              if _iatom in selection]
+
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)
             loc_self.data[3:] *= factor
             cpmdWriter(fn,
                        loc_self.data.swapaxes(0, -1),
-                       selection=selection,
+                       selection=_selection,
                        **kwargs)
 
         else:
