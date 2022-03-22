@@ -1275,8 +1275,8 @@ class _XYZ():
         elif fmt == 'cpmd':
             _selection = selection
             if sorted(loc_self.symbols) != list(loc_self.symbols):
-                _warnings.warn('CPMD output requires sorted atoms. '
-                               'Switching on auto-sort.',
+                _warnings.warn('expected sorted atoms for CPMD output '
+                               'and tried auto-sort',
                                _ChirPyWarning, stacklevel=2)
                 _slist = loc_self.sort()
                 if selection is not None:

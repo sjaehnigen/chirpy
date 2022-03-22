@@ -31,4 +31,3 @@
 from . import timeline
 from . import pubplot
 from . import print_info
-from . import streamlines
