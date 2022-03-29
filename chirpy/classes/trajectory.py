@@ -1266,8 +1266,9 @@ class _XYZ():
                                'Switching on auto-sort.',
                                _ChirPyWarning, stacklevel=2)
                 _slist = loc_self.sort()
-                _selection = [_id for _id, _iatom in enumerate(_slist)
-                              if _iatom in selection]
+                if selection is not None:
+                    _selection = [_id for _id, _iatom in enumerate(_slist)
+                                  if _iatom in selection]
 
             kwargs.update({'symbols': loc_self.symbols})
             loc_self.data = loc_self.data.swapaxes(0, -1)
