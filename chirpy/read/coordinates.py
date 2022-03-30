@@ -32,6 +32,7 @@
 
 import numpy as np
 import warnings
+import copy
 
 import MDAnalysis as mda
 from CifFile import ReadCif as _ReadCif
@@ -360,16 +361,19 @@ def _coordContainer(*args, iterator=xyzIterator, **kwargs):
         _iterators = iterator
     else:
         _iterators = [iterator] * len(args)
-    reader_a, fn_a, args_a, kwargs_a = zip(
-         *[(_iter, _fn, (), kwargs) for _iter, _fn in zip(_iterators, args)]
-         )
-    _dim = None
-    convert = 1.
 
+    convert = 1.
     if (units := kwargs.pop('units', 'default')) != 'default':
         # --- do not send convert to readers as usual, convert here
         convert = _convert(units)
         kwargs['units'] = 1
+
+    # --- deepcopy: create independent (!) versions of kwargs
+    reader_a, fn_a, args_a, kwargs_a = zip(
+         *[(_iter, _fn, (), copy.deepcopy(kwargs))
+             for _iter, _fn in zip(_iterators, args)]
+         )
+    _dim = None
 
     for _frame in _container(reader_a, fn_a, args_a, kwargs_a):
         if _dim is None:
