@@ -42,6 +42,7 @@ from chirpy.physics import classical_electrodynamics as ed
 from chirpy.interface import cpmd
 from chirpy import config
 
+from time import time
 
 def main():
     parser = argparse.ArgumentParser(
@@ -166,6 +167,7 @@ def main():
 
     for _iframe, (_frame) in enumerate(zip(*_trajectory)):
 
+        SS = time()
         # --- generate classical nuclear moments
         Qn_au = constants.symbols_to_valence_charges(NUC.symbols)
         gauge_n = OriginGauge(
@@ -184,6 +186,7 @@ def main():
                charge_au=-2,
                cell_aa_deg=_cell,
                )
+        print('0', time() - SS)
 
         # --- shift gauge to electric centers (optional)
         if args.electronic_centers is not None:
@@ -196,6 +199,7 @@ def main():
             for _gauge in [gauge_e, gauge_n]:
                 _gauge.d_au = np.zeros_like(_gauge.c_au)
                 _gauge._set += 'd'
+        print('1', time() - SS)
 
         e_map = n_map[mapping.nearest_neighbour(gauge_e.r_au*constants.l_au2aa,
                                                 gauge_n.r_au*constants.l_au2aa,
@@ -204,10 +208,12 @@ def main():
         # --- combine nuclear and electronic contributions
         gauge = gauge_e + gauge_n
         assignment = np.concatenate((e_map, n_map))
+        print('2', time() - SS)
 
         # --- shift to molecular origins
         _com = NUC.mol_com_aa
         gauge.shift_origin_gauge(_com, assignment)
+        print('3', time() - SS)
 
         # --- test for neutrality of charge
         if np.any((_mol := gauge.q_au != 0.0)):
@@ -236,6 +242,8 @@ def main():
                  frame=_iframe,
                  append=append,
                  write_atoms=False)
+        print('4', time() - SS)
+        print('')
 
 
 if __name__ == "__main__":
