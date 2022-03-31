@@ -42,6 +42,8 @@ class OriginGauge(_CORE):
     '''Object that processes moment trajectories from classes and
        converts between origin gauges.
 
+       Can only process individual frames.
+
        All data is in atomic units (position input in angstrom).
        '''
     def __init__(self,
@@ -103,7 +105,7 @@ class OriginGauge(_CORE):
         return new
 
     def shift_origin_gauge(self, origins_aa, assignment=None,
-                            number_of_types=None):
+                           number_of_types=None):
         '''origins in angstrom'''
         _O = _copy.deepcopy(origins_aa) * constants.l_aa2au
         if (_n_o := len(origins_aa)) > len(self.r_au):

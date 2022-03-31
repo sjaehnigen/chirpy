@@ -105,14 +105,14 @@ class TestMapping(unittest.TestCase):
         self.assertTupleEqual(cowt_b.shape, (3,))
         self.assertListEqual(cowt[1].tolist(), cowt_b.tolist())
 
-    def test_get_cell_vec(self):
+    def test_cell_vec(self):
         cell_aa_deg = np.array([24.218, 15.92, 13.362, 90.0, 111.95, 90.0])
-        cell_vec_aa = np.around(mapping.get_cell_vec(cell_aa_deg), decimals=3)
+        cell_vec_aa = np.around(mapping.cell_vec(cell_aa_deg), decimals=3)
         self.assertListEqual(
                 cell_vec_aa.tolist(),
                 [[24.218, 0., 0.], [0., 15.92, 0.], [-4.995, 0., 12.393]]
                 )
-        cell_vec_aa = np.around(mapping.get_cell_vec(cell_aa_deg,
+        cell_vec_aa = np.around(mapping.cell_vec(cell_aa_deg,
                                                      priority=(2, 0, 1)),
                                 decimals=3)
         self.assertListEqual(

@@ -237,7 +237,7 @@ class _FRAME(_CORE):
     def repeat(self, times, priority=(0, 1, 2)):
         '''Propagate kinds using cell tensor, duplicate if cell is not defined.
            times ... integer or tuple of integers for each Cartesian dimension
-           priority ... (see chirpy.topology.mapping.get_cell_vec)
+           priority ... (see chirpy.topology.mapping.cell_vec)
            '''
         if isinstance(times, int):
             times = 3 * (times,)
@@ -248,7 +248,7 @@ class _FRAME(_CORE):
         new = _copy.deepcopy(self)
 
         try:
-            cell_vec_aa = mapping.get_cell_vec(self.cell_aa_deg,
+            cell_vec_aa = mapping.cell_vec(self.cell_aa_deg,
                                                n_fields=3,
                                                priority=priority)
             new.cell_aa_deg[:3] *= times
@@ -553,7 +553,7 @@ class _XYZ():
                 # --- ToDo: to be discussed: adding origin
                 data = (pos_aa + origin_aa)
                 symbols = constants.numbers_to_symbols(numbers)
-                f_cell_aa_deg = mapping.get_cell_l_deg(
+                f_cell_aa_deg = mapping.cell_l_deg(
                         cell_vec_aa,
                         multiply=_dims
                         )

@@ -33,8 +33,8 @@
 import numpy as np
 import copy
 
-from ..topology.mapping import distance_pbc, wrap, get_cell_vec,\
-    detect_lattice, neighbour_matrix, get_cell_l_deg
+from ..topology.mapping import distance_pbc, wrap, cell_vec,\
+    detect_lattice, neighbour_matrix, cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..constants import symbols_to_symbols
 
@@ -93,7 +93,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
 
     if _lattice is not None:
         # --- change basis
-        cell_vec_aa = get_cell_vec(cell_aa_deg)
+        cell_vec_aa = cell_vec(cell_aa_deg)
         _p = ceb(_p, cell_vec_aa)
         _cell = np.array([1.0, 1.0, 1.0, 90.0, 90.0, 90.0])
         MAX = _cell[:3]
@@ -338,7 +338,7 @@ def read_topology_file(fn):
                 ]))
 
         if (cell_aa_deg := _con['abc'] + _con['albega']) == []:
-            cell_aa_deg = get_cell_l_deg(np.array(_con['cell_vec_aa']))
+            cell_aa_deg = cell_l_deg(np.array(_con['cell_vec_aa']))
 
         if _con['vel_au'] == []:
             data = np.tile(np.concatenate(

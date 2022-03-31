@@ -137,7 +137,7 @@ class ScalarField(_CORE):
                                  _np.cross(
                                    self.cell_vec_aa[1],
                                    self.cell_vec_aa[2])) * constants.l_aa2au**3
-            self.cell_aa_deg = mp.get_cell_l_deg(
+            self.cell_aa_deg = mp.cell_l_deg(
                                      self.cell_vec_aa,
                                      multiply=self.data.shape[-3:]
                                      )
@@ -320,14 +320,14 @@ class ScalarField(_CORE):
         '''transform position (relative to origin) into grid index'''
         return mp.get_cell_coordinates(
                 p,
-                mp.get_cell_l_deg(self.cell_vec_aa)
+                mp.cell_l_deg(self.cell_vec_aa)
                 )
 
     def _ltransform(self, i):
         '''transform grid index into position'''
         return mp.get_cartesian_coordinates(
                 i,
-                mp.get_cell_l_deg(self.cell_vec_aa)
+                mp.cell_l_deg(self.cell_vec_aa)
                 )
 
     def ind_grid(self):

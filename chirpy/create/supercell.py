@@ -35,8 +35,8 @@ import numpy as _np
 import warnings as _warnings
 
 from ..topology.dissection import assign_molecule as _assign_molecule
-from ..topology.mapping import get_cell_vec as _get_cell_vec
-from ..topology.mapping import get_cell_l_deg as _get_cell_aa_deg
+from ..topology.mapping import cell_vec as _cell_vec
+from ..topology.mapping import cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
 from ..classes.core import CORE as _CORE
 from ..classes.trajectory import XYZ
@@ -100,7 +100,7 @@ class _BoxObject(_CORE):
                        **nargs)
 
     def _cell_vec_aa(self, **kwargs):
-        return _get_cell_vec(self.cell_aa_deg)
+        return _cell_vec(self.cell_aa_deg)
 
     def _cell_aa_deg(self):
         if hasattr(self, 'cell_aa_deg'):

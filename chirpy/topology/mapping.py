@@ -106,7 +106,7 @@ def cowt(pos, wt, axis=-2, mask=None, subset=slice(None)):
     return np.sum(_pos[subset] * _wt[_slc], axis=0) / _wt[subset].sum()
 
 
-def get_cell_l_deg(cell_vec, multiply=(1, 1, 1)):
+def cell_l_deg(cell_vec, multiply=(1, 1, 1)):
     '''Convert cell vectors into box info. Unit of l (length) equal to the one
        used in cell vector.
        cell_vec as 3×3 array
@@ -122,7 +122,7 @@ def get_cell_l_deg(cell_vec, multiply=(1, 1, 1)):
         ))
 
 
-def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
+def cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
     '''cell as np.array/list of: a b c al be ga
        n_fields: usually 3
 
@@ -153,9 +153,9 @@ def get_cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
 
 
 def cell_volume(cell, n_fields=3):
-    cell_vec = get_cell_vec(cell, n_fields=n_fields)
+    _cell_vec = cell_vec(cell, n_fields=n_fields)
 
-    return np.dot(cell_vec[0], np.cross(cell_vec[1], cell_vec[2]))
+    return np.dot(_cell_vec[0], np.cross(_cell_vec[1], _cell_vec[2]))
 
 
 def detect_lattice(cell, priority=(0, 1, 2)):
@@ -206,11 +206,12 @@ def wrap(positions, cell):
 
         else:
             # --- more expensive (ToDo: optimise tensordot, ceb; has np.cross)
-            cell_vec = get_cell_vec(cell)  # checked: inexpensive
-            return positions - np.tensordot(np.floor(ceb(positions, cell_vec)),
-                                            cell_vec,
-                                            axes=1
-                                            )
+            _cell_vec = cell_vec(cell)  # checked: inexpensive
+            return positions - np.tensordot(
+                                        np.floor(ceb(positions, _cell_vec)),
+                                        _cell_vec,
+                                        axes=1
+                                        )
     else:
         return positions
 
@@ -250,9 +251,9 @@ def _pbc_shift(_d, cell):
     if not any([_a <= 0.0 for _a in cell[:3]]):
         if not all([_a == 90.0 for _a in cell[3:]]):
             # _warnings.warn('Found non-tetragonal lattice.', stacklevel=2)
-            cell_vec = get_cell_vec(cell)
-            _c = ceb(_d, cell_vec)
-            return np.tensordot(np.around(_c), cell_vec, axes=1)
+            _cell_vec = cell_vec(cell)
+            _c = ceb(_d, _cell_vec)
+            return np.tensordot(np.around(_c), _cell_vec, axes=1)
         else:
             return np.around(_d/cell[:3]) * cell[:3]
     else:
@@ -265,10 +266,10 @@ def get_cell_coordinates(positions, cell, angular=False):
        angular=True for transformation of angular magnitudes
        of the form p × p or p × v
        '''
-    cell_vec = get_cell_vec(cell)
+    _cell_vec = cell_vec(cell)
     if angular:
-        cell_vec = np.linalg.det(cell_vec) * np.linalg.inv(cell_vec).T
-    return ceb(positions, cell_vec)
+        _cell_vec = np.linalg.det(_cell_vec) * np.linalg.inv(_cell_vec).T
+    return ceb(positions, _cell_vec)
 
 
 def get_cartesian_coordinates(positions, cell, angular=False):
@@ -276,12 +277,12 @@ def get_cartesian_coordinates(positions, cell, angular=False):
        angular=True for transformation of angular magnitudes
        of the form p × p or p × v
        '''
-    cell_vec = get_cell_vec(cell)
+    _cell_vec = cell_vec(cell)
     if angular:
-        cell_vec = np.linalg.det(cell_vec) * np.linalg.inv(cell_vec).T
+        _cell_vec = np.linalg.det(_cell_vec) * np.linalg.inv(_cell_vec).T
     return np.einsum('ni, ij -> nj',
                      positions,
-                     cell_vec
+                     _cell_vec
                      )
 
 

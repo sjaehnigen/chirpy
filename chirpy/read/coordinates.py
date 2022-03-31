@@ -38,7 +38,7 @@ from CifFile import ReadCif as _ReadCif
 import fortranformat as ff
 
 from .generators import _reader, _open, _container
-from ..topology.mapping import detect_lattice, get_cell_vec
+from ..topology.mapping import detect_lattice, cell_vec
 from ..constants import convert as _convert
 from .. import config
 
@@ -633,7 +633,7 @@ def cifReader(FN, fill_unit_cell=True):
     data = np.array([_x, _y, _z]).T
 
     # -- change to cell vector base
-    cell_vec_aa = get_cell_vec(cell_aa_deg)
+    cell_vec_aa = cell_vec(cell_aa_deg)
     data = np.tensordot(data, cell_vec_aa, axes=1)
 
     # --- clean data (atom duplicates), a little clumsy

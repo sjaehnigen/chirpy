@@ -54,9 +54,9 @@ def main():
     args = np.array(parser.parse_args().cell)
 
     if len(args) == 6:
-        cell = cp.topology.mapping.get_cell_vec(args)
+        cell = cp.topology.mapping.cell_vec(args)
     elif len(args) == 9:
-        cell = cp.topology.mapping.get_cell_l_deg(args.reshape((3, 3)))
+        cell = cp.topology.mapping.cell_l_deg(args.reshape((3, 3)))
     print(cell)
 
 

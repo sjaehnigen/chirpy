@@ -30,7 +30,7 @@
 # -------------------------------------------------------------------
 
 import sys
-from ..topology.mapping import detect_lattice, get_cell_vec
+from ..topology.mapping import detect_lattice, cell_vec
 
 
 def print_header(obj):
@@ -45,7 +45,7 @@ def print_header(obj):
 def print_cell(obj):
     if getattr(obj, 'cell_aa_deg') is None:
         return
-    cell_vec_aa = get_cell_vec(obj.cell_aa_deg)
+    cell_vec_aa = cell_vec(obj.cell_aa_deg)
 
     print(f'''
 {77 * '–'}
