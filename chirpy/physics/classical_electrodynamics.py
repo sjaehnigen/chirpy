@@ -74,8 +74,7 @@ def electric_dipole_shift_origin(charges_au, trans_au):
         return -trans_au * charges_au[:, None]
 
     if len(trans_au.shape) == 3:
-        # --- assumes charge does not change with frames
-        return -trans_au * charges_au[None, :, None]
+        return -trans_au * charges_au[:, :, None]
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au):

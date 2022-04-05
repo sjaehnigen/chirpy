@@ -190,11 +190,11 @@ def main():
         sys.exit(0)
 
     # --- expand iterator
-    _p, _c, _m = np.split(
-                      np.array([_load.data[args.subset] for _fr in _load]),
-                      3,
-                      axis=-1
-                      )
+    _p, _c, _m, _d = np.split(
+                          np.array([_load.data[args.subset] for _fr in _load]),
+                          4,
+                          axis=-1
+                          )
 
     if args.cell_aa_deg is not None:
         _cell = np.array(args.cell_aa_deg)

@@ -59,7 +59,7 @@ def dist_crit_aa(symbols):
     return crit_aa
 
 
-def dec(prop, indices, n_ind=None):
+def dec(prop, indices, n_ind=None, axis=0):
     """decompose prop according to indices
        n_ind: interpret numerical entries of indices and return empty arrays
        for missing indices"""
@@ -67,19 +67,23 @@ def dec(prop, indices, n_ind=None):
         iterator = range(n_ind)
     else:
         iterator = set(indices)
-    if len(prop) != len(indices):
-        raise ValueError('Lenght of index array does not match atom data')
-    if isinstance(prop, (tuple, int)):
+    if isinstance(prop, (tuple, list)):
+        assert axis == 0, 'cannot process axis != 0 for tuple or list'
+        assert len(prop) == len(indices), \
+            'lenght of index array does not match atom data'
         return [
             type(prop)([
                 prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
                 ]) for i_mol in iterator
             ]
     else:
+        _indices = np.array(indices)
+        assert prop.shape[axis] == len(indices), \
+            'length of index array does not match data: ' + \
+            f'{len(_indices)}, {prop.shape}'
         return [
-            np.array([
-                prop[k] for k, j_mol in enumerate(indices) if j_mol == i_mol
-                ]) for i_mol in iterator
+                np.take(prop, np.where(_indices == i_mol)[0], axis=axis)
+                for i_mol in iterator
             ]
 
 
@@ -280,10 +284,18 @@ def get_cartesian_coordinates(positions, cell, angular=False):
     _cell_vec = cell_vec(cell)
     if angular:
         _cell_vec = np.linalg.det(_cell_vec) * np.linalg.inv(_cell_vec).T
-    return np.einsum('ni, ij -> nj',
-                     positions,
-                     _cell_vec
-                     )
+
+    match len(positions.shape):
+        case 2:
+            return np.einsum('ni, ij -> nj',
+                             positions,
+                             _cell_vec
+                             )
+        case 3:
+            return np.einsum('kni, ij -> knj',
+                             positions,
+                             _cell_vec
+                             )
 
 
 def distance_matrix(p0, p1=None, cell=None, cartesian=False,
@@ -301,9 +313,9 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False,
     if p1 is None:
         p1 = p0
 
-    if len(p0.shape) > 2 or len(p1.shape) > 2:
-        raise ValueError('distance_matrix only accepts positions of shape '
-                         '(n_atoms, dim) or (n_frames, dim)!')
+    # if len(p0.shape) > 2 or len(p1.shape) > 2:
+    #     raise ValueError('distance_matrix only accepts positions of shape '
+    #                      '(n_atoms, dim) or (n_frames, dim)!')
     if (_max := max(p0.shape[0], p1.shape[0])) > 10000:
         print(_max)
         raise MemoryError('Too many atoms for molecular recognition'
@@ -432,11 +444,20 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
 
     _pos_aa = dec(pos_aa, mol_map)
     mol_com_aa = []
+    # --- NB: looping over molecules to reduce memory overhead
+    # for _i, (_w, _s, _p) in tqdm.tqdm(
+    #                         enumerate(zip(w, _sym, _pos_aa)),
+    #                         disable=not config.__verbose__,
+    #                         desc='join molecules',
+    #                         total=len(_sym),
+    #                         ):
     for _i, (_w, _s, _p) in enumerate(zip(w, _sym, _pos_aa)):
-        # --- ToDo: awkward check if _p has frames (frame 0 as reference)
         if len(_p.shape) == 3:
+            _frames = True
+            n_frames = _shape[1]
             _p_ref = _p[:, 0]
         else:
+            _frames = False
             _p_ref = _p
 
         if algorithm == 'connectivity':
@@ -446,14 +467,17 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                                        return_distances=True,
                                        cartesian=True,
                                        return_pbc_bool=True)
-            if B.all():  # --- molecule not broken
-                # --- frame support
+            if not _frames and B.all():  # --- molecule not broken
+                # --- ensure mol cowt lies within cell
                 c_aa = cowt(_p, _w, axis=0)
-                mol_com_aa.append(c_aa)
+                _delta = wrap(c_aa, cell_aa_deg) - c_aa
+                mol_com_aa.append(c_aa + _delta)
+                ind = np.array(mol_map) == _i
+                pos_aa[ind] = _p + _delta[None]
                 continue
-            # --- no frame support
+            _m_n_atoms = len(_p)
+            _p_ref = _p.reshape((_m_n_atoms, -1))
             P = np.zeros_like(_p_ref)
-            _m_n_atoms = len(P)
             n = np.zeros(_m_n_atoms).astype(bool)
             # --- set reference particle
             # --- closest to its neighbours
@@ -488,8 +512,25 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                         break
                 m = np.einsum('ij, i -> j', N, n0.astype(int))
                 n = m.astype(bool)
-                _NP = np.einsum('ijk, ij -> jk', P[n0, None] + D[n0], N[n0])
-                P[n] = _NP[n] / m[n, None]
+                if _frames:
+                    # --- loop over frames
+                    # --- assuming constant connectivity through N
+                    _D = np.moveaxis(np.array(
+                        [distance_matrix(_p[n0, _ii], _p[n, _ii],
+                                         cell=cell_aa_deg, cartesian=True)
+                         # for _ii in tqdm.tqdm(
+                         #              range(n_frames),
+                         #              disable=not config.__verbose__,
+                         #              desc=f'mol {_i} (iteration {_n_iter})',
+                         #              )]), 0, -2)
+                         for _ii in range(n_frames)]), 0, -2)
+                    _D = _D.reshape((n0.sum(), n.sum(), -1))
+                    _NP = np.einsum('ijk, ij -> jk', P[n0, None]+_D,
+                                    N[n0][:, n])
+                    P[n] = _NP / m[n, None]
+                else:
+                    _NP = np.einsum('ijk, ij -> jk', P[n0, None]+D[n0], N[n0])
+                    P[n] = _NP[n] / m[n, None]
                 n_1 = copy.deepcopy(n0)
                 n0 |= n
                 _n_iter += 1
@@ -498,6 +539,8 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                                      f'{_n_iter} iterations. Perhaps '
                                      'the connectivity is interrupted.')
 
+            if _frames:
+                P = P.reshape((_m_n_atoms, n_frames, 3))
             c_aa = cowt(P, _w, axis=0)
             # --- ensure mol cowt lies within cell
             #     (ToDo: choose _r such that this line is no required)

@@ -32,6 +32,7 @@
 import copy as _copy
 import numpy as _np
 import warnings as _warnings
+import itertools
 
 from .core import CORE as _CORE
 from .core import ITERATOR as _ITERATOR
@@ -159,7 +160,7 @@ class _FRAME(_CORE):
         else:
             _slist = get_slist()
 
-        self.data = self.data.swapaxes(0, -2)[_slist].swapaxes(0, -2)
+        self.data = _np.take(self.data, _slist, axis=-2)
         self.symbols = tuple(_symbols[_slist])
         # --- symbols analogues
         for _l in ['names', 'residues']:
@@ -188,8 +189,7 @@ class _FRAME(_CORE):
            selection keyword in write().
 
            select ... list or tuple of ids'''
-        _data = [_np.moveaxis(_d, 0, -2)
-                 for _d in mapping.dec(_np.moveaxis(self.data, -2, 0), mask)]
+        _data = mapping.dec(self.data, mask, axis=-2)
         _symbols = mapping.dec(self.symbols, mask)
 
         _DEC = (_data, _symbols)
@@ -249,8 +249,8 @@ class _FRAME(_CORE):
 
         try:
             cell_vec_aa = mapping.cell_vec(self.cell_aa_deg,
-                                               n_fields=3,
-                                               priority=priority)
+                                           n_fields=3,
+                                           priority=priority)
             new.cell_aa_deg[:3] *= times
         except AttributeError:
             cell_vec_aa = _np.zeros((3, 3))
@@ -396,15 +396,13 @@ class _MODES(_FRAME):
 
     def _modes(self, *args):
         if len(args) == 0:
-            self.modes = self.data.swapaxes(0, -1)[6:9].swapaxes(0, -1)
+            self.modes = _np.take(self.data, [6, 7, 8], axis=-1)
             self._eivec()
         elif len(args) == 1:
             if args[0].shape != self.modes.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[6:9] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., 6:9] = args[0]
             self._modes()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -799,20 +797,15 @@ class _XYZ():
                            force_centering=kwargs.get('force_centering', False)
                            )
 
-        # DISABLED 2020-10-20
-        # self._sync_class(check_orthonormality=False)
-
     def _pos_aa(self, *args):
         '''Update positions'''
         if len(args) == 0:
-            self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
+            self.pos_aa = _np.take(self.data, [0, 1, 2], axis=-1)
         elif len(args) == 1:
             if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[:3] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., :3] = args[0]
             self._pos_aa()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -821,14 +814,12 @@ class _XYZ():
     def _vel_au(self, *args):
         '''Update velocities'''
         if len(args) == 0:
-            self.vel_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
+            self.vel_au = _np.take(self.data, [3, 4, 5], axis=-1)
         elif len(args) == 1:
             if args[0].shape != self.vel_au.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[3:6] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., 3:6] = args[0]
             self._vel_au()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -967,10 +958,32 @@ class _XYZ():
         return cowt_aa
 
     def get_center_of_mass(self, mask=None, join_molecules=True):
-        self.com_aa = self._get_center_of_weight(mask=mask, weights='masses')
+        if mask is None:
+            self.com_aa = self._get_center_of_weight(
+                                    mask=None,
+                                    weights='masses',
+                                    join_molecules=False
+                                    )
+        else:
+            self.mol_com_aa = self._get_center_of_weight(
+                                    mask=mask,
+                                    weights='masses',
+                                    join_molecules=join_molecules
+                                    )
 
     def get_center_of_geometry(self, mask=None, join_molecules=True):
-        self.com_aa = self._get_center_of_weight(mask=mask, weights=None)
+        if mask is None:
+            self.cog_aa = self._get_center_of_weight(
+                                    mask=None,
+                                    weights=None,
+                                    join_molecules=False
+                                    )
+        else:
+            self.mol_cog_aa = self._get_center_of_weight(
+                                    mask=mask,
+                                    weights=None,
+                                    join_molecules=join_molecules
+                                    )
 
     def align_coordinates(self, selection=None, weights='masses',
                           align_ref=None,
@@ -1352,9 +1365,9 @@ class _MOMENTS():
 
         comments = list(comments)
         # --- no magnetic moments given (before getting frame)
-        if data.shape[-1] == 3:
-            _data = _np.zeros(data.shape[:-1] + (6,))
-            _data[:, :, :3] += data
+        if (_sh := data.shape[-1]) < 12:
+            _data = _np.zeros(data.shape[:-1] + (12,))
+            _data[:, :, :_sh] += data
             data = _data
             del _data
 
@@ -1434,15 +1447,12 @@ class _MOMENTS():
 
     def _pos_aa(self, *args):
         if len(args) == 0:
-            self.pos_aa = self.data.swapaxes(0, -1)[:3].swapaxes(0, -1)
-            self.pos_au = self.pos_aa * constants.l_aa2au
+            self.pos_aa = _np.take(self.data, [0, 1, 2], axis=-1)
         elif len(args) == 1:
             if args[0].shape != self.pos_aa.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[:3] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., :3] = args[0]
             self._pos_aa()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -1451,14 +1461,12 @@ class _MOMENTS():
     def _c_au(self, *args):
         '''Current dipole moments'''
         if len(args) == 0:
-            self.c_au = self.data.swapaxes(0, -1)[3:6].swapaxes(0, -1)
+            self.c_au = _np.take(self.data, [3, 4, 5], axis=-1)
         elif len(args) == 1:
-            if args[0].shape != self.pos_aa.shape:
+            if args[0].shape != self.c_au.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[3:6] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., 3:6] = args[0]
             self._c_au()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -1467,14 +1475,12 @@ class _MOMENTS():
     def _m_au(self, *args):
         '''Magnetic dipole moments'''
         if len(args) == 0:
-            self.m_au = self.data.swapaxes(0, -1)[6:9].swapaxes(0, -1)
+            self.m_au = _np.take(self.data, [6, 7, 8], axis=-1)
         elif len(args) == 1:
-            if args[0].shape != self.pos_aa.shape:
+            if args[0].shape != self.m_au.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
-            _tmp[6:9] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., 6:9] = args[0]
             self._m_au()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -1483,15 +1489,13 @@ class _MOMENTS():
     def _d_au(self, *args):
         '''Electric dipole moments (optional)'''
         if len(args) == 0:
-            self.d_au = self.data.swapaxes(0, -1)[9:12].swapaxes(0, -1)
+            self.d_au = _np.take(self.data, [9, 10, 11], axis=-1)
         elif len(args) == 1:
-            if args[0].shape != self.pos_aa.shape:
+            if args[0].shape != self.d_au.shape:
                 raise ValueError(
                      'Cannot update attribute with values of different shape!')
-            _tmp = self.data.swapaxes(0, -1)
             # --- ToDo: raises error when dims 9-12 not yet present
-            _tmp[9:12] = args[0].swapaxes(0, -1)
-            self.data = _tmp.swapaxes(0, -1)
+            self.data[..., 9:12] = args[0]
             self._d_au()
         else:
             raise TypeError('Too many arguments for %s!'
@@ -1719,20 +1723,29 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         return self._fr
 
-    def expand(self):
+    def expand(self, batch=None):
         '''Perform iteration on remaining iterator and load
-           entire trajectory
-           (may take some time)
+           entire (<batch> frames) trajectory into memory.
            '''
         try:
-            data, symbols, comments = zip(*[(self.data,
-                                             self.symbols,
-                                             self.comments) for _fr in self])
+            if batch is not None:
+                data, symbols, comments = zip(*[
+                    (self.data, self.symbols, self.comments)
+                    for _fr in itertools.islice(self, batch)])
+            else:
+                data, symbols, comments = zip(*[(
+                    self.data, self.symbols, self.comments)
+                    for _fr in self])
             out = {
                     'data': _np.array(data),
                     'symbols': symbols[0],
                     'comments': list(comments)
                      }
+
+            self._kwargs.update(out)
+
+            return _XYZTrajectory(**self._kwargs)
+
         except ValueError as _e:
             try:  # --- check if end of iterator is the reason
                 next(self)
@@ -1741,10 +1754,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 _warnings.warn('iterator exhausted', _ChirPyWarning,
                                stacklevel=2)
                 return None
-
-        self._kwargs.update(out)
-
-        return _XYZTrajectory(**self._kwargs)
 
     def write(self, fn, **kwargs):
         self._unwind(fn,
@@ -1894,17 +1903,28 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         if 'skip' in self._kwargs:
             self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
-    def expand(self):
+    def expand(self, batch=None):
         '''Perform iteration on remaining iterator and load
-           entire trajectory
-           (may take some time)
+           entire (<batch> frames) trajectory into memory.
            '''
-        data = [self.data for _fr in self]
-        out = {'data': _np.array(data)}
+        try:
+            if batch is not None:
+                data = [self.data for _fr in itertools.islice(self, batch)]
+            else:
+                data = [self.data for _fr in self]
 
-        self._kwargs.update(out)
+            out = {'data': _np.array(data)}
 
-        return _MOMENTSTrajectory(**self._kwargs)
+            self._kwargs.update(out)
+
+            return _MOMENTSTrajectory(**self._kwargs)
+
+        except (IndexError, ValueError) as _e:
+            try:  # --- check if end of iterator is the reason
+                next(self)
+                raise _e
+            except StopIteration:
+                return None
 
     def write(self, fn, **kwargs):
         self._unwind(fn,
