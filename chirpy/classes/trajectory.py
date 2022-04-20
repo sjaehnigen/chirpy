@@ -1656,8 +1656,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                     'types': check_topo('types', frame[3]),
                     'connectivity': check_topo('connectivity', frame[4]),
                     'comments': frame[5],
-                    'cell_aa_deg': check_topo('cell_aa_deg', frame[6:7]),
                     }
+            try:
+                out['cell_aa_deg'] = check_topo('cell_aa_deg', frame[6])
+            except IndexError:
+                pass
 
         elif self._fmt == 'pdb':
             out = {
@@ -1718,6 +1721,8 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 next(self)
                 raise _e
             except StopIteration:
+                _warnings.warn('iterator exhausted', _ChirPyWarning,
+                               stacklevel=2)
                 return None
 
         self._kwargs.update(out)
