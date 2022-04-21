@@ -68,18 +68,19 @@ def _make_batches(MIN, MAX, nb, ov=None):
     return _batches
 
 
-def define_molecules(pos_aa, symbols, **kwargs):
+def define_molecules(pos_aa, symbols, cell_aa_deg=None, neigh_cutoff_aa=24.):
     '''Distance analysis in batches to create a neighbour list which is
        further evaluated to obtain clusters/molecules.
        Expects positions in angstrom of shape (n_atoms, three).
-       It returns a list with assignments.'''
+       It returns a list with assignments.
+       neigh_cutoff_aa ... max distance to look for neighbours
+       '''
 
     _p = pos_aa
     if len(_p.shape) != 2:
         raise TypeError('Positions not in shape (n_atoms, three)!')
 
     symbols = np.array(symbols)
-    cell_aa_deg = kwargs.get("cell_aa_deg")
     n_atoms = len(symbols)
 
     h = np.array([symbols == 'H'])[0]
@@ -98,7 +99,7 @@ def define_molecules(pos_aa, symbols, **kwargs):
         _cell = np.array([1.0, 1.0, 1.0, 90.0, 90.0, 90.0])
         MAX = _cell[:3]
         MIN = np.zeros_like(MAX)
-        _n_b = tuple((cell_aa_deg[:3] / 12).astype(int) + 1)
+        _n_b = tuple((cell_aa_deg[:3] / neigh_cutoff_aa).astype(int) + 1)
         # _n_b = tuple((cell_aa_deg[:3] / max(symbols_to_rvdw(symbols))
         # / 0.02).astype(int) + 1)
     else:
@@ -150,7 +151,8 @@ def define_molecules(pos_aa, symbols, **kwargs):
         if v not in neigh_dict:
             neigh_dict[v] = [k]
         else:
-            neigh_dict[v].append(k)
+            if k not in neigh_dict[v]:
+                neigh_dict[v].append(k)
 
     neigh_list = []
     for _i in range(n_noh):
@@ -206,24 +208,24 @@ def define_molecules(pos_aa, symbols, **kwargs):
     return ass - 1
 
 
-def assign_molecule(molecule, n_mol, n_atoms, neigh_map, atom, atom_count):
+def assign_molecule(molecule, n_mol, n_atoms, neigh_list, atom, atom_count):
     '''This method can do more than molecules! See BoxObject
     molecule … assignment
     n_mol … species counter
     n_atoms … total number of entries
-    neigh_map … list of neighbour atoms per atom
+    neigh_list … list of neighbour atoms per atom
     atom … current line in reading neighbour map
     atom_count … starts with n_atoms until zero
     '''
     molecule[atom] = n_mol
     atom_count -= 1
-    for _i in neigh_map[atom]:
+    for _i in neigh_list[atom]:
         if molecule[_i] == 0:
             molecule, atom_count = assign_molecule(
                 molecule,
                 n_mol,
                 n_atoms,
-                neigh_map,
+                neigh_list,
                 _i,
                 atom_count
                 )

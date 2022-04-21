@@ -621,7 +621,7 @@ def cifReader(FN, fill_unit_cell=True):
         # -- apply given symmetry operations on asymmetric unit
         #    (assumes first operation to be the identity: 'x, y, z')
         for _io, op in enumerate(_space_group_symop):
-            _op = [__op.strip() for __op in op.split(',')]
+            _op = [__op.strip().lower() for __op in op.split(',')]
             _x = np.append(_x, eval(_op[0]), axis=0)
             _y = np.append(_y, eval(_op[1]), axis=0)
             _z = np.append(_z, eval(_op[2]), axis=0)

@@ -1262,9 +1262,15 @@ class _XYZ():
 
         elif fmt == "pdb":
             if (mol_map := kwargs.get('mol_map')) is None:
-                _warnings.warn('Could not find mol_map for PDB output!',
-                               _ChirPyWarning, stacklevel=2)
-                mol_map = _np.zeros(loc_self.n_atoms).astype(int)
+                if (residues := getattr(loc_self, 'residues', None)) is None:
+                    _warnings.warn('could not find mol_map or residues '
+                                   'for PDB output',
+                                   _ChirPyWarning, stacklevel=2)
+                    residues = _np.array([[1, 'MOL']] * loc_self.n_atoms)
+            else:
+                residues = _np.vstack((_np.array(mol_map) + 1,
+                                       _np.array(['MOL'] * loc_self.n_atoms)
+                                       )).swapaxes(0, 1)
 
             if (cell_aa_deg := kwargs.get('cell_aa_deg')) is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
@@ -1275,10 +1281,7 @@ class _XYZ():
                       loc_self.pos_aa,
                       names=getattr(loc_self, 'names', loc_self.symbols),
                       symbols=loc_self.symbols,
-                      residues=getattr(loc_self, 'residues', _np.vstack((
-                                    _np.array(mol_map) + 1,
-                                    _np.array(['MOL'] * loc_self.n_atoms)
-                                    )).swapaxes(0, 1)),
+                      residues=residues,
                       box=cell_aa_deg,
                       selection=selection,
                       title=getattr(loc_self, 'comments',
