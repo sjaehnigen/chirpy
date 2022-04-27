@@ -1637,7 +1637,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         frame = next(self._gen)
 
         def check_topo(k, f):
-            if self._fr < 0:
+            if self._fr < 0 or not hasattr(self, '_topology'):
                 return self._kwargs.get(k, f)
             else:
                 return getattr(self._topology, k, f)

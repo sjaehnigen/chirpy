@@ -252,8 +252,9 @@ def write_atomic_tensor(at_filename, atomic_tensor):
 
 
 def cpmd_kinds_from_file(fn):
-    '''Accepts MOMENTS or TRAJECTORY file and returns the number
-       of lines per frame, based on analysis of the first frame'''
+    '''Accepts MOMENTS or TRAJECTORY file and uses the number
+       of lines per frame, based on analysis of the first frame,
+       with dummy symbol X'''
 
     # warnings.warn('Automatic guess of CPMD kinds. Proceed with caution!',
     #               _ChirPyWarning,
@@ -267,7 +268,8 @@ def cpmd_kinds_from_file(fn):
         except IndexError:
             pass
 
-    return tuple(range(_i))
+    # return tuple(range(_i))
+    return tuple(['X'] * _i)
 
 
 def _nextline_parser(SEC, KEY, ARG, section_input):
