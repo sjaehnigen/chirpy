@@ -31,6 +31,7 @@
 
 
 from itertools import islice, zip_longest
+import warnings
 import numpy as np
 import bz2 as _bz2
 from tqdm import tqdm
@@ -107,6 +108,9 @@ def _get(_it, kernel, **kwargs):
             # --- NB: islice does not raise StopIteration, but returns []!
             yield kernel(next(_data), **kwargs)
         except StopIteration:
+            if r1 != np.inf and _data._r <= r1:
+                warnings.warn('reached early end of trajectory',
+                              config.ChirPyWarning, stacklevel=15)
             break
 
 

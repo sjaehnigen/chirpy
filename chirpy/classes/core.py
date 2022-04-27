@@ -253,12 +253,13 @@ class ITERATOR():
         # --- get free frame
         try:
             next(self)
-        except StopIteration:
+        except (RuntimeError, StopIteration):
             with warnings.catch_warnings():  # --- do not warn only once
                 warnings.warn('reached end of trajectory',
-                              config.ChirPyWarning, stacklevel=2)
+                              config.ChirPyWarning, stacklevel=3)
                 del self._gen_old
                 del self._gen_aux
+                # raise StopIteration('reached end of trajectory')
                 return
 
         if verbose:

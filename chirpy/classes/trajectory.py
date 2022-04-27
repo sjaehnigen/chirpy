@@ -1606,8 +1606,14 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 if len(args) != 1:
                     raise NotImplementedError('cannot handle multiple pdb '
                                               'files')
-                nargs = {}
-                self._gen = _pdbIterator(fn0)  # **kwargs
+                nargs = _extract_keys(
+                                      kwargs,
+                                      range=_fr,
+                                      skip=[],
+                                      # bz2=False,
+                                      # units='default',
+                                      )
+                self._gen = _pdbIterator(fn0, **nargs)
 
             elif self._fmt == "cpmd" or any([_t in fn0 for _t in [
                                      'TRAJSAVED', 'GEOMETRY', 'TRAJECTORY']]):
