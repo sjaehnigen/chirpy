@@ -335,20 +335,8 @@ def _spectrum_from_tcf(*args,
         if len(origin_au.shape) == 1:
             origin_au = np.tile(origin_au, (positions_au.shape[0], 1))
 
-        # --- assume non-periodic boundaries
-        if pseudo_isolated and cell_au_deg is not None:
-            # _warnings.warn('imposing non-periodic boundaries around '
-            #                f'origin(s) {origin_au}',
-            #                _ChirPyWarning,
-            #                stacklevel=2)
-            pos = distance_pbc(origin_au[:, None],
-                               positions_au,
-                               cell_au_deg)
-            origin_au = np.zeros_like(origin_au)
-            cell = None
-        else:
-            pos = copy.deepcopy(positions_au)
-            cell = cell_au_deg
+        pos = copy.deepcopy(positions_au)
+        cell = cell_au_deg
 
         # --- cutoff spheres --------------------------------------------------
         if not isinstance(clip_sphere, list):
@@ -362,6 +350,7 @@ def _spectrum_from_tcf(*args,
                                  cutoff_au,
                                  edge=cut_type
                                  ))
+            pseudo_isolated = True
         # ---------------------------------------------------------------------
 
         _c = copy.deepcopy(cur_dipoles)
@@ -373,6 +362,18 @@ def _spectrum_from_tcf(*args,
             _m = copy.deepcopy(mag_dipoles)
             _m = _apply_cut_sphere(_m, pos, clip_sphere, cell=cell)
             _m = _apply_cut_sphere(_m, pos, _cut_sphere, cell=cell)
+
+        # --- assume non-periodic boundaries ?
+        if pseudo_isolated or cell_au_deg is None:
+            # _warnings.warn('imposing non-periodic boundaries around '
+            #                f'origin(s) {origin_au}',
+            #                _ChirPyWarning,
+            #                stacklevel=2)
+            pos = distance_pbc(origin_au[:, None],
+                               positions_au,
+                               cell_au_deg)
+            origin_au = np.zeros_like(origin_au)
+            cell = None
 
         # --- get spectra
         data['c'] = _c
