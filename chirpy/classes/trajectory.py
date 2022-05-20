@@ -64,8 +64,6 @@ from ..physics.statistical_mechanics import kinetic_energies as \
         _kinetic_energies
 from ..physics.classical_electrodynamics import current_dipole_moment as \
         _current_dipole_moment
-from ..physics.spectroscopy import absorption_from_transition_moment as \
-        _absorption_from_transition_moment
 
 from ..mathematics import algebra as _algebra
 
@@ -175,7 +173,7 @@ class _FRAME(_CORE):
 
     def _is_similar(self, other):
         ie = list(map(lambda a: getattr(self, a) == getattr(other, a),
-                      ['_type', 'n_atoms', 'n_fields']))
+                      ['n_atoms']))  # removed _type and n_fields
         ie.append(bool(_np.prod([a == b
                                 for a, b in zip(_np.sort(self.symbols),
                                                 _np.sort(other.symbols))])))
@@ -266,7 +264,7 @@ class _FRAME(_CORE):
         return self
 
     @staticmethod
-    def map_frame(obj1, obj2):
+    def map_frame(obj1, obj2, **kwargs):
         '''obj1, obj2 ... Frame objects.
            Returns indices that would sort obj2 to match obj1.
            '''
@@ -274,9 +272,8 @@ class _FRAME(_CORE):
         if not ie:
             raise TypeError('''The two Molecule objects are not similar!
                      n_atoms: %s
-                     n_fields: %s
                      symbols: %s
-                  ''' % tuple(tmp[1:]))
+                  ''' % tuple(tmp))
 
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')
@@ -291,10 +288,12 @@ class _FRAME(_CORE):
             ass = _np.argmin(mapping.distance_matrix(
                                 obj1.pos_aa[i1] - com1[None],
                                 obj2.pos_aa[i2] - com2[None],
-                                cell=obj1.cell_aa_deg
+                                cell=kwargs.get('cell_aa_deg',
+                                                obj1.cell_aa_deg)
                                 ),
-                             axis=0)
+                             axis=1)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
+            # assign[i1] = _np.argwhere(i2).T[0][ass]
 
         with _warnings.catch_warnings():
             if not len(_np.unique(assign)) == obj1.n_atoms:
@@ -490,18 +489,18 @@ class _MODES(_FRAME):
 
         self._sync_class(check_orthonormality=False)
 
-    def _calculate_spectral_intensities(self, T_K=300):
-        '''Calculate IR and VCD intensities from electronic and magnetic
-           transition dipole moments.
-           '''
+    # def _calculate_spectral_intensities(self, T_K=300):
+    #     '''Calculate IR and VCD intensities from electronic and magnetic
+    #        transition dipole moments.
+    #        '''
 
-        # --- use constants.Abs_au2per_M_cm_mol for conversion
-        self.IR_au = _absorption_from_transition_moment(
-                                        self.etdm,
-                                        self.eival_cgs*constants.E_cm_12au,
-                                        T_K=T_K
-                                        )
-        # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
+    #     # --- use constants.Abs_au2per_M_cm_mol for conversion
+    #     self.IR_au = _absorption_from_transition_moment(
+    #                                     self.etdm,
+    #                                     self.eival_cgs*constants.E_cm_12au,
+    #                                     T_K=T_K
+    #                                     )
+    #     # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
 
 
 class _XYZ():
@@ -690,6 +689,7 @@ class _XYZ():
                 comments = _np.array([kwargs.get('comments',
                                                  data.shape[0] * ['passed'])
                                       ]).flatten()
+                omega_cgs = kwargs.get('omega_cgs')
             else:
                 raise TypeError('%s needs fn or data + symbols argument!' %
                                 self.__class__.__name__)
@@ -1776,9 +1776,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
     # These masks all follow the same logic (could be generalised, but python
     # does not support call of function name from within that function)
     def sort(self, *args, **kwargs):
-        self._frame.sort(*args, **kwargs)
+        _slist = self._frame.sort(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'sort', *args, **kwargs)
+        return _slist
 
     def align_coordinates(self, *args, **kwargs):
         self._frame.align_coordinates(*args, **kwargs)

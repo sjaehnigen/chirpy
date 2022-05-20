@@ -220,12 +220,12 @@ class _SYSTEM(_CORE):
             self._topo['mol_map'] = _np.array(
                                  self._topo['mol_map'])[ind].flatten().tolist()
             self._topo['symbols'] = tuple(_np.array(
-                                 self._topo['symbols'])[ind][0])  # .flatten())
+                                 self._topo['symbols'])[ind])  # .flatten())
             # --- symbols analogues (update residues via mol_map [see above])
             for key in ['names']:
                 try:
                     self._topo[key] = tuple(
-                            _np.array(self._topo[key])[ind][0].tolist()
+                            _np.array(self._topo[key])[ind].tolist()
                             )
                 except AttributeError:
                     pass

@@ -96,6 +96,7 @@ def main():
             nargs=6,
             help="Use custom cell parametres a b c al be ga in \
                     angstrom/degree",
+            type=float,
             default=None,
             )
     parser.add_argument(

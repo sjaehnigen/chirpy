@@ -86,7 +86,7 @@ class PALARRAY():
         else:
             self.array = product(*self.data, repeat=repeat)
 
-    def run(self):
+    def run(self, verbose=config.__verbose__):
         try:
             _dtype = np.float
             if self.multiple_returns:
@@ -98,7 +98,7 @@ class PALARRAY():
                                            self._ut *
                                            (self._length-len(self.data[0])) / 2
                                            ),
-                         disable=not config.__verbose__,
+                         disable=not verbose,
                          )), dtype=_dtype)
 
             _l = self.repeat * tuple([len(_d) for _d in self.data])

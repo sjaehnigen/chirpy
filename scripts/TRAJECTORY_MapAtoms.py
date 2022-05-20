@@ -49,6 +49,15 @@ def main():
             help="Return sorted content of file 2 instead of printing.",
             default=False,
             )
+    parser.add_argument(
+            "--cell_aa_deg",
+            nargs=6,
+            help="Use custom cell parametres a b c al be ga in \
+                  angstrom/degree. If None try guessing from files.",
+            default=None,
+            type=float,
+            )
+
     args = parser.parse_args()
     fn1 = args.fn1
     fn2 = args.fn2
@@ -57,7 +66,8 @@ def main():
 
     for _fr, _fr_b in zip(mol1.XYZ, mol2.XYZ):
         print('Frame:', _fr)
-        assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ)
+        assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ,
+                                    cell_aa_deg=args.cell_aa_deg)
 
         mol2.sort_atoms(assign)
         if args.sort:
@@ -65,7 +75,7 @@ def main():
                              + mol2.XYZ._fmt)
 
         else:
-            outbuf = ['%35d -------> %3d' % (i+1, j+1)
+            outbuf = ['%35d -------> %3d' % (i, j)
                       for i, j in enumerate(assign)]
             print('%35s          %s' % (fn1, fn2))
             print('\n'.join(outbuf))
