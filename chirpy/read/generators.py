@@ -96,11 +96,13 @@ def _get(_it, kernel, **kwargs):
                 else:
                     self._r += 1
 
-            self._r += 1
-            if r1 > 0 and self._r > r1:
-                raise StopIteration()
+            try:
+                return islice(_it, n_lines)
 
-            return islice(_it, n_lines)
+            finally:
+                self._r += 1
+                if r1 > 0 and self._r > r1:
+                    raise StopIteration()
 
     _data = _line_iterator()
     while True:
@@ -108,8 +110,9 @@ def _get(_it, kernel, **kwargs):
             # --- NB: islice does not raise StopIteration, but returns []!
             yield kernel(next(_data), **kwargs)
         except StopIteration:
-            if r1 != np.inf and _data._r <= r1:
-                warnings.warn('reached early end of trajectory',
+            if r1 != np.inf and _data._r < r1 - _data._offset:
+                warnings.warn('reached early end of trajectory'
+                              f' at step {_data._r}',
                               config.ChirPyWarning, stacklevel=15)
             break
 

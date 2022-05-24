@@ -113,7 +113,9 @@ class TestTrajectory(unittest.TestCase):
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)
         self.assertListEqual(traj_e.data.tolist(), ref.data.tolist())
 
-        self.assertTrue(traj.expand() is None)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            self.assertTrue(traj.expand() is None)
         traj.rewind()
         traj_e = traj.expand()
         self.assertTrue(traj_e._is_similar(ref)[0] == 1)
@@ -188,7 +190,7 @@ class TestSystem(unittest.TestCase):
     def test_supercell(self):
         largs = {
                 'fn_topo': self.dir + "/topo.pdb",
-                'range': (0, 7, 24),
+                'range': (0, 7, 23),
                 'sort': True,
                 }
         _load = system.Supercell(self.dir + "/MD-NVT-production-pos-1.xyz",

@@ -173,7 +173,7 @@ class _FRAME(_CORE):
 
     def _is_similar(self, other):
         ie = list(map(lambda a: getattr(self, a) == getattr(other, a),
-                      ['n_atoms']))  # removed _type and n_fields
+                      ['_type', 'n_atoms', 'n_fields']))
         ie.append(bool(_np.prod([a == b
                                 for a, b in zip(_np.sort(self.symbols),
                                                 _np.sort(other.symbols))])))
@@ -269,11 +269,12 @@ class _FRAME(_CORE):
            Returns indices that would sort obj2 to match obj1.
            '''
         ie, tmp = obj1._is_similar(obj2)
-        if not ie:
+        if not (_comp := tmp[1] * tmp[3]):
+            # --- only n_atoms (1) and symbols (3)
             raise TypeError('''The two Molecule objects are not similar!
                      n_atoms: %s
                      symbols: %s
-                  ''' % tuple(tmp))
+                  ''' % tuple(_comp))
 
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')
@@ -1732,7 +1733,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         return self._fr
 
-    def expand(self, batch=None):
+    def expand(self, batch=None, ignore_warning=False):
         '''Perform iteration on remaining iterator and load
            entire (<batch> frames) trajectory into memory.
            '''
@@ -1760,8 +1761,9 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                 next(self)
                 raise _e
             except StopIteration:
-                _warnings.warn('iterator exhausted', _ChirPyWarning,
-                               stacklevel=2)
+                if not ignore_warning:
+                    _warnings.warn('iterator exhausted', _ChirPyWarning,
+                                   stacklevel=2)
                 return None
 
     def write(self, fn, **kwargs):
@@ -1913,7 +1915,7 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
         if 'skip' in self._kwargs:
             self._kwargs['_skip'] = self._kwargs['skip'].copy()
 
-    def expand(self, batch=None):
+    def expand(self, batch=None, ignore_warning=False):
         '''Perform iteration on remaining iterator and load
            entire (<batch> frames) trajectory into memory.
            '''
@@ -1934,6 +1936,9 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                 next(self)
                 raise _e
             except StopIteration:
+                if not ignore_warning:
+                    _warnings.warn('iterator exhausted', _ChirPyWarning,
+                                   stacklevel=2)
                 return None
 
     def write(self, fn, **kwargs):

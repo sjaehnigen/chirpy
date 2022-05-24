@@ -79,7 +79,7 @@ class TestCPMD(unittest.TestCase):
         data = cpmd.cpmdReader(self.dir + '/' + _i,
                                filetype='TRAJECTORY',
                                symbols=['X']*_n[1],
-                               range=(2, 3, 8),
+                               range=(2, 3, 6),
                                )['data']
         data[:, :, :3] *= constants.l_aa2au
         self.assertTrue(np.allclose(

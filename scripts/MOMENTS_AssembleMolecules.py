@@ -173,11 +173,11 @@ def main():
 
     def _get_batch(batch=None):
         _return = (
-                MOMENTS.expand(batch=batch),
-                SYS.XYZ.expand(batch=batch),
+                MOMENTS.expand(batch=batch, ignore_warning=True),
+                SYS.XYZ.expand(batch=batch, ignore_warning=True),
                 )
         if args.electronic_centers is not None:
-            _return += (CENTERS.expand(batch=batch),)
+            _return += (CENTERS.expand(batch=batch, ignore_warning=True),)
         else:
             _return += (None,)
         return _return

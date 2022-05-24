@@ -276,7 +276,7 @@ class TestCoordinates(unittest.TestCase):
 
         data, symbols, comments = r_coordinates.xyzReader(
                 self.dir + '/test_traj_pos_pbc.xyz',
-                range=(1, 2, 4)
+                range=(1, 2, 3)
                 )
         self.assertTrue(np.array_equal(
          data,
