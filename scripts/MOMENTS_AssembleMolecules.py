@@ -252,9 +252,10 @@ def main():
         #     This assumes that the number of centers per nucleus
         #     does not change.
         # ToDo: use cython
-        wc_reference = []
+        # wc_reference = []
         wc_origins_aa = []
 
+        import copy
         for _iiframe in tqdm.tqdm(
                               range(ELE.n_frames),
                               disable=not args.verbose,
@@ -271,17 +272,17 @@ def main():
             _slist = np.argsort(_e_map)
 
             # --- tweak OriginGauge
-            gauge_e.r_au[_iiframe] = gauge_e.r_au[_iiframe, _slist]
-            gauge_e.c_au[_iiframe] = gauge_e.c_au[_iiframe, _slist]
-            gauge_e.m_au[_iiframe] = gauge_e.m_au[_iiframe, _slist]
+            gauge_e.r_au[_iiframe] = copy.deepcopy(gauge_e.r_au[_iiframe, _slist])
+            gauge_e.c_au[_iiframe] = copy.deepcopy(gauge_e.c_au[_iiframe,_slist])
+            gauge_e.m_au[_iiframe] = copy.deepcopy(gauge_e.m_au[_iiframe,_slist])
             # --- d_au and q_au of Wannier centers do not have to be sorted for
             # mol gauge
-            gauge_e.q_au[_iiframe] = gauge_e.q_au[_iiframe, _slist]
+            gauge_e.q_au[_iiframe] = copy.deepcopy(gauge_e.q_au[_iiframe, _slist])
             if args.position_form:
-                gauge_e.d_au[_iiframe] = gauge_e.d_au[_iiframe, _slist]
+                gauge_e.d_au[_iiframe] = copy.deepcopy(gauge_e.d_au[_iiframe,_slist])
 
-            wc_origins_aa.append(NUC.pos_aa[_iiframe, N][_slist])
-            wc_reference.append(N)
+            wc_origins_aa.append(copy.deepcopy(NUC.pos_aa[_iiframe, N][_slist]))
+            # wc_reference.append(N)
 
         # N_map = np.sort(N)
         # e_map = n_map[N_map]
@@ -291,7 +292,7 @@ def main():
         # print(N_map)
         # print(e_map)
         wc_origins_aa = np.array(wc_origins_aa)
-        wc_reference = np.array(wc_reference)
+        # wc_reference = np.array(wc_reference)
         gauge_e.shift_origin_gauge(wc_origins_aa)
         # for _inuc in range(gauge_n.n_units):
         #     _ind = np.nonzero(wc_reference == _inuc)
