@@ -249,23 +249,58 @@ def main():
         # --- ensure that electronic centers have the same order
         #     (NB: not guaranteed by CPMD output)
         #     + assignment
+        #     This assumes that the number of centers per nucleus
+        #     does not change.
         # ToDo: use cython
+        wc_reference = []
+        wc_origins_aa = []
+
         for _iiframe in tqdm.tqdm(
                               range(ELE.n_frames),
                               disable=not args.verbose,
                               desc='map electronic centers --> nuclei',
                               ):
-            _e_map = n_map[mapping.nearest_neighbour(
-                gauge_e.r_au[_iiframe] * constants.l_au2aa,
-                gauge_n.r_au[_iiframe] * constants.l_au2aa,
-                cell=_cell)]
+            # --- find nearest nucleus and add electron pair to it
+            N = mapping.nearest_neighbour(
+                    gauge_e.r_au[_iiframe] * constants.l_au2aa,
+                    gauge_n.r_au[_iiframe] * constants.l_au2aa,
+                    cell=_cell
+                    )
+            # _slist = np.argsort(N)
+            _e_map = n_map[N]
             _slist = np.argsort(_e_map)
+
             # --- tweak OriginGauge
             gauge_e.r_au[_iiframe] = gauge_e.r_au[_iiframe, _slist]
             gauge_e.c_au[_iiframe] = gauge_e.c_au[_iiframe, _slist]
             gauge_e.m_au[_iiframe] = gauge_e.m_au[_iiframe, _slist]
-            # --- d_au and q_au of Wannier centers do not have to be sorted
+            # --- d_au and q_au of Wannier centers do not have to be sorted for
+            # mol gauge
+            gauge_e.q_au[_iiframe] = gauge_e.q_au[_iiframe, _slist]
+            if args.position_form:
+                gauge_e.d_au[_iiframe] = gauge_e.d_au[_iiframe, _slist]
+
+            wc_origins_aa.append(NUC.pos_aa[_iiframe, N][_slist])
+            wc_reference.append(N)
+
+        # N_map = np.sort(N)
+        # e_map = n_map[N_map]
         e_map = np.sort(_e_map)
+        # print(n_map)
+        # print(tuple(enumerate(N)))
+        # print(N_map)
+        # print(e_map)
+        wc_origins_aa = np.array(wc_origins_aa)
+        wc_reference = np.array(wc_reference)
+        gauge_e.shift_origin_gauge(wc_origins_aa)
+        # for _inuc in range(gauge_n.n_units):
+        #     _ind = np.nonzero(wc_reference == _inuc)
+        #     print(gauge_e.c_au[_ind].shape)
+        #     gauge_n.c_au[_ind[0], _inuc] += gauge_e.c_au[_ind[0], _ind[1]]
+        #     gauge_n.m_au[_ind[0], _inuc] += gauge_e.m_au[_ind[0], _ind[1]]
+        #     gauge_n.q_au[_ind[0], _inuc] += gauge_e.q_au[_ind[0], _ind[1]]
+        #     if args.position_form:
+        #         gauge_n.d_au += gauge_e.d_au
 
         # --- combine nuclear and electronic contributions
         gauge = gauge_e + gauge_n
@@ -278,8 +313,8 @@ def main():
 
         # --- test for neutrality of charge
         if np.any((_mol := gauge.q_au != 0.0)):
-            warnings.warn('Got non-zero charge for molecules '
-                          f'{np.where(_mol)[0]}: {gauge.q_au[_mol]}',
+            warnings.warn('Got non-zero charge for (frame, molecule) '
+                          f'{tuple(zip(*np.where(_mol)))}: {gauge.q_au[_mol]}',
                           config.ChirPyWarning, stacklevel=2)
 
         # --- write output
