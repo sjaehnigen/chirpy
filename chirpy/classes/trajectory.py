@@ -473,7 +473,7 @@ class _MODES(_FRAME):
 
         # ToDo: this into check_sumrules / sunc_class
         sumrule = constants.e_si**2 * constants.avog * _np.pi\
-            * _np.sum(self.APT**2 / self.masses_amu[:, None, None])\
+            * _np.sum(self.APT_au**2 / self.masses_amu[:, None, None])\
             / (3 * constants.c_si**2) / constants.m_amu_si
         print(sumrule)
 
@@ -1435,7 +1435,7 @@ class _MOMENTS():
                        write_atoms=False,
                        **kwargs)
 
-        if fmt == "xyz":
+        elif fmt == "xyz":
             attr = kwargs.get('attr', 'pos_aa')
             xyzWriter(fn,
                       getattr(self, attr),

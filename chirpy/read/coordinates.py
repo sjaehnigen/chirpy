@@ -70,7 +70,12 @@ def _xyz(frame, convert=1, n_lines=1):
     if len(data) != n_lines - 2:
         raise ValueError('XYZ file broken or incomplete')
 
-    return np.array(data).astype(float)*convert, symbols, comment
+    try:
+        return np.array(data).astype(float)*convert, symbols, comment
+    except ValueError:
+        raise ValueError(f'could not convert data of shape '
+                         f'{np.array(data).shape} '
+                         f'with given units of shape {convert.shape}')
 
 
 def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
@@ -97,13 +102,17 @@ def _cpmd(frame, convert=1, n_lines=1, filetype='TRAJECTORY'):
     if 'GEOMETRY' in filetype:
         _data = np.array(data).astype(float)
 
-    elif filetype in ['TRAJECTORY', 'MOMENTS']:
+    elif filetype in ['TRAJECTORY', 'MOMENTS', 'MOMENTS_PF']:
         _data = np.array(data).astype(float)[:, 1:]
 
     else:
         raise ValueError('Unknown CPMD filetype %s' % filetype)
 
-    return _data * convert
+    try:
+        return _data * convert
+    except ValueError:
+        raise ValueError(f'could not convert data of shape {_data.shape} '
+                         f'with given units of shape {convert.shape}')
 
 
 def _free(frame, columns='iddd', convert=1, n_lines=1):
@@ -123,7 +132,13 @@ def _free(frame, columns='iddd', convert=1, n_lines=1):
                 content[_c].append(float(_l))  # FortranF?
             else:
                 content[_c] = _l
-        content['d'] = np.array(content['d']) * convert
+        try:
+            content['d'] = np.array(content['d']) * convert
+        except ValueError:
+            raise ValueError(f'could not convert data of shape '
+                             f'{np.array(content["d"]).shape} '
+                             f'with given units of shape {convert.shape}')
+
         return tuple(content.values())
 
     # --- generator needs at least one call of next() to work properly
@@ -187,8 +202,13 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
     if len(data) != n_lines - 1 - CELL:
         raise ValueError('ARC file broken or incomplete')
 
-    _return = np.array(data).astype(float)*convert, symbols, numbers, types,\
-        connectivity, comment
+    try:
+        _return = np.array(data).astype(float)*convert, symbols, numbers,\
+                types, connectivity, comment
+    except ValueError:
+        raise ValueError(f'could not convert data of shape '
+                         f'{np.array(data).astype(float).shape} '
+                         f'with given units of shape {convert.shape}')
 
     if CELL:
         _return += (cell_aa_deg,)
@@ -335,6 +355,9 @@ def cpmdIterator(FN, **kwargs):
     elif kwargs['filetype'] == 'MOMENTS':
         kwargs['convert'] = _convert(3*[('length', 'au')] +
                                      6*[('velocity', 'au')])
+    elif kwargs['filetype'] == 'MOMENTS_PF':
+        kwargs['convert'] = _convert(3*[('length', 'au')] +
+                                     9*[('velocity', 'au')])
     # elif kwargs['filetype'] in ['TRAJECTORY', 'GEOMETRY']:
     else:
         kwargs['convert'] = _convert(3*[('length', 'au')] +
