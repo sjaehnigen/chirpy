@@ -254,18 +254,21 @@ def main():
         # ToDo: use cython
         # wc_reference = []
         wc_origins_aa = []
+        _noh = np.array(NUC.symbols) != 'H'
 
         for _iiframe in tqdm.tqdm(
                               range(ELE.n_frames),
                               disable=not args.verbose,
                               desc='map electronic centers --> nuclei',
                               ):
-            # --- find nearest nucleus and add electron pair to it
-            N = mapping.nearest_neighbour(
-                    gauge_e.r_au[_iiframe] * constants.l_au2aa,
-                    gauge_n.r_au[_iiframe] * constants.l_au2aa,
-                    cell=_cell
-                    )
+            # --- find nearest heavy nucleus
+            N = np.arange(gauge_n.n_units)[_noh][
+                    mapping.nearest_neighbour(
+                        gauge_e.r_au[_iiframe] * constants.l_au2aa,
+                        gauge_n.r_au[_iiframe, _noh] * constants.l_au2aa,
+                        cell=_cell
+                        )
+                    ]
             # _slist = np.argsort(N)
             _e_map = n_map[N]
             _slist = np.argsort(_e_map)

@@ -100,8 +100,8 @@ class OriginGauge(_CORE):
             self.cell_au_deg[:3] *= constants.l_aa2au
 
     def __add__(self, other):
-        if not _np.allclose(self.cell_au_deg, other.cell_au_deg):
-            raise ValueError('the objects do not agree in cell')
+        # if not _np.allclose(self.cell_au_deg, other.cell_au_deg):
+        #     raise ValueError('the objects do not agree in cell')
         new = _copy.deepcopy(self)
         new.r_au = _np.concatenate((self.r_au, other.r_au), axis=self._workax)
         new.c_au = _np.concatenate((self.c_au, other.c_au), axis=self._workax)
