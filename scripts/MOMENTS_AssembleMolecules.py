@@ -202,7 +202,6 @@ def main():
 
         if args.verbose:
             print('Assembling moments ...')
-        #     _trajectory += (WC,)
 
         # --- test for neutrality of charge
         if (_total_charge := ELE.n_atoms * (-2) +
@@ -212,8 +211,6 @@ def main():
 
         n_map = np.array(SYS.mol_map)
         _cell = SYS.cell_aa_deg
-
-        # for _iframe, (_frame) in enumerate(zip(*_trajectory)):
 
         # --- generate classical nuclear moments
         Qn_au = constants.symbols_to_valence_charges(NUC.symbols)
@@ -247,12 +244,14 @@ def main():
                 _gauge._set += 'd'
 
         # --- ensure that electronic centers have the same order
-        #     (NB: not guaranteed by CPMD output)
-        #     + assignment
+        #     (not guaranteed by CPMD output) + assignment
         #     This assumes that the number of centers per nucleus
         #     does not change.
-        # ToDo: use cython
-        # wc_reference = []
+
+        # --- to ensure correct wrapping of the centers, we switch to the
+        #     distributed nuclear gauge, before switching to the distributed
+        #     molecular gauge
+
         wc_origins_aa = []
         _noh = np.array(NUC.symbols) != 'H'
 
@@ -269,7 +268,7 @@ def main():
                         cell=_cell
                         )
                     ]
-            # _slist = np.argsort(N)
+            # --- molecular assignment
             _e_map = n_map[N]
             _slist = np.argsort(_e_map)
 
@@ -277,46 +276,27 @@ def main():
             gauge_e.r_au[_iiframe] = gauge_e.r_au[_iiframe, _slist]
             gauge_e.c_au[_iiframe] = gauge_e.c_au[_iiframe, _slist]
             gauge_e.m_au[_iiframe] = gauge_e.m_au[_iiframe, _slist]
-            # --- d_au and q_au of Wannier centers do not have to be sorted for
-            # mol gauge
             gauge_e.q_au[_iiframe] = gauge_e.q_au[_iiframe, _slist]
-            if args.position_form:
-                gauge_e.d_au[_iiframe] = gauge_e.d_au[_iiframe, _slist]
+            # if args.position_form:
+            #     gauge_e.d_au[_iiframe] = gauge_e.d_au[_iiframe, _slist]
 
+            # --- remember position of reference
             wc_origins_aa.append(NUC.pos_aa[_iiframe, N][_slist])
-            # wc_reference.append(N)
 
-        # N_map = np.sort(N)
-        # e_map = n_map[N_map]
         e_map = np.sort(_e_map)
-        # print(n_map)
-        # print(tuple(enumerate(N)))
-        # print(N_map)
-        # print(e_map)
-        wc_origins_aa = np.array(wc_origins_aa)
-#         trajectory._XYZTrajectory(data=wc_origins_aa,
-#                 symbols=['X']*gauge_e.n_units).write('TEST.xyz')
-        # wc_reference = np.array(wc_reference)
-        gauge_e.shift_origin_gauge(wc_origins_aa)
-        # for _inuc in range(gauge_n.n_units):
-        #     _ind = np.nonzero(wc_reference == _inuc)
-        #     print(gauge_e.c_au[_ind].shape)
-        #     gauge_n.c_au[_ind[0], _inuc] += gauge_e.c_au[_ind[0], _ind[1]]
-        #     gauge_n.m_au[_ind[0], _inuc] += gauge_e.m_au[_ind[0], _ind[1]]
-        #     gauge_n.q_au[_ind[0], _inuc] += gauge_e.q_au[_ind[0], _ind[1]]
-        #     if args.position_form:
-        #         gauge_n.d_au += gauge_e.d_au
+        # --- shift electronic gauge to reference nuclei
+        gauge_e.shift_origin_gauge(np.array(wc_origins_aa))
 
         # --- combine nuclear and electronic contributions
         gauge = gauge_e + gauge_n
-        # --- add frame to n_map
         assignment = np.concatenate((e_map, n_map))
+
+        # --- NB: After joining molecules and assigning electronic centers the
+        #     cell has to be switched off to avoid re-wrapping!
+        gauge.cell_au_deg = None
 
         # --- shift to molecular origins
         _com = NUC.mol_com_aa
-        # WE HAVE WRAPPED EVERYTHING PROPERLY< SO WE SWITCH OFF THE CELL RIGHT
-        # NOW
-        gauge.cell_au_deg = None
         gauge.shift_origin_gauge(_com, assignment)
 
         # --- test for neutrality of charge

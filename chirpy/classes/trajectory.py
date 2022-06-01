@@ -1422,8 +1422,11 @@ class _MOMENTS():
     def write(self, fn, selection=None, **kwargs):
         attr = kwargs.get('attr', 'data')
         # loc_self = _copy.deepcopy(self)
-        # fmt = kwargs.get('fmt', fn.split('.')[-1])
-        fmt = kwargs.get('fmt', 'cpmd')
+        try:
+            fmt = kwargs.get('fmt', fn.split('.')[-1])
+        except IndexError:
+            fmt = 'cpmd'
+
         if selection is not None:
             raise NotImplementedError('MOMENTS does not support selection in '
                                       'write()')
