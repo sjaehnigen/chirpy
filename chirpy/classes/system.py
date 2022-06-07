@@ -182,6 +182,8 @@ class _SYSTEM(_CORE):
         # self.names = self.XYZ.names
 
     def define_molecules(self, silent=False):
+        '''Create molecular map (mol_map) based on distance
+           criteria'''
         if self.mol_map is not None and not silent:
             _warnings.warn('Overwriting existing mol_map!',
                            _ChirPyWarning, stacklevel=2)

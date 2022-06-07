@@ -183,6 +183,14 @@ def main():
             default=False
             )
     parser.add_argument(
+        "--multiply",
+        nargs=3,
+        help="Repeat cell in X, Y, Z.",
+        default=None,
+        type=int
+        )
+
+    parser.add_argument(
             "--convert_to_moments",
             action='store_true',
             help="Write classical electro-magnetic moments instead.",
@@ -245,7 +253,14 @@ def main():
                           stacklevel=2)
 
     # --- delete empty arguments
+    _guess_mol_map = False
     if args.fn_topo is None:
+        if args.select_molecules is not None:
+            warnings.warn('expected topology file for --select_molecules and '
+                          'continues with automatic guess of molecular map',
+                          config.ChirPyWarning,
+                          stacklevel=2)
+        _guess_mol_map = True
         del args.fn_topo
 
     if args.cell_aa_deg is None:
@@ -282,6 +297,7 @@ def main():
     select_molecules = largs.pop('select_molecules')
     select_atoms = largs.pop('select_atoms')
     select_elements = largs.pop('select_elements')
+    multiply = largs.pop('multiply')
 
     _files = [args.fn]
     if args.fn_vel is not None:
@@ -305,6 +321,9 @@ def main():
             largs.update({'skip': skip})
             _load = system.Supercell(*_files, fmt=i_fmt, **largs)
 
+    if multiply is not None:
+        _load.XYZ.repeat(tuple(multiply))
+
     # --- object ----> file
     if args.outputfile not in ['None', 'False']:
 
@@ -313,6 +332,8 @@ def main():
         if select_atoms is not None:
             _selection = select_atoms
         if select_molecules is not None:
+            if _guess_mol_map:
+                _load.define_molecules()
             __selection = [_i
                            for _m in select_molecules
                            for _i, _s in enumerate(_load.mol_map)

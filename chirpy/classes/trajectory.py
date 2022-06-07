@@ -232,9 +232,10 @@ class _FRAME(_CORE):
             self.__dict__.update(_new.__dict__)
             self._sync_class()
 
-    def repeat(self, times, priority=(0, 1, 2)):
+    def repeat(self, times, unwrap_ref=None, priority=(0, 1, 2)):
         '''Propagate kinds using cell tensor, duplicate if cell is not defined.
            times ... integer or tuple of integers for each Cartesian dimension
+           unwrap_ref ... frame to check against for PBC jumps
            priority ... (see chirpy.topology.mapping.cell_vec)
            '''
         if isinstance(times, int):
@@ -249,6 +250,16 @@ class _FRAME(_CORE):
             cell_vec_aa = mapping.cell_vec(self.cell_aa_deg,
                                            n_fields=3,
                                            priority=priority)
+            # --- correct PBC jumps
+            if unwrap_ref is not None:
+                new._pos_aa(unwrap_ref + mapping.distance_pbc(
+                                                unwrap_ref,
+                                                self.pos_aa,
+                                                self.cell_aa_deg
+                                                ))
+                new._unwrap_ref = unwrap_ref
+            else:
+                new._unwrap_ref = _copy.deepcopy(new.pos_aa)
             new.cell_aa_deg[:3] *= times
         except AttributeError:
             cell_vec_aa = _np.zeros((3, 3))
@@ -261,6 +272,8 @@ class _FRAME(_CORE):
 
         self.__dict__.update(new.__dict__)
         self._sync_class()
+        if unwrap_ref is not None:
+            self.wrap()
         return self
 
     @staticmethod
@@ -1831,6 +1844,7 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
     def repeat(self, *args, **kwargs):
         self._frame.repeat(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
+        kwargs.update({'unwrap_ref': self._frame._unwrap_ref})
         self._mask(self, 'repeat', *args, **kwargs)
 
     def split(self, *args, **kwargs):

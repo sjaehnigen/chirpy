@@ -65,7 +65,7 @@ class TestSupercell(unittest.TestCase):
         c = supercell.MolecularCrystal(self.dir + '/782512.pdb')
 
         b = c.create(verbose=False, multiply=(1, 2, 2))
-        b.sort_atoms()
+        # b.sort_atoms()
         b.wrap()
         b.write('CREATE.pdb')
 
