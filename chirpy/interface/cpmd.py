@@ -503,10 +503,6 @@ class CPMDinput():
                 print("%6d" % _n, file=file)
                 for _dd in _d:
                     if fmt == 'angstrom':
-                        warnings.warn('Atomic coordinates in angstrom. Do not '
-                                      'forget to set ANGSTROM keyword in the '
-                                      'SYSTEM section!',
-                                      _ChirPyWarning, stacklevel=2)
                         _dd *= constants.l_au2aa
                     print(format % tuple(_dd), file=file)
 
