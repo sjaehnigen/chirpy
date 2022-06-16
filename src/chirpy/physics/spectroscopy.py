@@ -38,7 +38,7 @@ from .statistical_mechanics import spectral_density
 from .. import constants
 from ..classes.object import Sphere
 from ..classes.core import PALARRAY
-from ..topology.mapping import distance_pbc, _pbc_shift
+from ..topology.mapping import vector_pbc, _pbc_shift
 from ..topology import mapping
 
 from ..config import ChirPyWarning as _ChirPyWarning
@@ -403,9 +403,9 @@ def spectrum_from_tcf(*args,
             #                f'origin(s) {origin_au}',
             #                _ChirPyWarning,
             #                stacklevel=2)
-            pos = distance_pbc(origin_au[:, None],
-                               positions_au,
-                               cell_au_deg)
+            pos = vector_pbc(origin_au[:, None],
+                             positions_au,
+                             cell_au_deg)
             origin_au = np.zeros_like(origin_au)
             cell = None
 

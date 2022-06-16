@@ -255,7 +255,7 @@ class _FRAME(_CORE):
                                            priority=priority)
             # --- correct PBC jumps
             if unwrap_ref is not None:
-                new._pos_aa(unwrap_ref + mapping.distance_pbc(
+                new._pos_aa(unwrap_ref + mapping.vector_pbc(
                                                 unwrap_ref,
                                                 self.pos_aa,
                                                 self.cell_aa_deg
@@ -922,14 +922,14 @@ class _XYZ():
             _s_pos = getattr(self, a)
 
             _o_pos = mapping.align_atoms(_o_pos, _np.array(self.masses_amu),
-                                         ref=_s_pos)[0]
+                                         reference=_s_pos)[0]
             _bool = []
             for _s in set(self.symbols):
                 _ind = _np.array(self.symbols) == _s
                 if _s != 'H' or not noh:
-                    a = mapping.distance_pbc(_s_pos[_ind],
-                                             _o_pos[_ind],
-                                             cell=self.cell_aa_deg)
+                    a = mapping.vector_pbc(_s_pos[_ind],
+                                           _o_pos[_ind],
+                                           cell=self.cell_aa_deg)
                     a = _np.linalg.norm(a, axis=-1)
                     _bool.append(
                            _np.amax(a) <= mapping.dist_crit_aa([_s])[0] + atol)
@@ -1105,7 +1105,7 @@ class _XYZ():
 
         _p, _data = mapping.align_atoms(_p,
                                         wt,
-                                        ref=self._align_ref,
+                                        reference=self._align_ref,
                                         subset=selection,
                                         data=[_v],
                                         )

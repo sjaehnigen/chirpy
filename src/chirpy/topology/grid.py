@@ -32,7 +32,7 @@
 import numpy as np
 import warnings
 
-from .mapping import distance_pbc
+from .mapping import vector_pbc
 from ..config import ChirPyWarning as _ChirPyWarning
 
 # def _voigt():
@@ -125,7 +125,7 @@ def regularisation(positions, grid, *args,
 
     return np.array(
             [_F(np.linalg.norm(
-                distance_pbc(
+                vector_pbc(
                         _p[_slc],
                         grid,
                         cell=cell_aa_deg

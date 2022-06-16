@@ -54,8 +54,8 @@ class TestAlgebra(unittest.TestCase):
         ang = algebra.angle_from_points([0, 0, 0], [2, 0, 1], [2, 2, 1])
         self.assertEqual(ang, 90 * np.pi / 180)
 
-    def test_dihedral(self):
-        dih = algebra.dihedral(
+    def test_dihedral_from_points(self):
+        dih = algebra.dihedral_from_points(
                 [0, 0, 0],
                 [0, 0.5, 0],
                 [0, 0.5, 0.5],
