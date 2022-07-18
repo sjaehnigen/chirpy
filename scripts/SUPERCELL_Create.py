@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
             "-f",
             help="Output file name",
-            default='supercell.pdb'
+            default='out.pdb'
             )
     args = parser.parse_args()
 

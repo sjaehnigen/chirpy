@@ -404,15 +404,20 @@ class _MODES(_FRAME):
 
     def select_modes(self, modelist):
         if not isinstance(modelist, list):
-            raise TypeError('Please give a list of integers instead of %s!'
-                            % modelist.__class__.__name__)
-        self.data = self.data[modelist]
-        self.comments = [self.comments[_m] for _m in modelist]
+            if isinstance(modelist, int):
+                modelist = [modelist]
+            else:
+                raise TypeError('expected an integer or a list of integers, '
+                                f'got {modelist.__class__.__name__}')
+        loc_self = _copy.deepcopy(self)
+        loc_self.data = loc_self.data[modelist]
+        loc_self.comments = [loc_self.comments[_m] for _m in modelist]
         for optattr in ['etdm_au', 'mtdm_au', 'IR_kmpmol', 'VCD_kmpmol']:
-            if (_v := getattr(self, optattr, None)) is not None:
-                setattr(self, optattr, _v[modelist])
+            if (_v := getattr(loc_self, optattr, None)) is not None:
+                setattr(loc_self, optattr, _v[modelist])
 
-        self._sync_class(check_orthonormality=False)
+        loc_self._sync_class(check_orthonormality=False)
+        return loc_self
 
     def _modes(self, *args):
         if len(args) == 0:
@@ -624,9 +629,9 @@ class _XYZ():
 
             elif fmt in ["mol", "molden"]:
                 fmt = 'molden'
-                symbols, pos_aa, omega_cgs, modes = read_moldenvib_file(fn)
-                n_modes = len(omega_cgs)
-                comments = _np.array(omega_cgs).astype(str)
+                symbols, pos_aa, eival_cgs, modes = read_moldenvib_file(fn)
+                n_modes = len(eival_cgs)
+                comments = _np.array(eival_cgs).astype(str)
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
                            _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -733,7 +738,6 @@ class _XYZ():
                                        'comments',
                                        data.shape[0] * ['created with ChirPy'])
                                       ]).flatten()
-                omega_cgs = kwargs.get('omega_cgs')
             else:
                 raise TypeError('%s needs fn or data + symbols argument!' %
                                 self.__class__.__name__)

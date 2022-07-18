@@ -44,7 +44,7 @@ class _COLVAR(_CORE):
         return self.label
 
     def __mul__(self, other):
-        if not isinstance(other, (int, float)):
+        if not isinstance(other, (int, float, complex)):
             raise TypeError('unsupported operand type(s) for *: '
                             f'{type(other).__name__}')
         return Combination([self], weights=[other])
@@ -378,8 +378,8 @@ class Combination(_COLVAR):
                 colvar_array += (_c,)
                 weights += (_w,)
         self.label = f'{self.__class__.__name__}('
-        self.label += ''.join([f'{_w:+}*{_c.label}'
-                               for _c, _w in zip(colvar_array, weights)])
+        self.label += ' + '.join([f'({_w:+})*{_c.label}'
+                                  for _c, _w in zip(colvar_array, weights)])
         self.label += ')'
         self.colvar_array = colvar_array
         self.weights = weights
@@ -422,11 +422,11 @@ class InternalCoordinates(list):
         [_COLVAR._isinstance(_a, info='InternalCoordinates') for _a in items]
         super().extend(items, *args)
 
-    def convert(self, configuration, cell=None):
+    def convert(self, positions, cell=None):
         '''Convert Cartesian data into Internal Coordinates.
 
            arguments:
-               configuration ... Cartesian positions,
+               positions ... Cartesian positions,
                                  array of shape ([n_frames], n_atoms, 3)
                cell ... 6-dimensional cell vector: [a, b, c, al, be, ga]
                         (optional)
@@ -435,17 +435,17 @@ class InternalCoordinates(list):
                data array shape ([n_frames,], n_colvars)
             '''
 
-        data = _np.array([_colvar.value(configuration, cell=cell)
+        data = _np.array([_colvar.value(positions, cell=cell)
                           for _colvar in self])
         return data.T
 
-    def Bmatrix_test(self, configuration, cell=None):
+    def Bmatrix_test(self, positions, cell=None):
         '''Return Jacobi matrix of the derivatives of all collective variables
            with respect to the Cartesian degrees of freedom given in
            configuration.
 
            arguments:
-               configuration ... Cartesian positions,
+               positions ... Cartesian positions,
                                  array of shape ([n_frames], n_atoms, 3)
                cell ... 6-dimensional cell vector: [a, b, c, al, be, ga]
                         (optional)
@@ -453,10 +453,10 @@ class InternalCoordinates(list):
                array of shape ([n_frames,], n_colvars, n_atoms*3)
             '''
 
-        n_atoms, three = configuration.shape[-2:]
+        n_atoms, three = positions.shape[-2:]
         n_colvars = len(self)
         data = _np.array([
-            _colvar.derivative(configuration, cell=cell) for _colvar in self
+            _colvar.derivative(positions, cell=cell) for _colvar in self
             ]).reshape((n_colvars, -1, n_atoms, 3))
 
         return _np.moveaxis(data, 1, 0)
