@@ -51,6 +51,8 @@ from . import external
 # --- load important sub-modules
 from .classes import *
 from .create import *
+from .snippets import *
+from .snippets import _unpack_tuple
 from .physics import spectroscopy
 
 if __name__ == '__main__':
