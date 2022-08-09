@@ -91,27 +91,44 @@ def maxwell_boltzmann_distribution(T_K, *args, option='energy'):
 def signal_filter(n_frames, filter_length=None, filter_type='welch'):
     if filter_length is None:
         filter_length = n_frames
+    if filter_length > n_frames:
+        filter_length = n_frames
     if filter_type == 'hanning':
-        return np.hanning(2 * filter_length)[n_frames:]
+        _window_func = np.hanning(2 * filter_length)[filter_length:]
     elif filter_type == 'welch':
-        return (np.arange(filter_length)[::-1]/(filter_length+1))**2
+        _window_func = (np.arange(filter_length)[::-1]/(filter_length+1))**2
     elif filter_type == 'triangular':
-        return np.ones(filter_length) - np.arange(filter_length)/n_frames
+        _window_func = np.ones(filter_length) - \
+                np.arange(filter_length)/filter_length
     else:
-        raise Exception('Filter %s not supported!' % filter_type)
+        raise ValueError('Filter %s not supported!' % filter_type)
+
+    return np.pad(
+            _window_func,
+            (0, n_frames-filter_length),
+            'constant',
+            constant_values=(0, 0),
+            )
 
 
 def time_correlation_function(*args,
-                              flt_pow=-1.E-16,
                               mode='full',
-                              sum_dims=True
+                              sum_dims=True,
+                              finite_size_correction=True,
+                              window_length=None,
+                              flt_pow=-1.E-16,  # deprecated
                               ):
     '''Calculate the time-correlation function (TCF) of a signal and
        using the Wiener-Khinchin theorem (fftconvolve).
        The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
-       Adding signal filters (Welch) may be enabled; use flt_pow=-1 to remove
-       the implicit triangular filter due to finite size.
+
+       Using window functions (Welch) can be enabled through specifying
+       the window_length argument.
+
+       finite_size_correction ... Remove the implicit triangular filter
+                                  due to finite size of the signal
+
        Expects signal of shape (n_frames, n_dim)
        sum … sum over <n_dim> dimensions
        Returns:
@@ -161,16 +178,21 @@ def time_correlation_function(*args,
     R = _corr(val1, val2)
 
     # --- filtering
-    # --- ToDo: another keyword for removing size dependent filter without
-    # other filter (i.e. -0)
-    if flt_pow < 0:
+    if flt_pow < 0 or finite_size_correction:
         # --- remove implicit size-dependent triangular filter (finite size)
         _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames))
         _filter = np.hstack((_filter[:0:-1], _filter))
         R /= _filter[:, None]
 
-    if flt_pow != 0:
-        _filter = signal_filter(n_frames, filter_type='welch') ** abs(flt_pow)
+    if flt_pow != 0 or window_length is not None:
+        if window_length is None:
+            _filter = signal_filter(n_frames,
+                                    filter_type='welch') ** abs(flt_pow)
+        else:
+            _filter = signal_filter(n_frames,
+                                    filter_type='welch',
+                                    filter_length=window_length)
+
         _filter = np.hstack((_filter[::-1], _filter[1:]))
         R *= _filter[:, None]
         # R = (R - R[0]) * _filter[:, None] + R[0]

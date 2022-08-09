@@ -124,7 +124,7 @@ class TestBinaries(unittest.TestCase):
         os.system(
             'CORRELATION_CalculateVibrationalSpectra.py %s/MOL2 ' % self.dir
             + '--cell_aa_deg 12.072 12.342 11.576 90.00 90.00 90.00 '
-            + '--ts 4 --return_tcf --va --vcd --cutoff 0 --filter_strength -1 '
+            + '--ts 4 --return_tcf --va --vcd --cutoff 0 --window_length 400 '
             + '--xrange 2000 500 --save --noplot'
             )
 

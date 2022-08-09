@@ -101,14 +101,19 @@ def circular_dichroism_from_transition_moments(etdm_au, mtdm_au):
 
 
 def power_from_tcf(velocities_au, weights=1.0,
-                   flt_pow=-1, ts_au=41.341,
-                   average_atoms=True, **kwargs):
+                   ts_au=41.341,
+                   average_atoms=True,
+                   window_length_au=None,
+                   flt_pow=None,
+                   **kwargs):
     '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
 
        Expects atomic units for the correct prefactors.
 
        ts_au ... timestep in a.u.
+       window_length_au ... time length of the window function used with the
+                            time correlation function in a.u.
 
        The output is averaged over the no. of atoms/species.
        Returns dictionary with (all in a.u.):
@@ -117,16 +122,25 @@ def power_from_tcf(velocities_au, weights=1.0,
                            (for weights in <mass>)
          "tcf_power"     - time-correlation function (TCF)
        '''
-    if flt_pow >= 0:
-        _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
-                       'require flt_pow < 0 to account for finite size of '
-                       'input data!', _ChirPyWarning, stacklevel=2)
+    if flt_pow is not None:
+        _warnings.warn('The flt_pow keyword is deprecated, '
+                       'use window_length_au instead',
+                       _ChirPyWarning, stacklevel=2)
 
-    kwargs.update({'flt_pow': flt_pow})
+        kwargs.update({'flt_pow': flt_pow})
+
+        if flt_pow >= 0:
+            _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra'
+                           ' require flt_pow < 0 to account for finite size of'
+                           ' input data!', _ChirPyWarning, stacklevel=2)
+
     if 'ts' in kwargs:
         raise KeyError('ts argument must not be used here. Please specify '
                        'ts_au!')
     kwargs.update(dict(ts=ts_au))
+    if window_length_au is not None:
+        kwargs.update(dict(window_length=int(window_length_au/ts_au)))
+
     n_frames, n_atoms, n_dims = velocities_au.shape
 
     if not hasattr(weights, '__len__'):
@@ -163,6 +177,8 @@ def absorption_from_tcf(*args, **kwargs):
        Expects atomic units for the correct prefactors.
 
        ts_au ... timestep in a.u.
+       window_length_au ... time length of the window function used with the
+                            time correlation function in a.u.
 
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
@@ -190,6 +206,8 @@ def circular_dichroism_from_tcf(*args, **kwargs):
        Expects atomic units for the correct prefactors.
 
        ts ... timestep in a.u.
+       window_length_au ... time length of the window function used with the
+                            time correlation function in a.u.
 
        Returns dictionary with (all in a.u.):
          "freq"             - discrete sample frequencies
@@ -216,24 +234,29 @@ def _apply_cut_sphere(x, pos, clip, cell=None, inverse=False):
     return np.clip(y, 0, 1) * x
 
 
-def _spectrum_from_tcf(*args,
-                       T_K=300,
-                       mode='abs_cd',
-                       origin_au=np.zeros((3)),
-                       cell_au_deg=None,
-                       positions_au=None,
-                       gauge_transport=True,
-                       pseudo_isolated=False,
-                       cutoff_au=None,
-                       cutoff_bg_au=None,
-                       cut_type='hard',
-                       cut_type_bg='hard',
-                       clip_sphere=[],
-                       flt_pow=-1,
-                       ts_au=41.341,
-                       unwrap_pbc=True,
-                       parallel=True,
-                       **kwargs):
+def _spectrum_from_tcf(*args, **kwargs):
+    return spectrum_from_tcf(*args, **kwargs)
+
+
+def spectrum_from_tcf(*args,
+                      T_K=300,
+                      mode='abs_cd',
+                      origin_au=np.zeros((3)),
+                      cell_au_deg=None,
+                      positions_au=None,
+                      gauge_transport=True,
+                      pseudo_isolated=False,
+                      cutoff_au=None,
+                      cutoff_bg_au=None,
+                      cut_type='hard',
+                      cut_type_bg='hard',
+                      clip_sphere=[],
+                      flt_pow=None,
+                      window_length_au=None,
+                      ts_au=41.341,
+                      unwrap_pbc=True,
+                      parallel=True,
+                      **kwargs):
     '''Choose between modes: abs, cd, abs_cd
        Expects
            1 - current (electric) dipole moments of shape
@@ -250,6 +273,8 @@ def _spectrum_from_tcf(*args,
        Expects atomic units.
 
        ts_au ... timestep in a.u.
+       window_length_au ... time length of the window function used with the
+                            time correlation function in a.u.
 
        Computation of the gauge transport:
          unwrap_pbc ... Unwrap particles before the calculation.
@@ -270,17 +295,25 @@ def _spectrum_from_tcf(*args,
          "tcf_abs"/"tcf_cd" - time-correlation function (TCF)
        '''
 
-    if flt_pow >= 0:
-        _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra '
-                       'require flt_pow < 0 to account for finite size of '
-                       'input data!', _ChirPyWarning, stacklevel=2)
+    if flt_pow is not None:
+        _warnings.warn('The flt_pow keyword is deprecated, '
+                       'use window_length_au instead',
+                       _ChirPyWarning, stacklevel=2)
 
-    kwargs.update({'flt_pow': flt_pow})
+        kwargs.update({'flt_pow': flt_pow})
+
+        if flt_pow >= 0:
+            _warnings.warn('Got non-negative value for flt_pow; FT-TCF spectra'
+                           ' require flt_pow < 0 to account for finite size of'
+                           ' input data!', _ChirPyWarning, stacklevel=2)
+
     if 'ts' in kwargs:
         raise KeyError('ts argument must not be used here. Please specify '
                        'ts_au!')
     kwargs.update(dict(ts=ts_au))
     kwargs.update(dict(symmetry='even'))
+    if window_length_au is not None:
+        kwargs.update(dict(window_length=int(window_length_au/ts_au)))
 
     if mode not in ['abs', 'cd', 'abs_cd']:
         raise ValueError('Unknown mode', mode)

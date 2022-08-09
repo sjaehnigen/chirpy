@@ -102,13 +102,12 @@ def main():
             type=float,
             )
     parser.add_argument(
-            "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing."
-                 "Give <0 to remove the implicit size-dependent triangular "
-                 "filter",
-            default=-1,
-            type=float,
+            "--window_length",
+            help="Window function widtth (welch) used with the TCF in fs.",
+            default=10000,
+            type=int,
             )
+
     parser.add_argument(
             "--return_tcf",
             help="Return also the time-correlation function.",
@@ -176,11 +175,11 @@ def main():
     # --- expand iterator
     _vel = np.array([_load.XYZ.vel_au[args.subset] for _fr in _load.XYZ])
     _pow = spectroscopy.power_from_tcf(
-                                _vel,
-                                ts_au=args.ts * constants.t_fs2au,
-                                weights=_load.XYZ.masses_amu[args.subset],
-                                flt_pow=args.filter_strength,
-                                )
+                      _vel,
+                      ts_au=args.ts * constants.t_fs2au,
+                      weights=_load.XYZ.masses_amu[args.subset],
+                      window_length_au=args.window_length * constants.t_fs2au,
+                      )
 
     # --- plot
     _POW_au2kJpermol = constants.E_au2J * constants.avog / constants.kilo

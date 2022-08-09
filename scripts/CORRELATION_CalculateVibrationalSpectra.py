@@ -124,12 +124,10 @@ def main():
             type=float,
             )
     parser.add_argument(
-            "--filter_strength",
-            help="Strength of signal filter (welch) for TCF pre-processing."
-                 "Give <0 to remove the implicit size-dependent triangular "
-                 "filter",
-            default=-1,
-            type=float,
+            "--window_length",
+            help="Window function widtth (welch) used with the TCF in fs.",
+            default=10000,
+            type=int,
             )
     parser.add_argument(
             "--return_tcf",
@@ -212,16 +210,17 @@ def main():
         origins = _p.swapaxes(0, 1)[args.origin_id]
         for origin in origins:
             _tmp = spectroscopy._spectrum_from_tcf(
-                                    _c, _m,
-                                    positions_au=_p*constants.l_aa2au,
-                                    mode='abs_cd',
-                                    ts_au=args.ts * constants.t_fs2au,
-                                    flt_pow=args.filter_strength,
-                                    # --- example
-                                    origin_au=origin*constants.l_aa2au,
-                                    cutoff_au=args.cutoff*constants.l_aa2au,
-                                    cell_au_deg=_cell,
-                                    )
+                       _c, _m,
+                       positions_au=_p*constants.l_aa2au,
+                       mode='abs_cd',
+                       ts_au=args.ts * constants.t_fs2au,
+                       window_length_au=args.window_length * constants.t_fs2au,
+                       # --- example
+                       origin_au=origin*constants.l_aa2au,
+                       cutoff_au=args.cutoff*constants.l_aa2au,
+                       cell_au_deg=_cell,
+                       cut_type='soft',
+                       )
             _voa['va'].append(_tmp['abs'])
             _voa['vcd'].append(_tmp['cd'])
             _voa['tcf_va'].append(_tmp['tcf_abs'])
@@ -235,13 +234,13 @@ def main():
 
     else:
         _voa = spectroscopy._spectrum_from_tcf(
-                                _c, _m,
-                                positions_au=_p*constants.l_aa2au,
-                                mode='abs_cd',
-                                ts_au=args.ts * constants.t_fs2au,
-                                flt_pow=args.filter_strength,
-                                cell_au_deg=_cell,
-                                )
+                         _c, _m,
+                         positions_au=_p*constants.l_aa2au,
+                         mode='abs_cd',
+                         ts_au=args.ts * constants.t_fs2au,
+                         window_length_au=args.window_length*constants.t_fs2au,
+                         cell_au_deg=_cell,
+                         )
         _voa['va'] = _voa['abs']
         _voa['vcd'] = _voa['cd']
         _voa['tcf_va'] = _voa['tcf_abs']

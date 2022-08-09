@@ -190,7 +190,7 @@ class TestSpectroscopy(unittest.TestCase):
                                   weights=_load.masses_amu*constants.m_amu_au,
                                   average_atoms=False,
                                   mode='AB',
-                                  flt_pow=-1,
+                                  window_length_au=len(_load.vel_au)*ts,
                                   )
 
         self.assertAlmostEqual(
