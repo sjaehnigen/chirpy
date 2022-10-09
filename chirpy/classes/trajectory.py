@@ -663,7 +663,7 @@ class _XYZ():
                             # self.APT_au = data_dict['Polar']
                             self.AAT_au = data_dict['AAT'].reshape((n_atoms,
                                                                     3, 3))
-                            print('AAT', self.AAT_au.ravel())
+                            # print('AAT', self.AAT_au.ravel())
                             # --- calculate it from tensors
 
                             # --- units not verified, should be in a.u.
