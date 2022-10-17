@@ -273,8 +273,9 @@ def spectrum_from_tcf(*args,
        Expects atomic units.
 
        ts_au ... timestep in a.u.
-       window_length_au ... time length of the window function used with the
-                            time correlation function in a.u.
+       window_length_au ... if not None, apply window function (Welch)
+                            of the given time length in a.u. to the
+                            time correlation function
 
        Computation of the gauge transport:
          unwrap_pbc ... Unwrap particles before the calculation.
