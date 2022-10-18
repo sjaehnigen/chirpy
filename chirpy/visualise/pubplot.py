@@ -185,7 +185,7 @@ def multiplot(
              hatch_a=None,  # pattern for pile_up or fill_between
              offset_a=0.0,  # shift y
              sep=5,  # in %
-             hspace=None,  # maually define shift between plots, overrrides sep
+             hspace=None,  # manually define shift between plots, overrides sep
              xlim=None,
              ylim=None,
              **kwargs):

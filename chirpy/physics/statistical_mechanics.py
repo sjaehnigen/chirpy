@@ -31,6 +31,7 @@
 
 
 import numpy as np
+import scipy
 from .. import constants
 
 
@@ -167,11 +168,12 @@ def time_correlation_function(*args,
                          % (len(_sh1), _sh1))
 
     def _corr(_val1, _val2):
-        _sig = np.array([np.correlate(
-                                  v1,
-                                  v2,
-                                  mode='full',
-                                  )
+        _sig = np.array([scipy.signal.correlate(
+                                                v1,
+                                                v2,
+                                                mode='full',
+                                                method='fft',
+                                                )
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
         return _sig
 
