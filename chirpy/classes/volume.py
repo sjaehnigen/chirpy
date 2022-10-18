@@ -61,7 +61,6 @@ class ScalarField(_CORE):
             self._fn = fn
             fmt = kwargs.get('fmt', str(fn).split('.')[-1])
             if fmt == 'bz2':
-                kwargs.update({'bz2': True})
                 fmt = fn.split('.')[-2]
 
             self._fmt = fmt

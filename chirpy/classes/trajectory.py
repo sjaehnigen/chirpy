@@ -555,7 +555,6 @@ class _XYZ():
             if fmt in ["cube", "cub"]:
                 data, origin_aa, cell_vec_aa, pos_aa, numbers, comments = \
                         cubeReader(fn, **_extract_keys(kwargs,
-                                                       bz2=False,
                                                        verbose=False,
                                                        # units='default'
                                                        ))
@@ -1594,7 +1593,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       kwargs,
                                       range=_fr,
                                       skip=[],
-                                      bz2=False,
                                       units='default',
                                       )
                 if len(args) == 1:
@@ -1609,7 +1607,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       kwargs,
                                       range=_fr,
                                       skip=[],
-                                      bz2=False,
                                       units='default',
                                       cell_line=False,
                                       )
@@ -1627,7 +1624,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       kwargs,
                                       range=_fr,
                                       skip=[],
-                                      # bz2=False,
                                       # units='default',
                                       )
                 self._gen = _pdbIterator(fn0, **nargs)
@@ -1642,7 +1638,6 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
                                       kwargs,
                                       range=_fr,
                                       skip=[],
-                                      bz2=False,
                                       units='default',
                                       filetype='TRAJECTORY',
                                       symbols=cpmd_kinds_from_file(fn0)
@@ -1892,7 +1887,6 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                                            kwargs,
                                            range=_fr,
                                            skip=[],
-                                           bz2=False,
                                            units='default',
                                            filetype='MOMENTS',
                                            symbols=cpmd_kinds_from_file(fn)
@@ -1912,7 +1906,6 @@ class MOMENTS(_MOMENTS, _ITERATOR, _FRAME):
                                              kwargs,
                                              range=_fr,
                                              skip=[],
-                                             bz2=False,
                                              units='default',
                                              gauge_origin_aa=[0., 0., 0.],
                                              columns='imddd',

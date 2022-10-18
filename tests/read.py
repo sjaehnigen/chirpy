@@ -641,11 +641,9 @@ class TestCoordinates(unittest.TestCase):
     def test_bz2(self):
         # --- general iterator test (also valid for cpmd, cube, etc.)
         rdata, rsymbols, rcomments = \
-                r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz',
-                                        bz2=False)
+                r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz')
         data, symbols, comments = \
-            r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz.bz2',
-                                    bz2=True)
+            r_coordinates.xyzReader(self.dir + '/test_long_mol.xyz.bz2')
         [self.assertIsInstance(_c, str) for _c in comments]
         self.assertTrue(np.array_equal(data, rdata))
         self.assertTupleEqual(symbols, rsymbols)

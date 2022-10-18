@@ -45,7 +45,12 @@ def _gen(fn):
 
 
 def _open(*args, **kwargs):
-    if kwargs.get('bz2', args[0].split('.')[-1] == 'bz2'):
+    '''Open and automatically decompress file if necessary.
+       Supported compressors: bz2
+
+       Read-only support of compressed files.
+       '''
+    if kwargs.get('bz2') or args[0].split('.')[-1] == 'bz2':
         return _bz2.open(args[0], 'rt')
     else:
         return open(*args)
@@ -120,11 +125,10 @@ def _get(_it, kernel, **kwargs):
 def _reader(FN, n_lines, kernel,
             convert=1,
             verbose=config.__verbose__,
-            bz2=False,
             **kwargs):
     '''Opens file, checks contents, and parses arguments,
        kernel, and generator.'''
-    with _open(FN, 'r', bz2=bz2, **kwargs) as _f:
+    with _open(FN, 'r', **kwargs) as _f:
         _it = _gen(_f)
         data = tqdm(_get(_it,
                          kernel,
