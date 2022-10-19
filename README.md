@@ -5,7 +5,7 @@
 (... work in progress)
 
 
-It's main features comprise:
+Main features:
 - Computation of vibrational circular dichroism (VCD) from molecular dynamics (MD) and time-correlation functions (TCF)
 - Application of the periodic gauge for magnetic moments and crystal symmetry in solid-state  
 - Interpretation, processing, and creation of molecular topologies and supercells
