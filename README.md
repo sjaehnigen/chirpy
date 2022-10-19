@@ -1,6 +1,6 @@
 # ChirPy
 
-[ChirPy](https://hartree.chimie.ens.fr/sjaehnigen/chirpy) (_chiral python_) is a python package for chirality, dynamics, and molecular vibrations.
+[*ChirPy*](https://hartree.chimie.ens.fr/sjaehnigen/chirpy) (_chiral python_) is a python package for chirality, dynamics, and molecular vibrations.
 
 (... work in progress)
 
@@ -44,7 +44,7 @@ Available jupyter notebooks and data sets:
 
 (... under construction)
 
-## References:
+## References
 1. [S. Jähnigen, A. Zehnacker, and R. Vuilleumier; Computation of Solid-State Vibrational Circular Dichroism in the Periodic Gauge, *J. Phys. Chem. Lett.*, **2021**, *12* (30), 7213-7220.](https://doi.org/10.1021/acs.jpclett.1c01682)
 2. [S. Jähnigen, D. Sebastiani, R. Vuilleumier; The important role of non-covalent interactions
 for the vibrational circular dichroism of lactic acid
