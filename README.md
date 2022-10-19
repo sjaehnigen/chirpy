@@ -15,6 +15,7 @@ Furthermore:
 - Interfacing with VMD
 - Handling of volumetric data and vector fields
 
+
     ... (work in progress)
 
 It is highly recommended to use [Anaconda](https://anaconda.org) to create a chirpy environment from the `conda_env.yml` file.
