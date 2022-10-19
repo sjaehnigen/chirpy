@@ -2,6 +2,8 @@
 
 [ChirPy](https://hartree.chimie.ens.fr/sjaehnigen/chirpy) (_chiral python_) is a python package for chirality, dynamics, and molecular vibrations.
 
+(... work in progress)
+
 
 It's main features comprise:
 - Computation of vibrational circular dichroism (VCD) from molecular dynamics (MD) and time-correlation functions (TCF)
@@ -15,8 +17,6 @@ Furthermore:
 - Interfacing with VMD
 - Handling of volumetric data and vector fields
 
-
-    ... (work in progress)
 
 It is highly recommended to use [Anaconda](https://anaconda.org) to create a chirpy environment from the `conda_env.yml` file.
 To integrate this code into your python environment, please adjust and source the file `paths.conf`.
