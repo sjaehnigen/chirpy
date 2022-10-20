@@ -15,7 +15,7 @@ Main features:
 Furthermore:
 - Scientific visualisation
 - Interfacing with VMD
-- Handling of volumetric data and vector fields
+- Processing of volumetric data and vector fields
 
 
 ## Installation 
