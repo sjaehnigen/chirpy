@@ -63,7 +63,7 @@ def main():
     parser.add_argument(
             "--units",
             help="List of chirpy unit tags for data columns in ALL files, "
-                 "e.g., (\'length\', \'aa\')."
+                 "e.g., length#aa."
                  "\'default\' refers to the ChirPy unit convention for each "
                  "file format",
             default='default',
@@ -227,6 +227,12 @@ def main():
     config.set_verbose(args.verbose)
     # --------------------------------------------------------
     # --- parse and combine arguments: bash ---> chirpy
+    match args.units:
+        case 'default':
+            pass
+        case _:
+            args.units = [tuple(_u.split('#')) for _u in args.units]
+
     if bool(args.center_coords):
         # --- ToDo: workaround
         if args.center_coords[0] == 'True':

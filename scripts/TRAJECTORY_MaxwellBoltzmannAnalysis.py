@@ -73,6 +73,11 @@ def main():
             default=None,
             )
     parser.add_argument(
+            "--dimension",
+            help="x, y, or z.",
+            default=None,
+            )
+    parser.add_argument(
             "--T",
             help="Reference temperature in K.",
             type=float,
@@ -96,6 +101,15 @@ def main():
         del args.range
     if args.subset is None:
         args.subset = slice(None)
+    match args.dimension:
+        case None:
+            _dimension = [0, 1, 2]
+        case 'x':
+            _dimension = [0]
+        case 'y':
+            _dimension = [1]
+        case 'z':
+            _dimension = [2]
 
     largs = vars(args)
     if args.fn_vel is not None:
@@ -111,7 +125,7 @@ def main():
                     _v = _load.pos_aa
                 else:
                     _v = _load.vel_au
-                yield _v
+                yield np.take(_v, _dimension, -1)
 
         except StopIteration:
             pass
@@ -128,7 +142,9 @@ def main():
           np.array(_load.symbols)[args.subset])
 
     _vel_au = np.array([_v[args.subset] for _v in get_v()])
+
     e_kin_au = statistical_mechanics.kinetic_energies(_vel_au, _w[args.subset])
+    # e_kin_au = statistical_mechanics.kinetic_energies(_vel_au-np.mean(_vel_au, axis=0)[None], _w[args.subset])
 
     _n_f_dof = 6
     if args.element is not None:
@@ -143,7 +159,11 @@ def main():
     if args.T is None:
         args.T = T_K
 
-    _vel_au = np.linalg.norm(_vel_au, axis=-1).ravel()
+    match args.dimension:
+        case None:
+            _vel_au = np.linalg.norm(_vel_au, axis=-1).ravel()
+        case _:
+            _vel_au = _vel_au.ravel()
 
     plt.hist(_vel_au, lw=0.1, ec='k', bins=100, density=True, label=args.fn)
 

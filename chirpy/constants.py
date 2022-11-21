@@ -379,6 +379,8 @@ def get_conversion_factor(name, unit):
                 'aa': l_aa2au,  # time in a.u.
                 'aa_fs': 1/v_au2aa_fs,
                 'aa_ps': 1/v_au2aa_fs/1000,
+                'pm_fs': v_si2au * 1000,
+                'nm_ps': v_si2au * 1000,
                 'si': v_si2au
                 },
             'electric_dipole': {
