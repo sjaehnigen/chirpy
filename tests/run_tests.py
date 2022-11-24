@@ -29,6 +29,7 @@
 #
 # ----------------------------------------------------------------------
 
+import argparse
 import unittest
 import sys
 
@@ -43,20 +44,38 @@ import topology
 import physics
 import classes
 import create
-import bin
+import scripts
+
+sys.tracebacklimit = 0
 
 if __name__ == '__main__':
-    try:
-        _verbosity = int(sys.argv[1])
-    except IndexError:
-        _verbosity = 1
+    parser = argparse.ArgumentParser(
+            description="Run TestSuite",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
+    parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            default=False,
+            )
+    parser.add_argument(
+            "--scripts",
+            action="store_true",
+            help="Test chirpy scripts. "
+                 "The script directory needs to be added to PATH",
+            default=False,
+            )
+    args = parser.parse_args()
+
+    _verbosity = 1
+    # --- let the TestSuite speak
     cp.config.set_verbose(False)
-    if _verbosity > 2:
-        cp.config.set_verbose(True)
+    if args.verbose:
+        _verbosity = 2
 
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
 
-    print(f'You are using ChirPy version {cp.version.version} on '
+    print(f'You are using ChirPy version {cp.__version__} on '
           f'{cp.config.__os__}')
     print(70 * '-')
     print('Running TestSuite')
@@ -76,7 +95,8 @@ if __name__ == '__main__':
     suite.addTests(loader.loadTestsFromModule(physics))
     suite.addTests(loader.loadTestsFromModule(classes))
     suite.addTests(loader.loadTestsFromModule(create))
-    suite.addTests(loader.loadTestsFromModule(bin))
+    if args.scripts:
+        suite.addTests(loader.loadTestsFromModule(scripts))
 
     # initialize a runner, pass it your suite and run it
     runner = unittest.TextTestRunner(verbosity=_verbosity)

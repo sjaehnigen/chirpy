@@ -19,24 +19,41 @@ Furthermore:
 
 
 ## Installation 
-Copy or clone the *ChirPy* repository into a local folder. 
-To integrate this code into your python environment, please update your `$PYTHONPATH` or adjust and source the file `paths.conf`.
+Copy or clone the *ChirPy* repository into a local directory. Open a bash terminal and change directory to the local copy of the repository.
 
-It is highly recommended to use [Anaconda](https://anaconda.org) to create a *ChirPy* environment from the `conda_env.yml` file.
+Make sure you have the following packages installed:
+- `python` >= 3.10
+- `pip` >= 22.3
 
-Tests can be run in the folder `tests/`
+Optional:
+- `packmol` >= 20.0
 
-`python run.py`
+Or use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the `conda_env.yml` file (recommended):
 
-or in bash terminal
+`conda env create -f conda_env.yml`
 
-`./run.py`
+In the parent directory, run:
 
+`pip install .`
+
+*ChirPy* has now been installed and can be imported within python:
+
+`import chirpy as cp`
+
+Check that you installation is correct by running from a bash terminal the test suite in `tests/`:
+
+`python run_tests.py`
+
+or
+
+`./run_tests.py`
+
+(optional arguments: --verbose, --scripts)
 
 Thank you for reporting bugs and issues to the [developers](https://hartree.chimie.ens.fr/sjaehnigen/chirpy/-/blob/master/AUTHORS.txt).
 
 ## Examples
-Workable binaries can be found in the folder `scripts/` with some pre-implemented *ChirPy* features.
+Workable binaries can be found in the folder `scripts/` with some pre-implemented *ChirPy* features. Make sure you add this folder to PATH.
 
 Available jupyter notebooks and data sets:
 - [Computation of Solid-State Vibrational Circular Dichroism in the Periodic Gauge](https://doi.org/10.5281/zenodo.4776906)

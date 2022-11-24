@@ -54,11 +54,20 @@ class TestSupercell(unittest.TestCase):
                         rho_g_cm3=0.844,
                       )
 
-        sys._fill_box(verbose=False, sort_atoms=True)
+        try:
+            sys._fill_box(verbose=False, sort_atoms=True)
+            os.remove('topology.pdb')
+            os.remove('packmol.inp')
+            os.remove('packmol.log')
 
-        os.remove('topology.pdb')
-        os.remove('packmol.inp')
-        os.remove('packmol.log')
+        except ImportError:
+            os.remove('.member-000.pdb')
+            os.remove('.member-001.pdb')
+            os.remove('packmol.inp')
+            os.remove('packmol.log')
+            raise AssertionError("Could not find packmol installation. "
+                                 "Some features of create module not "
+                                 "available.")
 
     def test_molecular_crystal(self):
         c = supercell.MolecularCrystal(self.dir + '/782512.pdb')

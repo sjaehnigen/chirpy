@@ -1,7 +1,11 @@
 __pycache__
+build*/
+examples*/
 *py[cod]
+*chirpy.egg-info
 *~
 *.bak
 *.sw[a-z]
+*.ipynb_checkpoints
 !.gitignore
 !.gitlab-ci.yml

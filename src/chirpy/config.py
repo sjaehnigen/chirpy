@@ -35,7 +35,7 @@ from IPython import get_ipython
 import multiprocessing
 import platform
 
-from .version import version
+from . import __version__ as version
 
 __pal_n_cores__ = max(multiprocessing.cpu_count()//2, 1)
 __verbose__ = True

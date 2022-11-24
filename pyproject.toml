@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chirpy"
+description = "A python package for chirality, dynamics, and molecular vibrations."
+maintainers = [
+  {name = "Sascha Jähnigen", email = "sascha.jaehnigen@pens.psl.eu"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "GPL-3.0-or-later"}
+dependencies = [
+    "fortranformat",
+    "numpy",
+    "ipython",
+    "jupyter",
+    "jupyter_core",
+    "matplotlib",
+    "periodictable",
+    "pycifrw",
+    "scipy",
+    "tqdm",
+]
+classifiers = [
+  "Programming Language :: Python"
+]
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
+documentation = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
+repository = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
+# changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "chirpy.__version__"}
+
+[tool.setuptools]
+packages = ["chirpy"]
+package-dir = {"" = "src"}
+

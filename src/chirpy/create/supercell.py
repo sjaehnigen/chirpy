@@ -442,7 +442,12 @@ class Solution(_BoxObject):
 
         if verbose:
             print("Calling packmol ... (see packmol.log)")
-        _os.system("packmol < packmol.inp > packmol.log")
+        _err = _os.system("packmol < packmol.inp > packmol.log")
+        if _err == 32512:
+            raise ImportError("could not fill box. Is packmol installed?")
+        elif _err != 0:
+            raise ValueError("unexpected packmol error")
+
         if verbose:
             print("Done.")
 

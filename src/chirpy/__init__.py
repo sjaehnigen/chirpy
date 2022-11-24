@@ -28,14 +28,19 @@
 #
 # ----------------------------------------------------------------------
 
+__version__ = "0.24.0"
+
+
 import sys
+
+assert sys.version_info[:2] >= (3, 10), "Python version >= 3.10 required."
+
 import multiprocessing as _mp
 import multiprocessing.pool as _mpp
 
 from . import config
 from . import constants
 from . import snippets
-from . import version
 from . import classes
 from . import create
 from . import interface
@@ -54,11 +59,9 @@ from .snippets import *
 from .snippets import _unpack_tuple
 from .physics import spectroscopy
 
+
 if __name__ == '__main__':
     _mp.set_start_method('spawn')
-
-
-assert sys.version_info[:2] >= (3, 8), "Python version >= 3.8 required."
 
 
 # import traceback
@@ -92,17 +95,3 @@ def istarmap(self, func, iterable, chunksize=1):
 
 
 _mpp.Pool.istarmap = istarmap
-
-
-def _unpack_tuple(x):
-    """ Unpacks one-element tuples for use as return values
-
-        Taken from:
-        https://github.com/numpy/numpy/blob/v1.20.0/numpy/lib/arraysetops.py
-        Copyright (c) 2005-2021, NumPy Developers.
-
-        """
-    if len(x) == 1:
-        return x[0]
-    else:
-        return x

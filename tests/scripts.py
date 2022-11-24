@@ -32,6 +32,7 @@ import unittest
 import os
 import filecmp
 import numpy as np
+import warnings
 import chirpy as cp
 
 
@@ -46,9 +47,14 @@ class TestBinaries(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def call_script(self, call_string):
+        assert os.system(call_string + ' 2>/dev/null') == 0, \
+            f'callable script {call_string.split()[0]} not found in PATH'
+
     def test_moments_assemble_molecules(self):
-        os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY.pdb %s/TRAJECTORY '
-                  '%s/MOMENTS -f TEST' % (3*(self.dir,)))
+        self.call_script('MOMENTS_AssembleMolecules.py %s/TOPOLOGY.pdb '
+                         '%s/TRAJECTORY '
+                         '%s/MOMENTS -f TEST' % (3*(self.dir,)))
         self.assertTrue(np.allclose(
                             np.loadtxt('TEST'),
                             np.loadtxt(self.dir + '/MOL')
@@ -57,7 +63,7 @@ class TestBinaries(unittest.TestCase):
                         'incorrectly in TEST'
                         )
         os.remove('TEST')
-        os.system('MOMENTS_AssembleMolecules.py %s/TOPOLOGY_DIMER.pdb '
+        self.call_script('MOMENTS_AssembleMolecules.py %s/TOPOLOGY_DIMER.pdb '
                   '%s/TRAJECTORY_DIMER '
                   '%s/MOMENTS_DIMER -f TEST_DIMER' % (3*(self.dir,)))
         self.assertTrue(np.allclose(
@@ -71,9 +77,9 @@ class TestBinaries(unittest.TestCase):
 
     def test_system_create_topology(self):
         for _f in ['topo-1.restart', 'topo.xyz']:
-            os.system(f'SYSTEM_CreateTopologyFile.py {self.dir}/{_f}' +
+            self.call_script(f'SYSTEM_CreateTopologyFile.py {self.dir}/{_f}' +
                       ' --cell_aa_deg 25.520 25.520 25.520 90.00 90.00 90.00'
-                      )
+                          )
             self.assertTrue(filecmp.cmp('out.pdb',
                                         f'{self.dir}/topo.pdb',
                                         shallow=False),
@@ -90,7 +96,7 @@ class TestBinaries(unittest.TestCase):
                     cp.read.coordinates.xyzReader(ref)[0],
                     atol=1.E-12)
 
-        os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
+        self.call_script('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +
                   '-o out.xyz')
         self.assertTrue(cp_comp('out.xyz', self.dir + '/trajectory.xyz'),
@@ -99,7 +105,7 @@ class TestBinaries(unittest.TestCase):
                         )
         os.remove('out.xyz')
 
-        os.system('TRAJECTORY_Convert.py ' +
+        self.call_script('TRAJECTORY_Convert.py ' +
                   '%s/water_rot.arc --fn_vel %s/water_rot.vel ' %
                   (2*(self.dir + '/../read_write',)) +
                   '-o out.xyz --align_coords True')
@@ -109,7 +115,7 @@ class TestBinaries(unittest.TestCase):
                         )
         os.remove('out.xyz')
 
-        os.system('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
+        self.call_script('TRAJECTORY_Convert.py %s/water.arc --fn_vel %s/water.vel '
                   % (2 * (self.dir + '/../read_write',)) +
                   '-o out.xyz --mask_frames 1 3')
 
@@ -120,7 +126,7 @@ class TestBinaries(unittest.TestCase):
         os.remove('out.xyz')
 
     def test_correlation_vibrational(self):
-        os.system(
+        self.call_script(
             'CORRELATION_CalculateVibrationalSpectra.py %s/MOL2 ' % self.dir
             + '--cell_aa_deg 12.072 12.342 11.576 90.00 90.00 90.00 '
             + '--ts 4 --return_tcf --va --vcd --cutoff 0 --window_length 400 '
