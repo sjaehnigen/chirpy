@@ -24,19 +24,16 @@ Copy or clone the *ChirPy* repository into a local directory. Open a bash termin
 Make sure you have the following packages installed:
 - `python` >= 3.10
 - `pip` >= 22.3
+- `packmol` >= 20.0 (optional)
 
-Optional:
-- `packmol` >= 20.0
-
-Or use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the `conda_env.yml` file (recommended):
-
+Or use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the `conda_env.yml` file:
 `conda env create -f conda_env.yml`
 
 In the parent directory, run:
 
 `pip install .`
 
-*ChirPy* has now been installed and can be imported within python:
+*ChirPy* has now been installed and can be imported within a python environment:
 
 `import chirpy as cp`
 
