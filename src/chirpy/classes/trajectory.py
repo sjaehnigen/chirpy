@@ -281,12 +281,12 @@ class _FRAME(_CORE):
            Returns indices that would sort obj2 to match obj1.
            '''
         ie, tmp = obj1._is_similar(obj2)
-        if not (_comp := tmp[1] * tmp[3]):
+        if not tmp[1] * tmp[3]:
             # --- only n_atoms (1) and symbols (3)
-            raise TypeError('''The two Molecule objects are not similar!
+            raise TypeError('''cannot map dissimilar Molecule objects
                      n_atoms: %s
                      symbols: %s
-                  ''' % tuple(_comp))
+                  ''' % (tmp[1], tmp[3]))
 
         if obj1._type != 'frame':
             raise NotImplementedError('map supports only FRAME objects!')

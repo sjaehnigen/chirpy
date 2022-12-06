@@ -217,7 +217,7 @@ def _write_pdb_frame(fn, data, names, symbols, residues, box, title,
 Output: None"""
 
     if 0. in box:
-        warnings.warn('expected non-void cell for output',
+        warnings.warn('got zero cell for output',
                       config.ChirPyWarning, stacklevel=2)
     format = '%s%7d %-5s%-4s%5d    '
     for field in range(data.shape[1]):

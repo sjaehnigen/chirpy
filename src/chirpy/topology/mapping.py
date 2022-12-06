@@ -168,7 +168,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
     if cell is None:
         return None
     if np.any(cell == 0.):
-        return 'void'
+        return None
 
     abc, albega = cell[:3], cell[3:]
     _a = np.invert(np.diff(np.round(abc, decimals=3)).astype(bool))
@@ -238,6 +238,7 @@ def distance_pbc(p0, p1, cell=None, return_pbc_bool=False):
        '''
     # actually it does not calculate a "distance"
     _d = p1 - p0
+    # if detect_lattice(cell) is not None:
     if cell is not None:
         _d2 = _d - _pbc_shift(_d, cell)
         if return_pbc_bool:

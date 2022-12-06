@@ -32,10 +32,12 @@
 import numpy as np
 import warnings
 import copy
+import os
 
 from matplotlib.ticker import MultipleLocator  # FormatStrFormatter
 
 from ..classes.core import AttrDict
+from ..config import ChirPyWarning
 
 
 class pub_label():
@@ -91,8 +93,9 @@ def source_params(matplotlib):
     # matplotlib.rc('font',
     # **{'family':'sans-serif', 'sans-serif':['Helvetica']}) #gives warning
     matplotlib.rcParams['mathtext.fontset'] = 'stixsans'
-    matplotlib.rc('text',  usetex=True)
-    matplotlib.rcParams['text.latex.preamble'] = r'''
+    if os.system('latex' + ' 2>/dev/null') == 0:
+        matplotlib.rc('text',  usetex=True)
+        matplotlib.rcParams['text.latex.preamble'] = r'''
 \usepackage[utf8]{inputenc}
 \usepackage{upgreek}
 \usepackage{bm}
@@ -103,6 +106,8 @@ def source_params(matplotlib):
 \sansmath
 \def\mymathhyphen{{\hbox{-}}}
 '''
+    else:
+        warnings.warn('LaTeX not found.', ChirPyWarning, stacklevel=2)
     matplotlib.rcParams.update({'mathtext.default':  'regular'})
 
 
@@ -246,14 +251,14 @@ def multiplot(
 
     if pile_up and any([stack_plots,  _fill_range, fill_between, fill]):
         warnings.warn('pile_up set: disabling stack_plots and/or fill'
-                      ' arguments, respectively!', stacklevel=2)
+                      ' arguments, respectively!', ChirPyWarning, stacklevel=2)
         stack_plots = False
         _fill_range = False
         fill_between = False
 
     if any([fill_between, fill, pile_up]) and std_a is not None:
         warnings.warn('fill set: disabling std_a'
-                      ' argument', stacklevel=2)
+                      ' argument', ChirPyWarning, stacklevel=2)
         _fill_range = False
 
     if any(len(_a) != n_plots for _a in [y_a,  bool_a]):
@@ -275,7 +280,7 @@ def multiplot(
 
         except ValueError:
             warnings.warn('Could not calculate plot shift. Good luck!',
-                          RuntimeWarning,
+                          ChirPyWarning,
                           stacklevel=2)
     else:
         _shift = hspace
