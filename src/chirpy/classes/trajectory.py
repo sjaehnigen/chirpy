@@ -922,7 +922,7 @@ class _XYZ():
             raise ValueError(f'unknown weight type {weights}')
 
         if self._type == 'trajectory':
-            _p, mol_com_aa = mapping.join_molecules(
+            _p, mol_cnt_aa = mapping.join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 self.cell_aa_deg,
@@ -931,9 +931,8 @@ class _XYZ():
                                 symbols=self.symbols,
                                 )
             self._pos_aa(_p)
-            self.mol_com_aa = mol_com_aa
         else:
-            _p, mol_com_aa = mapping.join_molecules(
+            _p, mol_cnt_aa = mapping.join_molecules(
                                 self.pos_aa,
                                 mol_map,
                                 self.cell_aa_deg,
@@ -942,7 +941,11 @@ class _XYZ():
                                 symbols=self.symbols,
                                 )
             self._pos_aa(_p)
-            self.mol_com_aa = mol_com_aa
+
+        if weights is None:
+            self.mol_cog_aa = mol_cnt_aa
+        elif weights == 'masses':
+            self.mol_com_aa = mol_cnt_aa
 
     def _get_center_of_weight(self, mask=None, weights=None,
                               wrap=False, join_molecules=False):
@@ -1284,7 +1287,7 @@ class _XYZ():
                                        _np.array(['MOL'] * loc_self.n_atoms)
                                        )).swapaxes(0, 1)
 
-            if (cell_aa_deg := kwargs.get('cell_aa_deg')) is None:
+            if (cell_aa_deg := kwargs.get('cell_aa_deg', self.cell_aa_deg)) is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
                                _ChirPyWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])

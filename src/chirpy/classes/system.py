@@ -57,6 +57,7 @@ class _SYSTEM(_CORE):
             kwargs.update(self._topo)
 
         self.mol_map = kwargs.get("mol_map")
+        self.weights = kwargs.get("weights")
 
         if len(args) != 0:
             self.read_fn(*args, **kwargs)
@@ -85,8 +86,7 @@ class _SYSTEM(_CORE):
                 self.wrap_molecules()
 
             if (center_mol := kwargs.get('center_molecule')) is not None:
-                self.center_molecule(center_mol,
-                                     kwargs.get('weights', 'masses'))
+                self.center_molecule(center_mol),
 
             if kwargs.get('clean_residues',
                           False) and self.mol_map is not None:
@@ -131,7 +131,9 @@ class _SYSTEM(_CORE):
                 _topo = _read_topology_file(*self.XYZ._fn)
                 self.mol_map = _topo['mol_map']
 
-    def center_molecule(self, index, weights='masses'):
+    def center_molecule(self, index, **kwargs):
+        weights = kwargs.pop('weights', self.weights)
+
         if self.mol_map is None:
             self.define_molecules()
         self.wrap_molecules()
@@ -143,11 +145,12 @@ class _SYSTEM(_CORE):
         self.wrap_molecules()
 
     def wrap_molecules(self, **kwargs):
+        weights = kwargs.pop('weights', self.weights)
         if self.mol_map is None:
             raise AttributeError('Wrap molecules requires a topology '
                                  '(mol_map)!')
 
-        self.XYZ.wrap_molecules(self.mol_map, **kwargs)
+        self.XYZ.wrap_molecules(self.mol_map, weights=weights, **kwargs)
 
     def wrap(self, **kwargs):
         self.XYZ.wrap(**kwargs)

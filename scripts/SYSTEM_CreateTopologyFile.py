@@ -65,17 +65,19 @@ def main():
             )
 
     parser.add_argument(
-            "--weight",
-            help="Atom weights used for centering and wrapping of molecules",
-            default='mass'
+            "--center_of_geometry", "--cog",
+            help="Do not use atom masses as weights for centering and \
+                    wrapping of molecules",
+            action='store_true',
+            default=False,
             )
     parser.add_argument(
-        "--cell_aa_deg",
-        nargs=6,
-        help="Orthorhombic cell parametres a b c al be ga in angstrom/degree.",
-        type=float,
-        default=None
-        )
+            "--cell_aa_deg",
+            nargs=6,
+            help="Cell parameters a b c al be ga in angstrom/degree.",
+            type=float,
+            default=None
+            )
     parser.add_argument(
             "--keep_molecules",
             action='store_true',
@@ -100,7 +102,17 @@ def main():
             help="Print info and progress.",
             default=False,
             )
-    parser.add_argument("-f", help="Output file name", default='out.pdb')
+    parser.add_argument(
+            "--outputfile", "-o", "-f",
+            help="Output file name",
+            default='out.pdb'
+            )
+    parser.add_argument(
+            "--write_centers",
+            action='store_true',
+            help="Output molecular centers to as mol-<outfile>.",
+            default=False,
+            )
     args = parser.parse_args()
 
     cp.config.set_verbose(args.verbose)
@@ -112,6 +124,11 @@ def main():
             args.center_coords = False
         else:
             args.center_coords = [int(_a) for _a in args.center_coords]
+
+    if not args.center_of_geometry:
+        args.weights = 'masses'
+    else:
+        args.weights = None
 
     if args.keep_positions:
         args.center_coords = False
@@ -135,11 +152,26 @@ def main():
         _load.define_molecules()
 
     if args.wrap_molecules:
+        if args.verbose:
+            print(f'Atom weights for molecular centers: {_load.weights}')
         _load.wrap_molecules()  # algorithm='heavy_atom')
     elif not args.keep_positions:
         _load.wrap()
-    _load.write(args.f)
+    _load.write(args.outputfile)
+
+    if args.write_centers:
+        _centers_aa = _load.XYZ._frame._get_center_of_weight(
+                mask=_load.mol_map,
+                weights=_load.weights
+                )
+        n_mols = len(_centers_aa)
+        cp.classes.trajectory.XYZFrame(
+                symbols=n_mols*('X',),
+                data=_centers_aa,
+                comments='molecular centers',
+                cell_aa_deg=_load.cell_aa_deg,
+                ).write('mol-'+args.outputfile, mol_map=list(range(n_mols)))
 
 
-if(__name__ == "__main__"):
+if (__name__ == "__main__"):
     main()

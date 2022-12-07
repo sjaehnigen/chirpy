@@ -107,6 +107,13 @@ def main():
             default=False,
             )
     parser.add_argument(
+            "--center_of_geometry", "--cog",
+            help="Do not use atom masses as weights for centering and \
+                    wrapping of molecules",
+            action='store_true',
+            default=False,
+            )
+    parser.add_argument(
             "--range",
             nargs=3,
             help="Frame range for reading files. Frame numbers are not "
@@ -122,7 +129,7 @@ def main():
             type=int,
             )
     parser.add_argument(
-            "-f",
+            "--outputfile", "-o", "-f",
             help="Output file name",
             default='MOL'
             )
@@ -145,6 +152,11 @@ def main():
         args.range = (0, 1, float('inf'))
     config.set_verbose(args.verbose)
 
+    if not args.center_of_geometry:
+        weights = 'masses'
+    else:
+        weights = None
+
     if args.verbose:
         print('Preparing data ...')
     SYS = system.Supercell(args.TRAJECTORY,
@@ -152,6 +164,7 @@ def main():
                            range=args.range,
                            units=args.T_units,
                            fn_topo=args.TOPOLOGY,
+                           weights=weights,
                            # --- generate mol centers, costly
                            wrap_molecules=False,
                            )
@@ -193,11 +206,17 @@ def main():
         if not args.do_not_join:
             if args.verbose:
                 print('Wrapping molecules ...')
-            NUC.wrap_molecules(SYS.mol_map)
+                print(f'Atom weights for molecular centers: {weights}')
+
+            NUC.wrap_molecules(SYS.mol_map, weights=weights)
         else:
             if args.verbose:
                 print('Computing molecular centers ...')
-            NUC.get_center_of_mass(mask=SYS.mol_map, join_molecules=False)
+            if not args.center_of_geometry:
+                NUC.get_center_of_mass(mask=SYS.mol_map, join_molecules=False)
+            else:
+                NUC.get_center_of_geometry(mask=SYS.mol_map,
+                                           join_molecules=False)
 
         if args.verbose:
             print('Assembling moments ...')
@@ -295,7 +314,10 @@ def main():
         gauge.cell_au_deg = None
 
         # --- shift to molecular origins
-        _com = NUC.mol_com_aa
+        if not args.center_of_geometry:
+            _com = NUC.mol_com_aa
+        else:
+            _com = NUC.mol_cog_aa
         gauge.shift_origin_gauge(_com, assignment)
 
         # --- test for neutrality of charge
@@ -322,7 +344,7 @@ def main():
         if args.verbose:
             print('Writing output ...')
         cpmd.cpmdWriter(
-                 args.f,
+                 args.outputfile,
                  _data,
                  frames=list(range(_iframe, _iframe+args.batch_size)),
                  append=append,
