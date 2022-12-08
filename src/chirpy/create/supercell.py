@@ -259,7 +259,7 @@ class MolecularCrystal(_BoxObject):
     def propagate(self, frame, multiply=(1, 1, 1), priority=(0, 1, 2)):
         '''Convolute FRAME object with unitcell.'''
         frame.cell_aa_deg = self.cell_aa_deg
-        frame.repeat(multiply, priority)
+        frame.repeat(multiply, priority=priority)
 
         return frame
 

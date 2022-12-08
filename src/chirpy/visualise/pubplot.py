@@ -93,7 +93,7 @@ def source_params(matplotlib):
     # matplotlib.rc('font',
     # **{'family':'sans-serif', 'sans-serif':['Helvetica']}) #gives warning
     matplotlib.rcParams['mathtext.fontset'] = 'stixsans'
-    if os.system('latex' + ' 2>/dev/null') == 0:
+    if os.system('latex' + ' 1>/dev/null 2>/dev/null') != 0:
         matplotlib.rc('text',  usetex=True)
         matplotlib.rcParams['text.latex.preamble'] = r'''
 \usepackage[utf8]{inputenc}
