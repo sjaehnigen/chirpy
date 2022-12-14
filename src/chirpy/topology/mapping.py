@@ -140,6 +140,8 @@ def cell_vec(cell, n_fields=3, priority=(0, 1, 2)):
        (e.g. for monoclinic cells: beta is the angle > 90°; CPMD wants alpha
        to be >90° but this is wrong and CELL VECTORS should be used instead)
        '''
+    if isinstance(cell, list):
+        cell = np.array(cell)
 
     abc, albega = cell[:3], cell[3:] * np.pi / 180.
     cell_vec = np.zeros((3, n_fields))
@@ -198,7 +200,7 @@ def detect_lattice(cell, priority=(0, 1, 2)):
         return 'triclinic'
 
 
-def wrap(positions, cell):
+def wrap_pbc(positions, cell):
     '''positions: shape ([n_frames,] n_atoms, three)
        cell: [ a b c al be ga ]'''
 
@@ -246,6 +248,44 @@ def distance_pbc(p0, p1, cell=None, return_pbc_bool=False):
             return _d2, _d == _d2
         _d = _d2
     return _d
+
+
+def mean_pbc(positions, cell=None, axis=0, wrap=True):
+    '''average position of atoms without periodic jumps
+
+
+       cell ... [a b c al be ga]
+       positions ... array of shape (N, [n_atoms, dim])
+       wrap ... wrap average position into cell
+       '''
+
+    mean = np.mean(
+                unwrap_pbc(positions, cell=cell, axis=axis),
+                axis=axis,
+                )
+    if wrap:
+        return wrap_pbc(mean, cell=cell)
+    else:
+        return mean
+
+
+def unwrap_pbc(positions, reference=None, cell=None, axis=0):
+    '''get smooth trajectory of positions without periodic jumps
+
+       positions ... array of shape (n_frames, [n_atoms, dim])
+       reference ... positions array of shape(1, [n_atoms, dim] that is
+                     prepended to positions before unwrapping.
+                     NB: The reference is going to be the first frame of the
+                     returned positions.'''
+
+    if cell is not None:
+        if reference is None:
+            reference = np.take(positions, [0], axis=axis)
+        _d = np.diff(positions, axis=axis, prepend=reference)
+        _d2 = _d - _pbc_shift(_d, cell)
+        return np.cumsum(_d2, axis=axis) + reference
+    else:
+        return positions
 
 
 def _pbc_shift(_d, cell):
@@ -421,10 +461,21 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                    algorithm='connectivity',
                    symbols=None,
                    connectivity=None,
+                   fast_forward=True,
+                   reference=None,
                    ):
     '''pos_aa (in angstrom) with shape ([n_frames,] n_atoms, three)
     Has still problems with cell-spanning molecules
-    Molecules have to be numbered starting with 0!'''
+    Molecules have to be numbered starting with 0!
+
+    fast_forward ... join molecules for first frame only and track atom
+                     positions based on this frame (unwrap positions). Exact
+                     for immutable topologies, quite reliabe otherwise (double
+                     check required!).
+    reference ... if algorithm is set to 'reference', use reference positions
+                   (1, n_atoms, three) of already joined molecules.
+                   Similar to fast_forward.
+    '''
     if 0 not in mol_map:
         raise TypeError('Given mol_map not an enumeration of indices!' %
                         mol_map)
@@ -470,21 +521,23 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
             if not _frames and B.all():  # --- molecule not broken
                 # --- ensure mol cowt lies within cell
                 c_aa = cowt(_p, _w, axis=0)
-                _delta = wrap(c_aa, cell_aa_deg) - c_aa
+                _delta = wrap_pbc(c_aa, cell_aa_deg) - c_aa
                 mol_com_aa.append(c_aa + _delta)
                 ind = np.array(mol_map) == _i
                 pos_aa[ind] = _p + _delta[None]
                 continue
+
             _m_n_atoms = len(_p)
-            _p_ref = _p.reshape((_m_n_atoms, -1))
+            if _frames and not fast_forward:
+                _p_ref = _p.reshape((_m_n_atoms, -1))
             P = np.zeros_like(_p_ref)
             n = np.zeros(_m_n_atoms).astype(bool)
             # --- set reference particle
-            # --- closest to its neighbours
+            # ----- closest to its neighbours:
             # _r = np.argmin(np.linalg.norm(D, axis=(1, 2)))
-            # --- w/ weighting
+            # ----- w/ weighting:
             _r = np.argmin(np.linalg.norm(D, axis=(1, 2)) / _w)
-            # --- closests to cell center (for tetragonal cells)
+            # ----- closests to cell center (for tetragonal cells):
             # _r = np.argmin(np.linalg.norm(_p_ref - cell_aa_deg[None, :3]/2,
             #                               axis=-1) / _w)
 
@@ -512,9 +565,11 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                         break
                 m = np.einsum('ij, i -> j', N, n0.astype(int))
                 n = m.astype(bool)
-                if _frames:
-                    # --- loop over frames
+                if _frames and not fast_forward:
+                    # --- process all frames individually
                     # --- assuming constant connectivity through N
+                    # --- ToDo: if N is constant, fast_forward is always exact
+                    #           ---> implement variable N
                     _D = np.moveaxis(np.array(
                         [distance_matrix(_p[n0, _ii], _p[n, _ii],
                                          cell=cell_aa_deg, cartesian=True)
@@ -540,15 +595,27 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
                                      'the connectivity is interrupted.')
 
             if _frames:
-                P = P.reshape((_m_n_atoms, n_frames, 3))
-            c_aa = cowt(P, _w, axis=0)
-            # --- ensure mol cowt lies within cell
-            #     (ToDo: choose _r such that this line is no required)
-            #       ---> actually possible? use B?
-            _delta = wrap(c_aa, cell_aa_deg) - c_aa
-            mol_com_aa.append(c_aa + _delta)
-            ind = np.array(mol_map) == _i
-            pos_aa[ind] = P + _delta[None]
+                if not fast_forward:
+                    P = P.reshape((_m_n_atoms, n_frames, 3))
+                else:
+                    P = unwrap_pbc(
+                            _p,
+                            reference=P[:, None],
+                            cell=cell_aa_deg,
+                            axis=-2,
+                            )
+
+        elif algorithm == 'reference':
+            if _frames:
+                raise NotImplementedError('joining molecules with reference ',
+                                          'only available for single frames')
+            _ref = dec(reference, mol_map)
+            P = unwrap_pbc(
+                    _p[None],
+                    reference=_ref[_i][None],
+                    cell=cell_aa_deg,
+                    axis=0,
+                    )[-1]
 
         # --- legacy code
         # elif algorithm == 'closest':
@@ -566,6 +633,16 @@ def join_molecules(pos_aa, mol_map, cell_aa_deg,
         else:
             raise ValueError(f'got unknown algorithm {algorithm} for joining '
                              'molecules')
+
+        c_aa = cowt(P, _w, axis=0)
+        # --- ensure mol cowt lies within cell
+        #     (ToDo: make this optional)
+        #     (ToDo: choose _r such that this line is no required)
+        #       ---> actually possible? use B?
+        _delta = wrap_pbc(c_aa, cell_aa_deg) - c_aa
+        mol_com_aa.append(c_aa + _delta)
+        ind = np.array(mol_map) == _i
+        pos_aa[ind] = P + _delta[None]
 
         # --- legacy code (2)
         # --- complete mols

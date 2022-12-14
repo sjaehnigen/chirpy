@@ -907,13 +907,15 @@ class _XYZ():
     # --- join the next two methods?
     def wrap(self):
         if self._type == 'frame':
-            self._pos_aa(mapping.wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
-                                      self.cell_aa_deg)[0])
+            self._pos_aa(mapping.wrap_pbc(
+                                   self.pos_aa.reshape(1, self.n_atoms, 3),
+                                   self.cell_aa_deg
+                                   )[0])
         else:
-            self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
+            self._pos_aa(mapping.wrap_pbc(self.pos_aa, self.cell_aa_deg))
 
     def wrap_molecules(self, mol_map, weights='masses',
-                       algorithm='connectivity'):
+                       algorithm='connectivity', reference=None):
         if weights is None:
             w = _np.ones((self.n_atoms))
         elif weights == 'masses':
@@ -921,31 +923,37 @@ class _XYZ():
         else:
             raise ValueError(f'unknown weight type {weights}')
 
-        if self._type == 'trajectory':
-            _p, mol_cnt_aa = mapping.join_molecules(
-                                self.pos_aa,
-                                mol_map,
-                                self.cell_aa_deg,
-                                weights=w,
-                                algorithm=algorithm,
-                                symbols=self.symbols,
-                                )
-            self._pos_aa(_p)
-        else:
-            _p, mol_cnt_aa = mapping.join_molecules(
-                                self.pos_aa,
-                                mol_map,
-                                self.cell_aa_deg,
-                                weights=w,
-                                algorithm=algorithm,
-                                symbols=self.symbols,
-                                )
-            self._pos_aa(_p)
+        if algorithm == 'reference' and reference is None:
+            try:
+                reference = self._mol_ref
+            except AttributeError:
+                _warnings.warn('could not find reference positions for'
+                               'joining molecules with algorithm '
+                               '\'reference\'. Switching to \'connectivity\'',
+                               _ChirPyWarning, stacklevel=2)
+                algorithm = 'connectivity'
+
+        _p, mol_cnt_aa = mapping.join_molecules(
+                            self.pos_aa,
+                            mol_map,
+                            self.cell_aa_deg,
+                            weights=w,
+                            algorithm=algorithm,
+                            symbols=self.symbols,
+                            reference=reference,
+                            )
+        self._pos_aa(_p)
 
         if weights is None:
             self.mol_cog_aa = mol_cnt_aa
         elif weights == 'masses':
             self.mol_com_aa = mol_cnt_aa
+
+        # --- remember topology
+        if self._type != 'frame':
+            self._mol_ref = _copy.deepcopy(_p[0])
+        else:
+            self._mol_ref = _copy.deepcopy(_p)
 
     def _get_center_of_weight(self, mask=None, weights=None,
                               wrap=False, join_molecules=False):
@@ -1287,7 +1295,8 @@ class _XYZ():
                                        _np.array(['MOL'] * loc_self.n_atoms)
                                        )).swapaxes(0, 1)
 
-            if (cell_aa_deg := kwargs.get('cell_aa_deg', self.cell_aa_deg)) is None:
+            if (cell_aa_deg := kwargs.get('cell_aa_deg', self.cell_aa_deg)) \
+                    is None:
                 _warnings.warn("Missing cell parametres for PDB output!",
                                _ChirPyWarning, stacklevel=2)
                 cell_aa_deg = _np.array([0.0, 0.0, 0.0, 90., 90., 90.])
@@ -1416,10 +1425,12 @@ class _MOMENTS():
 
     def wrap(self):
         if self._type == 'frame':
-            self._pos_aa(mapping.wrap(self.pos_aa.reshape(1, self.n_atoms, 3),
-                                      self.cell_aa_deg)[0])
+            self._pos_aa(mapping.wrap_pbc(
+                                 self.pos_aa.reshape(1, self.n_atoms, 3),
+                                 self.cell_aa_deg
+                                 )[0])
         else:
-            self._pos_aa(mapping.wrap(self.pos_aa, self.cell_aa_deg))
+            self._pos_aa(mapping.wrap_pbc(self.pos_aa, self.cell_aa_deg))
 
     def center_position(self, pos, cell_aa_deg, wrap=True):
         '''pos reference in shape (n_frames, three)'''
@@ -1730,9 +1741,13 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
         self._frame = self._kernel(**self._kwargs)
 
-        # ---check for memory (still a little awkward)
+        # --- check for memory (still a little awkward)
         if hasattr(self._frame, '_align_ref'):
             self._kwargs['align_ref'] = self._frame._align_ref
+
+        # --- take from saved previous frame (not yet implemented)
+        if hasattr(self, '_mol_ref'):
+            self._frame._mol_ref = self._mol_ref
 
         # --- check for stored masks
         for _f, _f_args, _f_kwargs in self._kwargs['_masks']:
@@ -1821,6 +1836,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
     def wrap_molecules(self, *args, **kwargs):
         self._frame.wrap_molecules(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
+        # --- if call already in mask, just unwrap relative atom positions
+        #     (assumes constant connectivity, which is default in XYZ)
+        kwargs.update(
+                algorithm='reference',
+                )
         self._mask(self, 'wrap_molecules', *args, **kwargs)
 
     def wrap(self, *args, **kwargs):

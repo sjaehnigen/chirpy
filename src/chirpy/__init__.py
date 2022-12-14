@@ -28,7 +28,7 @@
 #
 # ----------------------------------------------------------------------
 
-__version__ = "0.24.3"
+__version__ = "0.24.4"
 
 
 import sys
@@ -50,12 +50,13 @@ from . import read
 from . import topology
 from . import visualise
 from . import write
-from . import external
 
 # --- load important sub-modules
 from .classes import *
 from .create import *
 from .snippets import *
+from .topology import *
+from .visualise import pubplot
 from .snippets import _unpack_tuple
 from .physics import spectroscopy
 

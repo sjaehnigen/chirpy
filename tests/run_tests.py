@@ -72,6 +72,7 @@ if __name__ == '__main__':
     cp.config.set_verbose(False)
     if args.verbose:
         _verbosity = 2
+        cp.config.set_verbose(True)
 
     # os.system('bash %s/check_methods.sh %s/..' % (_test_dir, _test_dir))
 

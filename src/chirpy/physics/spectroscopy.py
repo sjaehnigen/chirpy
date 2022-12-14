@@ -39,8 +39,8 @@ from .. import constants
 from ..classes.object import Sphere
 from ..classes.core import PALARRAY
 from ..topology.mapping import distance_pbc, _pbc_shift
+from ..topology import mapping
 
-from .. import config
 from ..config import ChirPyWarning as _ChirPyWarning
 
 
@@ -108,9 +108,10 @@ def power_from_tcf(velocities_au, weights=1.0,
     '''Expects velocities of shape (n_frames, n_atoms, three)
        No support of trajectory iterators.
 
-       Expects atomic units for the correct prefactors.
+       Expects atomic units.
 
        ts_au ... timestep in a.u.
+       weights ... atom weights (in most cases: atom masses)
        window_length_au ... time length of the window function used with the
                             time correlation function in a.u.
 
@@ -500,10 +501,7 @@ def compute_gauge_transport_term(cur, pos, cell,
 
     _pos = copy.deepcopy(pos)
     if unwrap_pbc:
-        for _t in tqdm.tqdm(range(n_frames),
-                            desc='unwrapping particles under PBC',
-                            disable=not config.__verbose__):
-            _pos[_t] = pos[_t-1] + distance_pbc(pos[_t-1], pos[_t], cell)
+        _pos = mapping.unwrap_pbc(pos, cell=cell)
 
     if not parallel:
         freq, cd_GT, C_cd_GT = np.array([

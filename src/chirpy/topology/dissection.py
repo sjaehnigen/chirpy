@@ -32,7 +32,7 @@
 import numpy as np
 import copy
 
-from ..topology.mapping import distance_pbc, wrap, cell_vec,\
+from ..topology.mapping import distance_pbc, wrap_pbc, cell_vec,\
     detect_lattice, neighbour_matrix, cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..constants import symbols_to_symbols
@@ -112,7 +112,7 @@ def define_molecules(pos_aa, symbols, cell_aa_deg=None, neigh_cutoff_aa=24.):
     _batch = _make_batches(MIN, MAX, _n_b)
 
     def _w(p):
-        return wrap(p, _cell)
+        return wrap_pbc(p, _cell)
 
     pair_list = []
     neigh_count = np.zeros((n_atoms))

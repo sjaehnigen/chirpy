@@ -112,7 +112,7 @@ class TestMapping(unittest.TestCase):
                 [[24.218, 0., 0.], [0., 15.92, 0.], [-4.995, 0., 12.393]]
                 )
         cell_vec_aa = np.around(mapping.cell_vec(cell_aa_deg,
-                                                     priority=(2, 0, 1)),
+                                                 priority=(2, 0, 1)),
                                 decimals=3)
         self.assertListEqual(
                 cell_vec_aa.tolist(),
@@ -125,17 +125,17 @@ class TestMapping(unittest.TestCase):
         lattice = mapping.detect_lattice(cell_aa_deg)
         self.assertEqual(lattice, 'monoclinic')
 
-    def test_wrap(self):
+    def test_wrap_pbc(self):
         cell_aa_deg = np.array([1., 2., np.sqrt(2), 90., 135., 90.])
         _p1 = np.ones((2, 3))
         _p1[0] = [0.99, 1., 0.5]
         _p1[1] = [1.1, 2.1, 1.1]
-        _p1 = np.around(mapping.wrap(_p1, cell_aa_deg), decimals=3)
+        _p1 = np.around(mapping.wrap_pbc(_p1, cell_aa_deg), decimals=3)
         self.assertListEqual(_p1.flatten().tolist(),
                              [-0.01, 1., 0.5, 0.1, 0.1, 0.1])
         _shape = (3, 2, 3)
         _p2 = np.ones(_shape)
-        self.assertTupleEqual(mapping.wrap(_p2, cell_aa_deg).shape, _shape)
+        self.assertTupleEqual(mapping.wrap_pbc(_p2, cell_aa_deg).shape, _shape)
 
     def test_distance_pbc(self):
         cell_aa_deg = np.array([1., 2., np.sqrt(2), 90., 135., 90.])

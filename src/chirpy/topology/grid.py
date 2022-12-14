@@ -77,14 +77,15 @@ def _lorentzian_std(r, width, dim=1):
     return 1 / (1 + _x**2)
 
 
-def regularisation(p, grid, *args, mode='gaussian', cell_aa_deg=None):
+def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
     '''Regularisation of singularities on a grid.
-       Default mode uses Gaussian smear function.
+       Default mode uses Gaussian functions.
        Requires *args according to chosen function.
-       Expects positions p of shape (N [,dim}) with N being
-       the number of points and
-       pos_grid of shape ([dim,] X, [Y, Z, ...]).
-       Explicit dim axis can be omitted for dim=1.
+
+       positions ... array of shape (N [,dim]) with N being
+                     the number of points
+       grid ... pos_grid of shape ([dim,] X, [Y, Z, ...]).
+                Explicit dim axis can be omitted for dim=1.
        '''
     if mode == 'gaussian':
         _F = _gaussian
@@ -99,13 +100,13 @@ def regularisation(p, grid, *args, mode='gaussian', cell_aa_deg=None):
 
     if len(grid.shape) == 1:
         dim = 1
-        if len(p.shape) == 1:
-            p = p.reshape((p.shape[0], dim))
+        if len(positions.shape) == 1:
+            positions = positions.reshape((positions.shape[0], dim))
     else:
         dim, *G = grid.shape
         if dim != len(G):
             raise TypeError('Given grid in wrong shape!')
-        if dim != p.shape[1]:
+        if dim != positions.shape[1]:
             raise TypeError('Given positions in wrong shape!')
 
     _slc = (slice(None),) + dim * (None,)
@@ -124,5 +125,5 @@ def regularisation(p, grid, *args, mode='gaussian', cell_aa_deg=None):
                 ),
                 *args,
                 dim=dim)
-             for _p in p]
+             for _p in positions]
             )

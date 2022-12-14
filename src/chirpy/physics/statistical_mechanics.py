@@ -238,8 +238,9 @@ def spectral_density(*args, ts=1, factor=1/(2*np.pi), symmetry=None,
        time-correlation function (TCF) of a vector signal (*args).
        The method automatically chooses to calculate auto- or cross-
        correlation functions based on the number of arguments (max 2).
-       Adding signal filters may be enabled; use flt_pow=-1 to remove the
-       implicit triangular filter due to finite size.
+       Adding signal filters may be enabled usign window_length=<float>
+       finite_size_correction=True to remove implicit triangular filter due
+       to finite size signal.
        Expects signal of shape (n_frames, n_dim)
        Keyword ts: timestep
        Signal symmetry can be even or odd (or None to get the full complex FT)
