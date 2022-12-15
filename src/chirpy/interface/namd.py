@@ -4,10 +4,10 @@
 #
 #    A python package for chirality, dynamics, and molecular vibrations.
 #
-#    https://hartree.chimie.ens.fr/sjaehnigen/chirpy.git
+#    https://github.com/sjaehnigen/chirpy
 #
 #
-#  Copyright (c) 2020-2022, The ChirPy Developers.
+#  Copyright (c) 2020-2023, The ChirPy Developers.
 #
 #
 #  Released under the GNU General Public Licence, v3 or later

@@ -1,8 +1,6 @@
 # ChirPy
 
-[*ChirPy*](https://hartree.chimie.ens.fr/sjaehnigen/chirpy) (_chiral python_) is a python package for chirality, dynamics, and molecular vibrations.
-
-(... work in progress)
+[*ChirPy*](https://github.com/sjaehnigen/chirpy) (_chiral python_) is a python package for chirality, dynamics, and molecular vibrations.
 
 
 Main features:
@@ -17,37 +15,47 @@ Furthermore:
 - Interfacing with VMD
 - Processing of volumetric data and vector fields
 
+(... work in progress)
+
 
 ## Installation 
-Copy or clone the *ChirPy* repository into a local directory. Open a bash terminal and change directory to the local copy of the repository.
+Copy or clone the repository into a local directory. Open a bash terminal and change directory to the local copy of the repository.
 
 Make sure you have the following packages installed:
 - `python` >= 3.10
 - `pip` >= 22.3
 - `packmol` >= 20.0 (optional)
 
-Or use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the `conda_env.yml` file:
+You can also use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the delivered `conda_env.yml` file:
 `conda env create -f conda_env.yml`
 
 In the parent directory, run:
+
+.. code:: shell
 
 `pip install .`
 
 *ChirPy* has now been installed and can be imported within a python environment:
 
+.. code:: python
+
 `import chirpy as cp`
 
 Check that you installation is correct by running from a bash terminal the test suite in `tests/`:
+
+.. code:: shell
 
 `python run_tests.py`
 
 or
 
+.. code:: shell
+
 `./run_tests.py`
 
 (optional arguments: --verbose, --scripts)
 
-Thank you for reporting bugs and issues to the [developers](https://hartree.chimie.ens.fr/sjaehnigen/chirpy/-/blob/master/AUTHORS.txt).
+Thank you for reporting bugs and issues to the [developers](https://github.com/sjaehnigen/chirpy/blob/master/AUTHORS.txt).
 
 ## Examples
 Workable binaries can be found in the folder `scripts/` with some pre-implemented *ChirPy* features. Make sure you add this folder to PATH.

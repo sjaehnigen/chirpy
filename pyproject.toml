@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chirpy"
 description = "A python package for chirality, dynamics, and molecular vibrations."
 maintainers = [
-  {name = "Sascha Jähnigen", email = "sascha.jaehnigen@pens.psl.eu"}
+  {name = "Sascha Jähnigen", email = "sascha.jaehnigen@ens.psl.eu"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,10 +29,9 @@ classifiers = [
 dynamic = ["version"]
 
 [project.urls]
-homepage = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
-documentation = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
-repository = "https://hartree.chimie.ens.fr/sjaehnigen/chirpy"
-# changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+homepage = "https://github.com/sjaehnigen/chirpy"
+documentation = "https://github.com/sjaehnigen/chirpy/blob/master/README.md"
+repository = "https://github.com/sjaehnigen/chirpy"
 
 
 [tool.setuptools.dynamic]

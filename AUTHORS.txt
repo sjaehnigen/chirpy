@@ -1,21 +1,22 @@
+The repository is hosted at https://github.com/sjaehnigen/chirpy including the version history.
 
--------------------------------------------------------------------
+Contact
+-------
 
-   ChirPy Authors
-
--------------------------------------------------------------------
-
-All authors and contributions are listed in this file.
-
-The project is maintained by Sascha Jähnigen. The repository is 
-located at https://hartree.chimie.ens.fr/sjaehnigen/chirpy
-showing the history of changes including earlier versions.
-
-Contact: sascha.jahnigen (at) ens.psl.eu
+sascha.jahnigen (at) ens.psl.eu
 
 
-since 2014
- - Sascha Jähnigen
+Institutions
+------------
 
-2010-2014
- - Arne Scherrer
+Ecole Normale Supérieure, Paris, France (ENS).
+Martin-Luther-Universität Halle-Wittenberg (MLU).
+
+
+Contributors
+------------
+
+Sascha Jähnigen (since 2014). [main developer]
+Arne Scherrer (2010-2014).
+
+
