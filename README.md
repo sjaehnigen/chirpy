@@ -27,32 +27,28 @@ Make sure you have the following packages installed:
 - `packmol` >= 20.0 (optional)
 
 You can also use [Anaconda](https://anaconda.org) to create a *chirpy* environment from the delivered `conda_env.yml` file:
-`conda env create -f conda_env.yml`
+```shell
+conda env create -f conda_env.yml
+```
 
 In the parent directory, run:
-
-.. code:: shell
-
-`pip install .`
+```shell
+pip install .
+```
 
 *ChirPy* has now been installed and can be imported within a python environment:
-
-.. code:: python
-
-`import chirpy as cp`
+```python
+import chirpy as cp
+```
 
 Check that you installation is correct by running from a bash terminal the test suite in `tests/`:
-
-.. code:: shell
-
-`python run_tests.py`
-
+```shell
+python run_tests.py
+```
 or
-
-.. code:: shell
-
-`./run_tests.py`
-
+```shell
+./run_tests.py
+```
 (optional arguments: --verbose, --scripts)
 
 Thank you for reporting bugs and issues to the [developers](https://github.com/sjaehnigen/chirpy/blob/master/AUTHORS.txt).
