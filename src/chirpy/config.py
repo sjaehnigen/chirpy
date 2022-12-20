@@ -47,7 +47,13 @@ class ChirPyWarning(UserWarning):
 
 
 def version_info():
-    return tuple([int(_v) for _v in version.split('.')])
+    _v = version.split('.')
+    major = int(_v[0])
+    minor = int(_v[1])
+    micro = int(_v[2])
+    releaselevel = _v[3]
+
+    return (major, minor, micro, releaselevel)
 
 
 def _reload_modules():
