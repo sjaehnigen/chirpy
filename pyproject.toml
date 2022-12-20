@@ -36,8 +36,3 @@ repository = "https://github.com/sjaehnigen/chirpy"
 
 [tool.setuptools.dynamic]
 version = {attr = "chirpy.__version__"}
-
-[tool.setuptools]
-packages = ["chirpy"]
-package-dir = {"" = "src"}
-
