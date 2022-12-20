@@ -117,41 +117,51 @@ def main():
 
     cp.config.set_verbose(args.verbose)
 
+    read_args = cp.snippets.extract_keys(
+                                   vars(args),
+                                   sort=False,
+                                   wrap_molecules=False,
+                                   weights='masses',
+                                   center_molecule=None,
+                                   cell_aa_deg=None,
+                                   verbose=False,
+                                   )
+
+    # --- adjustments ro read_args from parsing
+    if not args.keep_molecules:
+        read_args['define_molecules'] = True
+
     if bool(args.center_coords):
         if args.center_coords[0] == 'True':
-            args.center_coords = True
+            read_args['center_coords'] = True
         elif args.center_coords[0] == 'False':
-            args.center_coords = False
+            read_args['center_coords'] = False
         else:
-            args.center_coords = [int(_a) for _a in args.center_coords]
+            read_args['center_coords'] = [int(_a) for _a in args.center_coords]
 
-    if not args.center_of_geometry:
-        args.weights = 'masses'
-    else:
-        args.weights = None
+    if args.center_of_geometry:
+        read_args['weights'] = None
 
     if args.keep_positions:
-        args.center_coords = False
-        args.center_molecule = None
-        args.wrap_molecules = False
+        read_args['center_coords'] = False
+        read_args['center_molecule'] = None
+        read_args['wrap_molecules'] = False
 
     i_fmt = args.input_format
     if i_fmt is None:
         i_fmt = args.fn.split('.')[-1].lower()
     if args.cell_aa_deg is None:
-        del args.cell_aa_deg
+        del read_args['cell_aa_deg']
 
-    _load = cp.classes.system.Molecule(**vars(args), fmt=i_fmt)
+    _load = cp.classes.system.Molecule(args.fn, **read_args, fmt=i_fmt)
     _load.XYZ._check_distances()
 
     # --- keep only coordinates
     if hasattr(_load, 'Modes'):
         del _load.Modes
 
-    if not args.keep_molecules:
-        _load.define_molecules()
-
     if args.wrap_molecules:
+        # --- redundant?
         if args.verbose:
             print(f'Atom weights for molecular centers: {_load.weights}')
         _load.wrap_molecules()  # algorithm='heavy_atom')

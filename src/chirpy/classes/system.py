@@ -80,6 +80,10 @@ class _SYSTEM(_CORE):
             if kwargs.get('sort', False):
                 self.sort_atoms()
 
+            if kwargs.get('define_molecules', False):
+                # --- overwrites molmap
+                self.define_molecules()
+
             if kwargs.get('wrap_molecules', False):
                 if self.mol_map is None:
                     self.define_molecules()
