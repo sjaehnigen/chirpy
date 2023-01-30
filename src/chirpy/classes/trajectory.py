@@ -736,8 +736,11 @@ class _XYZ():
                                                           value_argument))
                        if _f != _a
                        ])) != '':
-                _warnings.warn(f'{key} different in file and argument '
-                               '(e.g., from topology)\n' + _diff,
+                _warnings.warn(f'Encountered different values for \'{key}\''
+                               ' in file and the given '
+                               'topology or'
+                               ' argument (ignoring metadata from file)\n'
+                               + _diff,
                                _ChirPyWarning, stacklevel=4)
 
         self.cell_aa_deg = kwargs.get('cell_aa_deg', f_cell_aa_deg)

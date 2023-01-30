@@ -255,6 +255,8 @@ class _SYSTEM(_CORE):
         nargs['fmt'] = fmt
 
         if fmt == 'pdb':
+            if self.mol_map is None:
+                self.define_molecules()
             self.clean_residues()
             nargs = {_s: getattr(self, _s)
                      for _s in ('mol_map', 'cell_aa_deg')}

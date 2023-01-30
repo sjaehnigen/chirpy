@@ -308,6 +308,7 @@ def main():
     if args.fn_vel is not None:
         _files.append(args.fn_vel)
 
+    # --- load data into object
     if skip is None:
         _load = system.Supercell(*_files, fmt=i_fmt, **largs)
         largs.update({'skip': []})

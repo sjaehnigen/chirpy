@@ -321,9 +321,12 @@ def read_topology_file(fn):
         for _attr in syntax:
             _attrname = _attr[0]
             _section = copy.deepcopy(_C)
-            for _title in _attr[1]:
-                _section = _section[_title]
-            _section = _section['KEYWORDS']
+            try:
+                for _title in _attr[1]:
+                    _section = _section[_title]
+                _section = _section['KEYWORDS']
+            except KeyError:
+                _section = []
 
             # --- what follows is walrus magic within a list comprehension :)
             _con[_attrname] = list(map(_attr[3], [
