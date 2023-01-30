@@ -87,7 +87,7 @@ class PALARRAY():
 
     def run(self, verbose=config.__verbose__):
         try:
-            _dtype = np.float
+            _dtype = float
             if self.multiple_returns:
                 _dtype = 'object'
             result = np.array(list(tqdm(

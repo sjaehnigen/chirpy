@@ -12,15 +12,15 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "GPL-3.0-or-later"}
 dependencies = [
-    "fortranformat",
-    "numpy",
+    "fortranformat>=1.2.2",
+    "numpy>=1.24.1",
     "ipython",
     "jupyter",
     "jupyter_core",
-    "matplotlib",
-    "periodictable",
-    "pycifrw",
-    "scipy",
+    "matplotlib>=3.6.3",
+    "periodictable>=1.6.1",
+    "pycifrw>=4.4.5",
+    "scipy>=1.10.0",
     "tqdm",
 ]
 classifiers = [
