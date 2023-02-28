@@ -343,6 +343,13 @@ def cpmdIterator(FN, **kwargs):
 
         kwargs.update(dict(filetype=filetype))
 
+    if filetype == 'MOMENTS':
+        with open(FN, 'r') as _f:
+            # --- check for position form
+            if len(_f.readline().split()) == 13:
+                filetype = 'MOMENTS_PF'
+                kwargs.update(dict(filetype=filetype))
+
     if symbols is None:
         _nlines = 1
     else:
@@ -589,7 +596,10 @@ def cifReader(FN, fill_unit_cell=True):
     _read = _ReadCif(FN)
     title = _read.keys()[0]
     _load = _read[title]
-    cell_aa_deg = np.array([_measurement2float(_load[_k]) for _k in [
+    # --- the following is just a chaos of cases in order to parse the
+    # possible CIF keyword formats, requires clean up
+    try:
+        cell_aa_deg = np.array([_measurement2float(_load[_k]) for _k in [
                                                           '_cell_length_a',
                                                           '_cell_length_b',
                                                           '_cell_length_c',
@@ -597,20 +607,32 @@ def cifReader(FN, fill_unit_cell=True):
                                                           '_cell_angle_beta',
                                                           '_cell_angle_gamma'
                                                           ]])
-#     data = np.array([_measurement2float(_load[_k]) for _k in [
-#                                                           '_atom_site_fract_x',
-#                                                           '_atom_site_fract_y',
-#                                                           '_atom_site_fract_z'
-#                                                           ]]).T
-    x = np.array(_measurement2float(_load['_atom_site_fract_x']))
-    y = np.array(_measurement2float(_load['_atom_site_fract_y']))
-    z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+    except KeyError:
+        cell_aa_deg = np.array([_measurement2float(_load[_k]) for _k in [
+                                                          '_cell.length_a',
+                                                          '_cell.length_b',
+                                                          '_cell.length_c',
+                                                          '_cell.angle_alpha',
+                                                          '_cell.angle_beta',
+                                                          '_cell.angle_gamma'
+                                                          ]])
+
+    try:
+        x = np.array(_measurement2float(_load['_atom_site_fract_x']))
+        y = np.array(_measurement2float(_load['_atom_site_fract_y']))
+        z = np.array(_measurement2float(_load['_atom_site_fract_z']))
+        symbols = tuple(get_label(['_atom_site_type_symbol']))
+        names = tuple(get_label(['_atom_site_label']))
+
+    except KeyError:
+        x = np.array(_measurement2float(_load['_atom_site.Cartn_x']))
+        y = np.array(_measurement2float(_load['_atom_site.Cartn_y']))
+        z = np.array(_measurement2float(_load['_atom_site.Cartn_z']))
+        symbols = tuple(get_label(['_atom_site.type_symbol']))
+        names = tuple(get_label(['_atom_site.label']))
 
     if False:
         print(f'Asymmetric unit: {len(list(zip(x, y, z)))} atoms')
-
-    symbols = tuple(get_label(['_atom_site_type_symbol']))
-    names = tuple(get_label(['_atom_site_label']))
 
     _space_group_label = get_label([
             '_space_group_crystal_system',

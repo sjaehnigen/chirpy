@@ -275,6 +275,7 @@ def main():
                 plt.plot(np.arange(len(_voa['tcf_' + _i])) * args.ts / 1000,
                          _voa['tcf_' + _i])
                 plt.xlabel(r'$\tau$ in ps')
+                plt.xscale('log')
                 plt.ylabel('TCF in ...')
                 plt.title('Time-correlation function for ' + _i)
                 plt.show()

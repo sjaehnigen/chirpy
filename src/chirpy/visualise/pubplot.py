@@ -33,6 +33,7 @@ import numpy as np
 import warnings
 import copy
 import os
+from scipy.ndimage import gaussian_filter1d
 
 from matplotlib.ticker import MultipleLocator  # FormatStrFormatter
 
@@ -169,7 +170,9 @@ def set_mutliple_y_axes(ax, sep, n_axes,
 
 
 def multiplot(
-             ax, x_a, y_a,
+             ax,
+             x_a,
+             Y_a,
              std_a=None,
              bool_a=True,  # False to deactivate plot in list
              color_a=['mediumblue', 'crimson', 'green', 'goldenrod', 'purple'],
@@ -192,11 +195,16 @@ def multiplot(
              hspace=None,  # manually define shift between plots, overrides sep
              xlim=None,
              ylim=None,
+             gaussian_filter=None,
              **kwargs):
     '''Make a nice plot of data in list.
        Arguments with _a denote list of values corresponding to data list y_a
        kwargs contains argument for pyplot
        '''
+    if gaussian_filter is None:
+        y_a = copy.deepcopy(Y_a)
+    else:
+        y_a = [gaussian_filter1d(_y, gaussian_filter, axis=0) for _y in Y_a]
 
     if not isinstance(y_a, (list, tuple)):
         raise TypeError('Expected list or tuple for y_a!')

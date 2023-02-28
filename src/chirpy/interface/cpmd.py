@@ -75,10 +75,15 @@ def cpmdReader(FN, **kwargs):
                             'MOMENTS',
                             ]]):
             filetype = 'MOMENTS'
+            with open(FN, 'r') as _f:
+                # --- check for position form
+                if len(_f.readline().split()) == 13:
+                    filetype = 'MOMENTS_PF'
 
     if filetype in ['GEOMETRY',
                     'TRAJECTORY',
                     'MOMENTS',
+                    'MOMENTS_PF',
                     ]:
         if ('symbols' in kwargs or 'numbers' in kwargs):
             numbers = kwargs.get('numbers')
@@ -555,10 +560,10 @@ class CPMDinput():
                 kinds.append("*%s_%s" % (_e, pp))
                 data.append(pos_au[symbols == _e])
                 n_kinds.append(len(data[-1]))
-                if _e in ['C', 'O', 'N', 'Cl', 'F', 'S'] and 'AEC' not in pp:
+                if _e in ['C', 'O', 'N', 'Cl', 'F'] and 'AEC' not in pp:
                     # --- ToDo: replace manual tweaks by automatic pp analysis
                     channels.append("LMAX=P LOC=P")
-                elif _e in ['P'] and 'AEC' not in pp:
+                elif _e in ['P', 'S'] and 'AEC' not in pp:
                     channels.append("LMAX=D LOC=D")
                 else:
                     channels.append("LMAX=S LOC=S")
