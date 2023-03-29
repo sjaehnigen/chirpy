@@ -37,7 +37,7 @@ from CifFile import ReadCif as _ReadCif
 import fortranformat as ff
 
 from .generators import _reader, _open, _container
-from ..topology.mapping import detect_lattice, cell_vec
+from ..topology.mapping import detect_lattice, cell_vec, close_neighbours
 from ..constants import convert as _convert
 from .. import config
 
@@ -681,13 +681,18 @@ def cifReader(FN, fill_unit_cell=True):
     data = np.tensordot(data, cell_vec_aa, axes=1)
 
     # --- clean data (atom duplicates), a little clumsy
-    #     NOT REQUIRED FOR INTEGER FILES!
-    # ind = np.array(sorted([
-    #        _j[0]
-    #        for _i in close_neighbours(data, cell=cell_aa_deg, crit=0.0)
-    #        for _j in _i[1]
-    #        ]))
-    # data = np.delete(data, ind, axis=0)
+    ind = np.array(sorted([
+           _j[0]
+           for _i in close_neighbours(data, cell=cell_aa_deg, crit=1.E-7)
+           for _j in _i[1]
+           ]))
+    if len(ind) != 0:
+        warnings.warn(f'found {len(ind)} immobile atoms in the unit cell, '
+                      'auto-removing duplicates',
+                      config.ChirPyWarning, stacklevel=2)
+        data = np.delete(data, ind, axis=0)
+        _symbols = tuple(np.delete(_symbols, ind))
+        _names = tuple(np.delete(_names, ind))
 
     # --- add frames dimension (no support of cif trajectories)
     return np.array([data]), _names, _symbols, cell_aa_deg, [title]

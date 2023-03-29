@@ -436,7 +436,7 @@ def close_neighbours(p0, cell=None, crit=None, symbols=None):
     _dM = distance_matrix(p0, cell=cell)
     if crit is None:
         if symbols is None:
-            crit = 0.0
+            crit = 1.E-7
         else:
             crit = dist_crit_aa(symbols) / 2.0
 
