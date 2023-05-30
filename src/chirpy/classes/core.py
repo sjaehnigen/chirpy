@@ -263,7 +263,7 @@ class ITERATOR():
 
         if verbose:
             with warnings.catch_warnings():  # --- do not warn only once
-                warnings.warn(f'snuck frame {self._fr}',
+                warnings.warn(f'sneak frame {self._fr}',
                               config.ChirPyWarning, stacklevel=2)
         self._fr -= self._st
 

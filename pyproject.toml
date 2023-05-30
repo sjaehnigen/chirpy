@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chirpy"
 description = "A python package for chirality, dynamics, and molecular vibrations."
 maintainers = [
-  {name = "Sascha Jähnigen", email = "sascha.jaehnigen@ens.psl.eu"}
+  {name = "Sascha Jähnigen", email = "sascha.jahnigen@ens.psl.eu"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"

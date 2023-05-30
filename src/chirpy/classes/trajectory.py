@@ -2082,6 +2082,7 @@ class VibrationalModes(_XYZ, _MODES):
         return XYZFrame(data=self.data[mode],
                         symbols=self.symbols,
                         comments=self.comments[mode],
+                        cell_aa_deg=self.cell_aa_deg,
                         **kwargs
                         )
 

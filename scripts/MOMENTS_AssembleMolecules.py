@@ -136,8 +136,22 @@ def main():
     parser.add_argument(
             "--do_not_join",
             action='store_true',
-            help="Do not join molecules before computing gauge to accelerate. "
+            help="Do not join molecules before computing gauge (faster). "
                  "Enable ONLY if molecules are not broken across boundaries.",
+            default=False,
+            )
+    parser.add_argument(
+            "--ignore_electronic_magnetization",
+            action='store_true',
+            help="Do not include magnetic polarization of the "
+                 "electronic wave function (use centers of charge only).",
+            default=False,
+            )
+    parser.add_argument(
+            "--ignore_electronic_polarization",
+            action='store_true',
+            help="Do not include electric polarization of the "
+                 "electronic wave function (use centers of charge only).",
             default=False,
             )
     parser.add_argument(
@@ -229,6 +243,11 @@ def main():
 
         n_map = np.array(SYS.mol_map)
         _cell = SYS.cell_aa_deg
+
+        if args.ignore_electronic_magnetization:
+            ELE.m_au *= 0
+        if args.ignore_electronic_polarization:
+            ELE.c_au *= 0
 
         # --- generate classical nuclear moments
         Qn_au = constants.symbols_to_valence_charges(NUC.symbols)
