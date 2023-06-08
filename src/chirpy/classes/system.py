@@ -169,7 +169,8 @@ class _SYSTEM(_CORE):
                                  '(mol_map)!')
 
         self.XYZ.split(self.mol_map, select=mols)
-        self.mol_map = _np.array([_i for _i in self.mol_map if _i in mols])
+        # re-define molecules to get a clean mol_map
+        self.define_molecules()
 
         self.symbols = self.XYZ.symbols
         # self.names = self.XYZ.names

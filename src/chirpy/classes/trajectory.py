@@ -266,7 +266,7 @@ class _FRAME(_CORE):
         for iz, z in enumerate(times):
             tmp = _copy.deepcopy(new)
             for iiz in range(z-1):
-                tmp.data[:, :3] += cell_vec_aa[None, iz]
+                tmp.data[..., :3] += cell_vec_aa[iz]
                 new += tmp
 
         self.__dict__.update(new.__dict__)
@@ -1180,7 +1180,7 @@ class _XYZ():
 
         self._pos_aa(_pos)
 
-    def clean_velocities(self, weights='masses'):
+    def clean_velocities(self, weights='masses', rotation=True):
         '''Remove spurious linear and angular momenta from trajectory.
            Positions are not changed.
           '''
@@ -1196,15 +1196,16 @@ class _XYZ():
             _p = self.pos_aa
             _v = self.vel_au
 
-        _o = mapping.cowt(_p*constants.l_aa2au,
-                          _wt,
-                          axis=self._axis_pointer)
+        if rotation:
+            _o = mapping.cowt(_p*constants.l_aa2au,
+                              _wt,
+                              axis=self._axis_pointer)
 
-        _AV, _I = motion.angular_momenta(_p*constants.l_aa2au, _v, _wt,
-                                         origin=_o, moI=True)
-        _AV /= _I[:, None]
-        _lever = _p*constants.l_aa2au - _o[:, None]
-        _v -= _np.cross(_AV[:, None], _lever, axis=-1)
+            _AV, _I = motion.angular_momenta(_p*constants.l_aa2au, _v, _wt,
+                                             origin=_o, moI=True)
+            _AV /= _I[:, None]
+            _lever = _p*constants.l_aa2au - _o[:, None]
+            _v -= _np.cross(_AV[:, None], _lever, axis=-1)
 
         _LV = motion.linear_momenta(_v, _wt / sum(_wt))
         _v -= _LV[:, None]

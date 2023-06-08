@@ -253,7 +253,7 @@ Output: None"""
         obuffer += format % tuple(tmp)
 
     obuffer += 'MASTER        1    0    0    0    0    0    0    0 '
-    obuffer += '%4d    0 %4d    0\nEND' % (n_atoms, n_atoms)
+    obuffer += '%4d    0 %4d    0\nEND\n' % (n_atoms, n_atoms)
 
     fmt = 'w'
     if append:
@@ -283,7 +283,7 @@ def pdbWriter(fn, data, names, symbols, residues, box, title, selection=None,
         n_frames = len(data)
         for fr in range(n_frames):
             _write_pdb_frame(fn, data[fr], names, symbols, residues,
-                             box, title, selection=selection,
+                             box, title[fr], selection=selection,
                              append=append or fr != 0)
     else:
         raise AttributeError('Wrong data shape!', data.shape)
