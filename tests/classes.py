@@ -212,7 +212,9 @@ class TestSystem(unittest.TestCase):
                                      fmt='xyz', **nargs)
         _load.XYZ.merge(_load_vel.XYZ, axis=-1)
 
-        _load.extract_molecules([10, 11])
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            _load.extract_molecules([10, 11])
         _load.write("out_system.xyz", fmt='xyz', rewind=False)
 
         self.assertTrue(filecmp.cmp("out_system.xyz",
