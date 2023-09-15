@@ -70,7 +70,10 @@ class PALARRAY():
         self.multiple_returns = func.__annotations__.get('return') is tuple
         self.pool = Pool(n_cores)
 
-        self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])
+        if axis != 0:
+            self.data = tuple([np.moveaxis(_d, axis, 0) for _d in data])
+        else:
+            self.data = tuple([_d for _d in data])
         self._length = np.prod([len(_d) for _d in data])**repeat
         self._ut = False
         self.repeat = repeat
