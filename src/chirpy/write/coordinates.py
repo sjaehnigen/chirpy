@@ -222,7 +222,7 @@ Output: None"""
     format = '%s%7d %-5s%-4s%5d    '
     for field in range(data.shape[1]):
         format += '%8.3f'
-    format += '%6.2f%6.2f %8s%2s\n'
+    format += '%6.2f%6.2f %8s%-2s\n'
     if selection is None:
         n_atoms = len(symbols)
         _range = range(n_atoms)
