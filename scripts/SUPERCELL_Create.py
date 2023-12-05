@@ -55,7 +55,7 @@ def main():
     parser.add_argument(
             "--multiply",
             nargs=3,
-            help="Multilee unit cells in X, Y, Z.",
+            help="Multiply unit cells in X, Y, Z.",
             default=[1, 1, 1],
             type=int
             )

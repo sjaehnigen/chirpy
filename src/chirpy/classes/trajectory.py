@@ -1290,8 +1290,7 @@ class _XYZ():
         elif fmt == "pdb":
             if (mol_map := kwargs.get('mol_map')) is None:
                 if (residues := getattr(loc_self, 'residues', None)) is None:
-                    _warnings.warn('could not find mol_map or residues '
-                                   'for PDB output',
+                    _warnings.warn('no residues defined in PDB output',
                                    _ChirPyWarning, stacklevel=2)
                     residues = _np.array([[1, 'MOL']] * loc_self.n_atoms)
             else:

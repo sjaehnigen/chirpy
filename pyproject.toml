@@ -14,9 +14,6 @@ license = {text = "GPL-3.0-or-later"}
 dependencies = [
     "fortranformat>=1.2.2",
     "numpy>=1.24.1",
-    "ipython",
-    "jupyter",
-    "jupyter_core",
     "matplotlib>=3.6.3",
     "periodictable>=1.6.1",
     "pycifrw>=4.4.5",
