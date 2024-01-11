@@ -297,8 +297,7 @@ class _SYSTEM(_CORE):
         if hasattr(self, 'Modes'):
             self.Modes.write(fn, **nargs)
         else:
-            new = self._copy()
-            new.XYZ.write(fn, rewind=False, **nargs)
+            self.XYZ.write(fn, **nargs)
 
     def write_frame(self, fn, **kwargs):
         '''Write current XYZ frame to file (frame or trajectory).'''

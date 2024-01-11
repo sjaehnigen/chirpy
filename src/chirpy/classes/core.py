@@ -376,10 +376,10 @@ class ITERATOR():
                                   stacklevel=2)
                 raise StopIteration('')
 
-        self._frame = _add(self._frame, new_other._frame)
+        self._frame = _add(self._frame, other._frame)
         self.__dict__.update(self._frame.__dict__)
 
-        self._mask(self, _func, new_other)
+        self._mask(self, _func, other)
 
     def mask_duplicate_frames(self, verbose=config.__verbose__, **kwargs):
         def split_comment(comment):
