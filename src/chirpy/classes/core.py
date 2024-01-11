@@ -237,9 +237,20 @@ class ITERATOR():
             a += b
         return a
 
-    def __add__(self, other):
+    def _copy(self):
+        '''return an exact copy of the iterator [BETA]
+           not a deepcopy ? '''
         new = self.__new__(self.__class__)
         new.__dict__.update(self.__dict__)
+        # --- split generator
+        self._gen_old = self._gen
+        self._gen, new._gen = itertools.tee(self._gen_old, 2)
+        del self._gen_old
+
+        return new
+
+    def __add__(self, other):
+        new = self._copy()
         if self._frame._is_similar(other._frame)[0] == 1:
             new._gen = itertools.chain(self._gen, other._gen)
             return new
@@ -320,23 +331,35 @@ class ITERATOR():
             warnings.warn('Too many masks on iterator!', config.ChirPyWarning,
                           stacklevel=2)
 
-    def merge(self, other, axis=-1, dim1=slice(0, 3), dim2=slice(0, 3)):
+    def merge(self, other, axis=-1, dim1=None, dim2=None):
         '''Merge horizontically with another iterator (of equal length).
            Specify axis 0 or 1/-1 to combine atoms or data, respectively
            (default: -1).
            Specify cartesian dimensions to be used from data by dim1/dim2
-           (default: slice(0, 3)).
+           as slice:
+              e.g. take indices 0 to 3 --> slice(0, 3)  [default for axis=-1]
+                   take all indices --> slice(None)     [default for axis=0]
            <Other> iterator must not be used anymore!
            To concatenate iterators along the frame axis, use "+".
            '''
+        if dim1 is None:
+            if axis in (-1, 1):
+                dim1 = slice(0, 3)
+            else:
+                dim1 = slice(None)
+        if dim2 is None:
+            if axis in (-1, 1):
+                dim2 = slice(0, 3)
+            else:
+                dim2 = slice(None)
 
         def _add(obj1, obj2):
             '''combine two frames'''
             obj1._axis_pointer = axis
             obj2._axis_pointer = axis
 
-            obj1.data = obj1.data[:, dim1]
-            obj2.data = obj2.data[:, dim2]
+            obj1.data = obj1.data[..., dim1]
+            obj2.data = obj2.data[..., dim2]
 
             obj1 += obj2
             return obj1
@@ -353,10 +376,10 @@ class ITERATOR():
                                   stacklevel=2)
                 raise StopIteration('')
 
-        self._frame = _add(self._frame, other._frame)
+        self._frame = _add(self._frame, new_other._frame)
         self.__dict__.update(self._frame.__dict__)
 
-        self._mask(self, _func, other)
+        self._mask(self, _func, new_other)
 
     def mask_duplicate_frames(self, verbose=config.__verbose__, **kwargs):
         def split_comment(comment):

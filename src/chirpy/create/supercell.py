@@ -34,6 +34,7 @@ import numpy as _np
 import warnings as _warnings
 
 from ..topology.dissection import assign_molecule as _assign_molecule
+from ..topology.dissection import define_molecules as _define_molecules
 from ..topology.mapping import cell_vec as _cell_vec
 from ..topology.mapping import cell_l_deg as _get_cell_aa_deg
 from ..topology.mapping import detect_lattice as _get_symmetry
@@ -126,6 +127,20 @@ class _BoxObject(_CORE):
         if not hasattr(self, 'symmetry'):
             self.symmetry = _get_symmetry(self.cell_aa_deg)
     # def routine: check all xx attributes against _xx() methods
+
+    def split_members(self):
+        new_members = []
+        for _ii, (_i, _m) in enumerate(self.members):
+            mol_map = tuple(_define_molecules(
+                                       _m.pos_aa,
+                                       _m.symbols,
+                                       cell_aa_deg=self.cell_aa_deg
+                                       ))
+            new_members += [(_i*1, _s)
+                            for _s in _m.split(mol_map)]
+        self.members = new_members
+        self._sync_class()
+        self._clean_members()
 
     def _clean_members(self):
         if self.n_members == 0:

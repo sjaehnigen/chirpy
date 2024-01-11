@@ -120,6 +120,28 @@ class _SYSTEM(_CORE):
                         print(self._topo[_k])
                         print(_v)
 
+    def _copy(self):
+        '''return an exact copy of the iterator [BETA]
+           not a deepcopy ? '''
+        new = self.__new__(self.__class__)
+        new.__dict__.update(self.__dict__)
+        new.XYZ = self.XYZ._copy()  # necessary to split iterator
+        return new
+
+    def __add__(self, other):
+        '''does not work if self and other are the same instance'''
+        new = self._copy()
+        new.mol_map = None
+        new.XYZ.merge(other.XYZ, axis=0)
+        new.symbols = new.XYZ.symbols
+        # new.names = new.XYZ.names
+        # new.kinds ...
+        # re-define molecules to get a clean mol_map
+        new.define_molecules()
+        new._check_consistency()
+
+        return new
+
     def read_fn(self, *args, **kwargs):
         self.XYZ = self._XYZ(*args, **kwargs)
         fmt = self.XYZ._fmt
@@ -275,7 +297,8 @@ class _SYSTEM(_CORE):
         if hasattr(self, 'Modes'):
             self.Modes.write(fn, **nargs)
         else:
-            self.XYZ.write(fn, **nargs)
+            new = self._copy()
+            new.XYZ.write(fn, rewind=False, **nargs)
 
     def write_frame(self, fn, **kwargs):
         '''Write current XYZ frame to file (frame or trajectory).'''
