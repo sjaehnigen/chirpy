@@ -55,7 +55,7 @@ from ..interface.molden import write_moldenvib_file, read_moldenvib_file
 from ..interface.gaussian import g09Reader
 from ..interface.tinker import tinkermomentsReader
 
-from ..topology import mapping, motion
+from ..topology import mapping, motion, grid
 from ..topology.dissection import read_topology_file
 
 from .. import constants
@@ -380,9 +380,8 @@ class _MODES(_FRAME):
             self._eivec()
             self.etdm_au = (
                     self.APT_au[None, :, :, :]
-                    * (
-                     self.eivec
-                     / _np.sqrt(self.masses_amu)[None, :, None])[:, :, :, None]
+                    * self.eivec[..., None]
+                    / _np.sqrt(self.masses_amu)[None, :, None, None]
                     ).sum(axis=(1, 2))
 
         if hasattr(self, 'AAT_au'):
@@ -514,6 +513,30 @@ class _MODES(_FRAME):
     #                                     T_K=T_K
     #                                     )
     #     # self.VCD = (self.etdm_au * self.mtdm_au).sum(axis=-1)
+
+    def continuous_spectrum(self, sample_points_cgs,
+                            attribute='IR_kmpmol',
+                            mode='gaussian_std',
+                            width_cgs=10):
+        '''Generate a continuous spectrum from discrete vibrational modes.
+           Sample points in 1/cm define the frequencies of the continuous
+           spectrum.
+           width (in 1/cm) corresponds to FWHM of the standard smoothing
+           function (with constant height), or sigma/gamma if a normalised
+           Gaussian/Lorentzian function (with constant integral) is used.'''
+
+        return _np.vstack((
+                 sample_points_cgs,
+                 (grid.regularisation(
+                                     self.eival_cgs,
+                                     _np.array(sample_points_cgs),
+                                     width_cgs,
+                                     mode=mode,
+                                     cell_aa_deg=None,  # self.cell_aa_deg,
+                                     # weights=getattr(self, attribute)
+                                     ) * getattr(self, attribute)[:, None]
+                  ).sum(axis=0)
+                 ))
 
 
 class _XYZ():
