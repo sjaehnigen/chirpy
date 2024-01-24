@@ -28,7 +28,6 @@
 #
 # ----------------------------------------------------------------------
 
-import sys
 import numpy as np
 import warnings
 
@@ -348,8 +347,7 @@ def g09_get_ir_spectrum(filename, x0, x1, w,
                                     point, freqs, inten, w)
                                   for point in spectrum[:, 0]])
     else:
-        print('Invalid line shape parametre')
-        sys.exit(1)
+        raise ValueError('Invalid line shape parameter')
     if not vcd:
         spectrum[:, 1] = 1000-spectrum[:, 1]
     return spectrum, freqs

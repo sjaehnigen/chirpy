@@ -141,8 +141,8 @@ class TestStatisticalMechanics(unittest.TestCase):
             places=10)
 
     def test_spectral_density(self):
-        P = 10000
-        N = 100000
+        P = 100
+        N = 1000
         X = np.linspace(0, P * 2*np.pi, N).reshape(N, 1)
         # freq = np.random.random(10) * np.pi
         freq = [

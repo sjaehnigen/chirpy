@@ -62,6 +62,12 @@ def main():
             default=None,
             type=float,
             )
+    parser.add_argument(
+            "--congruence_threshold_aa",
+            help="Maximally allowed distance between equal atoms in angstrom",
+            default=0.1,
+            type=float,
+            )
 
     args = parser.parse_args()
     fn1 = args.fn1
@@ -69,11 +75,15 @@ def main():
     mol1 = system.Supercell(fn1)
     mol2 = system.Supercell(fn2)
 
+    nargs = {}
+    nargs.update(dict(shift_centers_of_mass=args.shift_centers_of_mass))
+    nargs.update(dict(congruence_threshold_aa=args.congruence_threshold_aa))
+    if args.cell_aa_deg is not None:
+        nargs.update(dict(cell_aa_deg=args.cell_aa_deg))
+
     for _fr, _fr_b in zip(mol1.XYZ, mol2.XYZ):
         print('Frame:', _fr)
-        assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ,
-                                    cell_aa_deg=args.cell_aa_deg,
-                                    shift_centers_of_mass=args.shift_centers_of_mass)
+        assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ, **nargs)
 
         mol2.sort_atoms(assign)
         if args.sort:

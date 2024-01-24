@@ -68,9 +68,8 @@ class _SYSTEM(_CORE):
             else:
                 self.XYZ = kwargs.pop('XYZ')
         try:
-            self._sync_class(**kwargs)
-            self._sync_class(**kwargs)  # call twice for full synchronization
-            # self._check_consistency()
+            self._sync_class(check_consistency=False, **kwargs)
+            self._sync_class(tag='init', **kwargs)  # call twice
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -87,7 +86,7 @@ class _SYSTEM(_CORE):
         if hasattr(self, 'Modes'):
             self.Modes.cell_aa_deg = _np.array(_cell)
 
-    def _sync_class(self, **kwargs):
+    def _sync_class(self, check_consistency=True, **kwargs):
         if (_cell := kwargs.get('cell_aa_deg')) is not None:
             self._cell_aa_deg(_cell)
         elif not hasattr(self, 'cell_aa_deg'):
@@ -121,9 +120,10 @@ class _SYSTEM(_CORE):
                       False) and self.mol_map is not None:
             self.clean_residues()
 
-        self._check_consistency()
+        if check_consistency:
+            self._check_consistency(tag=kwargs.get('tag', ''))
 
-    def _check_consistency(self):
+    def _check_consistency(self, tag=''):
         if hasattr(self, 'Modes'):
             # --- ToDo: synchronize all sub-objects (pos_aa, cell_aa_deg)
             try:
@@ -141,11 +141,11 @@ class _SYSTEM(_CORE):
                         _warnings.warn('Topology file '
                                        f'{self._topo["fn_topo"]}'
                                        ' does not represent molecule '
-                                       f'{self.XYZ._fn} in {_k}!',
+                                       f'{self.XYZ._fn} in {_k} '
+                                       f'(operation {tag}): \n'
+                                       f'{self._topo[_k]} \n {_v}',
                                        _ChirPyWarning,
                                        stacklevel=3)
-                        print(self._topo[_k])
-                        print(_v)
 
     def _copy(self):
         '''return an exact copy of the iterator [BETA]
@@ -217,6 +217,9 @@ class _SYSTEM(_CORE):
 
         self.XYZ.repeat(times, unwrap_ref=unwrap_ref, priority=priority)
         self.mol_map = None
+        if hasattr(self.XYZ, 'residues'):
+            del self.XYZ._frame.residues
+            del self.XYZ.residues
 
         if hasattr(self, 'Modes'):
             self.Modes.repeat(times, unwrap_ref=unwrap_ref, priority=priority)
@@ -224,7 +227,20 @@ class _SYSTEM(_CORE):
         # --- repeat initialisation
         if hasattr(self.XYZ, 'cell_aa_deg'):
             kwargs.update({'cell_aa_deg': self.XYZ.cell_aa_deg})
-        self._sync_class(**kwargs)
+
+        if self._topo is not None:
+            for _k in self._topo:
+                if _k in ['symbols', 'names', 'residues']:
+                    self._topo[_k] *= _np.prod(times)
+                elif _k == 'cell_aa_deg':
+                    for _i in [0, 1, 2]:
+                        self._topo['cell_aa_deg'][_i] *= times[_i]
+                elif _k == 'mol_map':
+                    _n = len(set(self._topo[_k]))
+                    for _z in range(1, _np.prod(times)):
+                        self._topo[_k] += [_i+_z*_n for _i in self._topo[_k]]
+
+        self._sync_class(tag='repeat', **kwargs)
 
     def wrap(self, **kwargs):
         self.XYZ.wrap(**kwargs)
@@ -251,6 +267,9 @@ class _SYSTEM(_CORE):
         atoms  ...  list of atomic indices
         '''
         self.XYZ.split(_np.arange(len(self.symbols)), select=atoms)
+        if hasattr(self, 'Modes'):
+            self.Modes.split(_np.arange(len(self.symbols)), select=atoms)
+
         if self.mol_map is not None:
             self.mol_map = _np.array([_i
                                       for _i in self.mol_map if _i in atoms])
@@ -299,15 +318,16 @@ class _SYSTEM(_CORE):
             self._topo['mol_map'] = _np.array(
                                  self._topo['mol_map'])[ind].flatten().tolist()
             self._topo['symbols'] = tuple(_np.array(
-                                 self._topo['symbols'])[ind])  # .flatten())
+                                 self._topo['symbols'])[ind].flatten())
             # --- symbols analogues (update residues via mol_map [see above])
             for key in ['names']:
                 try:
                     self._topo[key] = tuple(
-                            _np.array(self._topo[key])[ind].tolist()
+                            _np.array(self._topo[key])[ind].flatten().tolist()
                             )
                 except AttributeError:
                     pass
+        self._sync_class(tag='sort_atoms')
 
     def print_info(self):
         # Todo: use self._print_info = [print_info.print_header]

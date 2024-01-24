@@ -151,7 +151,7 @@ def main():
         _load.Modes.calculate_nuclear_velocities(temperature=args.T)
         if o_fmt in ['xyz', 'cpmd']:
             if args.modelist is not None:
-                _load.Modes._modelist(args.modelist)
+                _load.Modes.select_modes(args.modelist)
             _load.Modes.write(args.f, fmt=o_fmt, factor=args.factor)
 
         elif o_fmt == 'traj':

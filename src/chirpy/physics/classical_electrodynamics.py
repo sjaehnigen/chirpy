@@ -32,9 +32,9 @@
 import numpy as np
 from .. import constants
 from ..physics import kspace
-from ..constants import eijk
 from ..topology import mapping
 from ..mathematics.analysis import divrot
+from ..mathematics.algebra import cross
 
 # m magnetic dipole moment
 # c current dipole moment
@@ -66,17 +66,7 @@ def electric_dipole_shift_origin(charges_au, trans_au):
        trans_au ... translation vector from old to new origin
                     with shape ([n_frames, n_particles], 3)
        '''
-    if (_sh := len(trans_au.shape)) == 1:
-        return -trans_au * charges_au[None]
-
-    elif _sh == 2:
-        return -trans_au * charges_au[:, None]
-
-    elif _sh == 3:
-        return -trans_au * charges_au[:, :, None]
-
-    else:
-        raise ValueError(f'translation vector has too many dimensions ({_sh})')
+    return -trans_au * charges_au[..., None]
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au):
@@ -85,23 +75,7 @@ def magnetic_dipole_shift_origin(c_au, trans_au):
        trans_au ... translation vector from old to new origin
        NB: No cgs-convention
        '''
-    if (_sh := len(c_au.shape)) == 1:
-        return -0.5 * np.sum(eijk[:, :, :]
-                             * trans_au[:, None, None]
-                             * c_au[None, :, None],
-                             axis=(0, 1))
-    elif _sh == 2:
-        return -0.5 * np.sum(eijk[None, :, :, :]
-                             * trans_au[:, :, None, None]
-                             * c_au[:, None, :, None],
-                             axis=(1, 2))
-    elif _sh == 3:
-        return -0.5 * np.sum(eijk[None, None, :, :, :]
-                             * trans_au[:, :, :, None, None]
-                             * c_au[:, :, None, :, None],
-                             axis=(2, 3))  # sum over mols (axis 1) done later
-    else:
-        raise ValueError(f'current dipole has too many dimensions ({_sh})')
+    return -0.5 * cross(trans_au, c_au)
 
 
 def shift_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
@@ -121,7 +95,7 @@ def shift_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,
        Returns: An updated array of mu_au
        '''
 
-    _trans = mapping.distance_pbc(o_a_au, o_b_au, cell=cell_au_deg)
+    _trans = mapping.vector_pbc(o_a_au, o_b_au, cell=cell_au_deg)
 
     return mu_au + electric_dipole_shift_origin(charges_au, _trans)
 
@@ -143,14 +117,14 @@ def shift_magnetic_origin_gauge(c_au, m_au, o_a_au, o_b_au, cell_au_deg=None):
        '''
 
     # --- points to the new origin
-    _trans = mapping.distance_pbc(o_a_au, o_b_au, cell=cell_au_deg)
+    _trans = mapping.vector_pbc(o_a_au, o_b_au, cell=cell_au_deg)
 
     return m_au + magnetic_dipole_shift_origin(c_au, _trans)
 
 
 def coulomb(r0, r, q, cell=None, thresh=1.E-8):
     '''r...shape(N, ..., 3)'''
-    d = mapping.distance_pbc(r, r0, cell=cell)  # r0 - r
+    d = mapping.vector_pbc(r, r0, cell=cell)  # r0 - r
     d3 = np.linalg.norm(d, axis=-1)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))
@@ -181,7 +155,7 @@ def biot_savart(r0, r, j, cell=None, thresh=1.E-8):
     # in atomic units using cgs convention for B field would be: µ0/4*pi = 1/c
     # here we use au w/o cgs : µ0/4*pi = 1/c**2
     # d = r0 - r
-    d = mapping.distance_pbc(r, r0, cell=cell)  # r0 - r
+    d = mapping.vector_pbc(r, r0, cell=cell)  # r0 - r
     d3 = np.linalg.norm(d, axis=-1)**3
     with np.errstate(divide='ignore'):
         d3_inv = np.where(d3 < thresh**3, 0.0, np.divide(1.0, d3))

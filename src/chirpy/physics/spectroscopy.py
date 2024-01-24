@@ -38,7 +38,7 @@ from .statistical_mechanics import spectral_density
 from .. import constants
 from ..classes.object import Sphere
 from ..classes.core import PALARRAY
-from ..topology.mapping import distance_pbc, _pbc_shift
+from ..topology.mapping import vector_pbc, _pbc_shift
 from ..topology import mapping
 
 from ..config import ChirPyWarning as _ChirPyWarning
@@ -115,7 +115,7 @@ def power_from_tcf(velocities_au, weights=1.0,
        window_length_au ... time length of the window function used with the
                             time correlation function in a.u.
 
-       The output is averaged over the no. of atoms/species.
+       The output is by default averaged over the no. of atoms/species.
        Returns dictionary with (all in a.u.):
          "f"             - discrete sample frequencies
          "power"         - spectral density (FT TCF) in <energy>
@@ -403,9 +403,9 @@ def spectrum_from_tcf(*args,
             #                f'origin(s) {origin_au}',
             #                _ChirPyWarning,
             #                stacklevel=2)
-            pos = distance_pbc(origin_au[:, None],
-                               positions_au,
-                               cell_au_deg)
+            pos = vector_pbc(origin_au[:, None],
+                             positions_au,
+                             cell_au_deg)
             origin_au = np.zeros_like(origin_au)
             cell = None
 

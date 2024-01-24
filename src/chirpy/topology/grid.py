@@ -32,7 +32,7 @@
 import numpy as np
 import warnings
 
-from .mapping import distance_pbc
+from .mapping import vector_pbc
 from ..config import ChirPyWarning as _ChirPyWarning
 
 # def _voigt():
@@ -77,7 +77,8 @@ def _lorentzian_std(r, width, dim=1):
     return 1 / (1 + _x**2)
 
 
-def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
+def regularisation(positions, grid, *args,
+                   weights=None, mode='gaussian', cell_aa_deg=None):
     '''Regularisation of singularities on a grid.
        Default mode uses Gaussian functions.
        Requires *args according to chosen function.
@@ -86,6 +87,8 @@ def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
                      the number of points
        grid ... pos_grid of shape ([dim,] X, [Y, Z, ...]).
                 Explicit dim axis can be omitted for dim=1.
+
+       Optional weights of length N.
        '''
     if mode == 'gaussian':
         _F = _gaussian
@@ -105,9 +108,15 @@ def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
     else:
         dim, *G = grid.shape
         if dim != len(G):
-            raise TypeError('Given grid in wrong shape!')
+            raise ValueError('Given grid in wrong shape!')
         if dim != positions.shape[1]:
-            raise TypeError('Given positions in wrong shape!')
+            raise ValueError('Given positions in wrong shape!')
+
+    if weights is None:
+        weights = np.ones(len(positions))
+    elif len(weights) != len(positions):
+        raise ValueError('cannot cast together different lengths of '
+                         'weights and positions')
 
     _slc = (slice(None),) + dim * (None,)
 
@@ -116,7 +125,7 @@ def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
 
     return np.array(
             [_F(np.linalg.norm(
-                distance_pbc(
+                vector_pbc(
                         _p[_slc],
                         grid,
                         cell=cell_aa_deg
@@ -124,6 +133,6 @@ def regularisation(positions, grid, *args, mode='gaussian', cell_aa_deg=None):
                 axis=0
                 ),
                 *args,
-                dim=dim)
-             for _p in positions]
+                dim=dim) * _w
+             for _p, _w in zip(positions, weights)]
             )

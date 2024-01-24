@@ -32,7 +32,7 @@
 import numpy as np
 import copy
 
-from ..topology.mapping import distance_pbc, wrap_pbc, cell_vec,\
+from ..topology.mapping import vector_pbc, wrap_pbc, cell_vec, \
     detect_lattice, neighbour_matrix, cell_l_deg
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..constants import symbols_to_symbols
@@ -186,9 +186,9 @@ def define_molecules(pos_aa, symbols, cell_aa_deg=None, neigh_cutoff_aa=24.):
 
     # --- avoids accessing dist_array: choose closest heavy atom for H
     for _h in np.argwhere(h):
-        _d = np.linalg.norm(distance_pbc(_p[_h],
-                                         _p,
-                                         cell=cell_aa_deg), axis=-1)
+        _d = np.linalg.norm(vector_pbc(_p[_h],
+                                       _p,
+                                       cell=cell_aa_deg), axis=-1)
         _d[_d == 0.0] = 'Inf'
         _i = np.argmin(_d)
         ass[_h] = ass[_i]

@@ -32,43 +32,89 @@
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+from ..constants import eijk
+
+
+def dot(vector0, vector1):
+    '''v0 · v1 with vectors v0/v1 of shape ([n_frames, n_units], 3)
+       (numpy.newaxis accepted)
+
+       returns vector with the same shape as v0/v1
+       '''
+    v0 = np.array(vector0)
+    v1 = np.array(vector1)
+
+    if (s0 := len(v0.shape)) != (s1 := len(v1.shape)):
+        raise ValueError('operands cannot be broadcast together with shapes '
+                         f'{s0} {s1}')
+
+    if s0 == 1:
+        return np.dot(v0, v1)
+    else:
+        return np.sum(v0*v1, axis=-1)
+
+
+def cross(vector0, vector1):
+    '''v0 × v1 with vectors v0/v1 of shape ([n_frames, n_units], 3)
+       (numpy.newaxis accepted)
+
+       returns vector with the same shape as v0/v1
+       '''
+    v0 = np.array(vector0)
+    v1 = np.array(vector1)
+
+    if (s0 := len(v0.shape)) != (s1 := len(v1.shape)):
+        raise ValueError('operands cannot be broadcast together with shapes '
+                         f'{s0} {s1}')
+
+    if s0 == 1:
+        return np.cross(v0, v1)
+    else:
+        return np.sum(eijk
+                      * v0[..., :, None, None]
+                      * v1[..., None, :, None],
+                      axis=(s0-1, s0))
+
 
 def vector(*args):
-    '''v = p1 - p2'''
+    '''v = p1 - p0'''
     if len(args) == 1:
-        p1, p2 = args[0]
+        p0, p1 = args[0]
     elif len(args) == 2:
-        p1, p2 = args
+        p0, p1 = args
     else:
         raise TypeError('vector() requires 1 or 2 positional arguments!')
 
-    return p1 - p2
+    return p1 - p0
 
 
 def angle(*args):
-    """args: v1, v2; angle between two vectors"""
+    """args: v0, v1; angle between two vectors"""
     if len(args) == 1:
-        v1, v2 = args[0]
+        v0, v1 = args[0]
     elif len(args) == 2:
-        v1, v2 = args
+        v0, v1 = args
     else:
         raise TypeError('angle() requires 1 or 2 positional arguments!')
 
-    al = np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
+    norm0 = np.linalg.norm(v0, axis=-1)
+    norm1 = np.linalg.norm(v1, axis=-1)
+    al = dot(v0, v1)/norm0/norm1
     a_rad = np.arccos(np.clip(al, -1.0, 1.0))
 
     return a_rad
 
 
 def signed_angle(*args):
-    """args: v1, v2, n; n is the reference/plane normal for angle direction"""
+    """args: v0, v1, n; n is the reference/plane normal for angle direction;
+       sign: v0 --(rot)-> v1"""
     if len(args) == 1:
-        v1, v2, n = args[0]
+        v0, v1, n = args[0]
     elif len(args) == 3:
-        v1, v2, n = args
+        v0, v1, n = args
     else:
         raise TypeError('signed_angle() requires 1 or 3 positional arguments!')
-    a_rad = angle(v1, v2) * np.sign(np.dot(np.cross(v1, v2), n))
+    a_rad = angle(v0, v1) * np.sign(dot(cross(v0, v1), n))
 
     return a_rad
 
@@ -76,43 +122,59 @@ def signed_angle(*args):
 def angle_from_points(*args):
     """Angle spanned by p1<--p2, p2-->p3"""
     if len(args) == 1:
-        p1, p2, p3 = args[0]
+        p0, p1, p2 = args[0]
     elif len(args) == 3:
-        p1, p2, p3 = args
+        p0, p1, p2 = args
     else:
         raise TypeError('angle_from_points() requires 1 or 3 '
                         'positional arguments!')
 
-    v1 = np.array(p1) - np.array(p2)
-    v2 = np.array(p3) - np.array(p2)
-    a_rad = angle(v1, v2)
+    v0 = np.array(p0) - np.array(p1)
+    v1 = np.array(p2) - np.array(p1)
+    a_rad = angle(v0, v1)
 
     return a_rad
 
 
 def dihedral(*args):
-    '''args: p1, p2, p3, p4; dihedral angle along p1<--p2-->p3-->p4;
+    '''args: v0, v1, v2; dihedral angle along <-v0-.-v1->.-v2->;
+       all v as 3d-np.vectors or np.arrays (last axis will be used)'''
+    if len(args) == 1:
+        v0, v1, v2 = args[0]
+    elif len(args) == 3:
+        v0, v1, v2 = args
+    else:
+        raise TypeError('dihedral() requires 1 or 3 positional arguments!')
+
+    n0 = cross(v0, v1)
+    n1 = cross(v2, v1)
+    dr = np.sign(dot(cross(n0, n1), v1))
+
+    norm0 = np.linalg.norm(n0, axis=-1)
+    norm1 = np.linalg.norm(n1, axis=-1)
+
+    dih_rad = np.arccos(dot(n0, n1)/norm0/norm1)
+    dih_rad *= dr  # Direction of rotation
+
+    return dih_rad
+
+
+def dihedral_from_points(*args):
+    '''args: p0, p1, p2, p3; dihedral angle along p0<--p1-->p2-->p3;
        all p as 3d-np.vectors or np.arrays (last axis will be used)'''
     if len(args) == 1:
-        p1, p2, p3, p4 = args[0]
+        p0, p1, p2, p3 = args[0]
     elif len(args) == 4:
-        p1, p2, p3, p4 = args
+        p0, p1, p2, p3 = args
     else:
-        raise TypeError('dihedral() requires 1 or 4 positional arguments!')
+        raise TypeError('dihedral_from_points() requires 1 or 4 positional '
+                        'arguments!')
 
-    v1 = np.array(p1) - np.array(p2)
+    v0 = np.array(p0) - np.array(p1)
+    v1 = np.array(p2) - np.array(p1)
     v2 = np.array(p3) - np.array(p2)
-    v3 = np.array(p4) - np.array(p3)
-    n1 = np.cross(v1, v2)
-    n2 = np.cross(v3, v2)
-    dr = np.inner(np.cross(n1, n2), v2)
-    dr /= np.linalg.norm(dr)
 
-    dih_rad = np.arccos(np.inner(n1, n2) /
-                        (np.linalg.norm(n1, axis=-1) *
-                        np.linalg.norm(n2, axis=-1)))
-    dih_rad *= dr  # Direction of rotation
-    return dih_rad
+    return dihedral(v0, v1, v2)
 
 
 def plane_normal(*args):
@@ -127,8 +189,8 @@ def plane_normal(*args):
 
     v1 = np.array(p1) - np.array(p2)
     v2 = np.array(p3) - np.array(p2)
-    n = np.cross(v1, v2)
-    n /= np.linalg.norm(n)
+    n = cross(v1, v2)
+    n /= np.linalg.norm(n, axis=-1)[..., None]
 
     return n
 
@@ -143,26 +205,29 @@ def triple_product(*args):
         raise TypeError('triple_product() requires 1 or 3 '
                         'positional arguments!')
 
-    return np.inner(np.cross(v1, v2), v3)
+    return dot(cross(v1, v2), v3)
 
 
-def rotation_matrix(*args):
-    '''rotate v1 to match v2'''
+def rotation_matrix(*args, angle=None):
+    '''rotate v1 to match v2 or normal vector (requires angle)'''
     if len(args) == 1:
-        v1, v2 = args[0]
+        n = args[0] / np.linalg.norm(args[0])
+        cos_ang = np.cos(angle)
+
     elif len(args) == 2:
         v1, v2 = args
+        u1 = v1 / np.linalg.norm(v1)
+        u2 = v2 / np.linalg.norm(v2)
+        n = cross(u1, u2)
+        cos_ang = dot(u1, u2)
     else:
         raise TypeError('rotation_matrix() requires 1 or 2 '
                         'positional arguments!')
 
-    u1 = v1 / np.linalg.norm(v1)
-    u2 = v2 / np.linalg.norm(v2)
-    n = np.cross(u1, u2)
     V = np.matrix([[0., -n[2], n[1]], [n[2], 0, -n[0]], [-n[1], n[0], 0.]])
     Id = np.matrix([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
     # unittest: use np.identity ?
-    R = Id + V + V**2 * (1. - np.dot(u1, u2)) / np.linalg.norm(n)**2
+    R = Id + V + V**2 * (1. - cos_ang) / np.linalg.norm(n)**2
 
     return np.asarray(R)
 
@@ -172,10 +237,10 @@ def change_euclidean_basis(v, basis):
        v ... set of vectors of shape (....., 3) in old basis
        basis ... new basis tensor of shape (3, 3)'''
     M = np.zeros_like(basis)
-    M[0] = np.cross(basis[1], basis[2])
-    M[1] = np.cross(basis[2], basis[0])
-    M[2] = np.cross(basis[0], basis[1])
-    V = np.dot(basis[0], np.cross(basis[1], basis[2]))
+    M[0] = cross(basis[1], basis[2])
+    M[1] = cross(basis[2], basis[0])
+    M[2] = cross(basis[0], basis[1])
+    V = dot(basis[0], cross(basis[1], basis[2]))
 
     # direction cosine
     return 1 / V * np.tensordot(v, M, axes=(-1, 1))

@@ -30,6 +30,7 @@
 
 
 import numpy as np
+from ..mathematics.algebra import cross
 from ..classes.core import PALARRAY
 from ..physics.statistical_mechanics import time_correlation_function as tcf
 from .mapping import ishydrogenbond
@@ -65,7 +66,7 @@ def angular_momenta(positions, velocities, wt, subset=slice(None), axis=-2,
 
     _r2 = np.linalg.norm(_p, axis=-1)**2
     for _iw, _ip, _iv, _ir2 in zip(_wt, _p, _v, _r2):
-        angmoms += np.cross(_ip, _iv) * _iw
+        angmoms += cross(_ip, _iv) * _iw
         _moI += _iw * _ir2
 
     if moI:

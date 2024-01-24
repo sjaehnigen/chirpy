@@ -34,7 +34,7 @@ import copy
 
 from .core import CORE as _CORE
 from ..topology.dissection import fermi_cutoff_function
-from ..topology.mapping import distance_pbc
+from ..topology.mapping import vector_pbc
 
 
 class Sphere(_CORE):
@@ -77,7 +77,7 @@ class Sphere(_CORE):
            '''
 
         def get_d(orig, _pos):
-            return np.linalg.norm(distance_pbc(orig, _pos, cell=cell), axis=-1)
+            return np.linalg.norm(vector_pbc(orig, _pos, cell=cell), axis=-1)
 
         # --- never manipulate input
         _x = copy.deepcopy(x)

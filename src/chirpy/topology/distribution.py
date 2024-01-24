@@ -31,7 +31,7 @@
 
 import numpy as np
 
-from .mapping import distance_pbc, cell_volume
+from .mapping import vector_pbc, cell_volume
 from ..mathematics.algebra import rotation_matrix
 from ..classes.core import PALARRAY
 
@@ -77,7 +77,7 @@ def radial_distribution_function(positions,
         return rdf
 
     def get_P(s, o, _hv=None, cell=cell):
-        _P = distance_pbc(o[:, None], s, cell=cell)
+        _P = vector_pbc(o[:, None], s, cell=cell)
 
         if _hv is not None:  # beta
             ind = np.array([
@@ -124,7 +124,7 @@ def radial_distribution_function(positions,
                      bins
                     ) / _wg
 
-    return np.linspace(*rng, bins),\
+    return np.linspace(*rng, bins), \
         np.mean(PALARRAY(_func, range(n_O)).run(), axis=0)
 
 

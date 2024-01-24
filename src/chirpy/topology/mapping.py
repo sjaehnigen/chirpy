@@ -36,7 +36,7 @@ import warnings as _warnings
 from .. import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle, \
-        signed_angle
+        signed_angle, vector, dihedral
 
 from ..snippets import _unpack_tuple
 from ..config import ChirPyWarning as _ChirPyWarning
@@ -221,12 +221,23 @@ def wrap_pbc(positions, cell):
         return positions
 
 
+def dihedral_pbc(p0, p1, p2, p3, cell=None):
+    '''p0 <– p1 –> p2 –> p3  with or without periodic boundaries
+       accepts cell argument (a b c al be ga).
+       '''
+    v0 = vector_pbc(p1, p0, cell)
+    v1 = vector_pbc(p1, p2, cell)
+    v2 = vector_pbc(p2, p3, cell)
+
+    return dihedral(v0, v1, v2)
+
+
 def angle_pbc(p0, p1, p2, cell=None, signed=False):
     '''p0 <– p1 –> p2  with or without periodic boundaries
        accepts cell argument (a b c al be ga).
        '''
-    v0 = distance_pbc(p0, p1, cell)
-    v1 = distance_pbc(p2, p1, cell)
+    v0 = vector_pbc(p1, p0, cell)
+    v1 = vector_pbc(p1, p2, cell)
 
     if signed:
         return signed_angle(v0, v1)
@@ -234,13 +245,11 @@ def angle_pbc(p0, p1, p2, cell=None, signed=False):
         return angle(v0, v1)
 
 
-def distance_pbc(p0, p1, cell=None, return_pbc_bool=False):
+def vector_pbc(p0, p1, cell=None, return_pbc_bool=False):
     '''p1 – p0 with or without periodic boundaries
        accepts cell argument (a b c al be ga).
        '''
-    # actually it does not calculate a "distance"
-    _d = p1 - p0
-    # if detect_lattice(cell) is not None:
+    _d = vector(p0, p1)
     if cell is not None:
         _d2 = _d - _pbc_shift(_d, cell)
         if return_pbc_bool:
@@ -286,6 +295,11 @@ def unwrap_pbc(positions, reference=None, cell=None, axis=0):
         return np.cumsum(_d2, axis=axis) + reference
     else:
         return positions
+
+
+# --- backward compatibility
+def distance_pbc(*args, **kwargs):
+    return vector_pbc(*args, **kwargs)
 
 
 def _pbc_shift(_d, cell):
@@ -362,10 +376,10 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False,
                           '(>10000 atom support in a future version)!'
                           )
     if return_pbc_bool:
-        dist_array, B = distance_pbc(p0[:, None], p1[None, :], cell=cell,
-                                     return_pbc_bool=return_pbc_bool)
+        dist_array, B = vector_pbc(p0[:, None], p1[None, :], cell=cell,
+                                   return_pbc_bool=return_pbc_bool)
     else:
-        dist_array = distance_pbc(p0[:, None], p1[None, :], cell=cell)
+        dist_array = vector_pbc(p0[:, None], p1[None, :], cell=cell)
 
     if cartesian:
         _return = (dist_array,)
@@ -669,37 +683,39 @@ def get_atom_spread(pos):
                      for _p in np.moveaxis(pos, -1, 0)])
 
 
-def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
-    '''Align atoms within trajectory or towards an external
-       reference. Kinds and order of atoms (usually) have to
-       be equal.
-       pos_mobile of shape ([n_frames, ]n_atoms, three)
-       w .... weights of length n_atoms or float
-       Specify additional atom data (e.g., velocities),
-       which has to be parallel transformed, listed through the keyword
-       data=... (shape has to be according to positions).
+def align_atoms(positions, weights, reference=None, subset=slice(None),
+                data=None, return_Rmatrix=False):
+    '''Align atoms within trajectory or with respect to an external reference.
+
+       positions ... array of shape ([n_frames,] n_atoms, three)
+       weights   ... float or iterable of length n_atoms
+       data      ... list of supplemental atom data (e.g., [velocities,]) to be
+                     transformed along with positions
+                     (each data item: array of shape like positions)
+       return_Rmatrix ... for each frame return the rotation matrix that
+                          aligns the coordinates to the reference
        '''
 
     _sub = subset
     _data = data
 
     # --- no frame dimension: set it to one
-    if len(pos_mobile) == 2:
-        pos_mob = np.array([copy.deepcopy(pos_mobile)])
+    if len(positions) == 2:
+        pos_mob = np.array([copy.deepcopy(positions)])
 
     else:
-        pos_mob = copy.deepcopy(pos_mobile)
+        pos_mob = copy.deepcopy(positions)
 
-    if not hasattr(w, '__len__'):
-        w = np.ones(pos_mob.shape[-2]) * w
+    if not hasattr(weights, '__len__'):
+        w = np.ones(pos_mob.shape[-2]) * weights
     else:
-        w = np.array(w)
+        w = np.array(weights)
 
     # --- get subset data sets
     # --- default reference: frame 0
-    if ref is None:
-        ref = pos_mobile[0][_sub]
-    _s_pos_ref = copy.deepcopy(ref)
+    if reference is None:
+        reference = positions[0][_sub]
+    _s_pos_ref = copy.deepcopy(reference)
     _s_pos_mob = pos_mob[:, _sub]
 
     # --- get com of data sets
@@ -715,12 +731,14 @@ def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
     _s_pos_mob = pos_mob[:, _sub]
     del _i_s_pos_ref, _i_pos_mob
 
+    Rmatrix = ()
     for frame, P in enumerate(_s_pos_mob):
         U = kabsch_algorithm(P * w[_sub, None], _s_pos_ref * w[_sub, None])
         pos_mob[frame] = rotate_vector(pos_mob[frame], U)
         if _data is not None:
             for _d in _data:
                 _d[frame] = rotate_vector(_d[frame], U)
+        Rmatrix += (U,)
 
     # --- define return shift
     com_return = com_ref
@@ -728,10 +746,13 @@ def align_atoms(pos_mobile, w, ref=None, subset=slice(None), data=None):
     _slc = (len(pos_mob.shape) - len(com_return.shape)) * (None,)
     pos_mob += com_return[_slc]
 
+    _return = (pos_mob,)
     if _data is not None:
-        return pos_mob, _data
-    else:
-        return pos_mob
+        _return += (_data,)
+    if return_Rmatrix:
+        _return += (np.array(Rmatrix),)
+
+    return _unpack_tuple(_return)
 
 
 def find_methyl_groups(pos, symbols, hetatm=False, cell_aa_deg=None):

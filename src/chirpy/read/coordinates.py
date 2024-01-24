@@ -202,7 +202,7 @@ def _arc(frame, convert=1, n_lines=1, cell_line=False):
         raise ValueError('ARC file broken or incomplete')
 
     try:
-        _return = np.array(data).astype(float)*convert, symbols, numbers,\
+        _return = np.array(data).astype(float)*convert, symbols, numbers, \
                 types, connectivity, comment
     except ValueError:
         raise ValueError(f'could not convert data of shape '

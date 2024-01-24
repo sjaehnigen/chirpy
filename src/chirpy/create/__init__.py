@@ -31,3 +31,4 @@
 from . import inputfile
 from . import moments
 from . import supercell
+from . import colvar

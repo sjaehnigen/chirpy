@@ -32,9 +32,11 @@ import copy as _copy
 import numpy as _np
 import warnings as _warnings
 import itertools
+from tqdm import tqdm
 
 from .core import CORE as _CORE
 from .core import ITERATOR as _ITERATOR
+from .. import config
 from ..snippets import extract_keys as _extract_keys
 from ..config import ChirPyWarning as _ChirPyWarning
 from ..read.modes import xvibsReader
@@ -69,7 +71,7 @@ from ..mathematics import algebra as _algebra
 # NB: data is accessed from behind (_axis_pointer):
 #   frame is (N,X)
 #   trajectory is (F,N,X),
-#   list of modes is (M,F,N,X)
+#   FUTURE: list of modes is (M,F,N,X)
 
 
 class _FRAME(_CORE):
@@ -193,8 +195,10 @@ class _FRAME(_CORE):
         _DEC = (_data, _symbols)
 
         # --- ToDo: Generalise optional attributes
-        for _l in ['names', 'residues']:
+        optattrs = []
+        for _l in ['names', 'residues']:  # , 'eival_cgs']:
             if hasattr(self, _l):
+                optattrs.append(_l)
                 _dl = mapping.dec(getattr(self, _l), mask)
                 _DEC += (_dl,)
 
@@ -202,7 +206,7 @@ class _FRAME(_CORE):
             nargs = {}
             nargs.update(self.__dict__)
             nargs.update({'data': _d, 'symbols': _s})
-            for _oa, key in zip(optargs, ['names', 'residues']):
+            for _oa, key in zip(optargs, optattrs):
                 nargs.update({key: _oa})
             _obj = self._from_data(**nargs)
             return _obj
@@ -252,7 +256,7 @@ class _FRAME(_CORE):
                                            priority=priority)
             # --- correct PBC jumps
             if unwrap_ref is not None:
-                new._pos_aa(unwrap_ref + mapping.distance_pbc(
+                new._pos_aa(unwrap_ref + mapping.vector_pbc(
                                                 unwrap_ref,
                                                 self.pos_aa,
                                                 self.cell_aa_deg
@@ -415,13 +419,22 @@ class _MODES(_FRAME):
         if check_orthonormality:
             self._check_orthonormality()
 
-    def _modelist(self, modelist):
+    def select_modes(self, modelist):
         if not isinstance(modelist, list):
-            raise TypeError('Please give a list of integers instead of %s!'
-                            % modelist.__class__.__name__)
-        self.data = self.data[modelist]
-        self.comments = [self.comments[_m] for _m in modelist]
-        self._sync_class(check_orthonormality=False)
+            if isinstance(modelist, int):
+                modelist = [modelist]
+            else:
+                raise TypeError('expected an integer or a list of integers, '
+                                f'got {modelist.__class__.__name__}')
+        loc_self = _copy.deepcopy(self)
+        loc_self.data = loc_self.data[modelist]
+        loc_self.comments = [loc_self.comments[_m] for _m in modelist]
+        for optattr in ['etdm_au', 'mtdm_au', 'IR_kmpmol', 'VCD_kmpmol']:
+            if (_v := getattr(loc_self, optattr, None)) is not None:
+                setattr(loc_self, optattr, _v[modelist])
+
+        loc_self._sync_class(check_orthonormality=False)
+        return loc_self
 
     def _modes(self, *args):
         if len(args) == 0:
@@ -621,8 +634,8 @@ class _XYZ():
             elif fmt == "xvibs":
                 nargs = _extract_keys(kwargs, mw=False, au=False)
                 n_atoms, numbers, pos_aa, \
-                    n_modes, omega_cgs, modes = xvibsReader(fn, **nargs)
-                comments = _np.array(omega_cgs).astype(str)
+                    n_modes, eival_cgs, modes = xvibsReader(fn, **nargs)
+                comments = _np.array(eival_cgs).astype(str)
                 symbols = constants.numbers_to_symbols(numbers)
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
@@ -634,9 +647,9 @@ class _XYZ():
 
             elif fmt in ["mol", "molden"]:
                 fmt = 'molden'
-                symbols, pos_aa, omega_cgs, modes = read_moldenvib_file(fn)
-                n_modes = len(omega_cgs)
-                comments = _np.array(omega_cgs).astype(str)
+                symbols, pos_aa, eival_cgs, modes = read_moldenvib_file(fn)
+                n_modes = len(eival_cgs)
+                comments = _np.array(eival_cgs).astype(str)
                 data = _np.concatenate((
                            _np.tile(pos_aa, (n_modes, 1, 1)),
                            _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -655,8 +668,8 @@ class _XYZ():
                         modes = data_dict['modes']
                         n_modes = modes.shape[0]
                         pos_aa = data_dict['pos_aa']
-                        omega_cgs = data_dict['omega_cgs']
-                        comments = _np.array(omega_cgs).astype(str)
+                        eival_cgs = data_dict['omega_cgs']
+                        comments = _np.array(eival_cgs).astype(str)
                         data = _np.concatenate((
                              _np.tile(pos_aa, (n_modes, 1, 1)),
                              _np.tile(_np.zeros_like(pos_aa), (n_modes, 1, 1)),
@@ -687,8 +700,8 @@ class _XYZ():
                         modes = data_dict['modes']
                         n_modes = modes.shape[0]
                         modes = modes.reshape((n_modes, n_atoms, 3))
-                        omega_cgs = data_dict['omega_cgs']
-                        comments = _np.array(omega_cgs).astype(str)
+                        eival_cgs = data_dict['omega_cgs']
+                        comments = _np.array(eival_cgs).astype(str)
 
                         data = _np.concatenate((
                              _np.tile(pos_aa, (n_modes, 1, 1)),
@@ -698,11 +711,11 @@ class _XYZ():
                             axis=-1
                             )
                         try:
-                            # --- ToDo: add and debug these features
-                            # self.APT_au = data_dict['Polar']
+                            # --- ToDo: add and debug these features (units?)
+                            self.APT_au = data_dict['DipoleDeriv'].reshape(
+                                                            (n_atoms, 3, 3))
                             self.AAT_au = data_dict['AAT'].reshape((n_atoms,
                                                                     3, 3))
-                            # print('AAT', self.AAT_au.ravel())
                             # --- calculate it from tensors
 
                             # --- units not verified, should be in a.u.
@@ -739,10 +752,10 @@ class _XYZ():
                 _sh = data.shape
                 if len(_sh) == 2:
                     data = data.reshape((1, ) + _sh)
-                comments = _np.array([kwargs.get('comments',
-                                                 data.shape[0] * ['passed'])
+                comments = _np.array([kwargs.get(
+                                       'comments',
+                                       data.shape[0] * ['created with ChirPy'])
                                       ]).flatten()
-                omega_cgs = kwargs.get('omega_cgs')
             else:
                 raise TypeError('%s needs fn or data + symbols argument!' %
                                 self.__class__.__name__)
@@ -762,10 +775,16 @@ class _XYZ():
             comments = comments[0]
 
         if self._type == 'modes':
-            if 'omega_cgs' not in locals():
-                raise NameError('Could not retrieve modes data from input!')
-            self.eival_cgs = omega_cgs
-            comments = _np.array(omega_cgs).astype(str)
+            if 'eival_cgs' not in locals():
+                try:
+                    eival_cgs = kwargs.pop('eival_cgs',
+                                           kwargs.pop('omega_cgs'))
+                except KeyError:
+                    _warnings.warn('could not retrieve mode frequencies',
+                                   _ChirPyWarning, stacklevel=2)
+                    raise
+            self.eival_cgs = eival_cgs
+            comments = _np.array(eival_cgs).astype(str)
 
         # --- external metadata (i.e. from topology file)
         #     wins over fn, but not in the case of data, raises Warning for
@@ -931,14 +950,14 @@ class _XYZ():
             _s_pos = getattr(self, a)
 
             _o_pos = mapping.align_atoms(_o_pos, _np.array(self.masses_amu),
-                                         ref=_s_pos)[0]
+                                         reference=_s_pos)[0]
             _bool = []
             for _s in set(self.symbols):
                 _ind = _np.array(self.symbols) == _s
                 if _s != 'H' or not noh:
-                    a = mapping.distance_pbc(_s_pos[_ind],
-                                             _o_pos[_ind],
-                                             cell=self.cell_aa_deg)
+                    a = mapping.vector_pbc(_s_pos[_ind],
+                                           _o_pos[_ind],
+                                           cell=self.cell_aa_deg)
                     a = _np.linalg.norm(a, axis=-1)
                     _bool.append(
                            _np.amax(a) <= mapping.dist_crit_aa([_s])[0] + atol)
@@ -980,21 +999,39 @@ class _XYZ():
                                _ChirPyWarning, stacklevel=2)
                 algorithm = 'connectivity'
 
-        _p, mol_cnt_aa = mapping.join_molecules(
-                            self.pos_aa,
-                            mol_map,
-                            self.cell_aa_deg,
-                            weights=w,
-                            algorithm=algorithm,
-                            symbols=self.symbols,
-                            reference=reference,
-                            )
-        self._pos_aa(_p)
+        if self._type == 'frame':
+            _p, mol_cnt_aa = mapping.join_molecules(
+                                self.pos_aa,
+                                mol_map,
+                                self.cell_aa_deg,
+                                weights=w,
+                                algorithm=algorithm,
+                                symbols=self.symbols,
+                                reference=reference,
+                                )
+            self._pos_aa(_p)
+        else:
+            _p, mol_cnt_aa = zip(*[mapping.join_molecules(
+                                _pos,
+                                mol_map,
+                                self.cell_aa_deg,
+                                weights=w,
+                                algorithm=algorithm,
+                                symbols=self.symbols,
+                                reference=reference,
+                                )
+                              for _pos in tqdm(
+                                             self.pos_aa,
+                                             desc="%10s" % self._type,
+                                             total=len(self.pos_aa),
+                                             disable=not config.__verbose__
+                                             )])
+            self._pos_aa(_np.array(_p))
 
         if weights is None:
-            self.mol_cog_aa = mol_cnt_aa
+            self.mol_cog_aa = _np.array(mol_cnt_aa)
         elif weights == 'masses':
-            self.mol_com_aa = mol_cnt_aa
+            self.mol_com_aa = _np.array(mol_cnt_aa)
 
         # --- remember topology
         if self._type != 'frame':
@@ -1002,8 +1039,8 @@ class _XYZ():
         else:
             self._mol_ref = _copy.deepcopy(_p)
 
-    def _get_center_of_weight(self, mask=None, weights=None,
-                              wrap=False, join_molecules=False):
+    def _center_of_weight(self, mask=None, weights=None,
+                          wrap=False, join_molecules=False):
         _loc = _copy.deepcopy(self)
         if weights is None:
             w = _np.ones((_loc.n_atoms))
@@ -1027,33 +1064,42 @@ class _XYZ():
 
         return cowt_aa
 
-    def get_center_of_mass(self, mask=None, join_molecules=True):
+    def center_of_mass(self, mask=None, join_molecules=True):
         if mask is None:
-            self.com_aa = self._get_center_of_weight(
+            self.com_aa = self._center_of_weight(
                                     mask=None,
                                     weights='masses',
                                     join_molecules=False
                                     )
+            return self.com_aa
         else:
-            self.mol_com_aa = self._get_center_of_weight(
+            self.mol_com_aa = self._center_of_weight(
                                     mask=mask,
                                     weights='masses',
                                     join_molecules=join_molecules
                                     )
+            return self.mol_com_aa
 
-    def get_center_of_geometry(self, mask=None, join_molecules=True):
+    def center_of_geometry(self, mask=None, join_molecules=True):
         if mask is None:
-            self.cog_aa = self._get_center_of_weight(
+            self.cog_aa = self._center_of_weight(
                                     mask=None,
                                     weights=None,
                                     join_molecules=False
                                     )
+            return self.cog_aa
+
         else:
-            self.mol_cog_aa = self._get_center_of_weight(
+            self.mol_cog_aa = self._center_of_weight(
                                     mask=mask,
                                     weights=None,
                                     join_molecules=join_molecules
                                     )
+            return self.mol_cog_aa
+
+    # --- backward compatibility
+    def get_center_of_mass(self, *args, **kwargs):
+        self.center_of_mass(*args, **kwargs)
 
     def align_coordinates(self, selection=None, weights='masses',
                           align_ref=None,
@@ -1075,7 +1121,8 @@ class _XYZ():
         if self._type == 'frame':
             _p = self.pos_aa.reshape((1, ) + self.pos_aa.shape)
             _v = self.vel_au.reshape((1, ) + self.vel_au.shape)
-        elif self._type == 'trajectory':
+        # elif self._type == 'trajectory':
+        else:
             _p = self.pos_aa
             _v = self.vel_au
 
@@ -1086,7 +1133,7 @@ class _XYZ():
 
         _p, _data = mapping.align_atoms(_p,
                                         wt,
-                                        ref=self._align_ref,
+                                        reference=self._align_ref,
                                         subset=selection,
                                         data=[_v],
                                         )
@@ -1095,7 +1142,8 @@ class _XYZ():
             self._pos_aa(_p[0])
             self._vel_au(_data[0][0])
 
-        if self._type == 'trajectory':
+        # if self._type == 'trajectory':
+        else:
             self._pos_aa(_p)
             self._vel_au(_data[0])
 
@@ -1895,15 +1943,23 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'wrap', *args, **kwargs)
 
-    def get_center_of_mass(self, *args, **kwargs):
-        self._frame.get_center_of_mass(*args, **kwargs)
+    def sort(self, *args, **kwargs):
+        self._frame.sort(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
-        self._mask(self, 'get_center_of_mass', *args, **kwargs)
+        self._mask(self, 'sort', *args, **kwargs)
 
-    def get_center_of_geometry(self, *args, **kwargs):
-        self._frame.get_center_of_geometry(*args, **kwargs)
+    def get_center_of_mass(self, *args, **kwargs):
+        self.center_of_mass(*args, **kwargs)
+
+    def center_of_mass(self, *args, **kwargs):
+        self._frame.center_of_mass(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
-        self._mask(self, 'get_center_of_geometry', *args, **kwargs)
+        self._mask(self, 'center_of_mass', *args, **kwargs)
+
+    def center_of_geometry(self, *args, **kwargs):
+        self._frame.center_of_geometry(*args, **kwargs)
+        self.__dict__.update(self._frame.__dict__)
+        self._mask(self, 'center_of_geometry', *args, **kwargs)
 
     def repeat(self, *args, **kwargs):
         self._frame.repeat(*args, **kwargs)
@@ -2107,11 +2163,11 @@ class VibrationalModes(_XYZ, _MODES):
 
             # random pos
 #            avg = _np.zeros((1, n_atoms, 3))
-#            omega_au = 2*_np.pi*_np.array(self.eival_cgs)
+#            eival_au = 2*_np.pi*_np.array(self.eival_cgs)
 #            *constants.c_cgs*constants.t_au
 #            for i_mode in range(self.n_modes):
 #                avg += S[i_mode].reshape(1, self.n_atoms, 3)
-#                *_np.sin(phases[i_mode])/omega_au[i_mode]
+#                *_np.sin(phases[i_mode])/eival_au[i_mode]
 #            avg *= constants.l_au2aa
 #            avg += self.pos_au*constants.l_au2aa
             print('Random seed not tested')
