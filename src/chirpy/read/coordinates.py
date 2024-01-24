@@ -269,8 +269,8 @@ def _pdb(frame, convert=1., n_lines=1):
                 # occupancy.append(float(line[54:60]))
                 # temp_fact.append(float(line[60:66]))
                 # seg_id.append(line[72:76])
-                _s = line[76:78].strip()
-                if (_s := line[76:78].strip()) == '':
+                # _s = line[76:78].strip()
+                if (_s := line[75:78].strip()) == '':
                     warnings.warn('invalid or missing element symbol column'
                                   ' in PDB',
                                   config.ChirPyWarning, stacklevel=2)

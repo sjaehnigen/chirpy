@@ -66,14 +66,17 @@ def electric_dipole_shift_origin(charges_au, trans_au):
        trans_au ... translation vector from old to new origin
                     with shape ([n_frames, n_particles], 3)
        '''
-    if len(trans_au.shape) == 1:
+    if (_sh := len(trans_au.shape)) == 1:
         return -trans_au * charges_au[None]
 
-    if len(trans_au.shape) == 2:
+    elif _sh == 2:
         return -trans_au * charges_au[:, None]
 
-    if len(trans_au.shape) == 3:
+    elif _sh == 3:
         return -trans_au * charges_au[:, :, None]
+
+    else:
+        raise ValueError(f'translation vector has too many dimensions ({_sh})')
 
 
 def magnetic_dipole_shift_origin(c_au, trans_au):
@@ -82,21 +85,23 @@ def magnetic_dipole_shift_origin(c_au, trans_au):
        trans_au ... translation vector from old to new origin
        NB: No cgs-convention
        '''
-    if len(c_au.shape) == 1:
+    if (_sh := len(c_au.shape)) == 1:
         return -0.5 * np.sum(eijk[:, :, :]
                              * trans_au[:, None, None]
                              * c_au[None, :, None],
                              axis=(0, 1))
-    if len(c_au.shape) == 2:
+    elif _sh == 2:
         return -0.5 * np.sum(eijk[None, :, :, :]
                              * trans_au[:, :, None, None]
                              * c_au[:, None, :, None],
                              axis=(1, 2))
-    if len(c_au.shape) == 3:
+    elif _sh == 3:
         return -0.5 * np.sum(eijk[None, None, :, :, :]
                              * trans_au[:, :, :, None, None]
                              * c_au[:, :, None, :, None],
                              axis=(2, 3))  # sum over mols (axis 1) done later
+    else:
+        raise ValueError(f'current dipole has too many dimensions ({_sh})')
 
 
 def shift_electric_origin_gauge(charges_au, mu_au, o_a_au, o_b_au,

@@ -30,6 +30,7 @@
 
 import numpy as _np
 import warnings as _warnings
+import copy as _copy
 
 from .core import AttrDict
 from ..snippets import tracked_extract_keys as _tracked_extract_keys
@@ -67,36 +68,9 @@ class _SYSTEM(_CORE):
             else:
                 self.XYZ = kwargs.pop('XYZ')
         try:
-            self.cell_aa_deg = self.XYZ.cell_aa_deg
-            self.symbols = self.XYZ.symbols
-            # ToDo: Dict of atom kinds (with names)
-            self.kinds = AttrDict({_s: constants.elements[_s]
-                                   if _s in constants.elements
-                                   else 'UNKNOWN'
-                                   for _s in self.symbols})
-            self.molecular_formula = AttrDict({_s: self.symbols.count(_s)
-                                               for _s in sorted(self.symbols)})
-
-            if kwargs.get('sort', False):
-                self.sort_atoms()
-
-            if kwargs.get('define_molecules', False):
-                # --- overwrites molmap
-                self.define_molecules()
-
-            if kwargs.get('wrap_molecules', False):
-                if self.mol_map is None:
-                    self.define_molecules()
-                self.wrap_molecules()
-
-            if (center_mol := kwargs.get('center_molecule')) is not None:
-                self.center_molecule(center_mol),
-
-            if kwargs.get('clean_residues',
-                          False) and self.mol_map is not None:
-                self.clean_residues()
-            # --- ToDo: necessary? Symbols are checked in _XYZ
-            self._check_consistency()
+            self._sync_class(**kwargs)
+            self._sync_class(**kwargs)  # call twice for full synchronization
+            # self._check_consistency()
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -105,7 +79,60 @@ class _SYSTEM(_CORE):
                                _ChirPyWarning,
                                stacklevel=2)
 
+    def _cell_aa_deg(self, cell_aa_deg):
+        _cell = _copy.deepcopy(cell_aa_deg)
+        self.cell_aa_deg = _np.array(_cell)
+        # --- deep change to iterator frame
+        self.XYZ._cell_aa_deg(_np.array(_cell))
+        if hasattr(self, 'Modes'):
+            self.Modes.cell_aa_deg = _np.array(_cell)
+
+    def _sync_class(self, **kwargs):
+        if (_cell := kwargs.get('cell_aa_deg')) is not None:
+            self._cell_aa_deg(_cell)
+        elif not hasattr(self, 'cell_aa_deg'):
+            self._cell_aa_deg(self.XYZ.cell_aa_deg)
+
+        self.symbols = self.XYZ.symbols
+        # ToDo: Dict of atom kinds (with names)
+        self.kinds = AttrDict({_s: constants.elements[_s]
+                               if _s in constants.elements
+                               else 'UNKNOWN'
+                               for _s in self.symbols})
+        self.molecular_formula = AttrDict({_s: self.symbols.count(_s)
+                                           for _s in sorted(self.symbols)})
+
+        if kwargs.get('sort', False):
+            self.sort_atoms()
+
+        if kwargs.get('define_molecules', False):
+            # --- overwrites molmap
+            self.define_molecules()
+
+        if kwargs.get('wrap_molecules', False):
+            if self.mol_map is None:
+                self.define_molecules()
+            self.wrap_molecules()
+
+        if (center_mol := kwargs.get('center_molecule')) is not None:
+            self.center_molecule(center_mol),
+
+        if kwargs.get('clean_residues',
+                      False) and self.mol_map is not None:
+            self.clean_residues()
+
+        self._check_consistency()
+
     def _check_consistency(self):
+        if hasattr(self, 'Modes'):
+            # --- ToDo: synchronize all sub-objects (pos_aa, cell_aa_deg)
+            try:
+                for _attr in ['cell_aa_deg',  'pos_aa']:
+                    assert _np.allclose(getattr(self.XYZ, _attr),
+                                        getattr(self.Modes, _attr))
+            except AssertionError:
+                raise ValueError(f'XYZ and Modes dissimilar in {_attr}')
+
         if self._topo is not None:
             for _k in self._topo:
                 if _k is not None and 'topo' not in _k:
@@ -177,6 +204,27 @@ class _SYSTEM(_CORE):
                                  '(mol_map)!')
 
         self.XYZ.wrap_molecules(self.mol_map, weights=weights, **kwargs)
+
+    def repeat(self, times, unwrap_ref=None, priority=(0, 1, 2), **kwargs):
+        '''Propagate kinds using cell tensor, duplicate if cell is not defined.
+           times ... integer or tuple of integers for each Cartesian dimension
+           priority ... (see chirpy.topology.mapping.cell_vec)
+           '''
+        if isinstance(times, int):
+            times = 3 * (times,)
+        elif not isinstance(times, tuple):
+            raise TypeError('expected integer or tuple for times argument')
+
+        self.XYZ.repeat(times, unwrap_ref=unwrap_ref, priority=priority)
+        self.mol_map = None
+
+        if hasattr(self, 'Modes'):
+            self.Modes.repeat(times, unwrap_ref=unwrap_ref, priority=priority)
+
+        # --- repeat initialisation
+        if hasattr(self.XYZ, 'cell_aa_deg'):
+            kwargs.update({'cell_aa_deg': self.XYZ.cell_aa_deg})
+        self._sync_class(**kwargs)
 
     def wrap(self, **kwargs):
         self.XYZ.wrap(**kwargs)

@@ -35,7 +35,7 @@ import warnings as _warnings
 
 from .. import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
-from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle,\
+from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle, \
         signed_angle
 
 from ..snippets import _unpack_tuple

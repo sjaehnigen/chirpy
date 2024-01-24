@@ -49,6 +49,12 @@ def main():
             default=False,
             )
     parser.add_argument(
+            "--shift_centers_of_mass",
+            action='store_true',
+            help="Consider parallel shift of atoms.",
+            default=False,
+            )
+    parser.add_argument(
             "--cell_aa_deg",
             nargs=6,
             help="Use custom cell parametres a b c al be ga in \
@@ -66,7 +72,8 @@ def main():
     for _fr, _fr_b in zip(mol1.XYZ, mol2.XYZ):
         print('Frame:', _fr)
         assign = mol1.XYZ.map_frame(mol1.XYZ, mol2.XYZ,
-                                    cell_aa_deg=args.cell_aa_deg)
+                                    cell_aa_deg=args.cell_aa_deg,
+                                    shift_centers_of_mass=args.shift_centers_of_mass)
 
         mol2.sort_atoms(assign)
         if args.sort:
@@ -80,5 +87,5 @@ def main():
             print('\n'.join(outbuf))
 
 
-if(__name__ == "__main__"):
+if (__name__ == "__main__"):
     main()

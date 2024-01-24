@@ -275,6 +275,7 @@ class MolecularCrystal(_BoxObject):
         '''Convolute FRAME object with unitcell.'''
         frame.cell_aa_deg = self.cell_aa_deg
         frame.repeat(multiply, priority=priority)
+        self.cell_aa_deg = frame.cell_aa_deg
 
         return frame
 

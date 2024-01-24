@@ -137,6 +137,7 @@ class _FRAME(_CORE):
         return new
 
     def sort(self, *args):
+        '''sort atoms by symbols in order of appearance'''
         _symbols = _np.array(self.symbols)
 
         # --- scratch for in-depth sort that includes data
@@ -276,7 +277,8 @@ class _FRAME(_CORE):
         return self
 
     @staticmethod
-    def map_frame(obj1, obj2, **kwargs):
+    def map_frame(obj1, obj2, congruence_threshold_aa=0.1,
+                  shift_centers_of_mass=False, **kwargs):
         '''obj1, obj2 ... Frame objects.
            Returns indices that would sort obj2 to match obj1.
            '''
@@ -293,6 +295,9 @@ class _FRAME(_CORE):
 
         com1 = mapping.cowt(obj1.pos_aa, obj1.masses_amu, axis=-2)
         com2 = mapping.cowt(obj2.pos_aa, obj2.masses_amu, axis=-2)
+        if not shift_centers_of_mass:
+            com1 *= 0.0
+            com2 *= 0.0
 
         assign = _np.zeros((obj1.n_atoms,)).astype(int)
         for s in _np.unique(obj1.symbols):
@@ -305,6 +310,19 @@ class _FRAME(_CORE):
                                                 obj1.cell_aa_deg)
                                 ),
                              axis=1)
+            if _np.any((_congr := _np.amin(mapping.distance_matrix(
+                                obj1.pos_aa[i1] - com1[None],
+                                obj2.pos_aa[i2] - com2[None],
+                                cell=kwargs.get('cell_aa_deg',
+                                                obj1.cell_aa_deg)
+                                ),
+                        axis=1)) > congruence_threshold_aa):
+                _ind = _congr > congruence_threshold_aa
+                _warnings.warn('congruence threshold exceeded for'
+                               f'{_np.arange(obj1.n_atoms)[i1][_ind]} and '
+                               f'{_np.arange(obj2.n_atoms)[i2][ass][_ind]}: '
+                               f'{_congr[_ind]}',
+                               _ChirPyWarning, stacklevel=2)
             assign[i1] = _np.arange(obj2.n_atoms)[i2][ass]
             # assign[i1] = _np.argwhere(i2).T[0][ass]
 
@@ -862,6 +880,9 @@ class _XYZ():
         else:
             raise TypeError('Too many arguments for %s!'
                             % self._vel_au.__name__)
+
+    def _cell_aa_deg(self, cell_aa_deg):
+        self.cell_aa_deg = cell_aa_deg
 
     def _sync_class(self, **kwargs):
         # kwargs for consistency with Modes
@@ -1831,11 +1852,11 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
 
     # These masks all follow the same logic (could be generalised, but python
     # does not support call of function name from within that function)
-    def sort(self, *args, **kwargs):
-        _slist = self._frame.sort(*args, **kwargs)
+
+    def _cell_aa_deg(self,  *args, **kwargs):
+        self._frame._cell_aa_deg(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
-        self._mask(self, 'sort', *args, **kwargs)
-        return _slist
+        self._mask(self, '_cell_aa_deg',  *args, **kwargs)
 
     def align_coordinates(self, *args, **kwargs):
         self._frame.align_coordinates(*args, **kwargs)
