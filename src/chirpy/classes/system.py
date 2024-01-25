@@ -302,29 +302,31 @@ class _SYSTEM(_CORE):
         else:
             self.XYZ.residues = tuple([[_im+1, 'MOL'] for _im in self.mol_map])
 
-    def sort_atoms(self, *args):
+    def sort_atoms(self, slist=None):
         '''Sort atoms alphabetically (default)'''
-        ind = self.XYZ.sort(*args)
+        if slist is None:
+            slist = self.XYZ.sort()
+        self.XYZ.sort(slist)
         self.symbols = self.XYZ.symbols
 
         if hasattr(self, 'Modes'):
-            self.Modes.sort(ind, *args)
+            self.Modes.sort(slist)
 
         if self.mol_map is not None:
-            self.mol_map = _np.array(self.mol_map)[ind].flatten().tolist()
+            self.mol_map = _np.array(self.mol_map)[slist].flatten().tolist()
             self.clean_residues()
 
         if self._topo is not None:
             self._topo['mol_map'] = _np.array(
-                                 self._topo['mol_map'])[ind].flatten().tolist()
+                               self._topo['mol_map'])[slist].flatten().tolist()
             self._topo['symbols'] = tuple(_np.array(
-                                 self._topo['symbols'])[ind].flatten())
+                                 self._topo['symbols'])[slist].flatten())
             # --- symbols analogues (update residues via mol_map [see above])
             for key in ['names']:
                 try:
                     self._topo[key] = tuple(
-                            _np.array(self._topo[key])[ind].flatten().tolist()
-                            )
+                          _np.array(self._topo[key])[slist].flatten().tolist()
+                          )
                 except AttributeError:
                     pass
         self._sync_class(tag='sort_atoms')

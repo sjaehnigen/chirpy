@@ -1944,9 +1944,10 @@ class XYZ(_XYZ, _ITERATOR, _FRAME):
         self._mask(self, 'wrap', *args, **kwargs)
 
     def sort(self, *args, **kwargs):
-        self._frame.sort(*args, **kwargs)
+        slist = self._frame.sort(*args, **kwargs)
         self.__dict__.update(self._frame.__dict__)
         self._mask(self, 'sort', *args, **kwargs)
+        return slist
 
     def get_center_of_mass(self, *args, **kwargs):
         self.center_of_mass(*args, **kwargs)
