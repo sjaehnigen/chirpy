@@ -1402,6 +1402,7 @@ class _XYZ():
                       symbols=loc_self.symbols,
                       residues=residues,
                       box=cell_aa_deg,
+                      b_values=kwargs.get('b_values'),
                       selection=selection,
                       title=getattr(loc_self, 'comments',
                                     'Generated with ChirPy')

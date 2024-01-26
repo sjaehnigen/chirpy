@@ -201,7 +201,7 @@ def arcWriter(fn, data, symbols, types=[], connectivity=[],
 
 
 def _write_pdb_frame(fn, data, names, symbols, residues, box, title,
-                     selection=None, append=False):
+                     b_values=None, selection=None, append=False):
     """WritePDB(fn, data, types, symbols, residues, box, comment, append=False)
        Input:
         1. filename: File to write
@@ -212,6 +212,8 @@ def _write_pdb_frame(fn, data, names, symbols, residues, box, title,
                      residue names
         6. box: list of box parameters (xyz, 3angles)
         7. comment line (string)
+        8. b_value: optional list of B-values (default: 0)
+        9. selection: list of atom indices within range of given input
         8. append: Append to file (optional, default = False)
 
 Output: None"""
@@ -229,6 +231,10 @@ Output: None"""
     else:
         n_atoms = len(selection)
         _range = selection
+    if b_values is None:
+        _b = len(symbols) * [0,]
+    else:
+        _b = [_i for _i in b_values]
     obuffer = 'TITLE     %s\n' % title
     obuffer += 'CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1%12d\n' % (
                                                                box[0],
@@ -247,7 +253,7 @@ Output: None"""
         tmp += [int(residues[i][0])]
         tmp += [c for c in data[i]]
         tmp += [1]
-        tmp += [0]
+        tmp += [_b[i]]
         tmp += ['']
         tmp += [symbols[i]]
         obuffer += format % tuple(tmp)
@@ -262,8 +268,8 @@ Output: None"""
         f.write(obuffer)
 
 
-def pdbWriter(fn, data, names, symbols, residues, box, title, selection=None,
-              append=False):
+def pdbWriter(fn, data, names, symbols, residues, box, title, b_values=None,
+              selection=None, append=False):
     """WritePDBFile(filename, data, symbols, comments, append=False)
        Input:
         1. fn: File to write
@@ -276,11 +282,14 @@ def pdbWriter(fn, data, names, symbols, residues, box, title, selection=None,
     if len(data.shape) == 2:
         # ---frame
         _write_pdb_frame(fn, data, names, symbols, residues,
-                         box, title, selection=selection, append=append)
+                         box, title, b_values=b_values,
+                         selection=selection, append=append)
 
     elif len(data.shape) == 3:
         # --- trajectory (NOT ENCOURAGED TO USE CHIRPY FOR PDB TRAJ FILES!)
         n_frames = len(data)
+        if b_values is None:
+            b_values = n_frames*[None,]
         for fr in range(n_frames):
             _write_pdb_frame(fn, data[fr], names, symbols, residues,
                              box, title[fr], selection=selection,
