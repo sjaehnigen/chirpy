@@ -308,7 +308,7 @@ def read_topology_file(fn):
             ('pos_aa',
                 ['FORCE_EVAL', 'SUBSYS', 'COORD'],
                 None,
-                lambda x: np.array(x[1:]).astype(float),
+                lambda x: np.array(x[1:4]).astype(float),
              ),
             ('vel_au',
                 ['FORCE_EVAL', 'SUBSYS', 'VELOCITY'],
