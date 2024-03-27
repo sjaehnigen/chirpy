@@ -35,6 +35,7 @@ from matplotlib import pyplot as plt
 
 from chirpy.classes import system
 from chirpy.physics import spectroscopy
+from chirpy.physics.statistical_mechanics import signal_filter
 from chirpy import config, constants
 
 
@@ -102,7 +103,8 @@ def main():
             )
     parser.add_argument(
             "--window_length",
-            help="Window function widtth (welch) used with the TCF in fs.",
+            help="Window function width (welch) used with the TCF in fs."
+                 " 0 = no window.",
             default=10000,
             type=int,
             )
@@ -110,6 +112,12 @@ def main():
     parser.add_argument(
             "--return_tcf",
             help="Return also the time-correlation function.",
+            action='store_true',
+            default=False,
+            )
+    parser.add_argument(
+            "--plot_window",
+            help="If return_tcf=True: Plot the window function along with the TCF.",
             action='store_true',
             default=False,
             )
@@ -146,6 +154,11 @@ def main():
             default=False,
             )
     args = parser.parse_args()
+    if args.window_length == 0:
+        args.window_length = None
+    else:
+        args.window_length *= constants.t_fs2au
+
     if args.subset is None:
         args.subset = slice(None)
 
@@ -177,7 +190,7 @@ def main():
                       _vel,
                       ts_au=args.ts * constants.t_fs2au,
                       weights=_load.XYZ.masses_amu[args.subset],
-                      window_length_au=args.window_length * constants.t_fs2au,
+                      window_length_au=args.window_length,
                       )
 
     # --- plot
@@ -203,6 +216,15 @@ def main():
         if not args.noplot:
             plt.plot(np.arange(len(_pow['tcf_power'])) * args.ts / 1000,
                      _pow['tcf_power'])
+            if args.plot_window and args.window_length is not None:
+                n_frames = len(_pow['tcf_power'])
+                plt.plot(
+                    np.arange(n_frames) * args.ts / 1000,
+                    np.amax(np.abs(_pow['tcf_power'])) *
+                    signal_filter(n_frames,
+                                  filter_length=int(args.window_length/args.ts/constants.t_fs2au)),
+                    '--',
+                    )
             plt.xlabel(r'$\tau$ in ps')
             plt.ylabel('TCF in ...')
             plt.title('Time-correlation function of atomic velocities')

@@ -163,9 +163,12 @@ class TestStatisticalMechanics(unittest.TestCase):
         for f in freq:
             sig += np.sin(f * X)
 
-        omega, S, R = statistical_mechanics.spectral_density(sig,
-                                                             ts=1 / N * P,
-                                                             flt_pow=-1)
+        omega, S, R = statistical_mechanics.spectral_density(
+                                                sig,
+                                                ts=1 / N * P,
+                                                window_length=100,
+                                                finite_size_correction=True,
+                                                )
 
         S /= np.amax(S)
         for _i in np.round(freq, decimals=2):

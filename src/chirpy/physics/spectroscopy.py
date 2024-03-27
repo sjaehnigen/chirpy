@@ -141,14 +141,23 @@ def power_from_tcf(velocities_au, weights=1.0,
     if window_length_au is not None:
         kwargs.update(dict(window_length=int(window_length_au/ts_au)))
 
-    n_frames, n_atoms, n_dims = velocities_au.shape
-
-    if not hasattr(weights, '__len__'):
-        wgh = np.ones(n_atoms * n_dims) * weights
+    if len(_shape := velocities_au.shape) == 3:
+        n_frames, n_atoms, n_dims = _shape
+        n_dog = n_atoms * n_dims
+    elif len(_shape) == 2:
+        n_frames, n_dog = _shape
     else:
-        wgh = np.repeat(weights, n_dims)
+        raise ValueError(f'cannot handle shape of velocities_au {_shape}')
 
     _velocities = velocities_au.reshape((n_frames, -1))
+
+    if not hasattr(weights, '__len__'):
+        wgh = np.ones(n_dog) * weights
+    elif len(_shape) == 3:
+        wgh = np.repeat(weights, n_dims)
+    else:
+        wgh = weights
+
     f, S, R = zip(*[spectral_density(_v, symmetry='even', **kwargs)
                     for _v in _velocities.T])
 

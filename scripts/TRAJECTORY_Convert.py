@@ -328,7 +328,7 @@ def main():
             _load = system.Supercell(*_files, fmt=i_fmt, **largs)
 
     if multiply is not None:
-        _load.XYZ.repeat(tuple(multiply))
+        _load.repeat(tuple(multiply))
 
     # --- object ----> file
     if args.outputfile not in ['None', 'False']:

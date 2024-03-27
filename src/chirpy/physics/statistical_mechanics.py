@@ -116,7 +116,7 @@ def time_correlation_function(*args,
                               sum_dims=True,
                               finite_size_correction=True,
                               window_length=None,
-                              flt_pow=-1.E-16,  # deprecated
+                              adjusted_signal_length=None,
                               ):
     '''Calculate the time-correlation function (TCF) of a signal and
        using the Wiener-Khinchin theorem (fftconvolve).
@@ -128,6 +128,11 @@ def time_correlation_function(*args,
 
        finite_size_correction ... Remove the implicit triangular filter
                                   due to finite size of the signal
+       adjusted_signal_length ... Crop or zero-pad TCF on both sides
+                                  to correspond to given signal length.
+                                  (default: None, keep original data)
+                                  Probably incompatible with
+                                  finite_size_correction (needs benchmark)
 
        Expects signal of shape (n_frames, n_dim)
        sum … sum over <n_dim> dimensions
@@ -174,25 +179,31 @@ def time_correlation_function(*args,
                                                 method='fft',
                                                 )
                          for v1, v2 in zip(_val1.T, _val2.T)]).T
+
+        if adjusted_signal_length is not None:
+            _n_frame_diff = adjusted_signal_length - n_frames
+            if _n_frame_diff > 0:
+                _sig = np.pad(_sig, ((_n_frame_diff, _n_frame_diff,), (0, 0)))
+            elif _n_frame_diff < 0:
+                _sig = _sig[_n_frame_diff+1: -_n_frame_diff]
         return _sig
 
     R = _corr(val1, val2)
 
+    if adjusted_signal_length is not None:
+        n_frames = adjusted_signal_length
+
     # --- filtering
-    if flt_pow < 0 or finite_size_correction:
+    if finite_size_correction:
         # --- remove implicit size-dependent triangular filter (finite size)
         _filter = n_frames * np.ones(n_frames) - (np.arange(n_frames))
         _filter = np.hstack((_filter[:0:-1], _filter))
         R /= _filter[:, None]
 
-    if flt_pow != 0 or window_length is not None:
-        if window_length is None:
-            _filter = signal_filter(n_frames,
-                                    filter_type='welch') ** abs(flt_pow)
-        else:
-            _filter = signal_filter(n_frames,
-                                    filter_type='welch',
-                                    filter_length=window_length)
+    if window_length is not None:
+        _filter = signal_filter(n_frames,
+                                filter_type='welch',
+                                filter_length=window_length)
 
         _filter = np.hstack((_filter[::-1], _filter[1:]))
         R *= _filter[:, None]

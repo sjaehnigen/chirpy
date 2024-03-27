@@ -88,13 +88,12 @@ def main():
             help="Show results only for given atom species.",
             default=None,
             )
-
-    # parser.add_argument(
-    #         "--noplot",
-    #         default=False,
-    #         action='store_true',
-    #         help="Do not plot results."
-    #         )
+    parser.add_argument(
+            "--noplot",
+            default=False,
+            action='store_true',
+            help="Do not plot results."
+            )
     args = parser.parse_args()
     # no_plot = args.noplot
     if args.range is None:
@@ -144,7 +143,8 @@ def main():
     _vel_au = np.array([_v[args.subset] for _v in get_v()])
 
     e_kin_au = statistical_mechanics.kinetic_energies(_vel_au, _w[args.subset])
-    # e_kin_au = statistical_mechanics.kinetic_energies(_vel_au-np.mean(_vel_au, axis=0)[None], _w[args.subset])
+    # e_kin_au = statistical_mechanics.kinetic_energies(_vel_au
+    # -np.mean(_vel_au, axis=0)[None], _w[args.subset])
 
     _n_f_dof = 6
     if args.element is not None:
@@ -156,35 +156,42 @@ def main():
                                             fixed_dof=_n_f_dof
                                             ))
     print(f'MD temperature: {T_K} K')
-    if args.T is None:
-        args.T = T_K
 
-    match args.dimension:
-        case None:
-            _vel_au = np.linalg.norm(_vel_au, axis=-1).ravel()
-        case _:
-            _vel_au = _vel_au.ravel()
+    if not args.noplot:
+        if args.T is None:
+            args.T = T_K
 
-    plt.hist(_vel_au, lw=0.1, ec='k', bins=100, density=True, label=args.fn)
+        match args.dimension:
+            case None:
+                _vel_au = np.linalg.norm(_vel_au, axis=-1).ravel()
+            case _:
+                _vel_au = _vel_au.ravel()
 
-    _ideal = [statistical_mechanics.maxwell_boltzmann_distribution(
-                            args.T,
-                            _m,
-                            option='velocity'
-                            ) for _m in _w[args.subset]]
-    X = np.linspace(0, np.amax(_vel_au), 200)
-    PDF = np.array([list(map(_ii, X))
-                    for _ii in _ideal]).sum(axis=0) / len(_ideal)
-    plt.plot(X, PDF, label=f'Maxwell-Boltzmann (T={args.T}K)')
+        plt.hist(_vel_au,
+                 lw=0.1,
+                 ec='k',
+                 bins=100,
+                 density=True,
+                 label=args.fn)
 
-    plt.xlabel('Velocity in a.u.')
-    plt.ylabel('Probability density in 1/a.u.')
-    title = 'Velocity Distribution'
-    if args.element is not None:
-        title += f' (element {args.element})'
-    plt.title(title)
-    plt.legend(loc='upper right')
-    plt.show()
+        _ideal = [statistical_mechanics.maxwell_boltzmann_distribution(
+                                args.T,
+                                _m,
+                                option='velocity'
+                                ) for _m in _w[args.subset]]
+        X = np.linspace(0, np.amax(_vel_au), 200)
+        PDF = np.array([list(map(_ii, X))
+                        for _ii in _ideal]).sum(axis=0) / len(_ideal)
+        plt.plot(X, PDF, label=f'Maxwell-Boltzmann (T={args.T}K)')
+
+        plt.xlabel('Velocity in a.u.')
+        plt.ylabel('Probability density in 1/a.u.')
+        title = 'Velocity Distribution'
+        if args.element is not None:
+            title += f' (element {args.element})'
+        plt.title(title)
+        plt.legend(loc='upper right')
+        plt.show()
 
 
 if __name__ == "__main__":

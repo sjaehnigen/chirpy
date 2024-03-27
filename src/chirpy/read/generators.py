@@ -32,16 +32,30 @@
 from itertools import islice, zip_longest
 import warnings
 import numpy as np
+# import io
 import bz2 as _bz2
 from tqdm import tqdm
 
 from .. import config
 
 
-def _gen(fn):
+def _gen(f):
     '''Global generator for all formats'''
-    return (line for line in fn if 'NEW DATA' not in line)
+    # byte stream:
+    # return (line for line in f if b'NEW DATA' not in line)
+    return (line for line in f if 'NEW DATA' not in line)
 
+
+# def _bopen(*args, **kwargs):
+#     '''Open and automatically decompress file if necessary.
+#        Supported compressors: bz2
+#
+#        Read-only support of compressed files.
+#        '''
+#     if kwargs.get('bz2') or args[0].split('.')[-1] == 'bz2':
+#         return _bz2.open(args[0], 'rb')
+#     else:
+#         return open(args[0], 'rb')  #, buffer_size=4096)
 
 def _open(*args, **kwargs):
     '''Open and automatically decompress file if necessary.
@@ -163,4 +177,5 @@ def _container(reader_a, fn_a, args_a=(), kwargs_a=()):
             # -- frame = (out0, out1, out2, ...)
             yield list(zip_longest(*_frame))
     except TypeError:
-        raise ValueError('unexpected end of file in container')
+        raise ValueError('unexpected end of thread in container. '
+                         'Do your files have the same length?')

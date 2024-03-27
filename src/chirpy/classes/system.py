@@ -251,12 +251,13 @@ class _SYSTEM(_CORE):
         mols  ...  list of molecular indices
         '''
         if self.mol_map is None:
-            raise AttributeError('Extract molecules requires a topology '
-                                 '(mol_map)!')
+            _warnings.warn('uses auto-detection of molecules',
+                           _ChirPyWarning, stacklevel=2)
+            self.define_molecules()
 
         self.XYZ.split(self.mol_map, select=mols)
         # re-define molecules to get a clean mol_map
-        self.define_molecules()
+        self.define_molecules(silent=True)
 
         self.symbols = self.XYZ.symbols
         # self.names = self.XYZ.names
