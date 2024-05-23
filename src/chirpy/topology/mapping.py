@@ -339,17 +339,23 @@ def get_cartesian_coordinates(positions, cell, angular=False):
     if angular:
         _cell_vec = np.linalg.det(_cell_vec) * np.linalg.inv(_cell_vec).T
 
-    match len(positions.shape):
-        case 2:
-            return np.einsum('ni, ij -> nj',
-                             positions,
-                             _cell_vec
-                             )
-        case 3:
-            return np.einsum('kni, ij -> knj',
-                             positions,
-                             _cell_vec
-                             )
+    return positions @ _cell_vec
+    # match len(positions.shape):
+    #     case 1:
+    #         return np.einsum('i, ij -> j',
+    #                          positions,
+    #                          _cell_vec
+    #                          )
+    #     case 2:
+    #         return np.einsum('ni, ij -> nj',
+    #                          positions,
+    #                          _cell_vec
+    #                          )
+    #     case 3:
+    #         return np.einsum('kni, ij -> knj',
+    #                          positions,
+    #                          _cell_vec
+    #                          )
 
 
 def distance_matrix(p0, p1=None, cell=None, cartesian=False,

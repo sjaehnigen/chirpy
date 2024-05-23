@@ -78,7 +78,7 @@ def _lorentzian_std(r, width, dim=1):
 
 
 def regularisation(positions, grid, *args,
-                   weights=None, mode='gaussian', cell_aa_deg=None):
+                   weights=None, mode='gaussian', cell_l_deg=None):
     '''Regularisation of singularities on a grid.
        Default mode uses Gaussian functions.
        Requires *args according to chosen function.
@@ -120,15 +120,15 @@ def regularisation(positions, grid, *args,
 
     _slc = (slice(None),) + dim * (None,)
 
-    if cell_aa_deg is not None:
-        cell_aa_deg = cell_aa_deg[_slc]
+    if cell_l_deg is not None:
+        cell_l_deg = cell_l_deg[_slc]
 
     return np.array(
             [_F(np.linalg.norm(
                 vector_pbc(
                         _p[_slc],
                         grid,
-                        cell=cell_aa_deg
+                        cell=cell_l_deg
                         ),
                 axis=0
                 ),

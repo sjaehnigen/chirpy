@@ -124,7 +124,7 @@ def time_correlation_function(*args,
        correlation functions based on the number of arguments (max 2).
 
        Using window functions (Welch) can be enabled through specifying
-       the window_length argument.
+       the window_length argument (integer, unit in frames).
 
        finite_size_correction ... Remove the implicit triangular filter
                                   due to finite size of the signal
@@ -203,7 +203,7 @@ def time_correlation_function(*args,
     if window_length is not None:
         _filter = signal_filter(n_frames,
                                 filter_type='welch',
-                                filter_length=window_length)
+                                filter_length=int(window_length))
 
         _filter = np.hstack((_filter[::-1], _filter[1:]))
         R *= _filter[:, None]

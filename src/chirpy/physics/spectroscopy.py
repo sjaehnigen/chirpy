@@ -283,7 +283,7 @@ def spectrum_from_tcf(*args,
 
        ts_au ... timestep in a.u.
        window_length_au ... if not None, apply window function (Welch)
-                            of the given time length in a.u. to the
+                            of the given time length (time in a.u.) to the
                             time correlation function
 
        Computation of the gauge transport:

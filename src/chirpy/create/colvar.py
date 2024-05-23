@@ -148,12 +148,12 @@ class Angle(_COLVAR):
         vector0 = vector_pbc(
                 configuration[..., self.i1, :],
                 configuration[..., self.i0, :],
-                cell
+                cell=cell
                 )
         vector1 = vector_pbc(
                 configuration[..., self.i1, :],
                 configuration[..., self.i2, :],
-                cell
+                cell=cell
                 )
         angle = angle_pbc(
                 configuration[..., self.i0, :],

@@ -310,6 +310,7 @@ class ScalarField(_CORE):
 
         self.data *= _N_inv
 
+    # --- ToDo: these should be static methods
     def grid(self):
         '''Return an empty copy of grid'''
         return _np.zeros(self.data.shape)
@@ -342,7 +343,7 @@ class ScalarField(_CORE):
         pos_grid = self.ind_grid()
 
         return _np.einsum(
-                'inmo, ji -> jnmo',
+                'inmo, ij -> jnmo',
                 pos_grid,
                 self.cell_vec_aa) + self.origin_aa[:, None, None, None]
 
