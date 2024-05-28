@@ -32,6 +32,7 @@ import os
 import unittest
 import numpy as np
 from functools import partial
+from itertools import product
 
 from chirpy.topology import mapping, dissection, motion, grid  # , distribution
 from chirpy.read import coordinates
@@ -150,6 +151,38 @@ class TestMapping(unittest.TestCase):
                                             cell=cell_aa_deg),
                        decimals=3)
         self.assertListEqual(_d.tolist(), [-0.3, 0., 0.])
+
+        _d = np.around(mapping.distance_pbc(np.array([0.0, 0.0, 0.0]),
+                                            np.array([0.26, 0.0, 0.49]),
+                                            cell=cell_aa_deg,
+                                            mode='priority'),
+                       decimals=3)
+        self.assertListEqual(_d.tolist(), [0.26, 0.0, 0.49])
+
+        # specific test for monoclinic and triclinic cells
+        # requires positive test for cell_vec
+
+        for cell_aa_deg in [
+                np.array([1., 2., np.sqrt(2), 90., 135., 90.]),
+                np.array([1., 1., 1., 90., 90., 120.]),
+                np.array([10., 2., np.sqrt(2), 30., 135., 90.]),
+                np.array([3., 8., np.sqrt(2), 30., 135., 20.]),
+                ]:
+            cell_vec = mapping.cell_vec(cell_aa_deg)
+            n_samples = 10
+            samples = np.random.uniform(0, 1, size=(n_samples, 3))
+            D_test = mapping.distance_matrix(samples, cell=cell_aa_deg,
+                                             mode='accurate')
+            D_ref = np.amin([mapping.distance_matrix(
+                                    samples + _L @ cell_vec,
+                                    samples,
+                                    cell=None,
+                            ) for _L in product([0, 1, -1], repeat=3)], axis=0)
+            self.assertListEqual(
+                    np.round(D_test, decimals=3).flatten().tolist(),
+                    np.round(D_ref, decimals=3).flatten().tolist(),
+                    f'triclinic MIC failed for cell {cell_aa_deg}'
+                    )
 
     def test_distance_matrix(self):
         _p = np.ones((2, 3))

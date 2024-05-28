@@ -32,6 +32,7 @@
 import numpy as np
 import copy
 import warnings as _warnings
+from itertools import product
 
 from .. import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
@@ -245,13 +246,13 @@ def angle_pbc(p0, p1, p2, cell=None, signed=False):
         return angle(v0, v1)
 
 
-def vector_pbc(p0, p1, cell=None, return_pbc_bool=False):
+def vector_pbc(p0, p1, cell=None, return_pbc_bool=False, **kwargs):
     '''p1 – p0 with or without periodic boundaries
        accepts cell argument (a b c al be ga).
        '''
     _d = vector(p0, p1)
     if cell is not None:
-        _d2 = _d - _pbc_shift(_d, cell)
+        _d2 = _d - _pbc_shift(_d, cell, **kwargs)
         if return_pbc_bool:
             # return _d2, not np.allclose(_d, _d2)
             return _d2, _d == _d2
@@ -278,20 +279,22 @@ def mean_pbc(positions, cell=None, axis=0, wrap=True):
         return mean
 
 
-def unwrap_pbc(positions, reference=None, cell=None, axis=0):
+def unwrap_pbc(positions, reference=None, cell=None, axis=0, mode='naive'):
     '''get smooth trajectory of positions without periodic jumps
 
        positions ... array of shape (n_frames, [n_atoms, dim])
        reference ... positions array of shape(1, [n_atoms, dim] that is
                      prepended to positions before unwrapping.
                      NB: The reference is going to be the first frame of the
-                     returned positions.'''
+                     returned positions.
+       mode ...      How to treat non-orthorhombic cells (see _pbc_shift)
+       '''
 
     if cell is not None:
         if reference is None:
             reference = np.take(positions, [0], axis=axis)
         _d = np.diff(positions, axis=axis, prepend=reference)
-        _d2 = _d - _pbc_shift(_d, cell)
+        _d2 = _d - _pbc_shift(_d, cell, mode=mode)
         return np.cumsum(_d2, axis=axis) + reference
     else:
         return positions
@@ -302,20 +305,66 @@ def distance_pbc(*args, **kwargs):
     return vector_pbc(*args, **kwargs)
 
 
-def _pbc_shift(_d, cell):
+def _pbc_shift(_d, cell, mode='naive', priority='auto'):
     '''_d in aa of shape ...
-       cell: [ a b c al be ga ]'''
+       cell: [ a b c al be ga ]
 
-    if not any([_a <= 0.0 for _a in cell[:3]]):
-        if not all([_a == 90.0 for _a in cell[3:]]):
-            # _warnings.warn('Found non-tetragonal lattice.', stacklevel=2)
-            _cell_vec = cell_vec(cell)
-            _c = ceb(_d, _cell_vec)
-            return np.tensordot(np.around(_c), _cell_vec, axes=1)
-        else:
-            return np.around(_d/cell[:3]) * cell[:3]
-    else:
+       Mode defines how non-orthorhombic cells are treated.
+
+       naive ... use fractional coordinates for cubic-style wrap
+       priority ... apply cell vectors sequentially according to priority
+       accurate ... choose minimum distance from 27 possible wrapping scenarios
+
+       Naive does not yield the minimum distance but ensures the original shape
+       of the unit cell.
+       Priority creates a rectangular shape and yields minumum image for almost
+       all cases.
+       Accurate slows down because all 27 possibilities need to be created
+       '''
+
+    if all([_a <= 0.0 for _a in cell[:3]]):
         return np.zeros_like(_d)
+
+    if not all([_a == 90.0 for _a in cell[3:]]):
+        _cell_vec = cell_vec(cell)
+        match mode:
+            case 'priority':
+                if priority == 'auto':
+                    _n_nonzero = (_cell_vec**2 > 1.E-8).sum(1)
+                    if sum(_n_nonzero == 2) > 1 or sum(_n_nonzero == 3) > 1:
+                        _warnings.warn('found general format for cell. '
+                                       'Transform into restricted form to '
+                                       'avoid wrapping errors',
+                                       _ChirPyWarning, stacklevel=2)
+                    _order = np.argsort(_n_nonzero)[::-1]
+                else:
+                    _order = priority
+
+                _d_pbc = copy.deepcopy(_d)
+                for _i in _order:
+                    _d_pbc -= \
+                            np.around(_d_pbc/_cell_vec[_i, _i])[..., _i, None]\
+                            * _cell_vec[_i]
+                return _d - _d_pbc
+
+            case 'accurate':
+                _lattice_combinations = \
+                    list(product([0, 1, -1], repeat=3)) @ _cell_vec
+                _I = np.argmin(
+                        np.linalg.norm(
+                            [_d - _L for _L in _lattice_combinations],
+                            axis=-1
+                            ),
+                        axis=0
+                        )
+                return np.take(_lattice_combinations, _I, axis=0)
+
+            case 'naive' | _:
+                _c = ceb(_d, _cell_vec)
+                return np.tensordot(np.around(_c), _cell_vec, axes=1)
+
+    else:
+        return np.around(_d/cell[:3]) * cell[:3]
 
 
 # --- ToDo: rename the next two methods
@@ -359,7 +408,7 @@ def get_cartesian_coordinates(positions, cell, angular=False):
 
 
 def distance_matrix(p0, p1=None, cell=None, cartesian=False,
-                    return_pbc_bool=False):
+                    return_pbc_bool=False, **kwargs):
     '''Expects one or two args of shape (n_atoms, three) ... (FRAME).
        Order: p0, p1 ==> d = p1 - p0
 
@@ -383,9 +432,9 @@ def distance_matrix(p0, p1=None, cell=None, cartesian=False,
                           )
     if return_pbc_bool:
         dist_array, B = vector_pbc(p0[:, None], p1[None, :], cell=cell,
-                                   return_pbc_bool=return_pbc_bool)
+                                   return_pbc_bool=return_pbc_bool, **kwargs)
     else:
-        dist_array = vector_pbc(p0[:, None], p1[None, :], cell=cell)
+        dist_array = vector_pbc(p0[:, None], p1[None, :], cell=cell, **kwargs)
 
     if cartesian:
         _return = (dist_array,)
@@ -408,10 +457,12 @@ def neighbour_matrix(pos_aa, symbols, cell_aa_deg=None,
     if return_pbc_bool:
         dist_array, B = distance_matrix(pos_aa, cell=cell_aa_deg,
                                         cartesian=cartesian,
-                                        return_pbc_bool=return_pbc_bool)
+                                        return_pbc_bool=return_pbc_bool,
+                                        mode='naive')
     else:
         dist_array = distance_matrix(pos_aa, cell=cell_aa_deg,
-                                     cartesian=cartesian)
+                                     cartesian=cartesian,
+                                     mode='naive')
     # --- working copy
     if cartesian:
         _dist_array = np.linalg.norm(dist_array, axis=-1)
