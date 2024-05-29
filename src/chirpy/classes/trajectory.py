@@ -1192,11 +1192,12 @@ class _XYZ():
 
     def center_position(self, pos, cell_aa_deg, wrap=True):
         '''pos reference in shape (n_frames, three)'''
+        cell_vec_aa = mapping.cell_vec(cell_aa_deg)
         if self._type == 'frame':
-            self._pos_aa(self.pos_aa + cell_aa_deg[None, :3] / 2
+            self._pos_aa(self.pos_aa + cell_vec_aa.sum(axis=0) / 2
                          - pos[None, :])
         else:
-            self._pos_aa(self.pos_aa + cell_aa_deg[None, None, :3] / 2
+            self._pos_aa(self.pos_aa + cell_vec_aa.sum(axis=0) / 2
                          - pos[:, None, :])
 
         if wrap:

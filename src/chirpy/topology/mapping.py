@@ -319,7 +319,11 @@ def _pbc_shift(_d, cell, mode='naive', priority='auto'):
        of the unit cell.
        Priority creates a rectangular shape and yields minumum image for almost
        all cases.
-       Accurate slows down because all 27 possibilities need to be created
+       Accurate slows down because all 27 possibilities need to be created.
+
+       Naive works for (shortest) distances as long as the maximum distance to
+       be found is smaller than half the shortest distance between crystal
+       layers.
        '''
 
     if all([_a <= 0.0 for _a in cell[:3]]):
