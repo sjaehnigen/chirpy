@@ -213,6 +213,7 @@ def rotation_matrix(*args, angle=None):
     if len(args) == 1:
         n = args[0] / np.linalg.norm(args[0])
         cos_ang = np.cos(angle)
+        sin_ang = np.sin(angle)
 
     elif len(args) == 2:
         v1, v2 = args
@@ -220,14 +221,27 @@ def rotation_matrix(*args, angle=None):
         u2 = v2 / np.linalg.norm(v2)
         n = cross(u1, u2)
         cos_ang = dot(u1, u2)
+        sin_ang = np.linalg.norm(n)
     else:
         raise TypeError('rotation_matrix() requires 1 or 2 '
                         'positional arguments!')
 
-    V = np.matrix([[0., -n[2], n[1]], [n[2], 0, -n[0]], [-n[1], n[0], 0.]])
+    V = np.matrix([
+          [0., -n[2], n[1]],
+          [n[2], 0, -n[0]],
+          [-n[1], n[0], 0.]
+        ]) / np.linalg.norm(n)
+
+    U = np.matrix([
+          [n[0]**2, n[0]*n[1], n[0]*n[2]],
+          [n[0]*n[1], n[1]**2, n[1]*n[2]],
+          [n[0]*n[2], n[1]*n[2], n[2]**2],
+        ]) / np.linalg.norm(n)**2
+
     Id = np.matrix([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
+
     # unittest: use np.identity ?
-    R = Id + V + V**2 * (1. - cos_ang) / np.linalg.norm(n)**2
+    R = Id*cos_ang + V*sin_ang + U*(1.-cos_ang)
 
     return np.asarray(R)
 

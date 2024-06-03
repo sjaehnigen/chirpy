@@ -114,16 +114,16 @@ def source_params(matplotlib):
 
 def make_nice_ax(p):
     '''p object ... AxesSubplot'''
-    p.tick_params('both',  length=5,   width=3,  which='minor')
-    p.tick_params('both',  length=10,  width=3,  which='major')
+    p.tick_params('both',  length=5,   width=2,  which='minor')
+    p.tick_params('both',  length=10,  width=2,  which='major')
     p.tick_params(axis='both',  which='both',  pad=10,  direction='out')
     # , top=False, right=False)
     # p.yaxis.set_ticks_position('left')
     # p.spines['top'].set_visible(False)
-    p.spines['top'].set_linewidth(3.0)
-    p.spines['bottom'].set_linewidth(3.0)
-    p.spines['left'].set_linewidth(3.0)
-    p.spines['right'].set_linewidth(3.0)
+    p.spines['top'].set_linewidth(2.0)
+    p.spines['bottom'].set_linewidth(2.0)
+    p.spines['left'].set_linewidth(2.0)
+    p.spines['right'].set_linewidth(2.0)
 
 
 def set_mutliple_y_axes(ax, sep, n_axes,

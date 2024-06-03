@@ -69,13 +69,21 @@ class TestAlgebra(unittest.TestCase):
                              [0.4472136, 0., -0.8944272])
 
     def test_rotation_matrix(self):
-        _v1 = np.array([0.123143, -123.923, 7.219])
-        _v2 = np.array([-13., 0., 0.128923518])
-        R = algebra.rotation_matrix(_v1, _v2)
-        self.assertEqual(algebra.angle(np.dot(R, _v1), _v2), 0.0)
-        self.assertEqual(*map(
+        for _v1, _v2 in [
+           (np.array([0.123, -123.923, 7.219]), np.array([-13., 0., 0.1289])),
+           (np.array([0.123, -123.923, 7.219]), np.array([-13., 11., 0.1289])),
+           (np.array([0.123, -12.923, 7.219]), np.array([-13., 1., -0.1289])),
+           ]:
+            R = algebra.rotation_matrix(_v1, _v2)
+            self.assertAlmostEqual(
+                             algebra.angle(R @ _v1, _v2),
+                             0.0,
+                             7,
+                             f'rotation matrix fails for {_v1}, {_v2}'
+                             )
+            self.assertEqual(*map(
                             lambda x: np.around(np.linalg.norm(x), decimals=9),
-                            [np.dot(R, _v1), _v1]
+                            [R @ _v1, _v1]
                             ))
 
     def test_change_euclidean_basis(self):
