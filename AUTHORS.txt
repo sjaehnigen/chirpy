@@ -3,14 +3,15 @@ The repository is hosted at https://github.com/sjaehnigen/chirpy including the v
 Contact
 -------
 
-sascha.jahnigen (at) ens.psl.eu
+sascha.jaehnigen (at) fu-berlin.de
 
 
 Institutions
 ------------
 
-Ecole Normale Supérieure, Paris, France (ENS).
-Martin-Luther-Universität Halle-Wittenberg (MLU).
+Freie Universität Berlin (FUB), Germany.
+Ecole Normale Supérieure de Paris, France (ENS).
+Martin-Luther-Universität Halle-Wittenberg, Germany (MLU).
 
 
 Contributors
