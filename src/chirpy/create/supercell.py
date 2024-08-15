@@ -489,4 +489,7 @@ class Solution(_BoxObject):
             _os.remove(".member-%03d.pdb" % _im)
         _os.remove(".simbox.pdb")
 
-        return _load
+        #with _warnings.catch_warnings():
+        #    _warnings.filterwarnings('ignore', category=_ChirPyWarning)
+        #    _load = _Molecule("topology.pdb")
+        return _Molecule("topology.pdb")

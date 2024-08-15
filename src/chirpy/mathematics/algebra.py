@@ -211,17 +211,19 @@ def triple_product(*args):
 def rotation_matrix(*args, angle=None):
     '''rotate v1 to match v2 or normal vector (requires angle)'''
     if len(args) == 1:
-        n = args[0] / np.linalg.norm(args[0])
+        n = args[0]
+        nnorm = np.linalg.norm(n)
         cos_ang = np.cos(angle)
-        sin_ang = np.sin(angle)
+        sin_ang = np.sin(angle) / nnorm
 
     elif len(args) == 2:
         v1, v2 = args
         u1 = v1 / np.linalg.norm(v1)
         u2 = v2 / np.linalg.norm(v2)
         n = cross(u1, u2)
+        nnorm = np.linalg.norm(n)
         cos_ang = dot(u1, u2)
-        sin_ang = np.linalg.norm(n)
+        sin_ang = 1.0
     else:
         raise TypeError('rotation_matrix() requires 1 or 2 '
                         'positional arguments!')
@@ -230,13 +232,13 @@ def rotation_matrix(*args, angle=None):
           [0., -n[2], n[1]],
           [n[2], 0, -n[0]],
           [-n[1], n[0], 0.]
-        ]) / np.linalg.norm(n)
+        ])
 
     U = np.matrix([
           [n[0]**2, n[0]*n[1], n[0]*n[2]],
           [n[0]*n[1], n[1]**2, n[1]*n[2]],
           [n[0]*n[2], n[1]*n[2], n[2]**2],
-        ]) / np.linalg.norm(n)**2
+        ]) / nnorm**2
 
     Id = np.matrix([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
 
