@@ -7,7 +7,7 @@
 #    https://github.com/sjaehnigen/chirpy
 #
 #
-#  Copyright (c) 2020-2023, The ChirPy Developers.
+#  Copyright (c) 2020-2024, The ChirPy Developers.
 #
 #
 #  Released under the GNU General Public Licence, v3 or later
@@ -28,7 +28,7 @@
 #
 # ----------------------------------------------------------------------
 
-__version__ = "0.26.3"
+__version__ = "0.26.4"
 
 
 import sys
