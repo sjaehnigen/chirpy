@@ -108,6 +108,8 @@ def angle(*args):
 def signed_angle(*args):
     """args: v0, v1, n; n is the reference/plane normal for angle direction;
        sign: v0 --(rot)-> v1"""
+    # NB: atan2 only valid for 3D if the two vectors lie in the same plane
+    # defined by n
     if len(args) == 1:
         v0, v1, n = args[0]
     elif len(args) == 3:

@@ -295,7 +295,11 @@ for _z, _ZV in _ZV_list:
 def _get_property(kinds, key, fmt=None, fill_value=None):
     pr = []
     for _k in kinds:
-        _guess = _k
+        try:
+            _guess = _k.title()
+        except AttributeError:
+            _guess = _k
+
         while True:
             try:
                 _r = getattr(elements[_guess], key)
