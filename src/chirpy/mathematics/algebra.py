@@ -99,10 +99,17 @@ def angle(*args):
 
     norm0 = np.linalg.norm(v0, axis=-1)
     norm1 = np.linalg.norm(v1, axis=-1)
-    al = dot(v0, v1)/norm0/norm1
-    a_rad = np.arccos(np.clip(al, -1.0, 1.0))
 
-    return a_rad
+    al = dot(v0, v1)/norm0/norm1
+
+#     # -- cosine becomes flat for small angles --> switch to sine
+#     if al > 0.90:
+#         altal = np.linalg.norm(cross(v0, v1), axis=-1)/norm0/norm1
+#         return np.arcsin(np.clip(altal, -1.0, 1.0))
+#     elif al < -0.90:
+#         altal = np.linalg.norm(cross(v0, v1), axis=-1)/norm0/norm1
+#         return np.pi - np.arcsin(np.clip(altal, -1.0, 1.0))
+    return np.arccos(np.clip(al, -1.0, 1.0))
 
 
 def signed_angle(*args):

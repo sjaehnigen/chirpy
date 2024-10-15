@@ -189,7 +189,7 @@ class TestSystem(unittest.TestCase):
     def test_supercell(self):
         largs = {
                 'fn_topo': self.dir + "/topo.pdb",
-                'range': (0, 7, 23),
+                'range': (0, 3, 10),
                 'sort': True,
                 }
         _load = system.Supercell(self.dir + "/MD-NVT-production-pos-1.xyz",
@@ -247,6 +247,27 @@ class TestSystem(unittest.TestCase):
                         f'{self.dir}/ref.xyz!',
                         )
         os.remove("out_system.xyz")
+
+    def test_sort(self):
+        _load = system.Supercell(self.dir + '/input_sort.xyz', sort=False)
+        ref_symbols = tuple(sorted(_load.XYZ.symbols))
+        _MF = _load.molecular_formula
+        self.assertTupleEqual(
+                ref_symbols,
+                tuple([_is for _s in _MF for _is in _MF[_s]*(_s,)]),
+                'Got wrong or unsorted molecular formula'
+                )
+        _load = system.Supercell(self.dir + '/input_sort.xyz', sort=True)
+        self.assertTupleEqual(
+                ref_symbols,
+                _load.XYZ.symbols,
+                'system symbols not sorted'
+                )
+        self.assertTupleEqual(
+                _load.XYZ.symbols,
+                _load.symbols,
+                'system sort inconsistent'
+                )
 
 
 class TestQuantum(unittest.TestCase):

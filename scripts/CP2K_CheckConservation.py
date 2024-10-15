@@ -33,6 +33,7 @@ import sys
 import argparse
 import numpy as np
 import warnings
+import matplotlib.pyplot as plt
 
 from chirpy.interface import cp2k
 from chirpy.visualise import timeline
@@ -100,6 +101,23 @@ def main(*args):
             step_n, pot, 'potential energy', 'step', 'Epot', plot)
     timeline.show_and_interpolate_array(
             step_n, cqty, 'conserved quantity', 'step', 'C. Qty', plot)
+
+    if plot:
+        E_tot = kin+pot
+        _E = np.mean(kin+pot)
+        counts, bins, obj = plt.hist(E_tot-_E, bins=200, density=True)
+
+        # N = 120
+        # sigma = constants.k_B_au*np.mean(temp)*np.sqrt(5/2*N) # this is C_p
+        # of ideal gas
+        # plt.plot(
+        #         bins,
+        #         1/sigma/np.sqrt(2*np.pi)*np.exp(-0.5*(bins-_E)**2/sigma**2)
+        #         )
+        plt.title('total energy distribution')
+        plt.xlabel('Etot')
+        plt.ylabel('h')
+        plt.show()
 
 
 if __name__ == "__main__":

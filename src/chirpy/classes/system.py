@@ -69,7 +69,7 @@ class _SYSTEM(_CORE):
                 self.XYZ = kwargs.pop('XYZ')
         try:
             self._sync_class(check_consistency=False, **kwargs)
-            self._sync_class(tag='init', **kwargs)  # call twice
+            self._sync_class(tag='init')  # **kwargs)  # call twice
 
         except KeyError:
             with _warnings.catch_warnings():
@@ -307,7 +307,7 @@ class _SYSTEM(_CORE):
         '''Sort atoms alphabetically (default)'''
         if slist is None:
             slist = self.XYZ.sort()
-        self.XYZ.sort(slist)
+        # self.XYZ.sort(slist)
         self.symbols = self.XYZ.symbols
 
         if hasattr(self, 'Modes'):
