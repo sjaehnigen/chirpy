@@ -78,6 +78,8 @@ def read_ener_file(fn):
 
     for step in steps:
         buff = step.split()
+        if buff[0][0] == '#':
+            continue
         step_n.append(float(buff[0]))
         time.append(float(buff[1]))
         kin.append(float(buff[2]))
@@ -86,6 +88,7 @@ def read_ener_file(fn):
         cqty.append(float(buff[5]))
 
     step_n = np.array(step_n)
+    step_n = np.arange(len(step_n))  # overwrite
     time = np.array(time).astype(float)
     kin = np.array(kin).astype(float)
     temp = np.array(temp).astype(float)
