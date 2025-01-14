@@ -400,12 +400,13 @@ class ITERATOR():
             else:
                 if verbose:
                     print(obj._fr, ' doublet of ', _ts)
-                _skip.append(obj._fr)
+                _skip.append(obj._fr + _offset)
             obj._kwargs.update({'_timesteps': _timesteps})
             obj._kwargs.update({'skip': _skip})
 
         _keep = self._kwargs['range']
         _masks = self._kwargs['_masks']
+        _offset = split_comment(self._frame.comments)
 
         if self._kwargs['range'][1] != 1:
             warnings.warn('Setting range increment to 1 for doublet search!',
@@ -429,9 +430,11 @@ class ITERATOR():
                              % (self._fr, self.comments))
 
         # ToDo: re-add this warning without using numpy
-        if len(np.unique(np.diff(self._kwargs['_timesteps']))) != 1:
-            warnings.warn("CRITICAL: Found varying timesteps!",
-                          config.ChirPyWarning, stacklevel=2)
+        if len(np.unique(_diff := np.diff(self._kwargs['_timesteps']))) != 1:
+            warnings.warn(
+             "CRITICAL: Found varying timesteps! "
+             f"{(np.argwhere(np.diff(_diff)!=0).flatten()[1::2]+_offset).tolist()}",
+             config.ChirPyWarning, stacklevel=2)  # 0-based index
 
         if verbose:
             print('Duplicate frames in %s according to range %s:' % (

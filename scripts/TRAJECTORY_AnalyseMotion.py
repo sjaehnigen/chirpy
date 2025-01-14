@@ -36,6 +36,7 @@ from chirpy.visualise import timeline
 from chirpy.topology import motion
 from chirpy.topology import mapping
 from chirpy.classes import system
+from chirpy import constants
 
 
 def main():
@@ -90,45 +91,65 @@ def main():
     else:
         plot = 1
 
-    largs = vars(args)
-    _load = system.Supercell(args.fn, **largs)
-    _w = _load.XYZ.masses_amu
+    _files = [args.fn]
     if args.fn_vel is not None:
-        _load_vel = system.Supercell(args.fn_vel, **largs)
+        _files.append(args.fn_vel)
+
+    largs = vars(args)
+
+    # --- load data into object
+    _load = system.Supercell(*_files, **largs)
+    _w = _load.XYZ.masses_amu * constants.m_amu_au
 
     def get_p_and_v():
-        # --- old but working: any file combination
         try:
             while True:
                 next(_load.XYZ)
-                _p = _load.XYZ.pos_aa
+                _p = _load.XYZ.pos_aa * constants.l_aa2au
                 _v = _load.XYZ.vel_au
-                if args.fn_vel is not None:
-                    next(_load_vel.XYZ)
-                    if bool(_load_vel.XYZ._is_similar(_load.XYZ)):
-                        _v = _load_vel.XYZ.pos_aa
                 yield _p, _v
 
         except StopIteration:
             pass
+
+    subset = largs.get('subset', slice(None))
 
     def get_results():
         _it = get_p_and_v()
         try:
             while True:
                 _p, _v = next(_it)
-                _com = mapping.cowt(_p, _w, **largs)
-                _lin = motion.linear_momenta(_v, _w, **largs)
-                _ang = motion.angular_momenta(_p, _v, _w, origin=_com, **largs)
-                yield _com, _lin, _ang
+                _com = mapping.cowt(_p, _w, subset=subset)
+                _lin = motion.linear_momenta(_v, _w, subset=subset)
+                _ang, _moI = motion.angular_momenta(_p, _v, _w, origin=_com,
+                                                    subset=subset, moI=True)
+                yield _com, _lin, _ang, _moI
 
         except StopIteration:
             pass
 
-    center_of_masses, linear_momenta, angular_momenta = np.array(
-            tuple(zip(*[_r for _r in get_results()]))
-            )
-    step_n = np.arange(len(center_of_masses))
+    center_of_masses, linear_momenta, angular_momenta, moment_of_inertia = \
+        tuple(zip(*[_r for _r in get_results()]))
+
+    center_of_masses = np.array(center_of_masses)
+    linear_momenta = np.array(linear_momenta)
+    angular_momenta = np.array(angular_momenta)
+    moment_of_inertia = np.array(moment_of_inertia)
+
+    n_frames = len(center_of_masses)
+    n_dof = 3*len(_w[subset])
+
+    # --- translational and rotational temperatures (BETA), scaled from 3 to
+    # all DOF
+    T_trans = (linear_momenta**2 / _w.sum()
+               / constants.k_B_au).sum() / n_frames / n_dof
+    T_rot = (angular_momenta**2 / moment_of_inertia[:, None]
+             / constants.k_B_au).sum() / n_frames / n_dof
+
+    print('T(trans):\r\t\t\t\t%f' % T_trans)
+    print('T(rot):\r\t\t\t\t%f' % T_rot)
+
+    step_n = np.arange(n_frames)
 
     timeline.show_and_interpolate_array(
          step_n, center_of_masses[:, 0], 'com_x', 'step', 'com_x', plot)

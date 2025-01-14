@@ -132,6 +132,13 @@ def main():
             default=False,
             )
     parser.add_argument(
+            "--clean_velocities",
+            action='store_true',
+            help="Remove linear and angular momenta from trajectory. \
+                  Positions are not changed.",
+            default=False,
+            )
+    parser.add_argument(
             "--force_centering",
             action='store_true',
             help="Enforce centering after alignment.",
@@ -254,6 +261,18 @@ def main():
             warnings.warn('Using centering/wrapping and aligning in one call '
                           'may not yield the desired result (use two '
                           'consecutive calls if this is the case).',
+                          config.ChirPyWarning,
+                          stacklevel=2)
+
+    if args.clean_velocities:
+        if not bool(args.center_coords) and args.center_molecule is None:
+            warnings.warn('Using the clean_velocities option without '
+                          'centering coordinates',
+                          config.ChirPyWarning,
+                          stacklevel=2)
+        if not bool(args.align_coords):
+            warnings.warn('Using the clean_velocities option without '
+                          'coordinate alignment',
                           config.ChirPyWarning,
                           stacklevel=2)
 

@@ -78,6 +78,13 @@ def main():
             default=None,
             )
     parser.add_argument(
+            "--number_of_conserved_DOF",
+            help="Consider given number of degrees of freedom as "
+                 "fixed (e.g., from rotation or translation = 6).",
+            type=int,
+            default=0,
+            )
+    parser.add_argument(
             "--T",
             help="Reference temperature in K.",
             type=float,
@@ -146,7 +153,7 @@ def main():
     # e_kin_au = statistical_mechanics.kinetic_energies(_vel_au
     # -np.mean(_vel_au, axis=0)[None], _w[args.subset])
 
-    _n_f_dof = 6
+    _n_f_dof = args.number_of_conserved_DOF
     if args.element is not None:
         warnings.warn('Element mode: Switching off conservation of '
                       'degrees of freedom.')

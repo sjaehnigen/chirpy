@@ -39,7 +39,7 @@ import fortranformat as ff
 from .generators import _reader, _open, _container
 from ..topology.mapping import detect_lattice, cell_vec, close_neighbours
 from ..constants import convert as _convert
-from .. import config
+from .. import config, constants
 
 if config.__os__ == 'Linux':
     from ..external.concurrent_iterator.process import Producer
@@ -621,22 +621,32 @@ def cifReader(FN, fill_unit_cell=True):
         x = np.array(_measurement2float(_load['_atom_site_fract_x']))
         y = np.array(_measurement2float(_load['_atom_site_fract_y']))
         z = np.array(_measurement2float(_load['_atom_site_fract_z']))
-        symbols = tuple(get_label(['_atom_site_type_symbol']))
-        names = tuple(get_label(['_atom_site_label']))
 
     except KeyError:
         x = np.array(_measurement2float(_load['_atom_site.Cartn_x']))
         y = np.array(_measurement2float(_load['_atom_site.Cartn_y']))
         z = np.array(_measurement2float(_load['_atom_site.Cartn_z']))
-        symbols = tuple(get_label(['_atom_site.type_symbol']))
-        names = tuple(get_label(['_atom_site.label']))
+
+    symbols = tuple(get_label([
+                        '_atom_site_type_symbol',
+                        '_atom_site.type_symbol',
+                        '_atom_site_label',
+                        '_atom_site.label',
+                        ]))
+    names = tuple(get_label([
+                        '_atom_site_label',
+                        '_atom_site.label',
+                        ]))
+
+    symbols = constants.symbols_to_symbols(symbols)  # clean up
 
     if False:
         print(f'Asymmetric unit: {len(list(zip(x, y, z)))} atoms')
 
     _space_group_label = get_label([
             '_space_group_crystal_system',
-            '_symmetry_cell_setting'
+            '_symmetry_cell_setting',
+            '_symmetry_space_group_name_h-m',
             ]).lower()
 
     if _space_group_label is None:

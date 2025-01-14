@@ -49,7 +49,7 @@ def print_cell(obj):
     print(f'''
 {77 * '–'}
 CELL {' '.join(map('{:10.5f}'.format, obj.cell_aa_deg))}
-{detect_lattice(obj.cell_aa_deg).upper()}
+{str(detect_lattice(obj.cell_aa_deg)).upper()}
 {77 * '-'}
  A   {' '.join(map('{:10.5f}'.format, cell_vec_aa[0]))}
  B   {' '.join(map('{:10.5f}'.format, cell_vec_aa[1]))}

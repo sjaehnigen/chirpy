@@ -577,6 +577,7 @@ class _XYZ():
        attributes for changes.'''
 
     def _import_frame(self, *args, **kwargs):
+        clean_velocities = kwargs.pop('clean_velocities', False)
         align_coords = kwargs.pop('align_coords', False)
         center_coords = kwargs.pop('center_coords', False)
         wrap = kwargs.get('wrap', False)
@@ -871,6 +872,8 @@ class _XYZ():
                            align_ref=kwargs.get('align_ref'),
                            force_centering=kwargs.get('force_centering', False)
                            )
+        if bool(clean_velocities):
+            self.clean_velocities(weights=weights)
 
     def _pos_aa(self, *args):
         '''Update positions'''
