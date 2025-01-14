@@ -382,6 +382,9 @@ class ITERATOR():
         self._mask(self, _func, other)
 
     def mask_duplicate_frames(self, verbose=config.__verbose__, **kwargs):
+        '''The printed numbers include the offset frame number,
+           i.e. adding the number of frame 0, but not the stored mask
+           '''
         def split_comment(comment):
             # ---- cp2k comment syntax, add more if required
             if 'i = ' in comment:
@@ -400,7 +403,7 @@ class ITERATOR():
             else:
                 if verbose:
                     print(obj._fr, ' doublet of ', _ts)
-                _skip.append(obj._fr + _offset)
+                _skip.append(obj._fr)
             obj._kwargs.update({'_timesteps': _timesteps})
             obj._kwargs.update({'skip': _skip})
 
@@ -440,7 +443,7 @@ class ITERATOR():
             print('Duplicate frames in %s according to range %s:' % (
                     self._fn,
                     self._kwargs['range']
-                    ), self._kwargs['skip'])
+                    ), np.array(self._kwargs['skip'] + _offset).tolist())
 
         self._kwargs['_masks'] = _masks
         self._kwargs['range'] = _keep

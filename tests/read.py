@@ -324,7 +324,9 @@ class TestCoordinates(unittest.TestCase):
 
     def test_cifReader(self):
         # ToDo: insufficient testing: needs test on symmetry
-        data, names, symbols, cell_aa_deg, title = \
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            data, names, symbols, cell_aa_deg, title = \
                 r_coordinates.cifReader(self.dir + '/indanol.cif')
         self.assertTupleEqual(data.shape, (1, 40, 3))
         self.assertIsInstance(title, list)
