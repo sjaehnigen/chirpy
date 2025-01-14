@@ -443,7 +443,7 @@ class ITERATOR():
             print('Duplicate frames in %s according to range %s:' % (
                     self._fn,
                     self._kwargs['range']
-                    ), np.array(self._kwargs['skip'] + _offset).tolist())
+                    ), (np.array(self._kwargs['skip']) + _offset).tolist())
 
         self._kwargs['_masks'] = _masks
         self._kwargs['range'] = _keep
