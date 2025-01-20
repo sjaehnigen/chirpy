@@ -79,8 +79,8 @@ def main():
             )
     parser.add_argument(
             "--number_of_conserved_DOF",
-            help="Consider given number of degrees of freedom as "
-                 "fixed (e.g., from rotation or translation = 6).",
+            help="The number of degrees of freedom that have been "
+                 "fixed in the MD (e.g., rotation + translation = 6).",
             type=int,
             default=0,
             )
