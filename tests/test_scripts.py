@@ -36,7 +36,7 @@ import warnings
 import chirpy as cp
 
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/test_files'
 
 
 class TestBinaries(unittest.TestCase):

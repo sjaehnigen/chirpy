@@ -279,8 +279,7 @@ class _SYSTEM(_CORE):
             self.Modes.split(_np.arange(len(self.symbols)), select=atoms)
 
         if self.mol_map is not None:
-            self.mol_map = _np.array([_i
-                                      for _i in self.mol_map if _i in atoms])
+            self.mol_map = _np.array(self.mol_map)[atoms]
 
         self.symbols = self.XYZ.symbols
         # self.names = self.XYZ.names

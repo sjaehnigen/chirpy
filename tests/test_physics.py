@@ -35,12 +35,14 @@ import numpy as np
 import warnings
 
 from chirpy import constants
+from chirpy.config import ChirPyWarning
 from chirpy.physics import statistical_mechanics, spectroscopy, \
     classical_electrodynamics
+from chirpy.physics import kspace
 from chirpy.classes import trajectory
 # kspace, modern_theory_of_magnetisation
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/test_files'
 
 
 class TestConstants(unittest.TestCase):
@@ -56,6 +58,32 @@ class TestConstants(unittest.TestCase):
                 constants.symbols_to_masses(('C', 'H', 'D', 'P')).tolist(),
                 [12.011, 1.008, 2.01410177784, 30.973761998],
                 )
+
+    def test_symbols_to_symbols_detect_element(self):
+        # --- detect_element: guess the chemical element from an arbitrary
+        # atom kind/name label (e.g. force-field style labels) by
+        # progressively truncating from the right until a known element
+        # symbol is matched; a warning is issued whenever guessing kicks in
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            detected = constants.symbols_to_symbols(
+                    ('OW', 'HW1', 'NA+', 'C')
+                    )
+            msgs = [str(_w.message) for _w in w]
+
+        self.assertTupleEqual(detected, ('O', 'H', 'Na', 'C'))
+        # --- exact element symbols are recognised without any guessing
+        self.assertFalse(any('C' == _m for _m in msgs))
+        self.assertTrue(any('OW --> O' in _m for _m in msgs))
+        self.assertTrue(any('HW1 --> H' in _m for _m in msgs))
+        self.assertTrue(any('NA+ --> Na' in _m for _m in msgs))
+
+        # --- unresolvable labels fall back to the original label itself
+        # (fill_value='self')
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=ChirPyWarning)
+            fallback = constants.symbols_to_symbols(('##!!',))
+        self.assertTupleEqual(fallback, ('##!!',))
 
     def test_numbers_to_symbols(self):
         self.assertTupleEqual(
@@ -93,6 +121,39 @@ class TestStatisticalMechanics(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+    def test_time_correlation_function(self):
+        n = 200
+        t = np.arange(n)
+        signal = np.cos(2 * np.pi * t / 20.0)
+
+        tcf = statistical_mechanics.time_correlation_function(
+                signal, finite_size_correction=False)
+
+        # --- shape: full convolution of two length-n signals
+        self.assertEqual(tcf.shape, (2 * n - 1,))
+
+        # --- zero-lag value equals the (biased) signal energy
+        self.assertAlmostEqual(tcf[0], np.sum(signal**2), places=6)
+
+        # --- symmetric about zero lag (tcf[+k] == tcf[-k])
+        self.assertTrue(np.allclose(tcf[1:], tcf[1:][::-1], atol=1e-6))
+
+        # --- explicit auto-correlation (1 arg) matches cross-correlation
+        #     of the signal with itself (2 args)
+        tcf_cross = statistical_mechanics.time_correlation_function(
+                signal, signal, finite_size_correction=False)
+        self.assertTrue(np.allclose(tcf, tcf_cross))
+
+        # --- mismatched shapes raise
+        with self.assertRaises(ValueError):
+            statistical_mechanics.time_correlation_function(
+                    signal, signal[:-1])
+
+        # --- too many arguments raise
+        with self.assertRaises(TypeError):
+            statistical_mechanics.time_correlation_function(
+                    signal, signal, signal)
 
     def test_temperature_from_energies(self):
         E = statistical_mechanics.kinetic_energies([
@@ -269,3 +330,68 @@ class TestClassicalElectrodyanmics(unittest.TestCase):
                 )
         self.assertListEqual(np.round(_m, decimals=2).tolist(),
                              [[1.2, 2.12, 0.6], [2.2, 2.12, 1.8]])
+
+    def test_shift_electric_origin_gauge(self):
+        # mu(B) = mu(A) + q * (o_a - o_b)
+        _mu = classical_electrodynamics.shift_electric_origin_gauge(
+                np.array([2.0]),
+                np.array([1.2, 3.0, -1.0]),
+                np.array([-1., 3., 0.1]),
+                np.array([0., 0., 0.]),
+                )
+        self.assertListEqual(np.round(_mu, decimals=6).tolist(),
+                             [[-0.8, 9.0, -0.8]])
+
+        # --- shifting there and back returns the original dipole moment
+        _mu_back = classical_electrodynamics.shift_electric_origin_gauge(
+                np.array([2.0]),
+                _mu[0],
+                np.array([0., 0., 0.]),
+                np.array([-1., 3., 0.1]),
+                )
+        self.assertListEqual(np.round(_mu_back, decimals=6).tolist(),
+                             [[1.2, 3.0, -1.0]])
+
+        # -- periodic
+        _mu_pbc = classical_electrodynamics.shift_electric_origin_gauge(
+                np.array([2.0]),
+                np.array([1.2, 3.0, -1.0]),
+                np.array([-1., 3., 0.1]),
+                np.array([0., 0., 0.]),
+                cell_au_deg=np.array([10., 0.7, 10., 90., 90., 90.])
+                )
+        self.assertTupleEqual(_mu_pbc.shape, (1, 3))
+
+
+class TestKspace(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_k_get_cell(self):
+        R, K = kspace.k_get_cell(4, 4, 4, 8., 8., 8.)
+        self.assertTupleEqual(R.shape, (4, 4, 4))
+        self.assertTupleEqual(K.shape, (4, 4, 4))
+        self.assertAlmostEqual(R.min(), 0.0, places=6)
+
+        # -- refining the grid while keeping the same box: minimum
+        # k-vector magnitude (k=0) stays 0, real-space spans the same box
+        R2, K2 = kspace.k_get_cell(8, 8, 8, 8., 8., 8.)
+        self.assertAlmostEqual(R2.max(), R.max(), places=6)
+
+    def test_k_potential(self):
+        n = 8
+        cell_au = np.eye(3)
+        rho = np.zeros((n, n, n))
+        rho[n // 2, n // 2, n // 2] = 1.0
+
+        R, V = kspace.k_potential(rho, cell_au)
+        self.assertTupleEqual(V.shape, (n, n, n))
+
+        # --- Coulomb potential of a point charge is maximal at the
+        # charge position
+        self.assertEqual(np.argmax(V), np.ravel_multi_index(
+                (n // 2, n // 2, n // 2), V.shape))

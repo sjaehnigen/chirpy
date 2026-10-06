@@ -51,8 +51,10 @@ def read_hessian_file(fn):
 
     with open(fn, 'r') as f:
         inbuffer = f.read()
-    if inbuffer.strip().split('\n')[0] != '$orca_hessian_file':
-        print(inbuffer.strip().split('\n')[1])
+    _lines = inbuffer.strip().split('\n')
+    if _lines[0] != '$orca_hessian_file':
+        if len(_lines) > 1:
+            print(_lines[1])
         raise ValueError('Cannot read file. No ORCA format?')
 
     # pos_hessian = inbuffer.index('$hessian')

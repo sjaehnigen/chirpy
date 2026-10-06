@@ -45,7 +45,7 @@ from chirpy.write import grid as w_grid
 from chirpy.config import ChirPyWarning
 from chirpy import constants
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/test_files'
 
 
 class TestModes(unittest.TestCase):
@@ -247,6 +247,27 @@ class TestCoordinates(unittest.TestCase):
                                     res,
                                     np.array([0., 0., 0., 90., 90., 90.]),
                                     title)
+        os.remove(self.dir + "/out.pdb")
+
+        # --- B-values are placed in the correct fixed-width PDB column
+        # (columns 61-66, 0-based slice [60:66])
+        b_values = [round(1.5 * _i, 2) for _i in range(len(symbols))]
+        w_coordinates.pdbWriter(self.dir + '/out.pdb', data[0], names,
+                                symbols, res, cell_aa_deg, title,
+                                b_values=b_values)
+        with open(self.dir + '/out.pdb') as _f:
+            _atom_lines = [_l for _l in _f if _l.startswith('ATOM')]
+        for _i, _l in enumerate(_atom_lines):
+            self.assertAlmostEqual(float(_l[60:66]), b_values[_i], places=2)
+        os.remove(self.dir + "/out.pdb")
+
+        # --- default (no b_values given): all-zero B-column
+        w_coordinates.pdbWriter(self.dir + '/out.pdb', data[0], names,
+                                symbols, res, cell_aa_deg, title)
+        with open(self.dir + '/out.pdb') as _f:
+            _atom_lines = [_l for _l in _f if _l.startswith('ATOM')]
+        for _l in _atom_lines:
+            self.assertAlmostEqual(float(_l[60:66]), 0.0, places=2)
         os.remove(self.dir + "/out.pdb")
 
 

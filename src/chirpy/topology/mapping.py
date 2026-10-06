@@ -37,7 +37,7 @@ from itertools import product
 from .. import constants
 from ..mathematics.algebra import change_euclidean_basis as ceb
 from ..mathematics.algebra import kabsch_algorithm, rotate_vector, angle, \
-        signed_angle, vector, dihedral
+        signed_angle, vector, dihedral, cross
 
 from ..snippets import _unpack_tuple
 from ..config import ChirPyWarning as _ChirPyWarning
@@ -233,15 +233,27 @@ def dihedral_pbc(p0, p1, p2, p3, cell=None):
     return dihedral(v0, v1, v2)
 
 
-def angle_pbc(p0, p1, p2, cell=None, signed=False):
+def angle_pbc(p0, p1, p2, cell=None, signed=False, plane_normal=None):
     '''p0 <– p1 –> p2  with or without periodic boundaries
        accepts cell argument (a b c al be ga).
+
+       signed ... if True, return the signed angle (v0 --(rot)--> v1)
+                  with respect to plane_normal (see
+                  chirpy.mathematics.algebra.signed_angle).
+       plane_normal ... reference/plane normal defining the rotation
+                        direction for the signed angle. Defaults to
+                        cross(v0, v1), i.e. the angle's own normal, in
+                        which case the sign is always positive (thus
+                        equal to the unsigned angle); pass an explicit
+                        plane_normal to obtain a meaningful sign.
        '''
     v0 = vector_pbc(p1, p0, cell)
     v1 = vector_pbc(p1, p2, cell)
 
     if signed:
-        return signed_angle(v0, v1)
+        if plane_normal is None:
+            plane_normal = cross(v0, v1)
+        return signed_angle(v0, v1, plane_normal)
     else:
         return angle(v0, v1)
 
@@ -954,9 +966,12 @@ def guess_atom_types(pos_aa,
 
     def assign_types(character, kernel):
         '''general evaluation of similarity kernel'''
-        similarity = np.array([[_i for _i, _ch1 in enumerate(character)
-                                if _ch1 == _ch0]
-                               for _ch0 in character])
+        # --- NB: rows may have different lengths (ragged), so this must
+        # stay a plain list (not a numpy array) to support arbitrary
+        # numbers of atoms sharing the same character
+        similarity = [[_i for _i, _ch1 in enumerate(character)
+                       if kernel(_ch1, _ch0)]
+                      for _ch0 in character]
         n_types = 0
         n_atoms = atom_count = len(character)
 
@@ -985,8 +1000,9 @@ def guess_atom_types(pos_aa,
                           for _ch, _s in zip(_character, _core)]
         if order > 1:
             _character = [_ch + tuple(sorted(
-                                        [tuple(sorted(np.array(symbols)[_ss]))
-                                         for _ss in _core[_s]]
+                                        [tuple(sorted(np.array(symbols)
+                                                      [_core[_j]]))
+                                         for _j in _s]
                                         ))
                           for _ch, _s in zip(_character, _core)]
 

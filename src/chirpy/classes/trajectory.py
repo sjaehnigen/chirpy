@@ -1074,7 +1074,10 @@ class _XYZ():
             else:
                 algorithm = 'connectivity'
                 _loc.wrap_molecules(mask, weights=weights, algorithm=algorithm)
-                cowt_aa = _loc.mol_com_aa
+                if weights is None:
+                    cowt_aa = _loc.mol_cog_aa
+                else:
+                    cowt_aa = _loc.mol_com_aa
         else:
             if wrap:
                 _loc.wrap()
@@ -1229,6 +1232,7 @@ class _XYZ():
         if self._type == 'frame':
             _pos = _algebra.rotate_vector(self.pos_aa, R, origin=origin_aa)
             _vel = _algebra.rotate_vector(self.vel_au, R)  # no origin needed
+            self._pos_aa(_pos)
             self._vel_au(_vel)
 
         elif self._type == 'trajectory':
@@ -1239,17 +1243,30 @@ class _XYZ():
                 _vel.append(_algebra.rotate_vector(_v, R))
             _pos = _np.array(_pos)
             _vel = _np.array(_vel)
+            self._pos_aa(_pos)
             self._vel_au(_vel)
 
         elif self._type == 'modes':
-            _mod = []
-            for _p, _m in zip(self.pos_aa, self.modes):
-                _mod.append(_algebra.rotate_vector(_m, R))
-            _mod = _np.array(_mod)
+            # --- geometry (pos_aa) is invariant across modes but stored
+            # per mode/"frame"; rotate consistently with the 'frame' case
+            _pos = _np.array([_algebra.rotate_vector(_p, R,
+                                                      origin=origin_aa)
+                              for _p in self.pos_aa])
+            _mod = _np.array([_algebra.rotate_vector(_m, R)
+                              for _m in self.modes])
+            self._pos_aa(_pos)
             self._modes(_mod)
 
-        self._pos_aa(_pos)
-        self._vel_au(_vel)
+            # --- rank-2 tensors (APT/AAT) transform per atom as
+            # T' = R @ T @ R^T; downstream (e/m)tdm_au must be refreshed
+            if hasattr(self, 'APT_au'):
+                self.APT_au = _np.einsum('ij,ajk,lk->ail',
+                                         R, self.APT_au, R)
+            if hasattr(self, 'AAT_au'):
+                self.AAT_au = _np.einsum('ij,ajk,lk->ail',
+                                         R, self.AAT_au, R)
+            if hasattr(self, 'APT_au') or hasattr(self, 'AAT_au'):
+                self._sync_class(check_orthonormality=False)
 
     def align_to_vector(self, i0, i1, vec):
         '''
@@ -2171,7 +2188,9 @@ class VibrationalModes(_XYZ, _MODES):
             e_kin_au = _kinetic_energies(_VEL, self.masses_amu)
             scale = temperature / (_np.sum(e_kin_au) / constants.k_B_au /
                                    self.n_modes) / 2
-            _VEL *= scale
+            # --- velocities must be scaled by sqrt(scale) since kinetic
+            # energy (and hence temperature) is quadratic in velocity
+            _VEL *= _np.sqrt(scale)
 
         elif occupation == 'average':
             _VEL = S.sum(axis=0)

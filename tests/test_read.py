@@ -41,7 +41,7 @@ from chirpy.read import generators
 from chirpy import constants
 from chirpy.config import ChirPyWarning
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/test_files'
 
 
 class TestModes(unittest.TestCase):
@@ -287,6 +287,21 @@ class TestCoordinates(unittest.TestCase):
         # not much testing of protein features as this is an external reader
         data, names, symbols, res, cell_aa_deg, title = \
             r_coordinates.pdbReader(self.dir + '/test_protein.pdb')
+
+        # --- atom names (distinct from element symbols, e.g. 'CA', 'HN1')
+        # must be parsed correctly: this is essential for any downstream
+        # name-based atom selection/splitting
+        self.assertTupleEqual(names[:6], ('N', 'HN1', 'HN2', 'CD', 'HD1',
+                                          'HD2'))
+        self.assertEqual(len(names), len(symbols))
+
+        # --- selecting atoms by name (e.g. all alpha-carbons) must give a
+        # sensible, symbol-consistent subset -- a common way of "splitting"
+        # a pdb file
+        _ca_indices = [_i for _i, _n in enumerate(names) if _n == 'CA']
+        self.assertTrue(len(_ca_indices) > 0)
+        self.assertTrue(all(symbols[_i] == 'C' for _i in _ca_indices))
+
         data, names, symbols, res, cell_aa_deg, title = \
             r_coordinates.pdbReader(self.dir + '/test_raw.pdb')
         data, names, symbols, res, cell_aa_deg, title =\

@@ -35,16 +35,16 @@ import sys
 
 import chirpy as cp
 
-import imports
-import read
-import write
-import interface
-import mathematics
-import topology
-import physics
-import classes
-import create
-import scripts
+import test_imports as imports
+import test_read as read
+import test_write as write
+import test_interface as interface
+import test_mathematics as mathematics
+import test_topology as topology
+import test_physics as physics
+import test_classes as classes
+import test_create as create
+import test_scripts as scripts
 
 sys.tracebacklimit = 0
 

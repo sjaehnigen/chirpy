@@ -1,0 +1,18 @@
+&GLOBAL
+  PROJECT test
+  RUN_TYPE MD
+&END GLOBAL
+&FORCE_EVAL
+  METHOD QS
+  &SUBSYS
+    &CELL
+      A 10.0 0.0 0.0
+      B 0.0 10.0 0.0
+      C 0.0 0.0 10.0
+    &END CELL
+    &COORD
+      O 0.0 0.0 0.0
+      H 1.0 0.0 0.0
+    &END COORD
+  &END SUBSYS
+&END FORCE_EVAL

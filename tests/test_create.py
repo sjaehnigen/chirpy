@@ -34,7 +34,7 @@ import filecmp
 
 from chirpy.create import supercell
 
-_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/.test_files'
+_test_dir = os.path.dirname(os.path.abspath(__file__)) + '/test_files'
 
 
 class TestSupercell(unittest.TestCase):
@@ -85,3 +85,20 @@ class TestSupercell(unittest.TestCase):
                         )
 
         os.remove('CREATE.pdb')
+
+    def test_molecular_crystal_propagate_cell(self):
+        # --- propagate() must scale the (possibly non-tetragonal) unit
+        #     cell dimensions consistently with the atomic supercell
+        #     expansion, keeping angles unchanged
+        import numpy as np
+        c = supercell.MolecularCrystal(self.dir + '/782512.pdb')
+        cell0 = np.array(c.cell_aa_deg)
+
+        b = c.create(verbose=False, multiply=(1, 2, 2))
+
+        self.assertTrue(np.allclose(c.cell_aa_deg,
+                                    cell0 * [1, 2, 2, 1, 1, 1]))
+        # --- angles (incl. the non-90 deg beta angle) remain unchanged
+        self.assertTrue(np.allclose(c.cell_aa_deg[3:], cell0[3:]))
+        # --- the propagated frame's cell is kept in sync
+        self.assertTrue(np.allclose(b.cell_aa_deg, c.cell_aa_deg))
